@@ -393,3 +393,32 @@ tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
 
   return ok;
 }
+
+GStrv
+tb_store_list_ids (TbStore *store, GError **error)
+{
+  GPtrArray *ids;
+
+  g_autoptr(GDir) dir   = NULL;
+  g_autofree char *path = NULL;
+  const char *name;
+
+  path = g_file_get_path (store->devices);
+
+  dir = g_dir_open (path, 0, error);
+  if (dir == NULL)
+    return NULL;
+
+  ids = g_ptr_array_new ();
+
+  while ((name = g_dir_read_name (dir)) != NULL)
+    {
+      if (g_str_has_prefix (name, "."))
+        continue;
+
+      g_ptr_array_add (ids, g_strdup (name));
+    }
+
+  g_ptr_array_add (ids, NULL);
+  return (GStrv) g_ptr_array_free (ids, FALSE);
+}

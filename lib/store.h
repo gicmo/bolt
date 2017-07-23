@@ -46,5 +46,8 @@ TbDevice *tb_store_get (TbStore    *store,
                         const char *uid,
                         GError    **error);
 
+GStrv tb_store_list_ids (TbStore *store,
+                         GError **error);
+
 G_END_DECLS
 #endif /* TB_STORE_H */

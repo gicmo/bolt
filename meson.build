@@ -37,6 +37,16 @@ executable('tbtauth',
 	   install: true,
 	   install_dir: libexecdir)
 
+executable('tbtdb',
+	   sources: [
+	     common_sources,
+	     'db.c'
+	   ],
+	   include_directories: [include_directories('lib')],
+	   dependencies: common_deps,
+	   install: true,
+	   install_dir: libexecdir)
+
 substs = configuration_data()
 substs.set('libexecdir', libexecdir)
 
