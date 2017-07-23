@@ -1,0 +1,1 @@
+ ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{authorized}=="0", RUN+="@libexecdir@/tbtauth auto $attr{unique_id}"
