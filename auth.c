@@ -288,13 +288,13 @@ main (int argc, char **argv)
 
   if (g_str_equal (cmd, "authorize"))
     {
-      GStrv args = make_args (argc, argv);
-      res        = authorize_device (mgr, argc - 1, args);
+      g_auto(GStrv) args = make_args (argc, argv);
+      res                = authorize_device (mgr, argc - 1, args);
     }
   else if (g_str_equal (cmd, "auto"))
     {
-      GStrv args = make_args (argc, argv);
-      res        = auto_device (mgr, argc - 1, args);
+      g_auto(GStrv) args = make_args (argc, argv);
+      res                = auto_device (mgr, argc - 1, args);
     }
   else
     {
