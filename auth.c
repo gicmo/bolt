@@ -100,6 +100,16 @@ tb_device_authfile (TbDevice *dev)
   return r;
 }
 
+static gboolean
+tb_device_authorize (TbManager *mgr, TbDevice *dev, GError **error)
+{
+  g_autoptr(GFile) authloc = NULL;
+
+  authloc = tb_device_authfile (dev);
+
+  return write_char (authloc, '1', error);
+}
+
 static gboolean do_store = FALSE;
 static gboolean do_auto  = FALSE;
 static GOptionEntry authorize_opts[] =
@@ -111,7 +121,6 @@ static int
 authorize_device (TbManager *mgr, int argc, char **argv)
 {
   g_autoptr(GError) error          = NULL;
-  g_autoptr(GFile) authloc         = NULL;
   g_autoptr(GOptionContext) optctx = NULL;
   g_autoptr(TbDevice) dev          = NULL;
   const char *uid;
@@ -144,9 +153,7 @@ authorize_device (TbManager *mgr, int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  authloc = tb_device_authfile (dev);
-
-  ok = write_char (authloc, '1', &error);
+  ok = tb_device_authorize (mgr, dev, &error);
 
   if (!ok)
     {
