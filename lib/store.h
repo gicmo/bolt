@@ -30,6 +30,8 @@ G_BEGIN_DECLS
 #define TB_TYPE_STORE tb_store_get_type ()
 G_DECLARE_FINAL_TYPE (TbStore, tb_store, TB, STORE, GObject);
 
+TbStore *tb_store_new (const char *path);
+
 gboolean tb_store_put (TbStore  *store,
                        TbDevice *device,
                        GError  **error);

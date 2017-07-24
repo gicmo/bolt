@@ -194,6 +194,17 @@ tb_store_read_string (GFile * dir,
 }
 #endif
 
+TbStore *
+tb_store_new (const char *path)
+{
+  g_autoptr(GFile) root = g_file_new_for_path (path);
+  TbStore *store;
+
+  store = g_object_new (TB_TYPE_STORE, "root", root, NULL);
+
+  return store;
+}
+
 #define DEVICE_GROUP "device"
 #define USER_GROUP "user"
 
