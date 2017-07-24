@@ -17,6 +17,10 @@ common_sources = [
   'lib/manager.h', 'lib/manager.c'
 ]
 
+tests = [
+  ['test_store', common_sources]
+]
+
 executable('tbtctl',
 	   sources: [
 	     common_sources,
@@ -50,8 +54,17 @@ executable('tbtdb',
 substs = configuration_data()
 substs.set('libexecdir', libexecdir)
 
-gen = configure_file(
-                input: 'tbt.rules.in',
-                output: 'tbt.rules',
-                configuration: substs)
-        install_data(gen, install_dir: udevrulesdir)
+gen = configure_file(input: 'tbt.rules.in',
+		     output: 'tbt.rules',
+		     configuration: substs)
+
+install_data(gen, install_dir: udevrulesdir)
+
+
+foreach t: tests
+  test_name = t.get(0)
+  test_srcs = ['tests/@0@.c'.format(test_name), t.get(1, [])]
+  executable(test_name, test_srcs,
+	     include_directories: [include_directories('lib')],
+             dependencies: common_deps)
+endforeach
