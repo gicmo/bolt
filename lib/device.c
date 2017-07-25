@@ -318,3 +318,33 @@ tb_device_autoconnect (const TbDevice *device)
 {
   return device->autoconnect;
 }
+
+GFile *
+tb_device_get_key (const TbDevice *device)
+{
+  if (device->key == NULL)
+    return NULL;
+
+  return g_object_ref (device->key);
+}
+
+gboolean
+tb_device_have_key (const TbDevice *device)
+{
+  if (device->key == NULL)
+    return FALSE;
+
+  return g_file_query_exists (device->key, NULL);
+}
+
+GFile *
+tb_device_get_sysfs_keyfile (const TbDevice *device)
+{
+  g_autoptr(GFile) base = NULL;
+
+  if (device->sysfs == NULL)
+    return NULL;
+
+  base = g_file_new_for_path (device->sysfs);
+  return g_file_get_child (base, "key");
+}
