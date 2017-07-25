@@ -25,38 +25,41 @@
 #include <gio/gio.h>
 #include <gudev/gudev.h>
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "device.h"
 #include "manager.h"
+#include "store.h"
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (DIR, closedir);
 
 static gboolean
-write_char (GFile *loc, char data, GError **error)
+tb_close (int fd, GError **error)
 {
-  g_autofree char *path = NULL;
-  ssize_t n;
-  int fd;
   int r;
 
-  path = g_file_get_path (loc);
+  r = close (fd);
 
-  fd = open (path, O_WRONLY);
-  if (fd == -1)
-    {
-      int errsv        = errno;
-      char buffer[255] = {
-        0,
-      };
-      strerror_r (errsv, buffer, sizeof (buffer));
+  if (r == 0)
+    return TRUE;
 
-      g_set_error (error, G_IO_ERROR, errsv, "Could not open file (%s): %s", path, buffer);
-    }
+  g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno), "Could not close file: %s", g_strerror (errno));
+
+  return FALSE;
+}
+
+static gboolean
+tb_write_char (int fd, char data, GError **error)
+{
+  ssize_t n;
 
 retry:
   n = write (fd, &data, 1);
@@ -65,49 +68,254 @@ retry:
     {
       int errsv = errno;
       if (errsv == EINTR)
-        {
-          goto retry;
-        }
-      else
-        {
-          char buffer[255] = {
-            0,
-          };
-          strerror_r (errsv, buffer, sizeof (buffer));
+        goto retry;
 
-          g_set_error (error, G_IO_ERROR, errsv, "Could not write data: %s", buffer);
-        }
-    }
-
-  r = close (fd);
-  if (n > 0 && r != 0)
-    {
-      int errsv = errno;
-      g_set_error_literal (error, G_IO_ERROR, errsv, "Could not close file.");
+      g_set_error (error,
+                   G_IO_ERROR,
+                   g_io_error_from_errno (errsv),
+                   "Could not write data: %s",
+                   g_strerror (errno));
     }
 
   return n > 0;
 }
 
-static GFile *
-tb_device_authfile (TbDevice *dev)
+static int
+tb_openat (DIR *d, const char *path, int oflag, GError **error)
 {
-  g_autoptr(GFile) base = NULL;
-  GFile *r;
+  int fd = -1;
 
-  base = g_file_new_for_path (dev->sysfs);
-  r    = g_file_get_child (base, "authorized");
-  return r;
+  fd = openat (dirfd (d), path, oflag);
+
+  if (fd < 0)
+    {
+      g_set_error (error,
+                   G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "Could not open file %s: %s",
+                   path,
+                   g_strerror (errno));
+    }
+
+  return fd;
+}
+
+static gboolean
+tb_verify_uid (int fd, const char *uid, GError **error)
+{
+  gsize len = strlen (uid);
+  char buffer[len];
+  ssize_t n;
+
+retry:
+  n = read (fd, buffer, sizeof (buffer));
+  if (n < 0)
+    {
+      if (errno == EINTR)
+        goto retry;
+
+      g_set_error_literal (error, G_IO_ERROR, g_io_error_from_errno (errno), "Could not read from file");
+      return FALSE;
+    }
+  else if (len != n)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Could not read full uid from file");
+      return FALSE;
+    }
+
+  if (memcmp (buffer, uid, len))
+    {
+      g_set_error (error,
+                   G_IO_ERROR,
+                   G_IO_ERROR_FAILED,
+                   "unique id verification failed [%s != %s]",
+                   buffer,
+                   uid);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static ssize_t
+tb_read_all (int fd, void *buffer, gsize nbyte, GError **error)
+{
+  guint8 *ptr   = buffer;
+  ssize_t nread = 0;
+
+  do
+    {
+      ssize_t n = read (fd, ptr, nbyte);
+
+      if (n < 0)
+        {
+          int errsv = errno;
+
+          if (errsv == EINTR)
+            continue;
+
+          g_set_error (error,
+                       G_IO_ERROR,
+                       g_io_error_from_errno (errsv),
+                       "input error while reading: %s",
+                       g_strerror (errsv));
+
+          return n > 0 ? n : -errsv;
+
+        }
+      else if (n == 0)
+        {
+          return nread;
+        }
+
+      g_assert ((gsize) n <= nbyte);
+
+      ptr += n;
+      nread += n;
+      nbyte -= n;
+
+    }
+  while (nbyte > 0);
+
+  return nread;
+}
+
+static gboolean
+copy_key (GFile *key, int to, GError **error)
+{
+  g_autofree char *path     = NULL;
+  char buffer[TB_KEY_CHARS] = {
+    0,
+  };
+  int from = -1;
+  ssize_t n, k;
+
+  path = g_file_get_path (key);
+
+  from = open (path, O_RDONLY);
+
+  if (from < 0)
+    {
+      gint code = g_io_error_from_errno (errno);
+      g_set_error_literal (error, G_IO_ERROR, code, "Could not open key file");
+      return FALSE;
+    }
+
+  /* NB: need to write the key in one go, no chuncked i/o */
+  n = tb_read_all (from, buffer, sizeof (buffer), error);
+  if (n < 0)
+    {
+      return FALSE;
+    }
+  else if (n != sizeof (buffer))
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Could not read entire key from disk");
+      return FALSE;
+    }
+
+  do
+    k = write (to, buffer, (size_t) n);
+  while (k < 0 && errno == EINTR);
+
+  if (k != n)
+    {
+      g_set_error_literal (error,
+                           G_IO_ERROR,
+                           g_io_error_from_errno (errno),
+                           "io error while writing key data");
+      return FALSE;
+    }
+
+  return TRUE;
 }
 
 static gboolean
 tb_device_authorize (TbManager *mgr, TbDevice *dev, GError **error)
 {
-  g_autoptr(GFile) authloc = NULL;
+  g_autoptr(GFile) key = NULL;
+  g_autoptr(DIR) d     = NULL;
+  const char *sysfs;
+  int security;
+  gboolean ok;
+  int fd = -1;
 
-  authloc = tb_device_authfile (dev);
+  g_return_val_if_fail (dev != NULL, FALSE);
+  g_return_val_if_fail (dev->uid != NULL, FALSE);
 
-  return write_char (authloc, '1', error);
+  security = tb_manager_get_security_level (mgr);
+
+  if (security < 1)
+    /* nothing to do */
+    return TRUE;
+
+  sysfs = tb_device_get_sysfs_path (dev);
+  g_assert (sysfs != NULL);
+
+  d = opendir (sysfs);
+
+  if (d == NULL)
+    {
+      g_set_error_literal (error, G_IO_ERROR, g_io_error_from_errno (errno), "Could not open directory.");
+      return FALSE;
+    }
+
+  /* openat is used here to be absolutely sure that the
+   * directory that contains the right 'unique_id' is the
+   * one we are authorizing */
+  fd = tb_openat (d, "unique_id", O_RDONLY, error);
+  if (fd < 0)
+    return FALSE;
+
+  ok = tb_verify_uid (fd, dev->uid, error);
+  if (!ok)
+    {
+      close (fd);
+      return FALSE;
+    }
+
+  close (fd);
+
+  if (security == '2')
+    {
+      gboolean created = FALSE;
+      int keyfd        = -1;
+
+      key = tb_manager_ensure_key (mgr, dev, FALSE, &created, error);
+      if (key == NULL)
+        return FALSE;
+
+      keyfd = tb_openat (d, "key", O_WRONLY, error);
+      if (keyfd < 0)
+        return FALSE;
+
+      ok = copy_key (key, keyfd, error);
+      if (!ok)
+        {
+          close (fd);
+          return FALSE;
+        }
+
+      ok = tb_close (keyfd, error);
+      if (!ok)
+        return FALSE;
+
+      if (created)
+        security = '1';
+    }
+
+  fd = tb_openat (d, "authorized", O_WRONLY, error);
+
+  if (fd < 0)
+    return FALSE;
+
+  ok = tb_write_char (fd, security, error);
+  if (!ok)
+    {
+      close (fd);
+      return FALSE;
+    }
+
+  return tb_close (fd, error);
 }
 
 static gboolean do_store = FALSE;
@@ -185,7 +393,6 @@ static int
 auto_device (TbManager *mgr, int argc, char **argv)
 {
   g_autoptr(GError) error          = NULL;
-  g_autoptr(GFile) authloc         = NULL;
   g_autoptr(GOptionContext) optctx = NULL;
   g_autoptr(TbDevice) dev          = NULL;
   const char *uid;
@@ -228,9 +435,7 @@ auto_device (TbManager *mgr, int argc, char **argv)
       return EXIT_SUCCESS;
     }
 
-  authloc = tb_device_authfile (dev);
-
-  ok = write_char (authloc, '1', &error);
+  ok = tb_device_authorize (mgr, dev, &error);
 
   if (!ok)
     {
