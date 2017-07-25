@@ -51,7 +51,6 @@ device_print (TbDevice *dev)
   gint authorized        = tb_device_get_authorized (dev);
   gboolean is_authorized = authorized > 0;
   gboolean in_store      = tb_device_in_store (dev);
-  gboolean autoauth      = tb_device_autoconnect (dev);
 
   g_print ("\033[1;%dm●\033[0m %s\n", is_authorized ? 32 : 31, name);
   g_print ("  ├─ vendor:     %s\n", vendor);
@@ -59,7 +58,13 @@ device_print (TbDevice *dev)
   g_print ("  ├─ authorized: %d\n", authorized);
   g_print ("  └─ in store:   %s\n", in_store ? "yes" : "no");
   if (in_store)
-    g_print ("      └─ auto:   %s\n", autoauth ? "yes" : "no");
+    {
+      gboolean autoauth = tb_device_autoconnect (dev);
+      gboolean havekey  = tb_device_have_key (dev);
+
+      g_print ("      └─ auto:   %s\n", autoauth ? "yes" : "no");
+      g_print ("      └─ key:    %s\n", havekey ? "yes" : "no");
+    }
   g_print ("\n");
 }
 
