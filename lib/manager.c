@@ -389,3 +389,25 @@ tb_manager_ensure_key (TbManager *mgr, TbDevice *dev, gboolean replace, gboolean
 
   return ok ? key : NULL;
 }
+
+int
+tb_manager_get_security_level (TbManager *mgr)
+{
+  g_return_val_if_fail (mgr != NULL, -1);
+
+  if (mgr->security == NULL)
+    {
+      g_critical ("security level could not be determined");
+      return -1;
+    }
+
+  if (g_str_equal (mgr->security, "none") || g_str_equal (mgr->security, "dponly"))
+    return 0;
+  else if (g_str_equal (mgr->security, "user"))
+    return '1';
+  else if (g_str_equal (mgr->security, "secure"))
+    return '2';
+
+  g_critical ("Unknown security level: %s", mgr->security);
+  return -1;
+}

@@ -46,5 +46,6 @@ GFile *tb_manager_ensure_key (TbManager *mgr,
                               gboolean   replace,
                               gboolean * created,
                               GError   **error);
+int tb_manager_get_security_level (TbManager *mgr);
 G_END_DECLS
 #endif /* TB_MANAGER_H */
