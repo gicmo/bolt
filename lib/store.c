@@ -340,7 +340,7 @@ tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
   g_autoptr(GFile) urnd                = NULL;
   g_autoptr(GFileInputStream) istream  = NULL;
   g_autoptr(GOutputStream) os          = NULL;
-  guint8 buffer[32]                    = {
+  guint8 buffer[TB_KEY_BYTES]          = {
     0,
   };
   gboolean ok;
