@@ -361,3 +361,31 @@ tb_manager_store (TbManager *mgr, TbDevice *device, GError **error)
 {
   return tb_store_put (mgr->store, device, error);
 }
+
+GFile *
+tb_manager_ensure_key (TbManager *mgr, TbDevice *dev, gboolean replace, gboolean *created, GError **error)
+{
+  g_autoptr(GFile) key = NULL;
+  gboolean ok;
+
+  if (replace)
+    {
+      ok       = tb_store_create_key (mgr->store, dev, error);
+      *created = TRUE;
+      if (!ok)
+        return NULL;
+    }
+
+  key = tb_device_get_key (dev);
+
+  if (g_file_query_exists (key, NULL))
+    {
+      *created = FALSE;
+      return key;
+    }
+
+  ok       = tb_store_create_key (mgr->store, dev, error);
+  *created = TRUE;
+
+  return ok ? key : NULL;
+}

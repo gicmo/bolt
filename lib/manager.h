@@ -41,5 +41,10 @@ gboolean tb_manager_store (TbManager *mgr,
                            TbDevice  *device,
                            GError   **error);
 
+GFile *tb_manager_ensure_key (TbManager *mgr,
+                              TbDevice  *dev,
+                              gboolean   replace,
+                              gboolean * created,
+                              GError   **error);
 G_END_DECLS
 #endif /* TB_MANAGER_H */
