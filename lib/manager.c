@@ -31,13 +31,6 @@
 
 #include "enums.h"
 
-struct _TbManagerClass
-{
-  GObjectClass parent_class;
-
-  gpointer     padding[13];
-};
-
 struct _TbManager
 {
   GObject      object;
@@ -61,6 +54,10 @@ enum { PROP_0,
 static GParamSpec *props[PROP_LAST] = {
   NULL,
 };
+
+enum { SIGNAL_DEVICE_ADDED, SIGNAL_DEVICE_REMOVED, SIGNAL_LAST };
+
+static guint signals[SIGNAL_LAST] = {0};
 
 static gboolean tb_manager_initable_init (GInitable    *initable,
                                           GCancellable *cancellable,
@@ -167,6 +164,28 @@ tb_manager_class_init (TbManagerClass *klass)
                                             G_PARAM_READABLE | G_PARAM_STATIC_NAME);
 
   g_object_class_install_properties (gobject_class, PROP_LAST, props);
+
+  signals[SIGNAL_DEVICE_ADDED] = g_signal_new ("device-added",
+                                               G_TYPE_FROM_CLASS (gobject_class),
+                                               G_SIGNAL_RUN_LAST,
+                                               0,
+                                               NULL,
+                                               NULL,
+                                               NULL,
+                                               G_TYPE_NONE,
+                                               1,
+                                               G_TYPE_POINTER);
+
+  signals[SIGNAL_DEVICE_REMOVED] = g_signal_new ("device-removed",
+                                                 G_TYPE_FROM_CLASS (gobject_class),
+                                                 G_SIGNAL_RUN_LAST,
+                                                 0,
+                                                 NULL,
+                                                 NULL,
+                                                 NULL,
+                                                 G_TYPE_NONE,
+                                                 1,
+                                                 G_TYPE_POINTER);
 }
 
 static void
@@ -266,26 +285,32 @@ manager_uevent_cb (GUdevClient *client, const gchar *action, GUdevDevice *device
   TbManager *mgr = TB_MANAGER (user_data);
   TbDevice *dev;
 
-  g_print ("uevent [%s]\n\n", action);
+  g_debug ("uevent [%s]", action);
 
   if (g_strcmp0 (action, "add") == 0)
     {
 
-      manager_devices_add_from_udev (mgr, device);
+      dev = manager_devices_add_from_udev (mgr, device);
+      if (dev)
+        g_signal_emit (mgr, signals[SIGNAL_DEVICE_ADDED], 0, dev);
 
     }
   else if (g_strcmp0 (action, "change") == 0)
     {
+      const char *uid = g_udev_device_get_sysfs_attr (device, "unique_id");
+      if (uid == NULL)
+        return;
 
       dev = manager_devices_lookup_by_udev (mgr, device);
       if (dev == NULL)
         {
-          g_warning ("device not in list!\n");
+          g_warning ("device not in list!");
           manager_devices_add_from_udev (mgr, device);
           return;
         }
 
       tb_device_update_from_udev (dev, device);
+      tb_manager_devices_dump (mgr);
 
     }
   else if (g_strcmp0 (action, "remove") == 0)
@@ -293,12 +318,12 @@ manager_uevent_cb (GUdevClient *client, const gchar *action, GUdevDevice *device
       dev = manager_devices_lookup_by_udev (mgr, device);
 
       if (dev)
-        g_ptr_array_remove_fast (mgr->devices, dev);
-      else
-        g_warning ("device not in list!\n");
-    }
+        {
+          g_signal_emit (mgr, signals[SIGNAL_DEVICE_REMOVED], 0, dev);
 
-  tb_manager_devices_dump (mgr);
+          g_ptr_array_remove_fast (mgr->devices, dev);
+        }
+    }
 }
 
 static gboolean

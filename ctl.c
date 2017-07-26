@@ -32,10 +32,35 @@
 #include "device.h"
 #include "manager.h"
 
+static void
+device_added_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
+{
+  const char *uid             = tb_device_get_uid (dev);
+  const char *name            = tb_device_get_name (dev);
+  const char *vendor          = tb_device_get_vendor_name (dev);
+  TbAuth authorized           = tb_device_get_authorized (dev);
+  gboolean in_store           = tb_device_in_store (dev);
+  TbPolicy policy             = tb_device_get_policy (dev);
+  g_autofree char *policy_str = tb_policy_to_string (policy);
+
+  g_print ("A: %s, %s, %s, %d, %s, %s\n", uid, name, vendor, authorized, in_store ? "yes" : "no", policy_str);
+}
+
+static void
+device_removed_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
+{
+  const char *uid = tb_device_get_uid (dev);
+
+  g_print ("R: %s\n", uid);
+}
+
 static int
 monitor (TbManager *mgr)
 {
   GMainLoop *loop;
+
+  g_signal_connect (mgr, "device-added", G_CALLBACK (device_added_cb), NULL);
+  g_signal_connect (mgr, "device-removed", G_CALLBACK (device_removed_cb), NULL);
 
   loop = g_main_loop_new (NULL, FALSE);
   g_main_loop_run (loop);
