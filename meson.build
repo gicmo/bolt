@@ -3,6 +3,8 @@ project('tbt', 'c')
 libexecdir = join_paths(get_option('prefix'), get_option('libexecdir'))
 udevrulesdir = '/etc/udev/rules.d'
 
+gnome = import('gnome')
+
 compiler = meson.get_compiler('c')
 
 glib  = dependency('glib-2.0')

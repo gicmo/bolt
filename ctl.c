@@ -48,7 +48,7 @@ device_print (TbDevice *dev)
   const char *uid        = tb_device_get_uid (dev);
   const char *name       = tb_device_get_name (dev);
   const char *vendor     = tb_device_get_vendor_name (dev);
-  gint authorized        = tb_device_get_authorized (dev);
+  TbAuth authorized      = tb_device_get_authorized (dev);
   gboolean is_authorized = authorized > 0;
   gboolean in_store      = tb_device_in_store (dev);
 

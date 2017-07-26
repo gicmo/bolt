@@ -26,6 +26,7 @@
 #include <stdio.h>
 
 #include "device.h"
+#include "enums.h"
 
 struct _TbDeviceClass
 {
@@ -101,7 +102,7 @@ tb_device_get_property (GObject *object, guint prop_id, GValue *value, GParamSpe
       break;
 
     case PROP_AUTHORIZED:
-      g_value_set_int (value, dev->authorized);
+      g_value_set_enum (value, dev->authorized);
       break;
     }
 }
@@ -138,7 +139,7 @@ tb_device_set_property (GObject *object, guint prop_id, const GValue *value, GPa
       break;
 
     case PROP_AUTHORIZED:
-      dev->authorized = g_value_get_int (value);
+      dev->authorized = g_value_get_enum (value);
       break;
     }
 }
@@ -192,8 +193,12 @@ tb_device_class_init (TbDeviceClass *klass)
   device_props[PROP_SYSFS] =
     g_param_spec_string ("sysfs", NULL, NULL, "", G_PARAM_READABLE | G_PARAM_STATIC_NAME);
 
-  device_props[PROP_AUTHORIZED] =
-    g_param_spec_int ("authorized", NULL, NULL, -1, G_MAXUINT8, -1, G_PARAM_READABLE | G_PARAM_STATIC_NAME);
+  device_props[PROP_AUTHORIZED] = g_param_spec_enum ("authorized",
+                                                     NULL,
+                                                     NULL,
+                                                     TB_TYPE_AUTH,
+                                                     TB_AUTH_UNKNOWN,
+                                                     G_PARAM_READWRITE | G_PARAM_STATIC_NAME);
 
   g_object_class_install_properties (gobject_class, PROP_DEVICE_LAST, device_props);
 }
