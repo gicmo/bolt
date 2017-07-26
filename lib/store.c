@@ -255,17 +255,21 @@ load_device_data (TbStore *store, TbDevice *dev, GError **error)
 {
   g_autoptr(GKeyFile) kf = NULL;
   g_autofree char *data  = NULL;
+  const char *uid;
   gboolean ok;
   gsize len;
 
   g_return_val_if_fail (store != NULL, FALSE);
   g_return_val_if_fail (dev != NULL, FALSE);
 
+  uid = tb_device_get_uid (dev);
+  g_assert (uid);
+
   if (dev->db == NULL)
-    dev->db = g_file_get_child (store->devices, dev->uid);
+    dev->db = g_file_get_child (store->devices, uid);
 
   if (dev->key == NULL)
-    dev->key = g_file_get_child (store->keys, dev->uid);
+    dev->key = g_file_get_child (store->keys, uid);
 
   ok = g_file_load_contents (dev->db, NULL, &data, &len, NULL, error);
 
