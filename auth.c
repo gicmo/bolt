@@ -235,16 +235,16 @@ tb_device_authorize (TbManager *mgr, TbDevice *dev, GError **error)
   g_autoptr(GFile) key = NULL;
   g_autoptr(DIR) d     = NULL;
   const char *sysfs;
-  int security;
+  TbSecurity security;
   gboolean ok;
   int fd = -1;
 
   g_return_val_if_fail (dev != NULL, FALSE);
   g_return_val_if_fail (dev->uid != NULL, FALSE);
 
-  security = tb_manager_get_security_level (mgr);
+  security = tb_manager_get_security (mgr);
 
-  if (security < 1)
+  if (security < TB_SECURITY_USER)
     /* nothing to do */
     return TRUE;
 
@@ -275,7 +275,7 @@ tb_device_authorize (TbManager *mgr, TbDevice *dev, GError **error)
 
   close (fd);
 
-  if (security == '2')
+  if (security == TB_SECURITY_SECURE)
     {
       gboolean created = FALSE;
       int keyfd        = -1;
@@ -300,7 +300,7 @@ tb_device_authorize (TbManager *mgr, TbDevice *dev, GError **error)
         return FALSE;
 
       if (created)
-        security = '1';
+        security = TB_SECURITY_USER;
     }
 
   fd = tb_openat (d, "authorized", O_WRONLY, error);

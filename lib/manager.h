@@ -30,6 +30,29 @@ G_BEGIN_DECLS
 #define TB_TYPE_MANAGER tb_manager_get_type ()
 G_DECLARE_FINAL_TYPE (TbManager, tb_manager, TB, MANAGER, GObject);
 
+/**
+ * TbSecurity:
+ * @TB_SECURITY_UNKNOWN : Unknown security.
+ * @TB_SECURITY_NONE    : No security, all devices are automatically connected.
+ * @TB_SECURITY_DPONLY  : Display Port only devices only.
+ * @TB_SECURITY_USER    : User needs to authorize devices.
+ * @TB_SECURITY_SECURE  : User needs to authorize devices. Authorization will
+ *     be done via key exchange to verify the device identity.
+ *
+ * The security level of the thunderbolt domain.
+ */
+typedef enum {
+
+  TB_SECURITY_UNKNOWN = -1,
+  TB_SECURITY_NONE = 0,
+  TB_SECURITY_DPONLY = 1,
+  TB_SECURITY_USER = '1',
+  TB_SECURITY_SECURE = '2'
+} TbSecurity;
+
+TbSecurity tb_security_from_string (const char *str);
+char *tb_security_to_string (TbSecurity security);
+
 TbManager *tb_manager_new (GError **error);
 
 const GPtrArray *tb_manager_list_attached (TbManager *mgr);
@@ -46,6 +69,6 @@ GFile *tb_manager_ensure_key (TbManager *mgr,
                               gboolean   replace,
                               gboolean * created,
                               GError   **error);
-int tb_manager_get_security_level (TbManager *mgr);
+TbSecurity tb_manager_get_security (TbManager *mgr);
 G_END_DECLS
 #endif /* TB_MANAGER_H */

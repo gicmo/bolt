@@ -29,6 +29,8 @@
 #include "manager.h"
 #include "store.h"
 
+#include "enums.h"
+
 struct _TbManagerClass
 {
   GObjectClass parent_class;
@@ -44,9 +46,9 @@ struct _TbManager
   GPtrArray   *devices;
 
   /* assume for now we have only one domain */
-  char    *security;
+  TbSecurity security;
 
-  TbStore *store;
+  TbStore   *store;
 };
 
 enum { PROP_0,
@@ -103,7 +105,7 @@ tb_manager_get_property (GObject *object, guint prop_id, GValue *value, GParamSp
       break;
 
     case PROP_SECURITY:
-      g_value_set_string (value, mgr->security);
+      g_value_set_enum (value, mgr->security);
       break;
     }
 }
@@ -157,7 +159,12 @@ tb_manager_class_init (TbManagerClass *klass)
   props[PROP_STORE] =
     g_param_spec_string ("db", NULL, NULL, "", G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NAME);
 
-  props[PROP_SECURITY] = g_param_spec_string ("security", NULL, NULL, "", G_PARAM_READABLE | G_PARAM_STATIC_NAME);
+  props[PROP_SECURITY] = g_param_spec_enum ("security",
+                                            NULL,
+                                            NULL,
+                                            TB_TYPE_SECURITY,
+                                            TB_SECURITY_UNKNOWN,
+                                            G_PARAM_READABLE | G_PARAM_STATIC_NAME);
 
   g_object_class_install_properties (gobject_class, PROP_LAST, props);
 }
@@ -316,7 +323,7 @@ tb_manager_initable_init (GInitable *initable, GCancellable *cancellable, GError
         {
           const char *security = g_udev_device_get_sysfs_attr (device, "security");
           if (security != NULL)
-            mgr->security = g_strdup (security);
+            mgr->security = tb_security_from_string (security);
 
           continue;
         }
@@ -390,24 +397,48 @@ tb_manager_ensure_key (TbManager *mgr, TbDevice *dev, gboolean replace, gboolean
   return ok ? key : NULL;
 }
 
-int
-tb_manager_get_security_level (TbManager *mgr)
+TbSecurity
+tb_manager_get_security (TbManager *mgr)
 {
   g_return_val_if_fail (mgr != NULL, -1);
 
-  if (mgr->security == NULL)
+  if (mgr->security == TB_SECURITY_UNKNOWN)
+    g_critical ("security level could not be determined");
+
+  return mgr->security;
+}
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
+
+TbSecurity
+tb_security_from_string (const char *str)
+{
+  g_autoptr(GEnumClass) klass = NULL;
+  GEnumValue *value;
+
+  if (str == NULL)
+    return TB_SECURITY_UNKNOWN;
+
+  klass = g_type_class_ref (TB_TYPE_SECURITY);
+  value = g_enum_get_value_by_nick (klass, str);
+
+  if (value == NULL)
     {
-      g_critical ("security level could not be determined");
-      return -1;
+      g_warning ("Unknown security: %s", str);
+      return TB_SECURITY_UNKNOWN;
     }
 
-  if (g_str_equal (mgr->security, "none") || g_str_equal (mgr->security, "dponly"))
-    return 0;
-  else if (g_str_equal (mgr->security, "user"))
-    return '1';
-  else if (g_str_equal (mgr->security, "secure"))
-    return '2';
+  return value->value;
+}
 
-  g_critical ("Unknown security level: %s", mgr->security);
-  return -1;
+char *
+tb_security_to_string (TbSecurity security)
+{
+  g_autoptr(GEnumClass) klass = NULL;
+  GEnumValue *value;
+
+  klass = g_type_class_ref (TB_TYPE_SECURITY);
+  value = g_enum_get_value (klass, security);
+
+  return g_strdup (value->value_nick);
 }
