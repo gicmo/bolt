@@ -48,6 +48,23 @@ typedef enum {
   TB_AUTH_SECURED = 2
 } TbAuth;
 
+/**
+ * TbPolicy:
+ * @TB_POLICY_UNKNOWN : Unknown policy (e.g. devices not in store).
+ * @TB_POLICY_IGNORE  : Ignore the newly connected device.
+ * @TB_POLICY_AUTO    : Automatically authorize the device system wide.
+ *
+ * What do to when a thunderbolt device is connected.
+ */
+typedef enum {
+  TB_POLICY_UNKNOWN = -1,
+  TB_POLICY_IGNORE = 0,
+  TB_POLICY_AUTO = 1
+} TbPolicy;
+
+char *tb_policy_to_string (TbPolicy policy);
+TbPolicy tb_policy_from_string (const char *str);
+
 struct _TbDevice
 {
   GObject object;
@@ -69,7 +86,7 @@ struct _TbDevice
   GFile   *db;
   GFile   *key;
 
-  gboolean autoconnect;
+  TbPolicy policy;
 };
 
 gboolean tb_device_update_from_udev (TbDevice     *device,
@@ -81,7 +98,7 @@ const char *tb_device_get_vendor_name (const TbDevice *device);
 const char *tb_device_get_sysfs_path (const TbDevice *device);
 TbAuth tb_device_get_authorized (const TbDevice *device);
 gboolean tb_device_in_store (const TbDevice *device);
-gboolean tb_device_autoconnect (const TbDevice *device);
+TbPolicy tb_device_get_policy (const TbDevice *device);
 GFile *tb_device_get_key (const TbDevice *device);
 gboolean tb_device_have_key (const TbDevice *device);
 GFile *tb_device_get_sysfs_keyfile (const TbDevice *device);

@@ -215,6 +215,7 @@ tb_store_put (TbStore *store, TbDevice *device, GError **error)
   g_autoptr(GFile) entry = NULL;
   g_autoptr(GKeyFile) kf = NULL;
   g_autofree char *data  = NULL;
+  TbPolicy policy;
   gboolean ok;
   gsize len;
 
@@ -236,7 +237,13 @@ tb_store_put (TbStore *store, TbDevice *device, GError **error)
 
   g_key_file_set_string (kf, DEVICE_GROUP, "vendor-name", tb_device_get_vendor_name (device));
 
-  g_key_file_set_boolean (kf, USER_GROUP, "autoconnect", device->autoconnect);
+  policy = tb_device_get_policy (device);
+  if (policy != TB_POLICY_UNKNOWN)
+    {
+      g_autofree char *str = tb_policy_to_string (policy);
+
+      g_key_file_set_string (kf, USER_GROUP, "policy", str);
+    }
 
   data = g_key_file_to_data (kf, &len, error);
 
@@ -289,7 +296,10 @@ load_device_data (TbStore *store, TbDevice *dev, GError **error)
 static void
 load_user_data (TbDevice *dev, GKeyFile *kf)
 {
-  dev->autoconnect = g_key_file_get_boolean (kf, USER_GROUP, "autoconnect", NULL);
+  g_autofree char *policy = NULL;
+
+  policy      = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
+  dev->policy = tb_policy_from_string (policy);
 }
 
 gboolean

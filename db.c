@@ -39,15 +39,16 @@
 static void
 print_device (TbDevice *dev)
 {
-  const char *uid    = tb_device_get_uid (dev);
-  const char *name   = tb_device_get_name (dev);
-  const char *vendor = tb_device_get_vendor_name (dev);
-  gboolean autoauth  = tb_device_autoconnect (dev);
+  const char *uid             = tb_device_get_uid (dev);
+  const char *name            = tb_device_get_name (dev);
+  const char *vendor          = tb_device_get_vendor_name (dev);
+  TbPolicy policy             = tb_device_get_policy (dev);
+  g_autofree char *policy_str = tb_policy_to_string (policy);
 
   g_print ("%s\n", name);
   g_print ("  ├─ vendor: %s\n", vendor);
   g_print ("  ├─ uuid:   %s\n", uid);
-  g_print ("  └─ auto:   %s\n", autoauth ? "yes" : "no");
+  g_print ("  └─ policy:  %s\n", policy_str);
   g_print ("\n");
 }
 
@@ -75,7 +76,7 @@ list (TbStore *store)
   return EXIT_SUCCESS;
 }
 
-static char *known_fields[] = {"auto"};
+static char *known_fields[] = {"policy"};
 
 static int
 get (TbStore *store, int argc, char **argv)
@@ -113,10 +114,12 @@ get (TbStore *store, int argc, char **argv)
   for (i = 0; i < n; i++)
     {
       const char *field = fields[i];
-      if (g_str_equal (field, "auto"))
+      if (g_str_equal (field, "policy"))
         {
-          gboolean do_auto = tb_device_autoconnect (dev);
-          g_print ("auto: %s\n", do_auto ? "yes" : "no");
+          TbPolicy policy      = tb_device_get_policy (dev);
+          g_autofree char *str = tb_policy_to_string (policy);
+
+          g_print ("policy: %s\n", str);
         }
       else
         {
@@ -125,23 +128,6 @@ get (TbStore *store, int argc, char **argv)
     }
 
   return EXIT_SUCCESS;
-}
-
-static gboolean
-string_to_bool (const char *str, gboolean *b)
-{
-  if (!g_ascii_strcasecmp (str, "yes"))
-    {
-      *b = TRUE;
-      return TRUE;
-    }
-  else if (!g_ascii_strcasecmp (str, "no"))
-    {
-      *b = FALSE;
-      return TRUE;
-    }
-
-  return FALSE;
 }
 
 static int
@@ -192,18 +178,10 @@ set (TbStore *store, int argc, char **argv)
       key   = split[0];
       value = split[1];
 
-      if (g_str_equal (key, "auto"))
+      if (g_str_equal (key, "policy"))
         {
-          gboolean b;
-
-          ok = string_to_bool (value, &b);
-          if (!ok)
-            {
-              g_fprintf (stderr, "Could not convert '%s' to boolean\n", value);
-              return EXIT_FAILURE;
-            }
-
-          dev->autoconnect = b;
+          TbPolicy policy = tb_policy_from_string (value);
+          g_object_set (dev, "policy", policy, NULL);
         }
     }
 

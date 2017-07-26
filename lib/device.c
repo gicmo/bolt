@@ -28,6 +28,41 @@
 #include "device.h"
 #include "enums.h"
 
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
+
+char *
+tb_policy_to_string (TbPolicy policy)
+{
+  g_autoptr(GEnumClass) klass = NULL;
+  GEnumValue *value;
+
+  klass = g_type_class_ref (TB_TYPE_POLICY);
+  value = g_enum_get_value (klass, policy);
+
+  return g_strdup (value->value_nick);
+}
+
+TbPolicy
+tb_policy_from_string (const char *str)
+{
+  g_autoptr(GEnumClass) klass = NULL;
+  GEnumValue *value;
+
+  if (str == NULL)
+    return TB_POLICY_UNKNOWN;
+
+  klass = g_type_class_ref (TB_TYPE_POLICY);
+  value = g_enum_get_value_by_nick (klass, str);
+
+  if (value == NULL)
+    {
+      g_warning ("Unknown device policy: %s", str);
+      return TB_POLICY_UNKNOWN;
+    }
+
+  return value->value;
+}
+
 struct _TbDeviceClass
 {
   GObjectClass parent_class;
@@ -47,6 +82,8 @@ enum { PROP_DEVICE_0,
 
        PROP_SYSFS,
        PROP_AUTHORIZED,
+
+       PROP_POLICY,
 
        PROP_DEVICE_LAST };
 
@@ -104,6 +141,10 @@ tb_device_get_property (GObject *object, guint prop_id, GValue *value, GParamSpe
     case PROP_AUTHORIZED:
       g_value_set_enum (value, dev->authorized);
       break;
+
+    case PROP_POLICY:
+      g_value_set_enum (value, dev->policy);
+      break;
     }
 }
 
@@ -140,6 +181,10 @@ tb_device_set_property (GObject *object, guint prop_id, const GValue *value, GPa
 
     case PROP_AUTHORIZED:
       dev->authorized = g_value_get_enum (value);
+      break;
+
+    case PROP_POLICY:
+      dev->policy = g_value_get_enum (value);
       break;
     }
 }
@@ -199,6 +244,13 @@ tb_device_class_init (TbDeviceClass *klass)
                                                      TB_TYPE_AUTH,
                                                      TB_AUTH_UNKNOWN,
                                                      G_PARAM_READWRITE | G_PARAM_STATIC_NAME);
+
+  device_props[PROP_POLICY] = g_param_spec_enum ("policy",
+                                                 NULL,
+                                                 NULL,
+                                                 TB_TYPE_POLICY,
+                                                 TB_POLICY_UNKNOWN,
+                                                 G_PARAM_READWRITE | G_PARAM_STATIC_NAME);
 
   g_object_class_install_properties (gobject_class, PROP_DEVICE_LAST, device_props);
 }
@@ -318,10 +370,10 @@ tb_device_in_store (const TbDevice *device)
   return device->db != NULL;
 }
 
-gboolean
-tb_device_autoconnect (const TbDevice *device)
+TbPolicy
+tb_device_get_policy (const TbDevice *device)
 {
-  return device->autoconnect;
+  return device->policy;
 }
 
 GFile *

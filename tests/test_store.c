@@ -54,12 +54,13 @@ static void
 test_store_basic (Fixture *fixture, gconstpointer user_data)
 {
   //  const Params *p = user_data;
-  g_autoptr(GError) err   = NULL;
-  g_autoptr(TbDevice) dev = NULL;
-  g_autoptr(GFile) key    = NULL;
-  g_autofree char *data   = NULL;
-  g_autofree char *uuid   = NULL;
-  gsize len               = 0;
+  g_autoptr(GError) err      = NULL;
+  g_autoptr(TbDevice) dev    = NULL;
+  g_autoptr(TbDevice) stored = NULL;
+  g_autoptr(GFile) key       = NULL;
+  g_autofree char *data      = NULL;
+  g_autofree char *uuid      = NULL;
+  gsize len                  = 0;
   gboolean ok;
 
   uuid = g_uuid_string_random ();
@@ -70,6 +71,9 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
   ok = tb_store_put (fixture->store, dev, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
+
+  g_object_set (dev, "policy", TB_POLICY_AUTO, NULL);
+  g_assert_cmpint (tb_device_get_policy (dev), ==, TB_POLICY_AUTO);
 
   g_debug ("Generating key");
   ok = tb_store_create_key (fixture->store, dev, &err);
@@ -85,6 +89,12 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
   g_assert_true (ok);
 
   g_debug ("Key: [%lu] %s", len, data);
+
+  stored = tb_store_get (fixture->store, uuid, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (stored);
+
+  g_assert_cmpstr (tb_device_get_uid (dev), ==, tb_device_get_uid (stored));
 }
 
 int

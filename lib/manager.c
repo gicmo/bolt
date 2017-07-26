@@ -172,16 +172,16 @@ static TbDevice *
 manager_devices_add_from_udev (TbManager *mgr, GUdevDevice *device)
 {
   TbDevice *dev;
-  const char *dev_name;
+  const char *uid;
 
   g_autoptr(GError) err = NULL;
   gboolean ok;
 
-  dev_name = g_udev_device_get_sysfs_attr (device, "device_name");
-  if (dev_name == NULL)
+  uid = g_udev_device_get_sysfs_attr (device, "unique_id");
+  if (uid == NULL)
     return NULL;
 
-  dev = g_object_new (TB_TYPE_DEVICE, NULL);
+  dev = g_object_new (TB_TYPE_DEVICE, "uid", uid, NULL);
   tb_device_update_from_udev (dev, device);
 
   ok = tb_store_merge (mgr->store, dev, &err);

@@ -59,10 +59,11 @@ device_print (TbDevice *dev)
   g_print ("  └─ in store:   %s\n", in_store ? "yes" : "no");
   if (in_store)
     {
-      gboolean autoauth = tb_device_autoconnect (dev);
-      gboolean havekey  = tb_device_have_key (dev);
+      TbPolicy policy             = tb_device_get_policy (dev);
+      g_autofree char *policy_str = tb_policy_to_string (policy);
+      gboolean havekey            = tb_device_have_key (dev);
 
-      g_print ("      └─ auto:   %s\n", autoauth ? "yes" : "no");
+      g_print ("      └─ policy: %s\n", policy_str);
       g_print ("      └─ key:    %s\n", havekey ? "yes" : "no");
     }
   g_print ("\n");

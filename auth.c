@@ -372,8 +372,7 @@ authorize_device (TbManager *mgr, int argc, char **argv)
   if (do_auto)
     {
       do_store = TRUE;
-
-      dev->autoconnect = TRUE;
+      g_object_set (dev, "policy", TB_POLICY_AUTO, NULL);
     }
 
   if (do_store)
@@ -429,7 +428,7 @@ auto_device (TbManager *mgr, int argc, char **argv)
       g_print ("thunderbolt device %s not in store.", tb_device_get_uid (dev));
       return EXIT_SUCCESS;
     }
-  else if (!tb_device_autoconnect (dev))
+  else if (tb_device_get_policy (dev) != TB_POLICY_AUTO)
     {
       g_print ("thunderbolt device %s not setup for auto authorization.", tb_device_get_uid (dev));
       return EXIT_SUCCESS;
