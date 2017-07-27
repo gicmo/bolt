@@ -95,6 +95,12 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
   g_assert_nonnull (stored);
 
   g_assert_cmpstr (tb_device_get_uid (dev), ==, tb_device_get_uid (stored));
+
+  g_assert_cmpstr (tb_device_get_name (dev), ==, tb_device_get_name (stored));
+
+  ok = tb_store_delete (fixture->store, dev, &err);
+  g_assert_true (ok);
+  g_assert_no_error (err);
 }
 
 int
