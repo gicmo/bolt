@@ -447,3 +447,47 @@ tb_store_list_ids (TbStore *store, GError **error)
   g_ptr_array_add (ids, NULL);
   return (GStrv) g_ptr_array_free (ids, FALSE);
 }
+
+gboolean
+tb_store_delete (TbStore *store, TbDevice *device, GError **error)
+{
+  g_autoptr(GFile) data      = NULL;
+  g_autoptr(GFile) key       = NULL;
+  g_autoptr(GError) err_data = NULL;
+  g_autoptr(GError) err_key  = NULL;
+  gboolean ok_data;
+  gboolean ok_key;
+  const char *uid;
+
+  g_return_val_if_fail (store != NULL, FALSE);
+  g_return_val_if_fail (device != NULL, FALSE);
+
+  uid  = tb_device_get_uid (device);
+  data = g_file_get_child (store->devices, uid);
+  key  = g_file_get_child (store->keys, uid);
+
+  ok_data = g_file_delete (data, NULL, &err_data);
+  ok_key  = g_file_delete (key, NULL, &err_key);
+
+  if (!ok_key && g_error_matches (err_key, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+    ok_key = TRUE;
+
+  if (ok_data && ok_key)
+    return TRUE;
+
+  if (!ok_data && !ok_key)
+    {
+      g_set_error (error,
+                   G_IO_ERROR,
+                   G_IO_ERROR_FAILED,
+                   "Could not remove device data (%s) and key (%s)",
+                   err_data->message,
+                   err_key->message);
+    }
+  else
+    {
+      g_propagate_error (error, ok_key ? err_data : err_key);
+    }
+
+  return FALSE;
+}
