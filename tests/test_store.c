@@ -98,7 +98,7 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
 
   g_assert_cmpstr (tb_device_get_name (dev), ==, tb_device_get_name (stored));
 
-  ok = tb_store_delete (fixture->store, dev, &err);
+  ok = tb_store_delete (fixture->store, uuid, &err);
   g_assert_true (ok);
   g_assert_no_error (err);
 }

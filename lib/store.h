@@ -51,9 +51,9 @@ TbDevice *tb_store_get (TbStore    *store,
                         const char *uid,
                         GError    **error);
 
-gboolean tb_store_delete (TbStore  *store,
-                          TbDevice *device,
-                          GError  **error);
+gboolean tb_store_delete (TbStore    *store,
+                          const char *uid,
+                          GError    **error);
 
 GStrv tb_store_list_ids (TbStore *store,
                          GError **error);

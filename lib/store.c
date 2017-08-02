@@ -449,7 +449,7 @@ tb_store_list_ids (TbStore *store, GError **error)
 }
 
 gboolean
-tb_store_delete (TbStore *store, TbDevice *device, GError **error)
+tb_store_delete (TbStore *store, const char *uid, GError **error)
 {
   g_autoptr(GFile) data      = NULL;
   g_autoptr(GFile) key       = NULL;
@@ -457,12 +457,10 @@ tb_store_delete (TbStore *store, TbDevice *device, GError **error)
   g_autoptr(GError) err_key  = NULL;
   gboolean ok_data;
   gboolean ok_key;
-  const char *uid;
 
   g_return_val_if_fail (store != NULL, FALSE);
-  g_return_val_if_fail (device != NULL, FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
 
-  uid  = tb_device_get_uid (device);
   data = g_file_get_child (store->devices, uid);
   key  = g_file_get_child (store->keys, uid);
 
