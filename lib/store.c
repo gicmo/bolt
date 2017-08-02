@@ -211,19 +211,34 @@ tb_store_new (const char *path)
 #define USER_GROUP "user"
 
 gboolean
+tb_store_have (TbStore *store, const char *uid)
+{
+  g_autoptr(GFile) db = NULL;
+
+  g_return_val_if_fail (store != NULL, FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+
+  db = g_file_get_child (store->devices, uid);
+  return g_file_query_exists (db, NULL);
+}
+
+gboolean
 tb_store_put (TbStore *store, TbDevice *device, GError **error)
 {
   g_autoptr(GError) err  = NULL;
   g_autoptr(GFile) entry = NULL;
   g_autoptr(GKeyFile) kf = NULL;
   g_autofree char *data  = NULL;
+  const char *uid;
   TbPolicy policy;
   gboolean ok;
   gsize len;
 
   g_return_val_if_fail (store != NULL, FALSE);
   g_return_val_if_fail (device != NULL, FALSE);
-  g_return_val_if_fail (device->uid != NULL, FALSE);
+
+  uid = tb_device_get_uid (device);
+  g_assert (uid);
 
   ok = g_file_make_directory_with_parents (store->devices, NULL, &err);
 
@@ -252,7 +267,7 @@ tb_store_put (TbStore *store, TbDevice *device, GError **error)
   if (!data)
     return FALSE;
 
-  entry = g_file_get_child (store->devices, device->uid);
+  entry = g_file_get_child (store->devices, uid);
 
   ok = g_file_replace_contents (entry, data, len, NULL, FALSE, 0, NULL, NULL, error);
 
@@ -263,6 +278,7 @@ static GKeyFile *
 load_device_data (TbStore *store, TbDevice *dev, GError **error)
 {
   g_autoptr(GKeyFile) kf = NULL;
+  g_autoptr(GFile) db    = NULL;
   g_autofree char *data  = NULL;
   const char *uid;
   gboolean ok;
@@ -274,13 +290,8 @@ load_device_data (TbStore *store, TbDevice *dev, GError **error)
   uid = tb_device_get_uid (dev);
   g_assert (uid);
 
-  if (dev->db == NULL)
-    dev->db = g_file_get_child (store->devices, uid);
-
-  if (dev->key == NULL)
-    dev->key = g_file_get_child (store->keys, uid);
-
-  ok = g_file_load_contents (dev->db, NULL, &data, &len, NULL, error);
+  db = g_file_get_child (store->devices, uid);
+  ok = g_file_load_contents (db, NULL, &data, &len, NULL, error);
 
   if (!ok)
     return NULL;

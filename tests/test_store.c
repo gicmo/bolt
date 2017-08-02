@@ -69,12 +69,16 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
 
   uuid = g_uuid_string_random ();
 
+  g_assert_false (tb_store_have (fixture->store, uuid));
+  g_assert_false (tb_store_have_key (fixture->store, uuid));
+
   dev = g_object_new (TB_TYPE_DEVICE, "uid", uuid, "device-name", "Blitz", "vendor-name", "GNOME", NULL);
 
   g_debug ("Storing device: %s", uuid);
   ok = tb_store_put (fixture->store, dev, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
+  g_assert_true (tb_store_have (fixture->store, uuid));
 
   g_object_set (dev, "policy", TB_POLICY_AUTO, NULL);
   g_assert_cmpint (tb_device_get_policy (dev), ==, TB_POLICY_AUTO);
