@@ -1,12 +1,14 @@
 common_deps = [glib, gio, gudev]
 
 common_headers = [
+  'ioutils.h',
   'device.h',
   'store.h',
   'manager.h'
 ]
 
 common_sources = [
+  'ioutils.c',
   'device.c',
   'store.c',
   'manager.c'
