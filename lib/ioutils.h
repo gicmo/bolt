@@ -30,6 +30,10 @@
 
 G_BEGIN_DECLS G_DEFINE_AUTOPTR_CLEANUP_FUNC (DIR, closedir);
 
+int tb_open (const char *path,
+             int         flags,
+             GError    **error);
+
 gboolean tb_close (int      fd,
                    GError **error);
 
@@ -41,6 +45,9 @@ ssize_t tb_read_all (int      fd,
                      void    *buffer,
                      gsize    nbyte,
                      GError **error);
+
+DIR *tb_opendir (const char *path,
+                 GError    **error);
 
 int tb_openat (DIR       * d,
                const char *path,

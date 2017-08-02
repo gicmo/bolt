@@ -28,7 +28,20 @@
 
 #include "ioutils.h"
 
-// G_DEFINE_AUTOPTR_CLEANUP_FUNC(DIR, closedir);
+int
+tb_open (const char *path, int flags, GError **error)
+{
+  int fd = open (path, flags);
+
+  if (fd < 0)
+    {
+      gint code = g_io_error_from_errno (errno);
+      g_set_error (error, G_IO_ERROR, code, "Could not open '%s': %s", path, g_strerror (errno));
+      return -1;
+    }
+
+  return fd;
+}
 
 gboolean
 tb_close (int fd, GError **error)
@@ -67,6 +80,28 @@ retry:
     }
 
   return n > 0;
+}
+
+DIR *
+tb_opendir (const char *path, GError **error)
+{
+  DIR *d = NULL;
+
+  d      = opendir (path);
+
+  if (d == NULL)
+    {
+      g_set_error (error,
+                   G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "Could not open directory ('%s'): %s",
+                   path,
+                   g_strerror (errno));
+
+      return NULL;
+    }
+
+  return d;
 }
 
 int

@@ -52,14 +52,10 @@ copy_key (GFile *key, int to, GError **error)
 
   path = g_file_get_path (key);
 
-  from = open (path, O_RDONLY);
+  from = tb_open (path, O_RDONLY, error);
 
   if (from < 0)
-    {
-      gint code = g_io_error_from_errno (errno);
-      g_set_error_literal (error, G_IO_ERROR, code, "Could not open key file");
-      return FALSE;
-    }
+    return FALSE;
 
   /* NB: need to write the key in one go, no chuncked i/o */
   n = tb_read_all (from, buffer, sizeof (buffer), error);
@@ -111,13 +107,9 @@ tb_device_authorize (TbManager *mgr, TbDevice *dev, GError **error)
   sysfs = tb_device_get_sysfs_path (dev);
   g_assert (sysfs != NULL);
 
-  d = opendir (sysfs);
-
+  d = tb_opendir (sysfs, error);
   if (d == NULL)
-    {
-      g_set_error_literal (error, G_IO_ERROR, g_io_error_from_errno (errno), "Could not open directory.");
-      return FALSE;
-    }
+    return FALSE;
 
   /* openat is used here to be absolutely sure that the
    * directory that contains the right 'unique_id' is the
