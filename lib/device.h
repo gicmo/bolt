@@ -65,28 +65,6 @@ typedef enum {
 char *tb_policy_to_string (TbPolicy policy);
 TbPolicy tb_policy_from_string (const char *str);
 
-struct _TbDevice
-{
-  GObject object;
-
-  /* db or udev */
-  char *uid;
-
-  guint vendor;
-  char *vendor_name;
-
-  guint device;
-  char *device_name;
-
-  /* current status (udev) */
-  char  *sysfs;
-  TbAuth authorized;
-
-  /* db */
-  gboolean known;
-  TbPolicy policy;
-};
-
 const char *tb_device_get_uid (const TbDevice *device);
 const char *tb_device_get_name (const TbDevice *device);
 const char *tb_device_get_vendor_name (const TbDevice *device);

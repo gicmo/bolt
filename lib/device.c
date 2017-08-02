@@ -63,6 +63,28 @@ tb_policy_from_string (const char *str)
   return value->value;
 }
 
+struct _TbDevice
+{
+  GObject object;
+
+  /* db or udev */
+  char *uid;
+
+  guint vendor;
+  char *vendor_name;
+
+  guint device;
+  char *device_name;
+
+  /* current status (udev) */
+  char  *sysfs;
+  TbAuth authorized;
+
+  /* db */
+  gboolean known;
+  TbPolicy policy;
+};
+
 struct _TbDeviceClass
 {
   GObjectClass parent_class;

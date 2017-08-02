@@ -275,19 +275,14 @@ tb_store_put (TbStore *store, TbDevice *device, GError **error)
 }
 
 static GKeyFile *
-load_device_data (TbStore *store, TbDevice *dev, GError **error)
+load_device_data (TbStore *store, const char *uid, GError **error)
 {
   g_autoptr(GKeyFile) kf = NULL;
   g_autoptr(GFile) db    = NULL;
   g_autofree char *data  = NULL;
-  const char *uid;
   gboolean ok;
   gsize len;
 
-  g_return_val_if_fail (store != NULL, FALSE);
-  g_return_val_if_fail (dev != NULL, FALSE);
-
-  uid = tb_device_get_uid (dev);
   g_assert (uid);
 
   db = g_file_get_child (store->devices, uid);
@@ -320,11 +315,13 @@ gboolean
 tb_store_merge (TbStore *store, TbDevice *dev, GError **error)
 {
   g_autoptr(GKeyFile) kf = NULL;
+  const char *uid        = NULL;
 
   g_return_val_if_fail (store != NULL, FALSE);
   g_return_val_if_fail (dev != NULL, FALSE);
+  uid = tb_device_get_uid (dev);
 
-  kf = load_device_data (store, dev, error);
+  kf = load_device_data (store, uid, error);
   if (kf == NULL)
     return FALSE;
 
@@ -335,28 +332,37 @@ tb_store_merge (TbStore *store, TbDevice *dev, GError **error)
 TbDevice *
 tb_store_get (TbStore *store, const char *uid, GError **error)
 {
-  g_autoptr(TbDevice) dev = NULL;
-  g_autoptr(GKeyFile) kf  = NULL;
+  g_autoptr(GKeyFile) kf       = NULL;
+  g_autofree char *device_name = NULL;
+  g_autofree char *vendor_name = NULL;
+  g_autofree char *policy      = NULL;
 
   g_return_val_if_fail (store != NULL, FALSE);
   g_return_val_if_fail (uid != NULL, FALSE);
 
-  dev      = g_object_new (TB_TYPE_DEVICE, NULL);
-  dev->uid = g_strdup (uid);
-
-  kf = load_device_data (store, dev, error);
+  kf = load_device_data (store, uid, error);
   if (!kf)
     return NULL;
 
-  dev->device_name = g_key_file_get_string (kf, DEVICE_GROUP, "name", NULL);
-  dev->vendor_name = g_key_file_get_string (kf, DEVICE_GROUP, "vendor-name", NULL);
+  device_name = g_key_file_get_string (kf, DEVICE_GROUP, "name", NULL);
+  vendor_name = g_key_file_get_string (kf, DEVICE_GROUP, "vendor-name", NULL);
+  policy      = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
 
-  load_user_data (dev, kf);
+  g_assert (device_name);
+  g_assert (vendor_name);
 
-  g_assert (dev->device_name);
-  g_assert (dev->vendor_name);
-
-  return g_object_ref (dev);
+  return g_object_new (TB_TYPE_DEVICE,
+                       "uid",
+                       uid,
+                       "device-name",
+                       device_name,
+                       "vendor-name",
+                       vendor_name,
+                       "policy",
+                       tb_policy_from_string (policy),
+                       "known",
+                       TRUE,
+                       NULL);
 }
 
 int
