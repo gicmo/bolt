@@ -194,21 +194,79 @@ tb_manager_initable_iface_init (GInitableIface *iface)
   iface->init = tb_manager_initable_init;
 }
 
+static guint
+get_uint_from_udev_attr (GUdevDevice *udev, const char *attr)
+{
+  guint64 val;
+
+  val = g_udev_device_get_sysfs_attr_as_uint64 (udev, attr);
+
+  if (val > G_MAXUINT)
+    {
+      g_warning ("value read from sysfs overflows guint field.");
+      val = 0;
+    }
+
+  return (guint) val;
+}
+
+static void
+device_update_from_udev (TbDevice *dev, GUdevDevice *device)
+{
+  int authorized;
+
+  authorized = g_udev_device_get_sysfs_attr_as_int (device, "authorized");
+
+  if (authorized < -1 || authorized > 2)
+    authorized = TB_AUTH_UNKNOWN;
+
+  g_object_set (dev, "authorized", authorized, NULL);
+}
+
 static TbDevice *
 manager_devices_add_from_udev (TbManager *mgr, GUdevDevice *device)
 {
+  g_autoptr(GError) err = NULL;
   TbDevice *dev;
   const char *uid;
-
-  g_autoptr(GError) err = NULL;
+  const char *device_name;
+  const char *vendor_name;
+  const char *sysfs;
+  guint device_id;
+  guint vendor_id;
+  int authorized;
   gboolean ok;
 
   uid = g_udev_device_get_sysfs_attr (device, "unique_id");
   if (uid == NULL)
     return NULL;
 
-  dev = g_object_new (TB_TYPE_DEVICE, "uid", uid, NULL);
-  tb_device_update_from_udev (dev, device);
+  sysfs       = g_udev_device_get_sysfs_path (device);
+  device_name = g_udev_device_get_sysfs_attr (device, "device_name");
+  device_id   = get_uint_from_udev_attr (device, "device");
+  vendor_name = g_udev_device_get_sysfs_attr (device, "vendor_name");
+  vendor_id   = get_uint_from_udev_attr (device, "vendor");
+  authorized  = g_udev_device_get_sysfs_attr_as_int (device, "authorized");
+
+  if (authorized < -1 || authorized > 2)
+    authorized = TB_AUTH_UNKNOWN;
+
+  dev = g_object_new (TB_TYPE_DEVICE,
+                      "uid",
+                      uid,
+                      "device-name",
+                      device_name,
+                      "device-id",
+                      device_id,
+                      "vendor-name",
+                      vendor_name,
+                      "vendor-id",
+                      vendor_id,
+                      "sysfs",
+                      sysfs,
+                      "authorized",
+                      authorized,
+                      NULL);
 
   ok = tb_store_merge (mgr->store, dev, &err);
 
@@ -309,7 +367,7 @@ manager_uevent_cb (GUdevClient *client, const gchar *action, GUdevDevice *device
           return;
         }
 
-      tb_device_update_from_udev (dev, device);
+      device_update_from_udev (dev, device);
       tb_manager_devices_dump (mgr);
 
     }
@@ -322,6 +380,8 @@ manager_uevent_cb (GUdevClient *client, const gchar *action, GUdevDevice *device
           g_signal_emit (mgr, signals[SIGNAL_DEVICE_REMOVED], 0, dev);
 
           g_ptr_array_remove_fast (mgr->devices, dev);
+
+          g_object_set (dev, "authorized", TB_AUTH_UNKNOWN, "sysfs", NULL, NULL);
         }
     }
 }

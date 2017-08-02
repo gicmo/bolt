@@ -87,9 +87,6 @@ struct _TbDevice
   TbPolicy policy;
 };
 
-gboolean tb_device_update_from_udev (TbDevice     *device,
-                                     GUdevDevice * udev);
-
 const char *tb_device_get_uid (const TbDevice *device);
 const char *tb_device_get_name (const TbDevice *device);
 const char *tb_device_get_vendor_name (const TbDevice *device);
