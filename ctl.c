@@ -68,7 +68,7 @@ monitor (TbManager *mgr)
 }
 
 static void
-device_print (TbDevice *dev)
+device_print (TbManager *mgr, TbDevice *dev)
 {
   const char *uid        = tb_device_get_uid (dev);
   const char *name       = tb_device_get_name (dev);
@@ -86,7 +86,7 @@ device_print (TbDevice *dev)
     {
       TbPolicy policy             = tb_device_get_policy (dev);
       g_autofree char *policy_str = tb_policy_to_string (policy);
-      gboolean havekey            = tb_device_have_key (dev);
+      gboolean havekey            = tb_manager_have_key (mgr, dev);
 
       g_print ("      └─ policy: %s\n", policy_str);
       g_print ("      └─ key:    %s\n", havekey ? "yes" : "no");
@@ -105,7 +105,7 @@ list_devices_attached (TbManager *mgr)
   for (i = 0; i < devices->len; i++)
     {
       TbDevice *dev = g_ptr_array_index (devices, i);
-      device_print (dev);
+      device_print (mgr, dev);
     }
 
   return 0;

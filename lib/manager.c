@@ -394,6 +394,17 @@ tb_manager_store (TbManager *mgr, TbDevice *device, GError **error)
   return tb_store_put (mgr->store, device, error);
 }
 
+gboolean
+tb_manager_have_key (TbManager *mgr, TbDevice *dev)
+{
+  const char *uid = tb_device_get_uid (dev);
+
+  g_return_val_if_fail (mgr != NULL, FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+
+  return tb_store_have_key (mgr->store, uid);
+}
+
 int
 tb_manager_ensure_key (TbManager *mgr, TbDevice *dev, gboolean replace, gboolean *created, GError **error)
 {
