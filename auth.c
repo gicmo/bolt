@@ -82,12 +82,14 @@ tb_device_authorize (TbManager *mgr, TbDevice *dev, GError **error)
   g_autoptr(GFile) key = NULL;
   g_autoptr(DIR) d     = NULL;
   const char *sysfs;
+  const char *uid;
   TbSecurity security;
   gboolean ok;
   int fd = -1;
 
   g_return_val_if_fail (dev != NULL, FALSE);
-  g_return_val_if_fail (dev->uid != NULL, FALSE);
+
+  uid = tb_device_get_uid (dev);
 
   security = tb_manager_get_security (mgr);
 
@@ -109,7 +111,7 @@ tb_device_authorize (TbManager *mgr, TbDevice *dev, GError **error)
   if (fd < 0)
     return FALSE;
 
-  ok = tb_verify_uid (fd, dev->uid, error);
+  ok = tb_verify_uid (fd, uid, error);
   if (!ok)
     {
       close (fd);
