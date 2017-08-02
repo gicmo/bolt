@@ -83,6 +83,7 @@ enum { PROP_DEVICE_0,
        PROP_SYSFS,
        PROP_AUTHORIZED,
 
+       PROP_KNOWN,
        PROP_POLICY,
 
        PROP_DEVICE_LAST };
@@ -142,6 +143,10 @@ tb_device_get_property (GObject *object, guint prop_id, GValue *value, GParamSpe
       g_value_set_enum (value, dev->authorized);
       break;
 
+    case PROP_KNOWN:
+      g_value_set_boolean (value, dev->known);
+      break;
+
     case PROP_POLICY:
       g_value_set_enum (value, dev->policy);
       break;
@@ -181,6 +186,10 @@ tb_device_set_property (GObject *object, guint prop_id, const GValue *value, GPa
 
     case PROP_AUTHORIZED:
       dev->authorized = g_value_get_enum (value);
+      break;
+
+    case PROP_KNOWN:
+      dev->known = g_value_get_boolean (value);
       break;
 
     case PROP_POLICY:
@@ -244,6 +253,9 @@ tb_device_class_init (TbDeviceClass *klass)
                                                      TB_TYPE_AUTH,
                                                      TB_AUTH_UNKNOWN,
                                                      G_PARAM_READWRITE | G_PARAM_STATIC_NAME);
+
+  device_props[PROP_KNOWN] =
+    g_param_spec_boolean ("known", NULL, NULL, FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_NAME);
 
   device_props[PROP_POLICY] = g_param_spec_enum ("policy",
                                                  NULL,
@@ -367,7 +379,7 @@ tb_device_get_authorized (const TbDevice *device)
 gboolean
 tb_device_in_store (const TbDevice *device)
 {
-  return device->db != NULL;
+  return device->known;
 }
 
 TbPolicy

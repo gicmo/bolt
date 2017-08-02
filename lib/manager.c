@@ -389,6 +389,19 @@ tb_manager_lookup (TbManager *mgr, const char *uid)
 }
 
 gboolean
+tb_manager_device_stored (TbManager *mgr, TbDevice *dev)
+{
+  const char *uid;
+
+  g_return_val_if_fail (mgr != NULL, FALSE);
+  g_return_val_if_fail (dev != NULL, FALSE);
+
+  uid = tb_device_get_uid (dev);
+
+  return tb_store_have (mgr->store, uid);
+}
+
+gboolean
 tb_manager_store (TbManager *mgr, TbDevice *device, GError **error)
 {
   return tb_store_put (mgr->store, device, error);

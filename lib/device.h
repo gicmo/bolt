@@ -83,8 +83,7 @@ struct _TbDevice
   TbAuth authorized;
 
   /* db */
-  GFile   *db;
-
+  gboolean known;
   TbPolicy policy;
 };
 

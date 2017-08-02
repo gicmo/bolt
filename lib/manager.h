@@ -60,6 +60,9 @@ const GPtrArray *tb_manager_list_attached (TbManager *mgr);
 TbDevice *tb_manager_lookup (TbManager  *mgr,
                              const char *uid);
 
+gboolean tb_manager_device_stored (TbManager *mgr,
+                                   TbDevice  *dev);
+
 gboolean tb_manager_store (TbManager *mgr,
                            TbDevice  *device,
                            GError   **error);

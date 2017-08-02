@@ -311,8 +311,9 @@ load_user_data (TbDevice *dev, GKeyFile *kf)
 {
   g_autofree char *policy = NULL;
 
-  policy      = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
-  dev->policy = tb_policy_from_string (policy);
+  policy = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
+
+  g_object_set (dev, "policy", tb_policy_from_string (policy), "known", TRUE, NULL);
 }
 
 gboolean
