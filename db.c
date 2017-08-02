@@ -193,6 +193,29 @@ set (TbStore *store, int argc, char **argv)
   return EXIT_SUCCESS;
 }
 
+static int
+rm (TbStore *store, int argc, char **argv)
+{
+  g_autoptr(GError) error = NULL;
+  const char *uid;
+  gboolean ok;
+
+  if (argc < 3)
+    return EXIT_FAILURE;
+
+  uid = argv[2];
+
+  ok = tb_store_delete (store, uid, &error);
+
+  if (!ok)
+    {
+      g_printerr ("Could not delete device: %s", error->message);
+      return EXIT_FAILURE;
+    }
+
+  return EXIT_SUCCESS;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -239,6 +262,8 @@ main (int argc, char **argv)
     res = get (store, argc, argv);
   else if (g_str_equal (cmd, "set"))
     res = set (store, argc, argv);
+  else if (g_str_equal (cmd, "rm"))
+    res = rm (store, argc, argv);
   else
     g_printerr ("Unknown command.\n");
 
