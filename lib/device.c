@@ -257,7 +257,13 @@ tb_device_class_init (TbDeviceClass *klass)
                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NAME);
 
   device_props[PROP_VENDOR_ID] =
-    g_param_spec_uint ("vendor-id", NULL, NULL, 0, G_MAXUINT16, 0, G_PARAM_READABLE | G_PARAM_STATIC_NAME);
+    g_param_spec_uint ("vendor-id",
+                       NULL,
+                       NULL,
+                       0,
+                       G_MAXUINT16,
+                       0,
+                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NAME);
 
   device_props[PROP_VENDOR_NAME] =
     g_param_spec_string ("vendor-name",
@@ -267,7 +273,7 @@ tb_device_class_init (TbDeviceClass *klass)
                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NAME);
 
   device_props[PROP_SYSFS] =
-    g_param_spec_string ("sysfs", NULL, NULL, "", G_PARAM_READABLE | G_PARAM_STATIC_NAME);
+    g_param_spec_string ("sysfs", NULL, NULL, "", G_PARAM_READWRITE | G_PARAM_STATIC_NAME);
 
   device_props[PROP_AUTHORIZED] = g_param_spec_enum ("authorized",
                                                      NULL,
