@@ -79,8 +79,7 @@ copy_key (int from, int to, GError **error)
 static gboolean
 tb_device_authorize (TbManager *mgr, TbDevice *dev, GError **error)
 {
-  g_autoptr(GFile) key = NULL;
-  g_autoptr(DIR) d     = NULL;
+  g_autoptr(DIR) d = NULL;
   const char *sysfs;
   const char *uid;
   TbSecurity security;

@@ -172,6 +172,9 @@ tb_device_get_property (GObject *object, guint prop_id, GValue *value, GParamSpe
     case PROP_POLICY:
       g_value_set_enum (value, dev->policy);
       break;
+
+    default:
+      g_assert_not_reached ();
     }
 }
 
@@ -217,6 +220,9 @@ tb_device_set_property (GObject *object, guint prop_id, const GValue *value, GPa
     case PROP_POLICY:
       dev->policy = g_value_get_enum (value);
       break;
+
+    default:
+      g_assert_not_reached ();
     }
 }
 

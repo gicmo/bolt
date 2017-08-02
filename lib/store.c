@@ -83,6 +83,9 @@ tb_store_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec
     case PROP_ROOT:
       g_value_set_object (value, dev->root);
       break;
+
+    default:
+      g_assert_not_reached ();
     }
 }
 
@@ -96,6 +99,9 @@ tb_store_set_property (GObject *object, guint prop_id, const GValue *value, GPar
     case PROP_ROOT:
       dev->root = g_value_dup_object (value);
       break;
+
+    default:
+      g_assert_not_reached ();
     }
 }
 
@@ -374,7 +380,6 @@ tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
   g_autoptr(GFile) urnd                = NULL;
   g_autoptr(GFileInputStream) istream  = NULL;
   g_autoptr(GOutputStream) os          = NULL;
-  g_autofree char *path                = NULL;
   guint8 buffer[TB_KEY_BYTES]          = {
     0,
   };
@@ -383,9 +388,8 @@ tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
   };
   const char *uid;
   gboolean ok;
-  gsize n = 0;
+  gsize i, n = 0;
   int fd;
-  int i;
 
   g_return_val_if_fail (store != NULL, -1);
   g_return_val_if_fail (device != NULL, -1);

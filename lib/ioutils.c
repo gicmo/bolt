@@ -141,7 +141,7 @@ retry:
       g_set_error_literal (error, G_IO_ERROR, g_io_error_from_errno (errno), "Could not read from file");
       return FALSE;
     }
-  else if (len != n)
+  else if (len != (gsize) n)
     {
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Could not read full uid from file");
       return FALSE;

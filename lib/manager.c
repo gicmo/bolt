@@ -104,6 +104,9 @@ tb_manager_get_property (GObject *object, guint prop_id, GValue *value, GParamSp
     case PROP_SECURITY:
       g_value_set_enum (value, mgr->security);
       break;
+
+    default:
+      g_assert_not_reached ();
     }
 }
 
@@ -116,6 +119,9 @@ tb_manager_set_property (GObject *object, guint prop_id, const GValue *value, GP
     case PROP_STORE:
       g_object_set_data (object, "db-path", g_value_dup_string (value));
       break;
+
+    default:
+      g_assert_not_reached ();
     }
 }
 
