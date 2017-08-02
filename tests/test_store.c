@@ -22,6 +22,7 @@
 #include <glib.h>
 #include <glib/gprintf.h>
 
+#include "ioutils.h"
 #include "store.h"
 
 #include <locale.h>
@@ -58,9 +59,12 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
   g_autoptr(TbDevice) dev    = NULL;
   g_autoptr(TbDevice) stored = NULL;
   g_autoptr(GFile) key       = NULL;
-  g_autofree char *data      = NULL;
-  g_autofree char *uuid      = NULL;
-  gsize len                  = 0;
+  char data[TB_KEY_CHARS]    = {
+    0,
+  };
+  g_autofree char *uuid = NULL;
+  ssize_t n             = 0;
+  int fd                = -1;
   gboolean ok;
 
   uuid = g_uuid_string_random ();
@@ -79,16 +83,16 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
   ok = tb_store_create_key (fixture->store, dev, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
-  g_assert_true (tb_device_have_key (dev));
-  key = tb_device_get_key (dev);
-  g_assert_nonnull (key);
-
-  ok = g_file_load_contents (key, NULL, &data, &len, NULL, &err);
-
+  g_assert_true (tb_store_have_key (fixture->store, uuid));
+  fd = tb_store_open_key (fixture->store, uuid, &err);
   g_assert_no_error (err);
-  g_assert_true (ok);
+  g_assert_cmpint (fd, >, -1);
 
-  g_debug ("Key: [%lu] %s", len, data);
+  n = tb_read_all (fd, data, TB_KEY_CHARS, &err);
+  g_assert_no_error (err);
+  g_assert_true (n == TB_KEY_CHARS);
+
+  g_debug ("Key: [%li] %s", n, data);
 
   stored = tb_store_get (fixture->store, uuid, &err);
   g_assert_no_error (err);

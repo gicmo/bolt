@@ -64,11 +64,12 @@ gboolean tb_manager_store (TbManager *mgr,
                            TbDevice  *device,
                            GError   **error);
 
-GFile *tb_manager_ensure_key (TbManager *mgr,
-                              TbDevice  *dev,
-                              gboolean   replace,
-                              gboolean * created,
-                              GError   **error);
+int tb_manager_ensure_key (TbManager *mgr,
+                           TbDevice  *dev,
+                           gboolean   replace,
+                           gboolean * created,
+                           GError   **error);
+
 TbSecurity tb_manager_get_security (TbManager *mgr);
 G_END_DECLS
 #endif /* TB_MANAGER_H */

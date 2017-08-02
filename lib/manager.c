@@ -394,32 +394,34 @@ tb_manager_store (TbManager *mgr, TbDevice *device, GError **error)
   return tb_store_put (mgr->store, device, error);
 }
 
-GFile *
+int
 tb_manager_ensure_key (TbManager *mgr, TbDevice *dev, gboolean replace, gboolean *created, GError **error)
 {
   g_autoptr(GFile) key = NULL;
-  gboolean ok;
+  const char *uid;
+  int fd;
 
   if (replace)
     {
-      ok       = tb_store_create_key (mgr->store, dev, error);
+      fd       = tb_store_create_key (mgr->store, dev, error);
       *created = TRUE;
-      if (!ok)
-        return NULL;
+      if (fd < 0)
+        return fd;
     }
 
-  key = tb_device_get_key (dev);
+  uid = tb_device_get_uid (dev);
+  fd  = tb_store_open_key (mgr->store, uid, error);
 
-  if (g_file_query_exists (key, NULL))
+  if (fd > -1)
     {
       *created = FALSE;
-      return key;
+      return fd;
     }
 
-  ok       = tb_store_create_key (mgr->store, dev, error);
+  fd       = tb_store_create_key (mgr->store, dev, error);
   *created = TRUE;
 
-  return ok ? key : NULL;
+  return fd;
 }
 
 TbSecurity

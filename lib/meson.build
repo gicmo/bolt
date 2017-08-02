@@ -1,4 +1,4 @@
-common_deps = [glib, gio, gudev]
+common_deps = [glib, gio, gudev, unix]
 
 common_headers = [
   'ioutils.h',

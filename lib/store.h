@@ -39,9 +39,16 @@ gboolean tb_store_put (TbStore  *store,
                        TbDevice *device,
                        GError  **error);
 
-gboolean tb_store_create_key (TbStore  *store,
-                              TbDevice *device,
-                              GError  **error);
+int tb_store_create_key (TbStore  *store,
+                         TbDevice *device,
+                         GError  **error);
+
+gint tb_store_open_key (TbStore    *store,
+                        const char *uid,
+                        GError    **error);
+
+gboolean tb_store_have_key (TbStore    *store,
+                            const char *uid);
 
 gboolean tb_store_merge (TbStore  *store,
                          TbDevice *dev,

@@ -19,6 +19,7 @@
  */
 
 
+#include <gio/gfiledescriptorbased.h>
 #include <gio/gio.h>
 #include <glib.h>
 #include <gudev/gudev.h>
@@ -27,6 +28,7 @@
 #include <string.h>
 
 #include "device.h"
+#include "ioutils.h"
 #include "store.h"
 
 struct _TbStoreClass
@@ -345,7 +347,7 @@ tb_store_get (TbStore *store, const char *uid, GError **error)
   return g_object_ref (dev);
 }
 
-gboolean
+int
 tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
 {
   g_autoptr(GError) err                = NULL;
@@ -354,33 +356,37 @@ tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
   g_autoptr(GFile) urnd                = NULL;
   g_autoptr(GFileInputStream) istream  = NULL;
   g_autoptr(GOutputStream) os          = NULL;
+  g_autofree char *path                = NULL;
   guint8 buffer[TB_KEY_BYTES]          = {
     0,
   };
+  char pathbuf[1024] = {
+    0,
+  };
+  const char *uid;
   gboolean ok;
   gsize n = 0;
+  int fd;
   int i;
 
-  g_return_val_if_fail (store != NULL, FALSE);
-  g_return_val_if_fail (device != NULL, FALSE);
+  g_return_val_if_fail (store != NULL, -1);
+  g_return_val_if_fail (device != NULL, -1);
 
-  if (device->key && g_file_query_exists (device->key, NULL))
-    return TRUE;             // FALSE maybe?
+  uid     = tb_device_get_uid (device);
+  keyfile = g_file_get_child (store->keys, uid);
 
   ok = g_file_make_directory_with_parents (store->keys, NULL, &err);
 
   if (!ok && !g_error_matches (err, G_IO_ERROR, G_IO_ERROR_EXISTS))
     {
       g_propagate_error (error, err);
-      return FALSE;
+      return -1;
     }
 
-  keyfile = g_file_get_child (store->keys, device->uid);
-
-  ostream = g_file_create (keyfile, G_FILE_CREATE_PRIVATE, NULL, error);
+  ostream = g_file_replace (keyfile, NULL, FALSE, G_FILE_CREATE_PRIVATE, NULL, error);
 
   if (ostream == NULL)
-    return FALSE;
+    return -1;
 
   os = g_buffered_output_stream_new (G_OUTPUT_STREAM (ostream));
 
@@ -389,11 +395,11 @@ tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
   istream = g_file_read (urnd, NULL, error);
 
   if (istream == NULL)
-    return FALSE;
+    return -1;
 
   ok = g_input_stream_read_all (G_INPUT_STREAM (istream), buffer, sizeof (buffer), &n, NULL, error);
   if (!ok)
-    return FALSE;
+    return -1;
 
   for (i = 0; i < n; i++)
     {
@@ -413,10 +419,44 @@ tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
         break;
     }
 
-  if (ok)
-    device->key = g_object_ref (keyfile);
+  if (!ok)
+    return -1;
 
-  return ok;
+  fd = g_file_descriptor_based_get_fd (G_FILE_DESCRIPTOR_BASED (ostream));
+  g_snprintf (pathbuf, sizeof (pathbuf), "/proc/self/fd/%d", fd);
+  // TODO: check return value from g_snprintf
+
+  fd = tb_open (pathbuf, O_RDONLY, error);
+
+  return fd;
+}
+
+gint
+tb_store_open_key (TbStore *store, const char *uid, GError **error)
+{
+  g_autoptr(GFile) keyfile = NULL;
+  g_autofree char *path    = NULL;
+
+  g_return_val_if_fail (store != NULL, FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+
+  keyfile = g_file_get_child (store->keys, uid);
+  path    = g_file_get_path (keyfile);
+
+  return tb_open (path, O_RDONLY, error);
+}
+
+gboolean
+tb_store_have_key (TbStore *store, const char *uid)
+{
+  g_autoptr(GFile) keyfile = NULL;
+
+  g_return_val_if_fail (store != NULL, FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+
+  keyfile = g_file_get_child (store->keys, uid);
+
+  return g_file_query_exists (keyfile, NULL);
 }
 
 GStrv

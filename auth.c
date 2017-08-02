@@ -41,21 +41,12 @@
 #include "store.h"
 
 static gboolean
-copy_key (GFile *key, int to, GError **error)
+copy_key (int from, int to, GError **error)
 {
-  g_autofree char *path     = NULL;
   char buffer[TB_KEY_CHARS] = {
     0,
   };
-  int from = -1;
   ssize_t n, k;
-
-  path = g_file_get_path (key);
-
-  from = tb_open (path, O_RDONLY, error);
-
-  if (from < 0)
-    return FALSE;
 
   /* NB: need to write the key in one go, no chuncked i/o */
   n = tb_read_all (from, buffer, sizeof (buffer), error);
@@ -130,24 +121,30 @@ tb_device_authorize (TbManager *mgr, TbDevice *dev, GError **error)
   if (security == TB_SECURITY_SECURE)
     {
       gboolean created = FALSE;
-      int keyfd        = -1;
+      int to = -1, from = -1;
 
-      key = tb_manager_ensure_key (mgr, dev, FALSE, &created, error);
-      if (key == NULL)
+      from = tb_manager_ensure_key (mgr, dev, FALSE, &created, error);
+      if (from < 0)
         return FALSE;
 
-      keyfd = tb_openat (d, "key", O_WRONLY, error);
-      if (keyfd < 0)
-        return FALSE;
-
-      ok = copy_key (key, keyfd, error);
-      if (!ok)
+      to = tb_openat (d, "key", O_WRONLY, error);
+      if (to < 0)
         {
-          close (fd);
+          close (from);
           return FALSE;
         }
 
-      ok = tb_close (keyfd, error);
+      ok = copy_key (from, to, error);
+
+      close (from);          /* ignore close's return on read */
+
+      if (!ok)
+        {
+          close (to);
+          return FALSE;
+        }
+
+      ok = tb_close (to, error);
       if (!ok)
         return FALSE;
 
