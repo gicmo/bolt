@@ -23,9 +23,11 @@
 #include <glib.h>
 #include <gudev/gudev.h>
 
+#include <errno.h>
 #include <stdio.h>
 
 #include "device.h"
+#include "ioutils.h"
 #include "manager.h"
 #include "store.h"
 
@@ -523,6 +525,134 @@ tb_manager_get_security (TbManager *mgr)
     g_critical ("security level could not be determined");
 
   return mgr->security;
+}
+
+static gboolean
+copy_key (int from, int to, GError **error)
+{
+  char buffer[TB_KEY_CHARS] = {
+    0,
+  };
+  ssize_t n, k;
+
+  /* NB: need to write the key in one go, no chuncked i/o */
+  n = tb_read_all (from, buffer, sizeof (buffer), error);
+  if (n < 0)
+    {
+      return FALSE;
+    }
+  else if (n != sizeof (buffer))
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Could not read entire key from disk");
+      return FALSE;
+    }
+
+  do
+    k = write (to, buffer, (size_t) n);
+  while (k < 0 && errno == EINTR);
+
+  if (k != n)
+    {
+      g_set_error_literal (error,
+                           G_IO_ERROR,
+                           g_io_error_from_errno (errno),
+                           "io error while writing key data");
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+gboolean
+tb_manager_authorize (TbManager *mgr, TbDevice *dev, GError **error)
+{
+  g_autoptr(DIR) d = NULL;
+  const char *sysfs;
+  const char *uid;
+  TbSecurity security;
+  gboolean ok;
+  int fd = -1;
+
+  g_return_val_if_fail (dev != NULL, FALSE);
+
+  uid = tb_device_get_uid (dev);
+
+  security = tb_manager_get_security (mgr);
+
+  if (security < TB_SECURITY_USER)
+    /* nothing to do */
+    return TRUE;
+
+  sysfs = tb_device_get_sysfs_path (dev);
+  g_assert (sysfs != NULL);
+
+  d = tb_opendir (sysfs, error);
+  if (d == NULL)
+    return FALSE;
+
+  /* openat is used here to be absolutely sure that the
+   * directory that contains the right 'unique_id' is the
+   * one we are authorizing */
+  fd = tb_openat (d, "unique_id", O_RDONLY, error);
+  if (fd < 0)
+    return FALSE;
+
+  ok = tb_verify_uid (fd, uid, error);
+  if (!ok)
+    {
+      close (fd);
+      return FALSE;
+    }
+
+  close (fd);
+
+  if (security == TB_SECURITY_SECURE)
+    {
+      gboolean created = FALSE;
+      int to = -1, from = -1;
+
+      from = tb_manager_ensure_key (mgr, dev, FALSE, &created, error);
+      if (from < 0)
+        return FALSE;
+
+      to = tb_openat (d, "key", O_WRONLY, error);
+      if (to < 0)
+        {
+          close (from);
+          return FALSE;
+        }
+
+      ok = copy_key (from, to, error);
+
+      close (from);          /* ignore close's return on read */
+
+      if (!ok)
+        {
+          close (to);
+          return FALSE;
+        }
+
+      ok = tb_close (to, error);
+      if (!ok)
+        return FALSE;
+
+      if (created)
+        security = TB_SECURITY_USER;
+    }
+
+  fd = tb_openat (d, "authorized", O_WRONLY, error);
+
+  if (fd < 0)
+    return FALSE;
+
+  ok = tb_write_char (fd, security, error);
+  if (!ok)
+    {
+      close (fd);
+      return FALSE;
+    }
+
+  return tb_close (fd, error);
 }
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);

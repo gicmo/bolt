@@ -78,5 +78,9 @@ int tb_manager_ensure_key (TbManager *mgr,
 
 TbSecurity tb_manager_get_security (TbManager *mgr);
 
+gboolean tb_manager_authorize (TbManager *mgr,
+                               TbDevice  *dev,
+                               GError   **error);
+
 G_END_DECLS
 #endif /* TB_MANAGER_H */
