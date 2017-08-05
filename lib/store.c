@@ -139,69 +139,6 @@ tb_store_class_init (TbStoreClass *klass)
   g_object_class_install_properties (gobject_class, PROP_LAST, props);
 }
 
-#if 0
-static gboolean
-tb_store_write_string (GFile * dir,
-                       const char *name, const char *value, GError **error)
-{
-  g_autoptr(GFile) f = g_file_get_child (dir, name);
-  char buffer[1024];
-  gboolean ok;
-  gint n;
-
-  n = g_snprintf (buffer, sizeof (buffer), "%s\n", value);
-
-  ok = g_file_replace_contents (f,
-                                name,
-                                n, NULL, FALSE, 0, NULL, NULL, error);
-
-  return ok;
-}
-
-static gboolean
-tb_store_write_int (GFile * dir, const char *name, int value, GError **error)
-{
-  g_autoptr(GFile) f = g_file_get_child (dir, name);
-  char buffer[1024];
-  gboolean ok;
-  gint n;
-
-  n = g_snprintf (buffer, sizeof (buffer), "%d\n", value);
-
-  ok = g_file_replace_contents (f,
-                                name,
-                                n, NULL, FALSE, 0, NULL, NULL, error);
-
-  return ok;
-}
-
-static gboolean
-tb_store_read_string (GFile * dir,
-                      const char *name, char **field, GError **error)
-{
-  g_autoptr(GFile) f = g_file_get_child (dir, name);
-  gboolean ok;
-  char *contents;
-  gsize len;
-
-  ok = g_file_load_contents (f, NULL, &contents, &len, NULL, error);
-
-  if (!ok)
-    return FALSE;
-
-  while (len > 0)
-    {
-      char c = contents[len - 1];
-      if (!g_ascii_isspace (c) || c != '\n')
-        break;
-      contents[--len] = '\0';
-    }
-
-  *field = contents;
-  return TRUE;
-}
-#endif
-
 TbStore *
 tb_store_new (const char *path)
 {
