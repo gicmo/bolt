@@ -313,10 +313,22 @@ tb_device_get_name (const TbDevice *device)
   return device->device_name;
 }
 
+guint
+tb_device_get_device_id (const TbDevice *device)
+{
+  return device->device;
+}
+
 const char *
 tb_device_get_vendor_name (const TbDevice *device)
 {
   return device->vendor_name;
+}
+
+guint
+tb_device_get_vendor_id (const TbDevice *device)
+{
+  return device->vendor;
 }
 
 const char *

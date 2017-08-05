@@ -67,7 +67,9 @@ TbPolicy tb_policy_from_string (const char *str);
 
 const char *tb_device_get_uid (const TbDevice *device);
 const char *tb_device_get_name (const TbDevice *device);
+guint tb_device_get_device_id (const TbDevice *device);
 const char *tb_device_get_vendor_name (const TbDevice *device);
+guint tb_device_get_vendor_id (const TbDevice *device);
 const char *tb_device_get_sysfs_path (const TbDevice *device);
 TbAuth tb_device_get_authorized (const TbDevice *device);
 gboolean tb_device_in_store (const TbDevice *device);
