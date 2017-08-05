@@ -195,7 +195,11 @@ tb_store_put (TbStore *store, TbDevice *device, GError **error)
 
   g_key_file_set_string (kf, DEVICE_GROUP, "name", tb_device_get_name (device));
 
+  g_key_file_set_uint64 (kf, DEVICE_GROUP, "id", tb_device_get_device_id (device));
+
   g_key_file_set_string (kf, DEVICE_GROUP, "vendor-name", tb_device_get_vendor_name (device));
+
+  g_key_file_set_uint64 (kf, DEVICE_GROUP, "vendor-id", tb_device_get_vendor_id (device));
 
   policy = tb_device_get_policy (device);
   if (policy != TB_POLICY_UNKNOWN)
@@ -279,6 +283,8 @@ tb_store_get (TbStore *store, const char *uid, GError **error)
   g_autofree char *device_name = NULL;
   g_autofree char *vendor_name = NULL;
   g_autofree char *policy      = NULL;
+  guint64 device_id            = 0;
+  guint64 vendor_id            = 0;
 
   g_return_val_if_fail (store != NULL, FALSE);
   g_return_val_if_fail (uid != NULL, FALSE);
@@ -289,6 +295,8 @@ tb_store_get (TbStore *store, const char *uid, GError **error)
 
   device_name = g_key_file_get_string (kf, DEVICE_GROUP, "name", NULL);
   vendor_name = g_key_file_get_string (kf, DEVICE_GROUP, "vendor-name", NULL);
+  device_id   = g_key_file_get_uint64 (kf, DEVICE_GROUP, "id", NULL);
+  vendor_id   = g_key_file_get_uint64 (kf, DEVICE_GROUP, "vendor-id", NULL);
   policy      = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
 
   g_assert (device_name);
@@ -299,8 +307,12 @@ tb_store_get (TbStore *store, const char *uid, GError **error)
                        uid,
                        "device-name",
                        device_name,
+                       "device-id",
+                       (guint) device_id,
                        "vendor-name",
                        vendor_name,
+                       "vendor-id",
+                       (guint) vendor_id,
                        "policy",
                        tb_policy_from_string (policy),
                        "known",
