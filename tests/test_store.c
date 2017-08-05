@@ -73,7 +73,18 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
   g_assert_false (tb_store_have (fixture->store, uuid));
   g_assert_false (tb_store_have_key (fixture->store, uuid));
 
-  dev = g_object_new (TB_TYPE_DEVICE, "uid", uuid, "device-name", "Blitz", "vendor-name", "GNOME", NULL);
+  dev = g_object_new (TB_TYPE_DEVICE,
+                      "uid",
+                      uuid,
+                      "device-name",
+                      "Blitz",
+                      "device-id",
+                      0x33,
+                      "vendor-name",
+                      "GNOME",
+                      "vendor-id",
+                      0x23,
+                      NULL);
 
   g_debug ("Storing device: %s", uuid);
   ok = tb_store_put (fixture->store, dev, &err);
@@ -110,6 +121,12 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
   g_assert_cmpstr (tb_device_get_uid (dev), ==, tb_device_get_uid (stored));
 
   g_assert_cmpstr (tb_device_get_name (dev), ==, tb_device_get_name (stored));
+
+  g_assert_cmpuint (tb_device_get_device_id (dev), ==, tb_device_get_device_id (stored));
+
+  g_assert_cmpstr (tb_device_get_vendor_name (dev), ==, tb_device_get_vendor_name (stored));
+
+  g_assert_cmpuint (tb_device_get_vendor_id (dev), ==, tb_device_get_vendor_id (stored));
 
   g_assert_cmpint (tb_device_get_policy (dev), ==, tb_device_get_policy (stored));
 
