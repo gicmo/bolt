@@ -27,10 +27,10 @@
 
 #include <locale.h>
 
-typedef struct Fixture
+typedef struct StoreTest
 {
   TbStore *store;
-} Fixture;
+} StoreTest;
 
 typedef struct Params
 {
@@ -38,21 +38,21 @@ typedef struct Params
 } Params;
 
 static void
-fixture_set_up (Fixture *fixture, gconstpointer user_data)
+store_test_set_up (StoreTest *tt, gconstpointer user_data)
 {
   const Params *p = user_data;
 
-  fixture->store = tb_store_new (p->path);
+  tt->store = tb_store_new (p->path);
 }
 
 static void
-fixture_tear_down (Fixture *fixture, gconstpointer user_data)
+store_test_tear_down (StoreTest *tt, gconstpointer user_data)
 {
-  g_object_unref (fixture->store);
+  g_object_unref (tt->store);
 }
 
 static void
-test_store_basic (Fixture *fixture, gconstpointer user_data)
+test_store_basic (StoreTest *tt, gconstpointer user_data)
 {
   //  const Params *p = user_data;
   g_autoptr(GError) err      = NULL;
@@ -70,8 +70,8 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
 
   uuid = g_uuid_string_random ();
 
-  g_assert_false (tb_store_have (fixture->store, uuid));
-  g_assert_false (tb_store_have_key (fixture->store, uuid));
+  g_assert_false (tb_store_have (tt->store, uuid));
+  g_assert_false (tb_store_have_key (tt->store, uuid));
 
   dev = g_object_new (TB_TYPE_DEVICE,
                       "uid",
@@ -87,24 +87,24 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
                       NULL);
 
   g_debug ("Storing device: %s", uuid);
-  ok = tb_store_put (fixture->store, dev, &err);
+  ok = tb_store_put (tt->store, dev, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
-  g_assert_true (tb_store_have (fixture->store, uuid));
+  g_assert_true (tb_store_have (tt->store, uuid));
 
   g_object_set (dev, "policy", TB_POLICY_AUTO, NULL);
   g_assert_cmpint (tb_device_get_policy (dev), ==, TB_POLICY_AUTO);
 
-  ok = tb_store_put (fixture->store, dev, &err);
+  ok = tb_store_put (tt->store, dev, &err);
   g_assert_true (ok);
   g_assert_no_error (err);
 
   g_debug ("Generating key");
-  ok = tb_store_create_key (fixture->store, dev, &err);
+  ok = tb_store_create_key (tt->store, dev, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
-  g_assert_true (tb_store_have_key (fixture->store, uuid));
-  fd = tb_store_open_key (fixture->store, uuid, &err);
+  g_assert_true (tb_store_have_key (tt->store, uuid));
+  fd = tb_store_open_key (tt->store, uuid, &err);
   g_assert_no_error (err);
   g_assert_cmpint (fd, >, -1);
 
@@ -114,7 +114,7 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
 
   g_debug ("Key: [%li] %s", n, data);
 
-  stored = tb_store_get (fixture->store, uuid, &err);
+  stored = tb_store_get (tt->store, uuid, &err);
   g_assert_no_error (err);
   g_assert_nonnull (stored);
 
@@ -132,14 +132,14 @@ test_store_basic (Fixture *fixture, gconstpointer user_data)
 
   merged = g_object_new (TB_TYPE_DEVICE, "uid", uuid, "device-name", "Blitz", "vendor-name", "GNOME", NULL);
 
-  ok = tb_store_merge (fixture->store, merged, &err);
+  ok = tb_store_merge (tt->store, merged, &err);
   g_assert_true (ok);
   g_assert_no_error (err);
 
   g_assert_true (tb_device_in_store (merged));
   g_assert_cmpint (tb_device_get_policy (merged), ==, TB_POLICY_AUTO);
 
-  ok = tb_store_delete (fixture->store, uuid, &err);
+  ok = tb_store_delete (tt->store, uuid, &err);
   g_assert_true (ok);
   g_assert_no_error (err);
 }
@@ -162,7 +162,7 @@ main (int argc, char **argv)
 
   g_debug ("library dir: %s", tmp);
 
-  g_test_add ("/store/basic", Fixture, &p, fixture_set_up, test_store_basic, fixture_tear_down);
+  g_test_add ("/store/basic", StoreTest, &p, store_test_set_up, test_store_basic, store_test_tear_down);
 
   return g_test_run ();
 }
