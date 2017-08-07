@@ -67,7 +67,7 @@ unix  = dependency('gio-unix-2.0')
 gudev = dependency('gudev-1.0')
 
 tests = [
-  ['test_store']
+  ['test_lib']
 ]
 
 subdir('lib')
