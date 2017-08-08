@@ -22,6 +22,9 @@
 #include <glib.h>
 #include <glib/gprintf.h>
 
+#include <errno.h>
+#include <unistd.h>
+
 #include <umockdev.h>
 
 #include "ioutils.h"
@@ -29,6 +32,36 @@
 #include "store.h"
 
 #include <locale.h>
+
+#define MAX_PATH_LEN 4096
+
+static void
+cleanup_dir (DIR *d)
+{
+  struct dirent *de = NULL;
+
+  for (errno = 0, de = readdir (d); de != NULL; errno = 0, de = readdir (d))
+    {
+      g_autoptr(GError) error = NULL;
+      int uflag               = 0;
+
+      if (!g_strcmp0 (de->d_name, ".") || !g_strcmp0 (de->d_name, ".."))
+        continue;
+
+      if (de->d_type == DT_DIR)
+        {
+          g_autoptr(DIR) cd = NULL;
+          cd                = tb_opendirat (d, de->d_name, O_RDONLY, &error);
+          if (cd == NULL)
+            continue;
+
+          cleanup_dir (cd);
+          uflag = AT_REMOVEDIR;
+        }
+
+      unlinkat (dirfd (d), de->d_name, uflag);
+    }
+}
 
 typedef struct StoreTest
 {
@@ -51,7 +84,29 @@ store_test_set_up (StoreTest *tt, gconstpointer user_data)
 static void
 store_test_tear_down (StoreTest *tt, gconstpointer user_data)
 {
+  const Params *p         = user_data;
+
+  g_autoptr(DIR) d        = NULL;
+  g_autoptr(GError) error = NULL;
+  int res;
+
   g_object_unref (tt->store);
+
+  d = tb_opendir (p->path, &error);
+
+  if (d)
+    {
+      g_debug ("Cleaning up: %s", p->path);
+      cleanup_dir (d);
+    }
+  else
+    {
+      g_warning ("Cleanup failed for %s: %s", p->path, error->message);
+    }
+
+  res = rmdir (p->path);
+  if (res != 0)
+    g_warning ("Cleanup failed for %s: %s", p->path, g_strerror (errno));
 }
 
 static void
