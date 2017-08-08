@@ -65,6 +65,7 @@ glib  = dependency('glib-2.0')
 gio   = dependency('gio-2.0')
 unix  = dependency('gio-unix-2.0')
 gudev = dependency('gudev-1.0')
+umock = dependency('umockdev-1.0')
 
 tests = [
   ['test_lib']
@@ -110,5 +111,5 @@ foreach t: tests
   test_name = t.get(0)
   test_srcs = ['tests/@0@.c'.format(test_name), t.get(1, [])]
   executable(test_name, test_srcs,
-	     dependencies: tbt)
+	     dependencies: [tbt, umock])
 endforeach

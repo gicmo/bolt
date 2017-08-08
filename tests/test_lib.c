@@ -22,7 +22,10 @@
 #include <glib.h>
 #include <glib/gprintf.h>
 
+#include <umockdev.h>
+
 #include "ioutils.h"
+#include "manager.h"
 #include "store.h"
 
 #include <locale.h>
@@ -144,6 +147,137 @@ test_store_basic (StoreTest *tt, gconstpointer user_data)
   g_assert_no_error (err);
 }
 
+typedef struct ManagerTest
+{
+  TbManager       *mgr;
+  UMockdevTestbed *bed;
+} ManagerTest;
+
+static void
+manager_test_set_up (ManagerTest *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) error = NULL;
+  const Params *p         = user_data;
+
+  tt->bed = umockdev_testbed_new ();
+  tt->mgr = g_object_new (TB_TYPE_MANAGER, "db", p->path, NULL);
+
+  g_assert_no_error (error);
+  g_assert_nonnull (tt->mgr);
+}
+
+static void
+manager_test_tear_down (ManagerTest *tt, gconstpointer user_data)
+{
+  g_object_unref (tt->mgr);
+  g_object_unref (tt->bed);
+}
+
+static char *
+udev_mock_add_domain (UMockdevTestbed *bed, int id, TbSecurity level)
+{
+  g_autofree char *security = NULL;
+  char name[256]            = {
+    0,
+  };
+  char *path;
+
+  g_snprintf (name, sizeof (name), "domain%d", id);
+  security = tb_security_to_string (level);
+
+  path = umockdev_testbed_add_device (bed,
+                                      "thunderbolt",
+                                      name,
+                                      NULL,
+                                      "security",
+                                      security,
+                                      NULL,
+                                      "DEVTYPE",
+                                      "thunderbolt_domain",
+                                      NULL);
+
+  g_assert_nonnull (path);
+  return path;
+}
+
+static char *
+udev_mock_add_device (UMockdevTestbed *bed,
+                      const char      *parent,
+                      const char      *id,
+                      const char      *uuid,
+                      const char      *device_name,
+                      const char      *device_id,
+                      TbAuth           auth)
+{
+  g_autofree char *generated = NULL;
+  char authorized[16]        = {
+    0,
+  };
+  char *path;
+
+  if (uuid == NULL)
+    {
+      generated = g_uuid_string_random ();
+      uuid      = generated;
+    }
+
+  g_snprintf (authorized, sizeof (authorized), "%d", (int) auth);
+
+  path = umockdev_testbed_add_device (bed,
+                                      "thunderbolt",
+                                      id,
+                                      parent,
+                                      "device_name",
+                                      device_name,
+                                      "device",
+                                      device_id,
+                                      "vendor",
+                                      "042",
+                                      "vendor_name",
+                                      "GNOME.org",
+                                      "authorized",
+                                      authorized,
+                                      "unique_id",
+                                      uuid,
+                                      NULL,
+                                      "DEVTYPE",
+                                      "thunderbolt_device",
+                                      NULL);
+
+  g_assert_nonnull (path);
+  return path;
+}
+
+static void
+manager_test_basic (ManagerTest *tt, gconstpointer user_data)
+{
+  g_autofree char *domain = NULL;
+  g_autofree char *host   = NULL;
+  g_autofree char *cable  = NULL;
+
+  g_autoptr(GError) error = NULL;
+  const GPtrArray *devs   = NULL;
+  gboolean ok;
+
+  domain = udev_mock_add_domain (tt->bed, 0, TB_SECURITY_SECURE);
+  host   = udev_mock_add_device (tt->bed, domain, "0-0", NULL, "Laptop", "0x23", TB_AUTH_UNAUTHORIZED);
+
+  cable = udev_mock_add_device (tt->bed, host, "0-1", NULL, "TB Cable", "0x24", TB_AUTH_UNAUTHORIZED);
+
+  g_debug (" domain:   %s", domain);
+  g_debug ("  host:    %s", host);
+  g_debug ("   cable:  %s", cable);
+
+  ok = g_initable_init (G_INITABLE (tt->mgr), NULL, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  devs = tb_manager_list_attached (tt->mgr);
+
+  /* we should have the cable and the host */
+  g_assert_cmpuint (devs->len, ==, 2);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -163,6 +297,16 @@ main (int argc, char **argv)
   g_debug ("library dir: %s", tmp);
 
   g_test_add ("/store/basic", StoreTest, &p, store_test_set_up, test_store_basic, store_test_tear_down);
+
+  if (umockdev_in_mock_environment ())
+    {
+      g_test_add ("/manager/basic",
+                  ManagerTest,
+                  &p,
+                  manager_test_set_up,
+                  manager_test_basic,
+                  manager_test_tear_down);
+    }
 
   return g_test_run ();
 }
