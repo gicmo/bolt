@@ -124,6 +124,23 @@ tb_openat (DIR *d, const char *path, int oflag, GError **error)
   return fd;
 }
 
+DIR *
+tb_opendirat (DIR *d, const char *name, int oflag, GError **error)
+{
+  int fd = -1;
+  DIR *cd;
+
+  fd = tb_openat (d, name, oflag, error);
+  if (fd < 0)
+    return NULL;
+
+  cd = fdopendir (fd);
+  if (cd == NULL)
+    close (fd);
+
+  return cd;
+}
+
 gboolean
 tb_verify_uid (int fd, const char *uid, GError **error)
 {

@@ -53,6 +53,10 @@ int tb_openat (DIR       * d,
                const char *path,
                int         oflag,
                GError    **error);
+DIR *tb_opendirat (DIR       * d,
+                   const char *name,
+                   int         oflag,
+                   GError    **error);
 
 gboolean tb_verify_uid (int         fd,
                         const char *uid,
