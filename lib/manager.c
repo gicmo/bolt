@@ -285,21 +285,6 @@ manager_devices_add_from_udev (TbManager *mgr, GUdevDevice *device)
   return dev;
 }
 
-static void
-tb_manager_devices_dump (TbManager *mgr)
-{
-  guint i;
-
-  for (i = 0; i < mgr->devices->len; i++)
-    {
-      TbDevice *dev = g_ptr_array_index (mgr->devices, i);
-
-      g_print ("%s\n", tb_device_get_name (dev));
-      g_print (" uuid: %s\n", tb_device_get_uid (dev));
-      g_print (" authorized: %d\n", tb_device_get_authorized (dev));
-    }
-}
-
 static TbDevice *
 manager_devices_lookup_by_uid (TbManager *mgr, const char *uid)
 {
@@ -376,7 +361,6 @@ manager_uevent_cb (GUdevClient *client, const gchar *action, GUdevDevice *device
         }
 
       device_update_from_udev (dev, device);
-      tb_manager_devices_dump (mgr);
 
     }
   else if (g_strcmp0 (action, "remove") == 0)
@@ -421,8 +405,6 @@ tb_manager_initable_init (GInitable *initable, GCancellable *cancellable, GError
           continue;
         }
     }
-
-  //    tb_manager_devices_dump(mgr);
 
   return TRUE;
 }
