@@ -281,6 +281,8 @@ manager_devices_add_from_udev (TbManager *mgr, GUdevDevice *device)
   if (!ok && !g_error_matches (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
     g_warning ("Could not load device data from DB: %s", err->message);
 
+  g_signal_emit (mgr, signals[SIGNAL_DEVICE_ADDED], 0, dev);
+
   g_ptr_array_add (mgr->devices, dev);
   return dev;
 }
@@ -342,8 +344,6 @@ manager_uevent_cb (GUdevClient *client, const gchar *action, GUdevDevice *device
     {
 
       dev = manager_devices_add_from_udev (mgr, device);
-      if (dev)
-        g_signal_emit (mgr, signals[SIGNAL_DEVICE_ADDED], 0, dev);
 
     }
   else if (g_strcmp0 (action, "change") == 0)
