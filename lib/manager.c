@@ -489,7 +489,6 @@ tb_manager_have_key (TbManager *mgr, TbDevice *dev)
 int
 tb_manager_ensure_key (TbManager *mgr, TbDevice *dev, gboolean replace, gboolean *created, GError **error)
 {
-  g_autoptr(GFile) key = NULL;
   const char *uid;
   int fd;
 
