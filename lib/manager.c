@@ -57,7 +57,7 @@ static GParamSpec *props[PROP_LAST] = {
   NULL,
 };
 
-enum { SIGNAL_DEVICE_ADDED, SIGNAL_DEVICE_REMOVED, SIGNAL_LAST };
+enum { SIGNAL_DEVICE_ADDED, SIGNAL_DEVICE_REMOVED, SIGNAL_DEVICE_CHANGED, SIGNAL_LAST };
 
 static guint signals[SIGNAL_LAST] = {0};
 
@@ -194,6 +194,17 @@ tb_manager_class_init (TbManagerClass *klass)
                                                  G_TYPE_NONE,
                                                  1,
                                                  G_TYPE_POINTER);
+
+  signals[SIGNAL_DEVICE_CHANGED] = g_signal_new ("device-changed",
+                                                 G_TYPE_FROM_CLASS (gobject_class),
+                                                 G_SIGNAL_RUN_LAST,
+                                                 0,
+                                                 NULL,
+                                                 NULL,
+                                                 NULL,
+                                                 G_TYPE_NONE,
+                                                 1,
+                                                 G_TYPE_POINTER);
 }
 
 static void
@@ -219,8 +230,9 @@ get_uint_from_udev_attr (GUdevDevice *udev, const char *attr)
 }
 
 static void
-device_update_from_udev (TbDevice *dev, GUdevDevice *device)
+device_update_from_udev (TbManager *mgr, TbDevice *dev, GUdevDevice *device)
 {
+  TbAuth old;
   int authorized;
 
   authorized = g_udev_device_get_sysfs_attr_as_int (device, "authorized");
@@ -228,7 +240,13 @@ device_update_from_udev (TbDevice *dev, GUdevDevice *device)
   if (authorized < -1 || authorized > 2)
     authorized = TB_AUTH_UNKNOWN;
 
+  old = tb_device_get_authorized (dev);
+
+  if (old == authorized)
+    return;
+
   g_object_set (dev, "authorized", authorized, NULL);
+  g_signal_emit (mgr, signals[SIGNAL_DEVICE_CHANGED], 0, dev);
 }
 
 static TbDevice *
@@ -360,7 +378,7 @@ manager_uevent_cb (GUdevClient *client, const gchar *action, GUdevDevice *device
           return;
         }
 
-      device_update_from_udev (dev, device);
+      device_update_from_udev (mgr, dev, device);
 
     }
   else if (g_strcmp0 (action, "remove") == 0)
