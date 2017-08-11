@@ -255,20 +255,64 @@ udev_mock_add_domain (UMockdevTestbed *bed, int id, TbSecurity level)
   return path;
 }
 
-static char *
-udev_mock_add_device (UMockdevTestbed *bed,
-                      const char      *parent,
-                      const char      *id,
-                      const char      *uuid,
-                      const char      *device_name,
-                      const char      *device_id,
-                      TbAuth           auth)
+static void
+udev_mock_add_device (UMockdevTestbed *bed, const char *parent, const char *id, TbDevice *dev)
 {
-  g_autofree char *generated = NULL;
-  char authorized[16]        = {
+  const char *uid         = tb_device_get_uid (dev);
+  const char *device_name = tb_device_get_name (dev);
+  const guint device_id   = tb_device_get_device_id (dev);
+  const guint vendor_id   = tb_device_get_vendor_id (dev);
+  const char *vendor_name = tb_device_get_vendor_name (dev);
+  TbAuth auth             = tb_device_get_authorized (dev);
+  char authorized[16]     = {
     0,
   };
-  char *path;
+  g_autofree char *vendor_idstr = NULL;
+  g_autofree char *device_idstr = NULL;
+  g_autofree char *path         = NULL;
+
+  g_snprintf (authorized, sizeof (authorized), "%d", (int) auth);
+  vendor_idstr = g_strdup_printf ("%u", vendor_id);
+  device_idstr = g_strdup_printf ("%u", device_id);
+
+  path = umockdev_testbed_add_device (bed,
+                                      "thunderbolt",
+                                      id,
+                                      parent,
+                                      /* attributes */
+                                      "device",
+                                      device_idstr,
+                                      "device_name",
+                                      device_name,
+                                      "vendor",
+                                      vendor_idstr,
+                                      "vendor_name",
+                                      vendor_name,
+                                      "authorized",
+                                      authorized,
+                                      "unique_id",
+                                      uid,
+                                      NULL,
+                                      /* properties */
+                                      "DEVTYPE",
+                                      "thunderbolt_device",
+                                      NULL);
+
+  g_assert_nonnull (path);
+  g_object_set (dev, "sysfs", path, NULL);
+}
+
+static TbDevice *
+udev_mock_add_new_device (UMockdevTestbed *bed,
+                          const char      *parent,
+                          const char      *id,
+                          const char      *uuid,
+                          const char      *device_name,
+                          guint            device_id,
+                          TbAuth           auth)
+{
+  TbDevice *dev              = NULL;
+  g_autofree char *generated = NULL;
 
   if (uuid == NULL)
     {
@@ -276,52 +320,51 @@ udev_mock_add_device (UMockdevTestbed *bed,
       uuid      = generated;
     }
 
-  g_snprintf (authorized, sizeof (authorized), "%d", (int) auth);
+  dev = g_object_new (TB_TYPE_DEVICE,
+                      "uid",
+                      uuid,
+                      "device-id",
+                      device_id,
+                      "device-name",
+                      device_name,
+                      "vendor-id",
+                      0x23,
+                      "vendor-name",
+                      "GNOME.Org",
+                      "authorized",
+                      auth,
+                      NULL);
 
-  path = umockdev_testbed_add_device (bed,
-                                      "thunderbolt",
-                                      id,
-                                      parent,
-                                      "device_name",
-                                      device_name,
-                                      "device",
-                                      device_id,
-                                      "vendor",
-                                      "042",
-                                      "vendor_name",
-                                      "GNOME.org",
-                                      "authorized",
-                                      authorized,
-                                      "unique_id",
-                                      uuid,
-                                      NULL,
-                                      "DEVTYPE",
-                                      "thunderbolt_device",
-                                      NULL);
+  udev_mock_add_device (bed, parent, id, dev);
 
-  g_assert_nonnull (path);
-  return path;
+  return dev;
 }
 
 static void
 manager_test_basic (ManagerTest *tt, gconstpointer user_data)
 {
-  g_autofree char *domain = NULL;
-  g_autofree char *host   = NULL;
-  g_autofree char *cable  = NULL;
+  g_autofree char *domain   = NULL;
 
-  g_autoptr(GError) error = NULL;
-  const GPtrArray *devs   = NULL;
+  g_autoptr(TbDevice) host  = NULL;
+  g_autoptr(TbDevice) cable = NULL;
+  g_autoptr(GError) error   = NULL;
+  const GPtrArray *devs     = NULL;
   gboolean ok;
 
   domain = udev_mock_add_domain (tt->bed, 0, TB_SECURITY_SECURE);
-  host   = udev_mock_add_device (tt->bed, domain, "0-0", NULL, "Laptop", "0x23", TB_AUTH_UNAUTHORIZED);
+  host   = udev_mock_add_new_device (tt->bed, domain, "0-0", NULL, "Laptop", 0x23, TB_AUTH_UNAUTHORIZED);
 
-  cable = udev_mock_add_device (tt->bed, host, "0-1", NULL, "TB Cable", "0x24", TB_AUTH_UNAUTHORIZED);
+  cable = udev_mock_add_new_device (tt->bed,
+                                    tb_device_get_sysfs_path (host),
+                                    "0-1",
+                                    NULL,
+                                    "TB Cable",
+                                    0x24,
+                                    TB_AUTH_UNAUTHORIZED);
 
   g_debug (" domain:   %s", domain);
-  g_debug ("  host:    %s", host);
-  g_debug ("   cable:  %s", cable);
+  g_debug ("  host:    %s", tb_device_get_sysfs_path (host));
+  g_debug ("   cable:  %s", tb_device_get_sysfs_path (cable));
 
   ok = g_initable_init (G_INITABLE (tt->mgr), NULL, &error);
   g_assert_no_error (error);
