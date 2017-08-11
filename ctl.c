@@ -42,16 +42,50 @@ device_added_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
   gboolean in_store           = tb_device_in_store (dev);
   TbPolicy policy             = tb_device_get_policy (dev);
   g_autofree char *policy_str = tb_policy_to_string (policy);
+  GTimeVal now;
 
-  g_print ("A: %s, %s, %s, %d, %s, %s\n", uid, name, vendor, authorized, in_store ? "yes" : "no", policy_str);
+  g_get_current_time (&now);
+
+  g_print ("%ld.%ld A: %s, %s, %s, %d, %s, %s\n",
+           now.tv_sec,
+           now.tv_usec,
+           uid,
+           name,
+           vendor,
+           authorized,
+           in_store ? "yes" : "no",
+           policy_str);
 }
 
 static void
 device_removed_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
 {
-  const char *uid = tb_device_get_uid (dev);
+  const char *uid  = tb_device_get_uid (dev);
+  const char *name = tb_device_get_name (dev);
+  GTimeVal now;
 
-  g_print ("R: %s\n", uid);
+  g_get_current_time (&now);
+
+  g_print ("%ld.%ld R: %s, %s\n", now.tv_sec, now.tv_usec, uid, name);
+}
+
+static void
+device_changed_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
+{
+  const char *uid   = tb_device_get_uid (dev);
+  const char *name  = tb_device_get_name (dev);
+  TbAuth authorized = tb_device_get_authorized (dev);
+  gboolean in_store = tb_device_in_store (dev);
+  GTimeVal now;
+
+  g_get_current_time (&now);
+  g_print ("%ld.%ld C: %s, %s, %d, %s \n",
+           now.tv_sec,
+           now.tv_usec,
+           uid,
+           name,
+           authorized,
+           in_store ? "yes" : "no");
 }
 
 static int
@@ -61,6 +95,7 @@ monitor (TbManager *mgr)
 
   g_signal_connect (mgr, "device-added", G_CALLBACK (device_added_cb), NULL);
   g_signal_connect (mgr, "device-removed", G_CALLBACK (device_removed_cb), NULL);
+  g_signal_connect (mgr, "device-changed", G_CALLBACK (device_changed_cb), NULL);
 
   loop = g_main_loop_new (NULL, FALSE);
   g_main_loop_run (loop);
