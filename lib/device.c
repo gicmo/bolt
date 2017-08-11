@@ -21,7 +21,6 @@
 
 #include <gio/gio.h>
 #include <glib.h>
-#include <gudev/gudev.h>
 
 #include <stdio.h>
 

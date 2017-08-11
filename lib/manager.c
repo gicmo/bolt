@@ -21,7 +21,8 @@
 
 #include <gio/gio.h>
 #include <glib.h>
-#include <gudev/gudev.h>
+
+#include <libudev.h>
 
 #include <errno.h>
 #include <stdio.h>
@@ -33,12 +34,30 @@
 
 #include "enums.h"
 
+GQuark tb_error_quark (void);
+#define TB_ERROR (tb_error_quark ())
+G_DEFINE_QUARK (TB_ERROR, tb_error);
+
+enum { TB_ERROR_FAILED = 0,
+       TB_ERROR_UDEV, };
+
+typedef struct udev_monitor udev_monitor;
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_monitor, udev_monitor_unref);
+
+typedef struct udev_device udev_device;
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
+
 struct _TbManager
 {
-  GObject      object;
+  GObject              object;
 
-  GUdevClient *udev;
-  GPtrArray   *devices;
+  struct udev         *udev;
+  struct udev_monitor *udev_monitor;
+  struct udev_monitor *kernel_monitor;
+  GSource             *udev_source;
+  GSource             *kernel_source;
+
+  GPtrArray           *devices;
 
   /* assume for now we have only one domain */
   TbSecurity security;
@@ -66,11 +85,6 @@ static gboolean tb_manager_initable_init (GInitable    *initable,
                                           GError      **error);
 static void tb_manager_initable_iface_init (GInitableIface *iface);
 
-static void manager_uevent_cb (GUdevClient *client,
-                               const gchar *action,
-                               GUdevDevice *device,
-                               gpointer     user_data);
-
 G_DEFINE_TYPE_WITH_CODE (TbManager,
                          tb_manager,
                          G_TYPE_OBJECT,
@@ -81,8 +95,29 @@ tb_manager_finalize (GObject *object)
 {
   TbManager *mgr = TB_MANAGER (object);
 
+  if (mgr->udev_monitor)
+    {
+      udev_monitor_unref (mgr->udev_monitor);
+      mgr->udev_monitor = NULL;
+
+      g_source_destroy (mgr->udev_source);
+      g_source_unref (mgr->udev_source);
+    }
+
+  if (mgr->kernel_monitor)
+    {
+      udev_monitor_unref (mgr->kernel_monitor);
+      mgr->kernel_monitor = NULL;
+
+      g_source_destroy (mgr->kernel_source);
+      g_source_unref (mgr->kernel_source);
+    }
+
   if (mgr->udev)
-    g_clear_object (&mgr->udev);
+    {
+      udev_unref (mgr->udev);
+      mgr->udev = NULL;
+    }
 
   if (mgr->store)
     g_clear_object (&mgr->store);
@@ -144,9 +179,7 @@ tb_manager_constructed (GObject *obj)
 static void
 tb_manager_init (TbManager *mgr)
 {
-  const char *subsystems[] = {"thunderbolt", NULL};
-
-  mgr->udev    = g_udev_client_new (subsystems);
+  mgr->udev    = udev_new ();
   mgr->devices = g_ptr_array_new_with_free_func (g_object_unref);
 }
 
@@ -214,11 +247,21 @@ tb_manager_initable_iface_init (GInitableIface *iface)
 }
 
 static guint
-get_uint_from_udev_attr (GUdevDevice *udev, const char *attr)
+udev_device_get_sysfs_attr_uint (struct udev_device *device, const char *attr)
 {
+  const char *str;
+  char *end;
   guint64 val;
 
-  val = g_udev_device_get_sysfs_attr_as_uint64 (udev, attr);
+  str = udev_device_get_sysattr_value (device, attr);
+
+  if (str == NULL)
+    return 0;
+
+  val = g_ascii_strtoull (str, &end, 0);
+
+  if (str == end)
+    return 0;
 
   if (val > G_MAXUINT)
     {
@@ -229,13 +272,39 @@ get_uint_from_udev_attr (GUdevDevice *udev, const char *attr)
   return (guint) val;
 }
 
+static gint
+udev_device_get_sysfs_attr_int (struct udev_device *device, const char *attr)
+{
+  const char *str;
+  char *end;
+  gint64 val;
+
+  str = udev_device_get_sysattr_value (device, attr);
+
+  if (str == NULL)
+    return 0;
+
+  val = g_ascii_strtoull (str, &end, 0);
+
+  if (str == end)
+    return 0;
+
+  if (val > G_MAXINT)
+    {
+      g_warning ("value read from sysfs overflows guint field.");
+      val = 0;
+    }
+
+  return (gint) val;
+}
+
 static void
-device_update_from_udev (TbManager *mgr, TbDevice *dev, GUdevDevice *device)
+device_update_from_udev (TbManager *mgr, TbDevice *dev, struct udev_device *device)
 {
   TbAuth old;
   int authorized;
 
-  authorized = g_udev_device_get_sysfs_attr_as_int (device, "authorized");
+  authorized = udev_device_get_sysfs_attr_int (device, "authorized");
 
   if (authorized < -1 || authorized > 2)
     authorized = TB_AUTH_UNKNOWN;
@@ -250,7 +319,7 @@ device_update_from_udev (TbManager *mgr, TbDevice *dev, GUdevDevice *device)
 }
 
 static TbDevice *
-manager_devices_add_from_udev (TbManager *mgr, GUdevDevice *device)
+manager_devices_add_from_udev (TbManager *mgr, struct udev_device *device)
 {
   g_autoptr(GError) err = NULL;
   TbDevice *dev;
@@ -263,16 +332,16 @@ manager_devices_add_from_udev (TbManager *mgr, GUdevDevice *device)
   int authorized;
   gboolean ok;
 
-  uid = g_udev_device_get_sysfs_attr (device, "unique_id");
+  uid = udev_device_get_sysattr_value (device, "unique_id");
   if (uid == NULL)
     return NULL;
 
-  sysfs       = g_udev_device_get_sysfs_path (device);
-  device_name = g_udev_device_get_sysfs_attr (device, "device_name");
-  device_id   = get_uint_from_udev_attr (device, "device");
-  vendor_name = g_udev_device_get_sysfs_attr (device, "vendor_name");
-  vendor_id   = get_uint_from_udev_attr (device, "vendor");
-  authorized  = g_udev_device_get_sysfs_attr_as_int (device, "authorized");
+  sysfs       = udev_device_get_syspath (device);
+  device_name = udev_device_get_sysattr_value (device, "device_name");
+  device_id   = udev_device_get_sysfs_attr_uint (device, "device");
+  vendor_name = udev_device_get_sysattr_value (device, "vendor_name");
+  vendor_id   = udev_device_get_sysfs_attr_uint (device, "vendor");
+  authorized  = udev_device_get_sysfs_attr_int (device, "authorized");
 
   if (authorized < -1 || authorized > 2)
     authorized = TB_AUTH_UNKNOWN;
@@ -322,12 +391,12 @@ manager_devices_lookup_by_uid (TbManager *mgr, const char *uid)
 }
 
 static TbDevice *
-manager_devices_lookup_by_udev (TbManager *mgr, GUdevDevice *udev)
+manager_devices_lookup_by_udev (TbManager *mgr, struct udev_device *udev)
 {
   const char *uid;
   guint i;
 
-  uid = g_udev_device_get_sysfs_attr (udev, "unique_id");
+  uid = udev_device_get_sysattr_value (udev, "unique_id");
 
   if (uid != NULL)
     return manager_devices_lookup_by_uid (mgr, uid);
@@ -341,7 +410,7 @@ manager_devices_lookup_by_udev (TbManager *mgr, GUdevDevice *udev)
       if (p_old == NULL)
         continue;
 
-      p_new = g_udev_device_get_sysfs_path (udev);
+      p_new = udev_device_get_syspath (udev);
 
       if (!g_strcmp0 (p_old, p_new))
         return dev;
@@ -350,73 +419,201 @@ manager_devices_lookup_by_udev (TbManager *mgr, GUdevDevice *udev)
   return NULL;
 }
 
-static void
-manager_uevent_cb (GUdevClient *client, const gchar *action, GUdevDevice *device, gpointer user_data)
+static gboolean
+manager_uevent_kernel_cb (GIOChannel *source, GIOCondition condition, gpointer user_data)
 {
-  TbManager *mgr = TB_MANAGER (user_data);
+  TbManager *mgr                = TB_MANAGER (user_data);
+
+  g_autoptr(udev_device) device = NULL;
+  const char *action;
+
+  device = udev_monitor_receive_device (mgr->kernel_monitor);
+
+  if (device == NULL)
+    return TRUE;
+
+  action = udev_device_get_action (device);
+  if (action == NULL)
+    return TRUE;
+
+  g_debug ("uevent [KERNEL]: %s", action);
+
+  if (g_str_equal (action, "add"))
+    manager_devices_add_from_udev (mgr, device);
+
+  return TRUE;
+}
+
+static gboolean
+manager_uevent_udev_cb (GIOChannel *source, GIOCondition condition, gpointer user_data)
+{
+  TbManager *mgr                = TB_MANAGER (user_data);
+
+  g_autoptr(udev_device) device = NULL;
+  const char *action;
   TbDevice *dev;
 
-  g_debug ("uevent [%s]", action);
+  device = udev_monitor_receive_device (mgr->udev_monitor);
 
-  if (g_strcmp0 (action, "add") == 0)
+  if (device == NULL)
+    return TRUE;
+
+  action = udev_device_get_action (device);
+  if (action == NULL)
+    return TRUE;
+
+  g_debug ("uevent [ UDEV ]: %s", action);
+
+  if (g_str_equal (action, "add") || g_str_equal (action, "change"))
     {
-
-      dev = manager_devices_add_from_udev (mgr, device);
-
-    }
-  else if (g_strcmp0 (action, "change") == 0)
-    {
-      const char *uid = g_udev_device_get_sysfs_attr (device, "unique_id");
+      const char *uid = udev_device_get_sysattr_value (device, "unique_id");
       if (uid == NULL)
-        return;
+        return TRUE;
 
       dev = manager_devices_lookup_by_udev (mgr, device);
-      if (dev == NULL)
+      if (dev == NULL && g_str_equal (action, "change"))
         {
           g_warning ("device not in list!");
           manager_devices_add_from_udev (mgr, device);
-          return;
         }
-
-      device_update_from_udev (mgr, dev, device);
+      else
+        {
+          device_update_from_udev (mgr, dev, device);
+        }
 
     }
   else if (g_strcmp0 (action, "remove") == 0)
     {
       dev = manager_devices_lookup_by_udev (mgr, device);
+      if (!dev)
+        return TRUE;
 
-      if (dev)
-        {
-          g_signal_emit (mgr, signals[SIGNAL_DEVICE_REMOVED], 0, dev);
+      g_signal_emit (mgr, signals[SIGNAL_DEVICE_REMOVED], 0, dev);
 
-          g_object_set (dev, "authorized", TB_AUTH_UNKNOWN, "sysfs", NULL, NULL);
+      g_object_set (dev, "authorized", TB_AUTH_UNKNOWN, "sysfs", NULL, NULL);
 
-          g_ptr_array_remove_fast (mgr->devices, dev);
-        }
+      g_ptr_array_remove_fast (mgr->devices, dev);
     }
+
+  return TRUE;
+}
+
+static gboolean
+setup_monitor (TbManager     *mgr,
+               const char    *name,
+               GSourceFunc    callback,
+               udev_monitor **monitor_out,
+               GSource      **watch_out,
+               GError       **error)
+{
+  g_autoptr(udev_monitor) monitor;
+  g_autoptr(GIOChannel) channel;
+  GSource *watch;
+  int fd;
+  int res;
+
+  monitor = udev_monitor_new_from_netlink (mgr->udev, name);
+  if (monitor == NULL)
+    {
+      g_set_error_literal (error, TB_ERROR, TB_ERROR_UDEV, "udev: could not create monitor");
+      return FALSE;
+    }
+
+  udev_monitor_set_receive_buffer_size (monitor, 128 * 1024 * 1024);
+
+  res = udev_monitor_filter_add_match_subsystem_devtype (monitor, "thunderbolt", NULL);
+  if (res < 0)
+    {
+      g_set_error_literal (error,
+                           TB_ERROR,
+                           TB_ERROR_UDEV,
+                           "udev: could "
+                           "not add "
+                           "match for "
+                           "'thunderbolt'"
+                           " to monitor");
+      return FALSE;
+    }
+
+  res = udev_monitor_enable_receiving (monitor);
+  if (res < 0)
+    {
+      g_set_error_literal (error, TB_ERROR, TB_ERROR_UDEV, "udev: could not enable monitoring");
+      return FALSE;
+    }
+
+  fd = udev_monitor_get_fd (monitor);
+
+  if (fd < 0)
+    {
+      g_set_error_literal (error, TB_ERROR, TB_ERROR_UDEV, "udev: could not obtain fd for monitoring");
+      return FALSE;
+    }
+
+  channel = g_io_channel_unix_new (fd);
+  watch   = g_io_create_watch (channel, G_IO_IN);
+
+  g_source_set_callback (watch, callback, mgr, NULL);
+  g_source_attach (watch, g_main_context_get_thread_default ());
+
+  *monitor_out = udev_monitor_ref (monitor);
+  *watch_out   = watch;
+
+  return TRUE;
 }
 
 static gboolean
 tb_manager_initable_init (GInitable *initable, GCancellable *cancellable, GError **error)
 {
-  TbManager *mgr           = TB_MANAGER (initable);
-  const char *subsystems[] = {"thunderbolt", NULL};
-  GList *devices, *l;
+  TbManager *mgr = TB_MANAGER (initable);
+  struct udev_enumerate *enumerate;
+  struct udev_list_entry *l, *devices;
+  gboolean ok;
 
-  mgr->udev = g_udev_client_new (subsystems);
+  ok = setup_monitor (mgr,
+                      "kernel",
+                      (GSourceFunc) manager_uevent_kernel_cb,
+                      &mgr->kernel_monitor,
+                      &mgr->kernel_source,
+                      error);
 
-  g_signal_connect (mgr->udev, "uevent", G_CALLBACK (manager_uevent_cb), mgr);
+  if (!ok)
+    return FALSE;
 
-  devices = g_udev_client_query_by_subsystem (mgr->udev, "thunderbolt");
+  ok = setup_monitor (mgr,
+                      "udev",
+                      (GSourceFunc) manager_uevent_udev_cb,
+                      &mgr->udev_monitor,
+                      &mgr->udev_source,
+                      error);
 
-  for (l = devices; l; l = l->next)
+  if (!ok)
+    return FALSE;
+
+  /* TODO: error checking */
+  enumerate = udev_enumerate_new (mgr->udev);
+  udev_enumerate_add_match_subsystem (enumerate, "thunderbolt");
+  udev_enumerate_scan_devices (enumerate);
+  devices = udev_enumerate_get_list_entry (enumerate);
+
+  for (l = devices; l; l = udev_list_entry_get_next (l))
     {
-      GUdevDevice *device = l->data;
-      TbDevice *dev       = manager_devices_add_from_udev (mgr, device);
+      g_autoptr(udev_device) udevice = NULL;
+      TbDevice *dev;
+
+      udevice =
+        udev_device_new_from_syspath (udev_enumerate_get_udev (enumerate), udev_list_entry_get_name (l));
+
+      if (udevice == NULL)
+        continue;
+
+      dev = manager_devices_add_from_udev (mgr, udevice);
 
       if (dev == NULL)
         {
-          const char *security = g_udev_device_get_sysfs_attr (device, "security");
+          const char *security;
+          security = udev_device_get_sysattr_value (udevice, "security");
+
           if (security != NULL)
             mgr->security = tb_security_from_string (security);
 

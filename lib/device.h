@@ -23,7 +23,7 @@
 #define __TB_DEVICE_H__
 
 #include <glib-object.h>
-#include <gudev/gudev.h>
+
 
 #include <gio/gio.h>
 

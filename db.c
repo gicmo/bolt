@@ -23,7 +23,6 @@
 #include <glib/gprintf.h>
 
 #include <gio/gio.h>
-#include <gudev/gudev.h>
 
 #include <errno.h>
 #include <fcntl.h>
