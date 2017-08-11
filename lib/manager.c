@@ -389,9 +389,9 @@ manager_uevent_cb (GUdevClient *client, const gchar *action, GUdevDevice *device
         {
           g_signal_emit (mgr, signals[SIGNAL_DEVICE_REMOVED], 0, dev);
 
-          g_ptr_array_remove_fast (mgr->devices, dev);
-
           g_object_set (dev, "authorized", TB_AUTH_UNKNOWN, "sysfs", NULL, NULL);
+
+          g_ptr_array_remove_fast (mgr->devices, dev);
         }
     }
 }
