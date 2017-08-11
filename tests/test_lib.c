@@ -341,6 +341,15 @@ udev_mock_add_new_device (UMockdevTestbed *bed,
 }
 
 static void
+udev_mock_set_authorized (UMockdevTestbed *bed, TbDevice *dev, TbAuth auth)
+{
+  const char *path = tb_device_get_sysfs_path (dev);
+
+  umockdev_testbed_set_attribute_int (bed, path, "authorized", (int) auth);
+  umockdev_testbed_uevent (bed, path, "change");
+}
+
+static void
 manager_test_basic (ManagerTest *tt, gconstpointer user_data)
 {
   g_autofree char *domain   = NULL;
@@ -376,6 +385,93 @@ manager_test_basic (ManagerTest *tt, gconstpointer user_data)
   g_assert_cmpuint (devs->len, ==, 2);
 }
 
+static gboolean
+on_timeout (gpointer user_data)
+{
+  GMainLoop *mainloop = (GMainLoop *) user_data;
+
+  g_main_loop_quit (mainloop);
+  return FALSE;
+}
+
+static void
+manager_test_monitor (ManagerTest *tt, gconstpointer user_data)
+{
+  g_autofree char *domain       = NULL;
+
+  g_autoptr(TbDevice) host      = NULL;
+  g_autoptr(TbDevice) cable     = NULL;
+  g_autoptr(GError) error       = NULL;
+  const GPtrArray *devs         = NULL;
+  TbDevice *d                   = NULL;
+  g_autoptr(GMainLoop) mainloop = NULL;
+  gboolean ok;
+
+  ok = g_initable_init (G_INITABLE (tt->mgr), NULL, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  devs = tb_manager_list_attached (tt->mgr);
+  g_assert_cmpuint (devs->len, ==, 0);
+
+  /* lets add devices */
+  domain = udev_mock_add_domain (tt->bed, 0, TB_SECURITY_SECURE);
+
+  /* add the host */
+  host = udev_mock_add_new_device (tt->bed, domain, "0-0", NULL, "Laptop", 0x23, TB_AUTH_UNAUTHORIZED);
+
+  mainloop = g_main_loop_new (NULL, FALSE);
+  g_timeout_add (500, on_timeout, mainloop);
+  g_main_loop_run (mainloop);
+
+  devs = tb_manager_list_attached (tt->mgr);
+  g_assert_cmpuint (devs->len, ==, 1);
+  d = tb_manager_lookup (tt->mgr, tb_device_get_uid (host));
+  g_assert_nonnull (d);
+  g_clear_object (&d);
+
+  g_debug (" got the host: %s", tb_device_get_sysfs_path (host));
+
+  /* add the cable */
+  cable = udev_mock_add_new_device (tt->bed,
+                                    tb_device_get_sysfs_path (host),
+                                    "0-1",
+                                    NULL,
+                                    "TB Cable",
+                                    0x24,
+                                    TB_AUTH_UNAUTHORIZED);
+
+  g_timeout_add (500, on_timeout, mainloop);
+  g_main_loop_run (mainloop);
+
+  /* simulate that the cable got authorized externally */
+  devs = tb_manager_list_attached (tt->mgr);
+  g_assert_cmpuint (devs->len, ==, 2);
+  d = tb_manager_lookup (tt->mgr, tb_device_get_uid (cable));
+  g_assert_nonnull (d);
+
+  g_debug (" got the cable: %s", tb_device_get_sysfs_path (cable));
+
+  udev_mock_set_authorized (tt->bed, cable, TB_AUTH_AUTHORIZED);
+  g_timeout_add (500, on_timeout, mainloop);
+  g_main_loop_run (mainloop);
+
+  g_assert_cmpint (tb_device_get_authorized (d), ==, TB_AUTH_AUTHORIZED);
+
+  umockdev_testbed_uevent (tt->bed, tb_device_get_sysfs_path (cable), "remove");
+  umockdev_testbed_remove_device (tt->bed, tb_device_get_sysfs_path (cable));
+  g_timeout_add (500, on_timeout, mainloop);
+  g_main_loop_run (mainloop);
+
+  devs = tb_manager_list_attached (tt->mgr);
+  g_assert_cmpuint (devs->len, ==, 1);
+
+  g_assert_cmpint (tb_device_get_authorized (d), ==, TB_AUTH_UNKNOWN);
+  g_assert_null (tb_device_get_sysfs_path (d));
+
+  g_clear_object (&d);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -403,6 +499,13 @@ main (int argc, char **argv)
                   &p,
                   manager_test_set_up,
                   manager_test_basic,
+                  manager_test_tear_down);
+
+      g_test_add ("/manager/monitor",
+                  ManagerTest,
+                  &p,
+                  manager_test_set_up,
+                  manager_test_monitor,
                   manager_test_tear_down);
     }
 
