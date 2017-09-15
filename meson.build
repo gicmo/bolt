@@ -110,6 +110,11 @@ install_data(gen, install_dir: udevrulesdir)
 foreach t: tests
   test_name = t.get(0)
   test_srcs = ['tests/@0@.c'.format(test_name), t.get(1, [])]
-  executable(test_name, test_srcs,
-	     dependencies: [tbt, umock])
+  e = executable(test_name, test_srcs,
+		 dependencies: [tbt, umock])
+
+  test_env = environment()
+  test_env.prepend('LD_PRELOAD', 'libumockdev-preload.so.0')
+  test(test_name, e, env: test_env, timeout : 120)
+
 endforeach
