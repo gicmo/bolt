@@ -34,12 +34,49 @@
 
 #include "enums.h"
 
-GQuark tb_error_quark (void);
-#define TB_ERROR (tb_error_quark ())
 G_DEFINE_QUARK (TB_ERROR, tb_error);
 
-enum { TB_ERROR_FAILED = 0,
-       TB_ERROR_UDEV, };
+enum {
+  TB_ERROR_FAILED = 0,
+  TB_ERROR_UDEV,
+};
+
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
+
+TbSecurity
+tb_security_from_string (const char *str)
+{
+  g_autoptr(GEnumClass) klass = NULL;
+  GEnumValue *value;
+
+  if (str == NULL)
+    return TB_SECURITY_UNKNOWN;
+
+  klass = g_type_class_ref (TB_TYPE_SECURITY);
+  value = g_enum_get_value_by_nick (klass, str);
+
+  if (value == NULL)
+    {
+      g_warning ("Unknown security: %s", str);
+      return TB_SECURITY_UNKNOWN;
+    }
+
+  return value->value;
+}
+
+char *
+tb_security_to_string (TbSecurity security)
+{
+  g_autoptr(GEnumClass) klass = NULL;
+  GEnumValue *value;
+
+  klass = g_type_class_ref (TB_TYPE_SECURITY);
+  value = g_enum_get_value (klass, security);
+
+  return g_strdup (value->value_nick);
+}
+
 
 typedef struct udev_monitor udev_monitor;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_monitor, udev_monitor_unref);
@@ -65,30 +102,38 @@ struct _TbManager
   TbStore   *store;
 };
 
-enum { PROP_0,
+enum {
+  PROP_0,
 
-       PROP_STORE,
-       PROP_SECURITY,
+  PROP_STORE,
+  PROP_SECURITY,
 
-       PROP_LAST };
+  PROP_LAST
+};
 
 static GParamSpec *props[PROP_LAST] = {
   NULL,
 };
 
-enum { SIGNAL_DEVICE_ADDED, SIGNAL_DEVICE_REMOVED, SIGNAL_DEVICE_CHANGED, SIGNAL_LAST };
+enum {
+  SIGNAL_DEVICE_ADDED,
+  SIGNAL_DEVICE_REMOVED,
+  SIGNAL_DEVICE_CHANGED,
+  SIGNAL_LAST
+};
 
 static guint signals[SIGNAL_LAST] = {0};
 
-static gboolean tb_manager_initable_init (GInitable    *initable,
-                                          GCancellable *cancellable,
-                                          GError      **error);
-static void tb_manager_initable_iface_init (GInitableIface *iface);
+static gboolean   tb_manager_initable_init (GInitable    *initable,
+                                            GCancellable *cancellable,
+                                            GError      **error);
+static void       tb_manager_initable_iface_init (GInitableIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (TbManager,
                          tb_manager,
                          G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, tb_manager_initable_iface_init));
+                         G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
+                                                tb_manager_initable_iface_init));
 
 static void
 tb_manager_finalize (GObject *object)
@@ -128,7 +173,10 @@ tb_manager_finalize (GObject *object)
 }
 
 static void
-tb_manager_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+tb_manager_get_property (GObject    *object,
+                         guint       prop_id,
+                         GValue     *value,
+                         GParamSpec *pspec)
 {
   TbManager *mgr = TB_MANAGER (object);
 
@@ -148,7 +196,10 @@ tb_manager_get_property (GObject *object, guint prop_id, GValue *value, GParamSp
 }
 
 static void
-tb_manager_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+tb_manager_set_property (GObject      *object,
+                         guint         prop_id,
+                         const GValue *value,
+                         GParamSpec   *pspec)
 {
 
   switch (prop_id)
@@ -194,50 +245,55 @@ tb_manager_class_init (TbManagerClass *klass)
   gobject_class->set_property = tb_manager_set_property;
   gobject_class->constructed  = tb_manager_constructed;
 
+  /* properties */
   props[PROP_STORE] =
-    g_param_spec_string ("db", NULL, NULL, "", G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NAME);
+    g_param_spec_string ("db",
+                         NULL, NULL,
+                         "",
+                         G_PARAM_READWRITE      |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_NAME);
 
-  props[PROP_SECURITY] = g_param_spec_enum ("security",
-                                            NULL,
-                                            NULL,
-                                            TB_TYPE_SECURITY,
-                                            TB_SECURITY_UNKNOWN,
-                                            G_PARAM_READABLE | G_PARAM_STATIC_NAME);
+  props[PROP_SECURITY] =
+    g_param_spec_enum ("security",
+                       NULL, NULL,
+                       TB_TYPE_SECURITY,
+                       TB_SECURITY_UNKNOWN,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_NAME);
 
   g_object_class_install_properties (gobject_class, PROP_LAST, props);
 
-  signals[SIGNAL_DEVICE_ADDED] = g_signal_new ("device-added",
-                                               G_TYPE_FROM_CLASS (gobject_class),
-                                               G_SIGNAL_RUN_LAST,
-                                               0,
-                                               NULL,
-                                               NULL,
-                                               NULL,
-                                               G_TYPE_NONE,
-                                               1,
-                                               G_TYPE_POINTER);
+  /* signals */
+  signals[SIGNAL_DEVICE_ADDED] =
+    g_signal_new ("device-added",
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  NULL,
+                  G_TYPE_NONE,
+                  1, G_TYPE_POINTER);
 
-  signals[SIGNAL_DEVICE_REMOVED] = g_signal_new ("device-removed",
-                                                 G_TYPE_FROM_CLASS (gobject_class),
-                                                 G_SIGNAL_RUN_LAST,
-                                                 0,
-                                                 NULL,
-                                                 NULL,
-                                                 NULL,
-                                                 G_TYPE_NONE,
-                                                 1,
-                                                 G_TYPE_POINTER);
+  signals[SIGNAL_DEVICE_REMOVED] =
+    g_signal_new ("device-removed",
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  NULL,
+                  G_TYPE_NONE,
+                  1, G_TYPE_POINTER);
 
-  signals[SIGNAL_DEVICE_CHANGED] = g_signal_new ("device-changed",
-                                                 G_TYPE_FROM_CLASS (gobject_class),
-                                                 G_SIGNAL_RUN_LAST,
-                                                 0,
-                                                 NULL,
-                                                 NULL,
-                                                 NULL,
-                                                 G_TYPE_NONE,
-                                                 1,
-                                                 G_TYPE_POINTER);
+  signals[SIGNAL_DEVICE_CHANGED] =
+    g_signal_new ("device-changed",
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  NULL,
+                  G_TYPE_NONE,
+                  1, G_TYPE_POINTER);
 }
 
 static void
@@ -347,20 +403,13 @@ manager_devices_add_from_udev (TbManager *mgr, struct udev_device *device)
     authorized = TB_AUTH_LEVEL_UNKNOWN;
 
   dev = g_object_new (TB_TYPE_DEVICE,
-                      "uid",
-                      uid,
-                      "device-name",
-                      device_name,
-                      "device-id",
-                      device_id,
-                      "vendor-name",
-                      vendor_name,
-                      "vendor-id",
-                      vendor_id,
-                      "sysfs",
-                      sysfs,
-                      "authorized",
-                      authorized,
+                      "uid", uid,
+                      "device-name", device_name,
+                      "device-id", device_id,
+                      "vendor-name", vendor_name,
+                      "vendor-id", vendor_id,
+                      "sysfs", sysfs,
+                      "authorized", authorized,
                       NULL);
 
   ok = tb_store_merge (mgr->store, dev, &err);
@@ -403,7 +452,7 @@ manager_devices_lookup_by_udev (TbManager *mgr, struct udev_device *udev)
 
   for (i = 0; i < mgr->devices->len; i++)
     {
-      TbDevice *dev     = g_ptr_array_index (mgr->devices, i);
+      TbDevice *dev = g_ptr_array_index (mgr->devices, i);
       const char *p_old = tb_device_get_sysfs_path (dev);
       const char *p_new;
 
@@ -422,7 +471,7 @@ manager_devices_lookup_by_udev (TbManager *mgr, struct udev_device *udev)
 static gboolean
 manager_uevent_kernel_cb (GIOChannel *source, GIOCondition condition, gpointer user_data)
 {
-  TbManager *mgr                = TB_MANAGER (user_data);
+  TbManager *mgr = TB_MANAGER (user_data);
 
   g_autoptr(udev_device) device = NULL;
   const char *action;
@@ -464,7 +513,8 @@ manager_uevent_udev_cb (GIOChannel *source, GIOCondition condition, gpointer use
 
   g_debug ("uevent [ UDEV ]: %s", action);
 
-  if (g_str_equal (action, "add") || g_str_equal (action, "change"))
+  if (g_str_equal (action, "add") ||
+      g_str_equal (action, "change"))
     {
       const char *uid = udev_device_get_sysattr_value (device, "unique_id");
       if (uid == NULL)
@@ -489,9 +539,7 @@ manager_uevent_udev_cb (GIOChannel *source, GIOCondition condition, gpointer use
         return TRUE;
 
       g_signal_emit (mgr, signals[SIGNAL_DEVICE_REMOVED], 0, dev);
-
       g_object_set (dev, "authorized", TB_AUTH_LEVEL_UNKNOWN, "sysfs", NULL, NULL);
-
       g_ptr_array_remove_fast (mgr->devices, dev);
     }
 
@@ -515,7 +563,8 @@ setup_monitor (TbManager     *mgr,
   monitor = udev_monitor_new_from_netlink (mgr->udev, name);
   if (monitor == NULL)
     {
-      g_set_error_literal (error, TB_ERROR, TB_ERROR_UDEV, "udev: could not create monitor");
+      g_set_error_literal (error, TB_ERROR, TB_ERROR_UDEV,
+                           "udev: could not create monitor");
       return FALSE;
     }
 
@@ -524,21 +573,16 @@ setup_monitor (TbManager     *mgr,
   res = udev_monitor_filter_add_match_subsystem_devtype (monitor, "thunderbolt", NULL);
   if (res < 0)
     {
-      g_set_error_literal (error,
-                           TB_ERROR,
-                           TB_ERROR_UDEV,
-                           "udev: could "
-                           "not add "
-                           "match for "
-                           "'thunderbolt'"
-                           " to monitor");
+      g_set_error_literal (error, TB_ERROR, TB_ERROR_UDEV,
+                           "udev: could not add match for 'thunderbolt' to monitor");
       return FALSE;
     }
 
   res = udev_monitor_enable_receiving (monitor);
   if (res < 0)
     {
-      g_set_error_literal (error, TB_ERROR, TB_ERROR_UDEV, "udev: could not enable monitoring");
+      g_set_error_literal (error, TB_ERROR, TB_ERROR_UDEV,
+                           "udev: could not enable monitoring");
       return FALSE;
     }
 
@@ -546,7 +590,8 @@ setup_monitor (TbManager     *mgr,
 
   if (fd < 0)
     {
-      g_set_error_literal (error, TB_ERROR, TB_ERROR_UDEV, "udev: could not obtain fd for monitoring");
+      g_set_error_literal (error, TB_ERROR, TB_ERROR_UDEV,
+                           "udev: could not obtain fd for monitoring");
       return FALSE;
     }
 
@@ -570,21 +615,17 @@ tb_manager_initable_init (GInitable *initable, GCancellable *cancellable, GError
   struct udev_list_entry *l, *devices;
   gboolean ok;
 
-  ok = setup_monitor (mgr,
-                      "kernel",
+  ok = setup_monitor (mgr, "kernel",
                       (GSourceFunc) manager_uevent_kernel_cb,
-                      &mgr->kernel_monitor,
-                      &mgr->kernel_source,
+                      &mgr->kernel_monitor, &mgr->kernel_source,
                       error);
 
   if (!ok)
     return FALSE;
 
-  ok = setup_monitor (mgr,
-                      "udev",
+  ok = setup_monitor (mgr, "udev",
                       (GSourceFunc) manager_uevent_udev_cb,
-                      &mgr->udev_monitor,
-                      &mgr->udev_source,
+                      &mgr->udev_monitor, &mgr->udev_source,
                       error);
 
   if (!ok)
@@ -601,8 +642,8 @@ tb_manager_initable_init (GInitable *initable, GCancellable *cancellable, GError
       g_autoptr(udev_device) udevice = NULL;
       TbDevice *dev;
 
-      udevice =
-        udev_device_new_from_syspath (udev_enumerate_get_udev (enumerate), udev_list_entry_get_name (l));
+      udevice = udev_device_new_from_syspath (udev_enumerate_get_udev (enumerate),
+                                              udev_list_entry_get_name (l));
 
       if (udevice == NULL)
         continue;
@@ -629,7 +670,10 @@ tb_manager_new (GError **error)
 {
   TbManager *mgr;
 
-  mgr = g_initable_new (TB_TYPE_MANAGER, NULL, error, "db", "/var/lib/tb", NULL);
+  mgr = g_initable_new (TB_TYPE_MANAGER,
+                        NULL, error,
+                        "db", "/var/lib/tb",
+                        NULL);
 
   return mgr;
 }
@@ -684,14 +728,18 @@ tb_manager_have_key (TbManager *mgr, TbDevice *dev)
 }
 
 int
-tb_manager_ensure_key (TbManager *mgr, TbDevice *dev, gboolean replace, gboolean *created, GError **error)
+tb_manager_ensure_key (TbManager *mgr,
+                       TbDevice  *dev,
+                       gboolean   replace,
+                       gboolean  *created,
+                       GError   **error)
 {
   const char *uid;
   int fd;
 
   if (replace)
     {
-      fd       = tb_store_create_key (mgr->store, dev, error);
+      fd = tb_store_create_key (mgr->store, dev, error);
       *created = TRUE;
       if (fd < 0)
         return fd;
@@ -706,7 +754,7 @@ tb_manager_ensure_key (TbManager *mgr, TbDevice *dev, gboolean replace, gboolean
       return fd;
     }
 
-  fd       = tb_store_create_key (mgr->store, dev, error);
+  fd = tb_store_create_key (mgr->store, dev, error);
   *created = TRUE;
 
   return fd;
@@ -726,9 +774,7 @@ tb_manager_get_security (TbManager *mgr)
 static gboolean
 copy_key (int from, int to, GError **error)
 {
-  char buffer[TB_KEY_CHARS] = {
-    0,
-  };
+  char buffer[TB_KEY_CHARS] = { 0, };
   ssize_t n, k;
 
   /* NB: need to write the key in one go, no chuncked i/o */
@@ -739,7 +785,8 @@ copy_key (int from, int to, GError **error)
     }
   else if (n != sizeof (buffer))
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Could not read entire key from disk");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Could not read entire key from disk");
       return FALSE;
     }
 
@@ -749,8 +796,7 @@ copy_key (int from, int to, GError **error)
 
   if (k != n)
     {
-      g_set_error_literal (error,
-                           G_IO_ERROR,
+      g_set_error_literal (error, G_IO_ERROR,
                            g_io_error_from_errno (errno),
                            "io error while writing key data");
       return FALSE;
@@ -849,39 +895,4 @@ tb_manager_authorize (TbManager *mgr, TbDevice *dev, GError **error)
     }
 
   return tb_close (fd, error);
-}
-
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
-
-TbSecurity
-tb_security_from_string (const char *str)
-{
-  g_autoptr(GEnumClass) klass = NULL;
-  GEnumValue *value;
-
-  if (str == NULL)
-    return TB_SECURITY_UNKNOWN;
-
-  klass = g_type_class_ref (TB_TYPE_SECURITY);
-  value = g_enum_get_value_by_nick (klass, str);
-
-  if (value == NULL)
-    {
-      g_warning ("Unknown security: %s", str);
-      return TB_SECURITY_UNKNOWN;
-    }
-
-  return value->value;
-}
-
-char *
-tb_security_to_string (TbSecurity security)
-{
-  g_autoptr(GEnumClass) klass = NULL;
-  GEnumValue *value;
-
-  klass = g_type_class_ref (TB_TYPE_SECURITY);
-  value = g_enum_get_value (klass, security);
-
-  return g_strdup (value->value_nick);
 }

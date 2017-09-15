@@ -113,17 +113,15 @@ static void
 test_store_basic (StoreTest *tt, gconstpointer user_data)
 {
   //  const Params *p = user_data;
-  g_autoptr(GError) err      = NULL;
-  g_autoptr(TbDevice) dev    = NULL;
   g_autoptr(TbDevice) stored = NULL;
   g_autoptr(TbDevice) merged = NULL;
-  g_autoptr(GFile) key       = NULL;
-  char data[TB_KEY_CHARS]    = {
-    0,
-  };
+  g_autoptr(GError) err = NULL;
+  g_autoptr(TbDevice) dev = NULL;
+  g_autoptr(GFile) key = NULL;
+  char data[TB_KEY_CHARS] = { 0, };
   g_autofree char *uuid = NULL;
-  ssize_t n             = 0;
-  int fd                = -1;
+  ssize_t n = 0;
+  int fd = -1;
   gboolean ok;
 
   uuid = g_uuid_string_random ();
@@ -132,16 +130,11 @@ test_store_basic (StoreTest *tt, gconstpointer user_data)
   g_assert_false (tb_store_have_key (tt->store, uuid));
 
   dev = g_object_new (TB_TYPE_DEVICE,
-                      "uid",
-                      uuid,
-                      "device-name",
-                      "Blitz",
-                      "device-id",
-                      0x33,
-                      "vendor-name",
-                      "GNOME",
-                      "vendor-id",
-                      0x23,
+                      "uid", uuid,
+                      "device-name", "Blitz",
+                      "device-id", 0x33,
+                      "vendor-name", "GNOME",
+                      "vendor-id", 0x23,
                       NULL);
 
   g_debug ("Storing device: %s", uuid);
@@ -177,18 +170,17 @@ test_store_basic (StoreTest *tt, gconstpointer user_data)
   g_assert_nonnull (stored);
 
   g_assert_cmpstr (tb_device_get_uid (dev), ==, tb_device_get_uid (stored));
-
   g_assert_cmpstr (tb_device_get_name (dev), ==, tb_device_get_name (stored));
-
   g_assert_cmpuint (tb_device_get_device_id (dev), ==, tb_device_get_device_id (stored));
-
   g_assert_cmpstr (tb_device_get_vendor_name (dev), ==, tb_device_get_vendor_name (stored));
-
   g_assert_cmpuint (tb_device_get_vendor_id (dev), ==, tb_device_get_vendor_id (stored));
-
   g_assert_cmpint (tb_device_get_policy (dev), ==, tb_device_get_policy (stored));
 
-  merged = g_object_new (TB_TYPE_DEVICE, "uid", uuid, "device-name", "Blitz", "vendor-name", "GNOME", NULL);
+  merged = g_object_new (TB_TYPE_DEVICE,
+                         "uid", uuid,
+                         "device-name", "Blitz",
+                         "vendor-name", "GNOME",
+                         NULL);
 
   ok = tb_store_merge (tt->store, merged, &err);
   g_assert_true (ok);
@@ -240,15 +232,12 @@ udev_mock_add_domain (UMockdevTestbed *bed, int id, TbSecurity level)
   g_snprintf (name, sizeof (name), "domain%d", id);
   security = tb_security_to_string (level);
 
-  path = umockdev_testbed_add_device (bed,
-                                      "thunderbolt",
+  path = umockdev_testbed_add_device (bed, "thunderbolt",
                                       name,
                                       NULL,
-                                      "security",
-                                      security,
+                                      "security", security,
                                       NULL,
-                                      "DEVTYPE",
-                                      "thunderbolt_domain",
+                                      "DEVTYPE", "thunderbolt_domain",
                                       NULL);
 
   g_assert_nonnull (path);
@@ -263,7 +252,7 @@ udev_mock_add_device (UMockdevTestbed *bed, const char *parent, const char *id, 
   const guint device_id   = tb_device_get_device_id (dev);
   const guint vendor_id   = tb_device_get_vendor_id (dev);
   const char *vendor_name = tb_device_get_vendor_name (dev);
-  TbAuth auth             = tb_device_get_authorized (dev);
+  TbAuthLevel auth             = tb_device_get_authorized (dev);
   char authorized[16]     = {
     0,
   };
@@ -275,27 +264,18 @@ udev_mock_add_device (UMockdevTestbed *bed, const char *parent, const char *id, 
   vendor_idstr = g_strdup_printf ("%u", vendor_id);
   device_idstr = g_strdup_printf ("%u", device_id);
 
-  path = umockdev_testbed_add_device (bed,
-                                      "thunderbolt",
-                                      id,
-                                      parent,
+  path = umockdev_testbed_add_device (bed, "thunderbolt",
+                                      id, parent,
                                       /* attributes */
-                                      "device",
-                                      device_idstr,
-                                      "device_name",
-                                      device_name,
-                                      "vendor",
-                                      vendor_idstr,
-                                      "vendor_name",
-                                      vendor_name,
-                                      "authorized",
-                                      authorized,
-                                      "unique_id",
-                                      uid,
+                                      "device", device_idstr,
+                                      "device_name", device_name,
+                                      "vendor", vendor_idstr,
+                                      "vendor_name", vendor_name,
+                                      "authorized", authorized,
+                                      "unique_id", uid,
                                       NULL,
                                       /* properties */
-                                      "DEVTYPE",
-                                      "thunderbolt_device",
+                                      "DEVTYPE", "thunderbolt_device",
                                       NULL);
 
   g_assert_nonnull (path);
@@ -309,7 +289,7 @@ udev_mock_add_new_device (UMockdevTestbed *bed,
                           const char      *uuid,
                           const char      *device_name,
                           guint            device_id,
-                          TbAuth           auth)
+                          TbAuthLevel      auth)
 {
   TbDevice *dev              = NULL;
   g_autofree char *generated = NULL;
@@ -321,18 +301,12 @@ udev_mock_add_new_device (UMockdevTestbed *bed,
     }
 
   dev = g_object_new (TB_TYPE_DEVICE,
-                      "uid",
-                      uuid,
-                      "device-id",
-                      device_id,
-                      "device-name",
-                      device_name,
-                      "vendor-id",
-                      0x23,
-                      "vendor-name",
-                      "GNOME.Org",
-                      "authorized",
-                      auth,
+                      "uid", uuid,
+                      "device-id", device_id,
+                      "device-name", device_name,
+                      "vendor-id", 0x23,
+                      "vendor-name", "GNOME.Org",
+                      "authorized", auth,
                       NULL);
 
   udev_mock_add_device (bed, parent, id, dev);
@@ -341,7 +315,7 @@ udev_mock_add_new_device (UMockdevTestbed *bed,
 }
 
 static void
-udev_mock_set_authorized (UMockdevTestbed *bed, TbDevice *dev, TbAuth auth)
+udev_mock_set_authorized (UMockdevTestbed *bed, TbDevice *dev, TbAuthLevel auth)
 {
   const char *path = tb_device_get_sysfs_path (dev);
 
@@ -361,7 +335,11 @@ manager_test_basic (ManagerTest *tt, gconstpointer user_data)
   gboolean ok;
 
   domain = udev_mock_add_domain (tt->bed, 0, TB_SECURITY_SECURE);
-  host   = udev_mock_add_new_device (tt->bed, domain, "0-0", NULL, "Laptop", 0x23, TB_AUTH_UNAUTHORIZED);
+  host   = udev_mock_add_new_device (tt->bed,
+                                     domain, "0-0",
+                                     NULL,
+                                     "Laptop", 0x23,
+                                     TB_AUTH_LEVEL_UNAUTHORIZED);
 
   cable = udev_mock_add_new_device (tt->bed,
                                     tb_device_get_sysfs_path (host),
@@ -369,7 +347,7 @@ manager_test_basic (ManagerTest *tt, gconstpointer user_data)
                                     NULL,
                                     "TB Cable",
                                     0x24,
-                                    TB_AUTH_UNAUTHORIZED);
+                                    TB_AUTH_LEVEL_UNAUTHORIZED);
 
   g_debug (" domain:   %s", domain);
   g_debug ("  host:    %s", tb_device_get_sysfs_path (host));
@@ -397,14 +375,14 @@ on_timeout (gpointer user_data)
 static void
 manager_test_monitor (ManagerTest *tt, gconstpointer user_data)
 {
-  g_autofree char *domain       = NULL;
-
-  g_autoptr(TbDevice) host      = NULL;
-  g_autoptr(TbDevice) cable     = NULL;
-  g_autoptr(GError) error       = NULL;
-  const GPtrArray *devs         = NULL;
-  TbDevice *d                   = NULL;
   g_autoptr(GMainLoop) mainloop = NULL;
+  g_autoptr(TbDevice) cable = NULL;
+  g_autoptr(TbDevice) host = NULL;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *domain = NULL;
+  const GPtrArray *devs = NULL;
+  TbDevice *d = NULL;
+
   gboolean ok;
 
   ok = g_initable_init (G_INITABLE (tt->mgr), NULL, &error);
@@ -418,7 +396,12 @@ manager_test_monitor (ManagerTest *tt, gconstpointer user_data)
   domain = udev_mock_add_domain (tt->bed, 0, TB_SECURITY_SECURE);
 
   /* add the host */
-  host = udev_mock_add_new_device (tt->bed, domain, "0-0", NULL, "Laptop", 0x23, TB_AUTH_UNAUTHORIZED);
+  host = udev_mock_add_new_device (tt->bed,
+                                   domain,
+                                   "0-0",
+                                   NULL,
+                                   "Laptop", 0x23,
+                                   TB_AUTH_LEVEL_UNAUTHORIZED);
 
   mainloop = g_main_loop_new (NULL, FALSE);
   g_timeout_add (500, on_timeout, mainloop);
@@ -437,9 +420,8 @@ manager_test_monitor (ManagerTest *tt, gconstpointer user_data)
                                     tb_device_get_sysfs_path (host),
                                     "0-1",
                                     NULL,
-                                    "TB Cable",
-                                    0x24,
-                                    TB_AUTH_UNAUTHORIZED);
+                                    "TB Cable", 0x24,
+                                    TB_AUTH_LEVEL_UNAUTHORIZED);
 
   g_timeout_add (500, on_timeout, mainloop);
   g_main_loop_run (mainloop);
@@ -452,11 +434,11 @@ manager_test_monitor (ManagerTest *tt, gconstpointer user_data)
 
   g_debug (" got the cable: %s", tb_device_get_sysfs_path (cable));
 
-  udev_mock_set_authorized (tt->bed, cable, TB_AUTH_AUTHORIZED);
+  udev_mock_set_authorized (tt->bed, cable, TB_AUTH_LEVEL_AUTHORIZED);
   g_timeout_add (500, on_timeout, mainloop);
   g_main_loop_run (mainloop);
 
-  g_assert_cmpint (tb_device_get_authorized (d), ==, TB_AUTH_AUTHORIZED);
+  g_assert_cmpint (tb_device_get_authorized (d), ==, TB_AUTH_LEVEL_AUTHORIZED);
 
   umockdev_testbed_uevent (tt->bed, tb_device_get_sysfs_path (cable), "remove");
   umockdev_testbed_remove_device (tt->bed, tb_device_get_sysfs_path (cable));
@@ -466,7 +448,7 @@ manager_test_monitor (ManagerTest *tt, gconstpointer user_data)
   devs = tb_manager_list_attached (tt->mgr);
   g_assert_cmpuint (devs->len, ==, 1);
 
-  g_assert_cmpint (tb_device_get_authorized (d), ==, TB_AUTH_UNKNOWN);
+  g_assert_cmpint (tb_device_get_authorized (d), ==, TB_AUTH_LEVEL_UNKNOWN);
   g_assert_null (tb_device_get_sysfs_path (d));
 
   g_clear_object (&d);
@@ -485,12 +467,17 @@ main (int argc, char **argv)
 
   g_test_init (&argc, &argv, NULL);
 
-  tmp    = g_mkdtemp_full (buffer, 0755);
-  p.path = tmp;
+  p.path = tmp = g_mkdtemp_full (buffer, 0755);
+  ;
 
   g_debug ("library dir: %s", tmp);
 
-  g_test_add ("/store/basic", StoreTest, &p, store_test_set_up, test_store_basic, store_test_tear_down);
+  g_test_add ("/store/basic",
+              StoreTest,
+              &p,
+              store_test_set_up,
+              test_store_basic,
+              store_test_tear_down);
 
   if (umockdev_in_mock_environment ())
     {

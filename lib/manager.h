@@ -50,37 +50,39 @@ typedef enum {
   TB_SECURITY_SECURE = '2'
 } TbSecurity;
 
-TbSecurity tb_security_from_string (const char *str);
-char *tb_security_to_string (TbSecurity security);
+GQuark tb_error_quark (void);
+#define TB_ERROR (tb_error_quark ())
 
-TbManager *tb_manager_new (GError **error);
+TbSecurity       tb_security_from_string (const char *str);
+char            *tb_security_to_string (TbSecurity security);
+
+TbManager       *tb_manager_new (GError **error);
 
 const GPtrArray *tb_manager_list_attached (TbManager *mgr);
+TbDevice        *tb_manager_lookup (TbManager  *mgr,
+                                    const char *uid);
 
-TbDevice *tb_manager_lookup (TbManager  *mgr,
-                             const char *uid);
+gboolean         tb_manager_device_stored (TbManager *mgr,
+                                           TbDevice  *dev);
 
-gboolean tb_manager_device_stored (TbManager *mgr,
-                                   TbDevice  *dev);
+gboolean         tb_manager_store (TbManager *mgr,
+                                   TbDevice  *device,
+                                   GError   **error);
 
-gboolean tb_manager_store (TbManager *mgr,
-                           TbDevice  *device,
-                           GError   **error);
+gboolean         tb_manager_have_key (TbManager *mgr,
+                                      TbDevice  *dev);
 
-gboolean tb_manager_have_key (TbManager *mgr,
-                              TbDevice  *dev);
+int              tb_manager_ensure_key (TbManager *mgr,
+                                        TbDevice  *dev,
+                                        gboolean   replace,
+                                        gboolean  *created,
+                                        GError   **error);
 
-int tb_manager_ensure_key (TbManager *mgr,
-                           TbDevice  *dev,
-                           gboolean   replace,
-                           gboolean * created,
-                           GError   **error);
+TbSecurity       tb_manager_get_security (TbManager *mgr);
 
-TbSecurity tb_manager_get_security (TbManager *mgr);
-
-gboolean tb_manager_authorize (TbManager *mgr,
-                               TbDevice  *dev,
-                               GError   **error);
+gboolean         tb_manager_authorize (TbManager *mgr,
+                                       TbDevice  *dev,
+                                       GError   **error);
 
 G_END_DECLS
 #endif /* TB_MANAGER_H */

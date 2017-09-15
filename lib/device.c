@@ -107,7 +107,7 @@ enum { PROP_DEVICE_0,
        PROP_KNOWN,
        PROP_POLICY,
 
-       PROP_DEVICE_LAST };
+       PROP_DEVICE_LAST};
 
 static GParamSpec *device_props[PROP_DEVICE_LAST] = {
   NULL,
@@ -129,7 +129,10 @@ tb_device_finalize (GObject *object)
 }
 
 static void
-tb_device_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+tb_device_get_property (GObject    *object,
+                        guint       prop_id,
+                        GValue     *value,
+                        GParamSpec *pspec)
 {
   TbDevice *dev = TB_DEVICE (object);
 
@@ -178,7 +181,10 @@ tb_device_get_property (GObject *object, guint prop_id, GValue *value, GParamSpe
 }
 
 static void
-tb_device_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+tb_device_set_property (GObject      *object,
+                        guint         prop_id,
+                        const GValue *value,
+                        GParamSpec   *pspec)
 {
   TbDevice *dev = TB_DEVICE (object);
 
@@ -240,45 +246,52 @@ tb_device_class_init (TbDeviceClass *klass)
   gobject_class->get_property = tb_device_get_property;
   gobject_class->set_property = tb_device_set_property;
 
-  device_props[PROP_UID] = g_param_spec_string ("uid",
-                                                NULL,
-                                                NULL,
-                                                NULL,
-                                                G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NAME);
+  device_props[PROP_UID] =
+    g_param_spec_string ("uid",
+                         NULL, NULL,
+                         NULL,
+                         G_PARAM_READWRITE      |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_NAME);
 
-  device_props[PROP_ID] = g_param_spec_uint ("device-id",
-                                             NULL,
-                                             NULL,
-                                             0,
-                                             G_MAXUINT16,
-                                             0,
-                                             G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NAME);
+  device_props[PROP_ID] =
+    g_param_spec_uint ("device-id",
+                       NULL, NULL,
+                       0, G_MAXUINT16, 0,
+                       G_PARAM_READWRITE      |
+                       G_PARAM_CONSTRUCT_ONLY |
+                       G_PARAM_STATIC_NAME);
 
   device_props[PROP_NAME] =
     g_param_spec_string ("device-name",
-                         NULL,
-                         NULL,
+                         NULL, NULL,
                          "",
-                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NAME);
+                         G_PARAM_READWRITE      |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_NAME);
 
   device_props[PROP_VENDOR_ID] =
     g_param_spec_uint ("vendor-id",
-                       NULL,
-                       NULL,
-                       0,
-                       G_MAXUINT16,
-                       0,
-                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NAME);
+                       NULL, NULL,
+                       0, G_MAXUINT16, 0,
+                       G_PARAM_READWRITE      |
+                       G_PARAM_CONSTRUCT_ONLY |
+                       G_PARAM_STATIC_NAME);
 
   device_props[PROP_VENDOR_NAME] =
     g_param_spec_string ("vendor-name",
-                         NULL,
-                         NULL,
+                         NULL, NULL,
                          "",
-                         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NAME);
+                         G_PARAM_READWRITE      |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_NAME);
 
   device_props[PROP_SYSFS] =
-    g_param_spec_string ("sysfs", NULL, NULL, "", G_PARAM_READWRITE | G_PARAM_STATIC_NAME);
+    g_param_spec_string ("sysfs",
+                         NULL, NULL,
+                         "",
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_NAME);
 
   device_props[PROP_AUTHORIZED] =
     g_param_spec_enum ("authorized",
@@ -289,16 +302,23 @@ tb_device_class_init (TbDeviceClass *klass)
                        G_PARAM_STATIC_NAME);
 
   device_props[PROP_KNOWN] =
-    g_param_spec_boolean ("known", NULL, NULL, FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_NAME);
+    g_param_spec_boolean ("known",
+                          NULL, NULL,
+                          FALSE,
+                          G_PARAM_READWRITE |
+                          G_PARAM_STATIC_NAME);
 
-  device_props[PROP_POLICY] = g_param_spec_enum ("policy",
-                                                 NULL,
-                                                 NULL,
-                                                 TB_TYPE_POLICY,
-                                                 TB_POLICY_UNKNOWN,
-                                                 G_PARAM_READWRITE | G_PARAM_STATIC_NAME);
+  device_props[PROP_POLICY] =
+    g_param_spec_enum ("policy",
+                       NULL, NULL,
+                       TB_TYPE_POLICY,
+                       TB_POLICY_UNKNOWN,
+                       G_PARAM_READWRITE |
+                       G_PARAM_STATIC_NAME);
 
-  g_object_class_install_properties (gobject_class, PROP_DEVICE_LAST, device_props);
+  g_object_class_install_properties (gobject_class,
+                                     PROP_DEVICE_LAST,
+                                     device_props);
 }
 
 const char *

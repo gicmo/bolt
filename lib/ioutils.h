@@ -20,7 +20,7 @@
 
 
 #ifndef __TB_IOUTILS_H__
-#define __TB_IOTUILS_H__
+#define __TB_IOUTILS_H__
 
 #include <glib.h>
 
@@ -28,39 +28,36 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-G_BEGIN_DECLS G_DEFINE_AUTOPTR_CLEANUP_FUNC (DIR, closedir);
+G_BEGIN_DECLS
 
-int tb_open (const char *path,
-             int         flags,
-             GError    **error);
 
-gboolean tb_close (int      fd,
-                   GError **error);
+  G_DEFINE_AUTOPTR_CLEANUP_FUNC (DIR, closedir);
 
-gboolean tb_write_char (int      fd,
-                        char     data,
-                        GError **error);
-
-ssize_t tb_read_all (int      fd,
-                     void    *buffer,
-                     gsize    nbyte,
-                     GError **error);
-
-DIR *tb_opendir (const char *path,
-                 GError    **error);
-
-int tb_openat (DIR       * d,
-               const char *path,
-               int         oflag,
-               GError    **error);
-DIR *tb_opendirat (DIR       * d,
-                   const char *name,
-                   int         oflag,
-                   GError    **error);
-
-gboolean tb_verify_uid (int         fd,
-                        const char *uid,
+int            tb_open (const char *path,
+                        int         flags,
                         GError    **error);
+gboolean       tb_close (int      fd,
+                         GError **error);
+gboolean       tb_write_char (int      fd,
+                              char     data,
+                              GError **error);
+ssize_t        tb_read_all (int      fd,
+                            void    *buffer,
+                            gsize    nbyte,
+                            GError **error);
+DIR           *tb_opendir (const char *path,
+                           GError    **error);
+int            tb_openat (DIR        *d,
+                          const char *path,
+                          int         oflag,
+                          GError    **error);
+DIR           *tb_opendirat (DIR        *d,
+                             const char *name,
+                             int         oflag,
+                             GError    **error);
+gboolean       tb_verify_uid (int         fd,
+                              const char *uid,
+                              GError    **error);
 
 G_END_DECLS
 #endif

@@ -36,7 +36,9 @@ tb_open (const char *path, int flags, GError **error)
   if (fd < 0)
     {
       gint code = g_io_error_from_errno (errno);
-      g_set_error (error, G_IO_ERROR, code, "Could not open '%s': %s", path, g_strerror (errno));
+      g_set_error (error, G_IO_ERROR, code,
+                   "Could not open '%s': %s",
+                   path, g_strerror (errno));
       return -1;
     }
 
@@ -53,7 +55,10 @@ tb_close (int fd, GError **error)
   if (r == 0)
     return TRUE;
 
-  g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno), "Could not close file: %s", g_strerror (errno));
+  g_set_error (error, G_IO_ERROR,
+               g_io_error_from_errno (errno),
+               "Could not close file: %s",
+               g_strerror (errno));
 
   return FALSE;
 }
@@ -87,8 +92,7 @@ tb_opendir (const char *path, GError **error)
 {
   DIR *d = NULL;
 
-  d      = opendir (path);
-
+  d = opendir (path);
   if (d == NULL)
     {
       g_set_error (error,
@@ -136,7 +140,7 @@ tb_opendirat (DIR *d, const char *name, int oflag, GError **error)
 
   cd = fdopendir (fd);
   if (cd == NULL)
-    close (fd);
+    (void) close (fd);
 
   return cd;
 }
@@ -155,23 +159,23 @@ retry:
       if (errno == EINTR)
         goto retry;
 
-      g_set_error_literal (error, G_IO_ERROR, g_io_error_from_errno (errno), "Could not read from file");
+      g_set_error_literal (error, G_IO_ERROR,
+                           g_io_error_from_errno (errno),
+                           "Could not read from file");
       return FALSE;
     }
   else if (len != (gsize) n)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Could not read full uid from file");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                           "Could not read full uid from file");
       return FALSE;
     }
 
   if (memcmp (buffer, uid, len))
     {
-      g_set_error (error,
-                   G_IO_ERROR,
-                   G_IO_ERROR_FAILED,
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "unique id verification failed [%s != %s]",
-                   buffer,
-                   uid);
+                   buffer, uid);
       return FALSE;
     }
 
@@ -195,8 +199,7 @@ tb_read_all (int fd, void *buffer, gsize nbyte, GError **error)
           if (errsv == EINTR)
             continue;
 
-          g_set_error (error,
-                       G_IO_ERROR,
+          g_set_error (error, G_IO_ERROR,
                        g_io_error_from_errno (errsv),
                        "input error while reading: %s",
                        g_strerror (errsv));

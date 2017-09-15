@@ -33,40 +33,31 @@ G_DECLARE_FINAL_TYPE (TbStore, tb_store, TB, STORE, GObject);
 #define TB_KEY_BYTES 32
 #define TB_KEY_CHARS 64
 
-TbStore *tb_store_new (const char *path);
-
-gboolean tb_store_have (TbStore    *store,
-                        const char *uid);
-
-gboolean tb_store_put (TbStore  *store,
-                       TbDevice *device,
-                       GError  **error);
-
-int tb_store_create_key (TbStore  *store,
-                         TbDevice *device,
-                         GError  **error);
-
-gint tb_store_open_key (TbStore    *store,
-                        const char *uid,
-                        GError    **error);
-
-gboolean tb_store_have_key (TbStore    *store,
+TbStore     *tb_store_new (const char *path);
+gboolean     tb_store_have (TbStore    *store,
                             const char *uid);
-
-gboolean tb_store_merge (TbStore  *store,
-                         TbDevice *dev,
-                         GError  **error);
-
-TbDevice *tb_store_get (TbStore    *store,
-                        const char *uid,
-                        GError    **error);
-
-gboolean tb_store_delete (TbStore    *store,
-                          const char *uid,
-                          GError    **error);
-
-GStrv tb_store_list_ids (TbStore *store,
-                         GError **error);
+gboolean     tb_store_put (TbStore  *store,
+                           TbDevice *device,
+                           GError  **error);
+int          tb_store_create_key (TbStore  *store,
+                                  TbDevice *device,
+                                  GError  **error);
+gint         tb_store_open_key (TbStore    *store,
+                                const char *uid,
+                                GError    **error);
+gboolean     tb_store_have_key (TbStore    *store,
+                                const char *uid);
+gboolean     tb_store_merge (TbStore  *store,
+                             TbDevice *dev,
+                             GError  **error);
+TbDevice    *tb_store_get (TbStore    *store,
+                           const char *uid,
+                           GError    **error);
+gboolean     tb_store_delete (TbStore    *store,
+                              const char *uid,
+                              GError    **error);
+GStrv        tb_store_list_ids (TbStore *store,
+                                GError **error);
 
 G_END_DECLS
 #endif /* TB_STORE_H */

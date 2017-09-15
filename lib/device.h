@@ -62,19 +62,19 @@ typedef enum {
   TB_POLICY_AUTO = 1
 } TbPolicy;
 
-char *tb_policy_to_string (TbPolicy policy);
-TbPolicy tb_policy_from_string (const char *str);
+char       *tb_policy_to_string (TbPolicy policy);
+TbPolicy    tb_policy_from_string (const char *str);
 
 const char *tb_device_get_uid (const TbDevice *device);
 const char *tb_device_get_name (const TbDevice *device);
-guint tb_device_get_device_id (const TbDevice *device);
+guint       tb_device_get_device_id (const TbDevice *device);
 const char *tb_device_get_vendor_name (const TbDevice *device);
-guint tb_device_get_vendor_id (const TbDevice *device);
+guint       tb_device_get_vendor_id (const TbDevice *device);
 const char *tb_device_get_sysfs_path (const TbDevice *device);
-TbAuth tb_device_get_authorized (const TbDevice *device);
-gboolean tb_device_in_store (const TbDevice *device);
-TbPolicy tb_device_get_policy (const TbDevice *device);
-GFile *tb_device_get_sysfs_keyfile (const TbDevice *device);
+TbAuthLevel tb_device_get_authorized (const TbDevice *device);
+gboolean    tb_device_in_store (const TbDevice *device);
+TbPolicy    tb_device_get_policy (const TbDevice *device);
+GFile *     tb_device_get_sysfs_keyfile (const TbDevice *device);
 
 G_END_DECLS
 #endif /* TB_DEVICE_H */

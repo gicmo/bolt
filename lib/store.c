@@ -73,7 +73,10 @@ tb_store_finalize (GObject *object)
 }
 
 static void
-tb_store_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+tb_store_get_property (GObject    *object,
+                       guint       prop_id,
+                       GValue     *value,
+                       GParamSpec *pspec)
 {
   TbStore *dev = TB_STORE (object);
 
@@ -89,7 +92,10 @@ tb_store_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec
 }
 
 static void
-tb_store_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+tb_store_set_property (GObject      *object,
+                       guint         prop_id,
+                       const GValue *value,
+                       GParamSpec   *pspec)
 {
   TbStore *dev = TB_STORE (object);
 
@@ -110,7 +116,7 @@ tb_store_constructed (GObject *obj)
   TbStore *store = TB_STORE (obj);
 
   store->devices = g_file_get_child (store->root, "devices");
-  store->keys    = g_file_get_child (store->root, "keys");
+  store->keys = g_file_get_child (store->root, "keys");
 }
 
 static void
@@ -129,13 +135,17 @@ tb_store_class_init (TbStoreClass *klass)
   gobject_class->set_property = tb_store_set_property;
   gobject_class->constructed  = tb_store_constructed;
 
-  props[PROP_ROOT] = g_param_spec_object ("root",
-                                          NULL,
-                                          NULL,
-                                          G_TYPE_FILE,
-                                          G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_NAME);
+  props[PROP_ROOT] =
+    g_param_spec_object ("root",
+                         NULL, NULL,
+                         G_TYPE_FILE,
+                         G_PARAM_READWRITE      |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_NAME);
 
-  g_object_class_install_properties (gobject_class, PROP_LAST, props);
+  g_object_class_install_properties (gobject_class,
+                                     PROP_LAST,
+                                     props);
 }
 
 TbStore *
@@ -144,7 +154,9 @@ tb_store_new (const char *path)
   g_autoptr(GFile) root = g_file_new_for_path (path);
   TbStore *store;
 
-  store = g_object_new (TB_TYPE_STORE, "root", root, NULL);
+  store = g_object_new (TB_TYPE_STORE,
+                        "root", root,
+                        NULL);
 
   return store;
 }
@@ -193,11 +205,8 @@ tb_store_put (TbStore *store, TbDevice *device, GError **error)
   kf = g_key_file_new ();
 
   g_key_file_set_string (kf, DEVICE_GROUP, "name", tb_device_get_name (device));
-
   g_key_file_set_uint64 (kf, DEVICE_GROUP, "id", tb_device_get_device_id (device));
-
   g_key_file_set_string (kf, DEVICE_GROUP, "vendor-name", tb_device_get_vendor_name (device));
-
   g_key_file_set_uint64 (kf, DEVICE_GROUP, "vendor-id", tb_device_get_vendor_id (device));
 
   policy = tb_device_get_policy (device);
@@ -215,7 +224,12 @@ tb_store_put (TbStore *store, TbDevice *device, GError **error)
 
   entry = g_file_get_child (store->devices, uid);
 
-  ok = g_file_replace_contents (entry, data, len, NULL, FALSE, 0, NULL, NULL, error);
+  ok = g_file_replace_contents (entry,
+                                data, len,
+                                NULL, FALSE,
+                                0,
+                                NULL,
+                                NULL, error);
 
   return ok;
 }
@@ -238,7 +252,6 @@ load_device_data (TbStore *store, const char *uid, GError **error)
     return NULL;
 
   kf = g_key_file_new ();
-
   ok = g_key_file_load_from_data (kf, data, len, G_KEY_FILE_NONE, error);
 
   if (!ok)
@@ -254,14 +267,17 @@ load_user_data (TbDevice *dev, GKeyFile *kf)
 
   policy = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
 
-  g_object_set (dev, "policy", tb_policy_from_string (policy), "known", TRUE, NULL);
+  g_object_set (dev,
+                "policy", tb_policy_from_string (policy),
+                "known", TRUE,
+                NULL);
 }
 
 gboolean
 tb_store_merge (TbStore *store, TbDevice *dev, GError **error)
 {
   g_autoptr(GKeyFile) kf = NULL;
-  const char *uid        = NULL;
+  const char *uid = NULL;
 
   g_return_val_if_fail (store != NULL, FALSE);
   g_return_val_if_fail (dev != NULL, FALSE);
@@ -302,38 +318,27 @@ tb_store_get (TbStore *store, const char *uid, GError **error)
   g_assert (vendor_name);
 
   return g_object_new (TB_TYPE_DEVICE,
-                       "uid",
-                       uid,
-                       "device-name",
-                       device_name,
-                       "device-id",
-                       (guint) device_id,
-                       "vendor-name",
-                       vendor_name,
-                       "vendor-id",
-                       (guint) vendor_id,
-                       "policy",
-                       tb_policy_from_string (policy),
-                       "known",
-                       TRUE,
+                       "uid", uid,
+                       "device-name", device_name,
+                       "device-id", (guint) device_id,
+                       "vendor-name", vendor_name,
+                       "vendor-id", (guint) vendor_id,
+                       "policy", tb_policy_from_string (policy),
+                       "known", TRUE,
                        NULL);
 }
 
 int
 tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
 {
-  g_autoptr(GError) err                = NULL;
-  g_autoptr(GFile) keyfile             = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GFile) keyfile = NULL;
   g_autoptr(GFileOutputStream) ostream = NULL;
-  g_autoptr(GFile) urnd                = NULL;
+  g_autoptr(GFile) urnd = NULL;
   g_autoptr(GFileInputStream) istream  = NULL;
-  g_autoptr(GOutputStream) os          = NULL;
-  guint8 buffer[TB_KEY_BYTES]          = {
-    0,
-  };
-  char pathbuf[1024] = {
-    0,
-  };
+  g_autoptr(GOutputStream) os = NULL;
+  guint8 buffer[TB_KEY_BYTES] = { 0, };
+  char pathbuf[1024] = { 0, };
   const char *uid;
   gboolean ok;
   gsize i, n = 0;
@@ -342,7 +347,7 @@ tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
   g_return_val_if_fail (store != NULL, -1);
   g_return_val_if_fail (device != NULL, -1);
 
-  uid     = tb_device_get_uid (device);
+  uid = tb_device_get_uid (device);
   keyfile = g_file_get_child (store->keys, uid);
 
   ok = g_file_make_directory_with_parents (store->keys, NULL, &err);
@@ -353,21 +358,25 @@ tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
       return -1;
     }
 
-  ostream = g_file_replace (keyfile, NULL, FALSE, G_FILE_CREATE_PRIVATE, NULL, error);
+  ostream = g_file_replace (keyfile,
+                            NULL, FALSE,
+                            G_FILE_CREATE_PRIVATE,
+                            NULL, error);
 
   if (ostream == NULL)
     return -1;
 
   os = g_buffered_output_stream_new (G_OUTPUT_STREAM (ostream));
-
   urnd = g_file_new_for_path ("/dev/urandom");
-
   istream = g_file_read (urnd, NULL, error);
 
   if (istream == NULL)
     return -1;
 
-  ok = g_input_stream_read_all (G_INPUT_STREAM (istream), buffer, sizeof (buffer), &n, NULL, error);
+  ok = g_input_stream_read_all (G_INPUT_STREAM (istream),
+                                buffer, sizeof (buffer),
+                                &n,
+                                NULL, error);
   if (!ok)
     return -1;
 
@@ -379,7 +388,9 @@ tb_store_create_key (TbStore *store, TbDevice *device, GError **error)
       count = g_snprintf (buf, sizeof (buf), "%02hhx", buffer[i]);
       if (count != 2)
         {
-          g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "could not format key data");
+          g_set_error_literal (error,
+                               G_IO_ERROR, G_IO_ERROR_FAILED,
+                               "could not format key data");
           ok = FALSE;
           break;
         }
@@ -461,10 +472,10 @@ tb_store_list_ids (TbStore *store, GError **error)
 gboolean
 tb_store_delete (TbStore *store, const char *uid, GError **error)
 {
-  g_autoptr(GFile) data      = NULL;
-  g_autoptr(GFile) key       = NULL;
+  g_autoptr(GFile) data = NULL;
+  g_autoptr(GFile) key = NULL;
   g_autoptr(GError) err_data = NULL;
-  g_autoptr(GError) err_key  = NULL;
+  g_autoptr(GError) err_key = NULL;
   gboolean ok_data;
   gboolean ok_key;
 

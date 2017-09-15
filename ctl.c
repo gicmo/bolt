@@ -34,24 +34,20 @@
 static void
 device_added_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
 {
-  const char *uid             = tb_device_get_uid (dev);
-  const char *name            = tb_device_get_name (dev);
-  const char *vendor          = tb_device_get_vendor_name (dev);
-  TbAuthLevel authorized      = tb_device_get_authorized (dev);
-  gboolean in_store           = tb_device_in_store (dev);
-  TbPolicy policy             = tb_device_get_policy (dev);
+  const char *uid = tb_device_get_uid (dev);
+  const char *name = tb_device_get_name (dev);
+  const char *vendor = tb_device_get_vendor_name (dev);
+  TbAuthLevel authorized = tb_device_get_authorized (dev);
+  gboolean in_store = tb_device_in_store (dev);
+  TbPolicy policy = tb_device_get_policy (dev);
   g_autofree char *policy_str = tb_policy_to_string (policy);
   GTimeVal now;
 
   g_get_current_time (&now);
 
   g_print ("%ld.%ld A: %s, %s, %s, %d, %s, %s\n",
-           now.tv_sec,
-           now.tv_usec,
-           uid,
-           name,
-           vendor,
-           authorized,
+           now.tv_sec, now.tv_usec,
+           uid, name, vendor, authorized,
            in_store ? "yes" : "no",
            policy_str);
 }
@@ -59,7 +55,7 @@ device_added_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
 static void
 device_removed_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
 {
-  const char *uid  = tb_device_get_uid (dev);
+  const char *uid = tb_device_get_uid (dev);
   const char *name = tb_device_get_name (dev);
   GTimeVal now;
 
@@ -71,19 +67,16 @@ device_removed_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
 static void
 device_changed_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
 {
-  const char *uid   = tb_device_get_uid (dev);
-  const char *name  = tb_device_get_name (dev);
-  TbAuthLevel al    = tb_device_get_authorized (dev);
+  const char *uid = tb_device_get_uid (dev);
+  const char *name = tb_device_get_name (dev);
+  TbAuthLevel al = tb_device_get_authorized (dev);
   gboolean in_store = tb_device_in_store (dev);
   GTimeVal now;
 
   g_get_current_time (&now);
   g_print ("%ld.%ld C: %s, %s, %d, %s \n",
-           now.tv_sec,
-           now.tv_usec,
-           uid,
-           name,
-           al,
+           now.tv_sec, now.tv_usec,
+           uid, name, al,
            in_store ? "yes" : "no");
 }
 
@@ -98,18 +91,19 @@ monitor (TbManager *mgr)
 
   loop = g_main_loop_new (NULL, FALSE);
   g_main_loop_run (loop);
+
   return 0;
 }
 
 static void
 device_print (TbManager *mgr, TbDevice *dev)
 {
-  const char *uid        = tb_device_get_uid (dev);
-  const char *name       = tb_device_get_name (dev);
-  const char *vendor     = tb_device_get_vendor_name (dev);
+  const char *uid = tb_device_get_uid (dev);
+  const char *name = tb_device_get_name (dev);
+  const char *vendor = tb_device_get_vendor_name (dev);
   TbAuthLevel authorized = tb_device_get_authorized (dev);
   gboolean is_authorized = authorized > TB_AUTH_LEVEL_UNAUTHORIZED;
-  gboolean in_store      = tb_device_in_store (dev);
+  gboolean in_store = tb_device_in_store (dev);
 
   g_print ("\033[1;%dm●\033[0m %s\n", is_authorized ? 32 : 31, name);
   g_print ("  ├─ vendor:     %s\n", vendor);
@@ -118,9 +112,9 @@ device_print (TbManager *mgr, TbDevice *dev)
   g_print ("  └─ in store:   %s\n", in_store ? "yes" : "no");
   if (in_store)
     {
-      TbPolicy policy             = tb_device_get_policy (dev);
+      TbPolicy policy = tb_device_get_policy (dev);
       g_autofree char *policy_str = tb_policy_to_string (policy);
-      gboolean havekey            = tb_manager_have_key (mgr, dev);
+      gboolean havekey = tb_manager_have_key (mgr, dev);
 
       g_print ("      └─ policy: %s\n", policy_str);
       g_print ("      └─ key:    %s\n", havekey ? "yes" : "no");
@@ -153,14 +147,19 @@ typedef struct Cmd
   subcommand_t fn;
 } Cmd;
 
-static Cmd subcommands[] = {{"list", list_devices_attached}, {"monitor", monitor}, {NULL, NULL}};
+static Cmd subcommands[] = {
+  {"list",         list_devices_attached},
+  {"monitor",      monitor},
+  {NULL,           NULL}
+};
 
 int
 main (int argc, char **argv)
 {
-  g_autoptr(GError) error          = NULL;
-  g_autoptr(TbManager) mgr         = NULL;
   g_autoptr(GOptionContext) optctx = NULL;
+  g_autoptr(TbManager) mgr = NULL;
+  g_autoptr(GError) error = NULL;
+
   Cmd *cmd;
 
   setlocale (LC_ALL, "");

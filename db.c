@@ -38,10 +38,10 @@
 static void
 print_device (TbDevice *dev)
 {
-  const char *uid             = tb_device_get_uid (dev);
-  const char *name            = tb_device_get_name (dev);
-  const char *vendor          = tb_device_get_vendor_name (dev);
-  TbPolicy policy             = tb_device_get_policy (dev);
+  const char *uid = tb_device_get_uid (dev);
+  const char *name = tb_device_get_name (dev);
+  const char *vendor = tb_device_get_vendor_name (dev);
+  TbPolicy policy = tb_device_get_policy (dev);
   g_autofree char *policy_str = tb_policy_to_string (policy);
 
   g_print ("%s\n", name);
@@ -155,17 +155,17 @@ set (TbStore *store, int argc, char **argv)
   if (argc > 3)
     {
       fields = argv + 3;
-      n      = argc - 3;
+      n = argc - 3;
     }
   else
     {
       fields = known_fields;
-      n      = G_N_ELEMENTS (known_fields);
+      n = G_N_ELEMENTS (known_fields);
     }
 
   for (i = 0; i < n; i++)
     {
-      const char *field   = fields[i];
+      const char *field = fields[i];
       g_auto(GStrv) split = g_strsplit (field, "=", 2);
       const char *key, *value;
       if (g_strv_length (split) != 2)
@@ -218,10 +218,10 @@ rm (TbStore *store, int argc, char **argv)
 int
 main (int argc, char **argv)
 {
-  g_autoptr(GError) error          = NULL;
-  g_autoptr(TbStore) store         = NULL;
+  g_autoptr(GError) error = NULL;
+  g_autoptr(TbStore) store = NULL;
   g_autoptr(GOptionContext) optctx = NULL;
-  g_autoptr(GFile) root            = NULL;
+  g_autoptr(GFile) root = NULL;
   const char *cmd;
   int res = EXIT_FAILURE;
 
