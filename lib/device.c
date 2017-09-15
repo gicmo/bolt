@@ -76,8 +76,8 @@ struct _TbDevice
   char *device_name;
 
   /* current status (udev) */
-  char  *sysfs;
-  TbAuth authorized;
+  char       *sysfs;
+  TbAuthLevel authorized;
 
   /* db */
   gboolean known;
@@ -280,12 +280,13 @@ tb_device_class_init (TbDeviceClass *klass)
   device_props[PROP_SYSFS] =
     g_param_spec_string ("sysfs", NULL, NULL, "", G_PARAM_READWRITE | G_PARAM_STATIC_NAME);
 
-  device_props[PROP_AUTHORIZED] = g_param_spec_enum ("authorized",
-                                                     NULL,
-                                                     NULL,
-                                                     TB_TYPE_AUTH,
-                                                     TB_AUTH_UNKNOWN,
-                                                     G_PARAM_READWRITE | G_PARAM_STATIC_NAME);
+  device_props[PROP_AUTHORIZED] =
+    g_param_spec_enum ("authorized",
+                       NULL, NULL,
+                       TB_TYPE_AUTH_LEVEL,
+                       TB_AUTH_LEVEL_UNKNOWN,
+                       G_PARAM_READWRITE |
+                       G_PARAM_STATIC_NAME);
 
   device_props[PROP_KNOWN] =
     g_param_spec_boolean ("known", NULL, NULL, FALSE, G_PARAM_READWRITE | G_PARAM_STATIC_NAME);

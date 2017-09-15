@@ -33,20 +33,20 @@ G_DECLARE_FINAL_TYPE (TbDevice, tb_device, TB, DEVICE, GObject);
 
 /**
  * TbAuth:
- * @TB_AUTH_UNKNOWN      : Current authorization not known
- * @TB_AUTH_UNAUTHORIZED : Device is not authorized
- * @TB_AUTH_AUTHORIZED   : Device is authorized and connected
- * @TB_AUTH_SECURED      : Device is authorized via key exchange
+ * @TB_AUTH_LEVEL_UNKNOWN      : Current authorization not known
+ * @TB_AUTH_LEVEL_UNAUTHORIZED : Device is not authorized
+ * @TB_AUTH_LEVEL_AUTHORIZED   : Device is authorized and connected
+ * @TB_AUTH_LEVEL_SECURED      : Device is authorized via key exchange
 
  * The current authorization status of the device.
  */
 typedef enum {
 
-  TB_AUTH_UNKNOWN = -1,
-  TB_AUTH_UNAUTHORIZED = 0,
-  TB_AUTH_AUTHORIZED = 1,
-  TB_AUTH_SECURED = 2
-} TbAuth;
+  TB_AUTH_LEVEL_UNKNOWN = -1,
+  TB_AUTH_LEVEL_UNAUTHORIZED = 0,
+  TB_AUTH_LEVEL_AUTHORIZED = 1,
+  TB_AUTH_LEVEL_SECURED = 2
+} TbAuthLevel;
 
 /**
  * TbPolicy:

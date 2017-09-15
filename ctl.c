@@ -37,7 +37,7 @@ device_added_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
   const char *uid             = tb_device_get_uid (dev);
   const char *name            = tb_device_get_name (dev);
   const char *vendor          = tb_device_get_vendor_name (dev);
-  TbAuth authorized           = tb_device_get_authorized (dev);
+  TbAuthLevel authorized      = tb_device_get_authorized (dev);
   gboolean in_store           = tb_device_in_store (dev);
   TbPolicy policy             = tb_device_get_policy (dev);
   g_autofree char *policy_str = tb_policy_to_string (policy);
@@ -73,7 +73,7 @@ device_changed_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
 {
   const char *uid   = tb_device_get_uid (dev);
   const char *name  = tb_device_get_name (dev);
-  TbAuth authorized = tb_device_get_authorized (dev);
+  TbAuthLevel al    = tb_device_get_authorized (dev);
   gboolean in_store = tb_device_in_store (dev);
   GTimeVal now;
 
@@ -83,7 +83,7 @@ device_changed_cb (TbManager *mgr, TbDevice *dev, gpointer user_data)
            now.tv_usec,
            uid,
            name,
-           authorized,
+           al,
            in_store ? "yes" : "no");
 }
 
@@ -107,8 +107,8 @@ device_print (TbManager *mgr, TbDevice *dev)
   const char *uid        = tb_device_get_uid (dev);
   const char *name       = tb_device_get_name (dev);
   const char *vendor     = tb_device_get_vendor_name (dev);
-  TbAuth authorized      = tb_device_get_authorized (dev);
-  gboolean is_authorized = authorized > 0;
+  TbAuthLevel authorized = tb_device_get_authorized (dev);
+  gboolean is_authorized = authorized > TB_AUTH_LEVEL_UNAUTHORIZED;
   gboolean in_store      = tb_device_in_store (dev);
 
   g_print ("\033[1;%dm●\033[0m %s\n", is_authorized ? 32 : 31, name);

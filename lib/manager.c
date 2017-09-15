@@ -301,13 +301,13 @@ udev_device_get_sysfs_attr_int (struct udev_device *device, const char *attr)
 static void
 device_update_from_udev (TbManager *mgr, TbDevice *dev, struct udev_device *device)
 {
-  TbAuth old;
+  TbAuthLevel old;
   int authorized;
 
   authorized = udev_device_get_sysfs_attr_int (device, "authorized");
 
   if (authorized < -1 || authorized > 2)
-    authorized = TB_AUTH_UNKNOWN;
+    authorized = TB_AUTH_LEVEL_UNKNOWN;
 
   old = tb_device_get_authorized (dev);
 
@@ -344,7 +344,7 @@ manager_devices_add_from_udev (TbManager *mgr, struct udev_device *device)
   authorized  = udev_device_get_sysfs_attr_int (device, "authorized");
 
   if (authorized < -1 || authorized > 2)
-    authorized = TB_AUTH_UNKNOWN;
+    authorized = TB_AUTH_LEVEL_UNKNOWN;
 
   dev = g_object_new (TB_TYPE_DEVICE,
                       "uid",
@@ -490,7 +490,7 @@ manager_uevent_udev_cb (GIOChannel *source, GIOCondition condition, gpointer use
 
       g_signal_emit (mgr, signals[SIGNAL_DEVICE_REMOVED], 0, dev);
 
-      g_object_set (dev, "authorized", TB_AUTH_UNKNOWN, "sysfs", NULL, NULL);
+      g_object_set (dev, "authorized", TB_AUTH_LEVEL_UNKNOWN, "sysfs", NULL, NULL);
 
       g_ptr_array_remove_fast (mgr->devices, dev);
     }
