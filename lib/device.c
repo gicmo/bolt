@@ -91,27 +91,27 @@ struct _TbDeviceClass
   gpointer     padding[13];
 };
 
-enum { PROP_DEVICE_0,
+enum {
+  PROP_DEVICE_0,
 
-       PROP_UID,
+  PROP_UID,
 
-       PROP_ID,
-       PROP_NAME,
+  PROP_ID,
+  PROP_NAME,
 
-       PROP_VENDOR_ID,
-       PROP_VENDOR_NAME,
+  PROP_VENDOR_ID,
+  PROP_VENDOR_NAME,
 
-       PROP_SYSFS,
-       PROP_AUTHORIZED,
+  PROP_SYSFS,
+  PROP_AUTHORIZED,
 
-       PROP_KNOWN,
-       PROP_POLICY,
+  PROP_KNOWN,
+  PROP_POLICY,
 
-       PROP_DEVICE_LAST};
-
-static GParamSpec *device_props[PROP_DEVICE_LAST] = {
-  NULL,
+  PROP_DEVICE_LAST
 };
+
+static GParamSpec *device_props[PROP_DEVICE_LAST] = { NULL, };
 
 G_DEFINE_TYPE (TbDevice, tb_device, G_TYPE_OBJECT);
 
@@ -232,8 +232,9 @@ tb_device_set_property (GObject      *object,
 }
 
 static void
-tb_device_init (TbDevice *mns)
+tb_device_init (TbDevice *dev)
 {
+
 }
 
 static void

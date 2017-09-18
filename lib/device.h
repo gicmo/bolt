@@ -23,11 +23,10 @@
 #define __TB_DEVICE_H__
 
 #include <glib-object.h>
-
-
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
+
 #define TB_TYPE_DEVICE tb_device_get_type ()
 G_DECLARE_FINAL_TYPE (TbDevice, tb_device, TB, DEVICE, GObject);
 
