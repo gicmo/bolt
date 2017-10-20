@@ -22,7 +22,9 @@
 
 #include "bolt-device.h"
 #include "bolt-error.h"
+#include "bolt-io.h"
 
+#include <dirent.h>
 #include <libudev.h>
 
 struct _BoltDevice
@@ -35,6 +37,7 @@ struct _BoltDevice
 
   /* when device is attached */
   char *syspath;
+  DIR  *devdir;
 };
 
 
@@ -63,6 +66,9 @@ bolt_device_finalize (GObject *object)
   g_free (dev->name);
   g_free (dev->vendor);
   g_free (dev->syspath);
+
+  if (dev->devdir)
+    closedir (dev->devdir);
 
   G_OBJECT_CLASS (bolt_device_parent_class)->finalize (object);
 }
@@ -163,6 +169,22 @@ bolt_device_class_init (BoltDeviceClass *klass)
                                     "sysfs-path");
 
 }
+
+/* internal methods */
+
+static char *
+read_sysattr_name (int fd, const char *attr, GError **error)
+{
+  g_autofree char *s = NULL;
+  char *v;
+
+  s = g_strdup_printf ("%s_name", attr);
+
+  v = bolt_read_value_at (fd, s, NULL);
+  if (!v)
+    v = bolt_read_value_at (fd, attr, error);
+
+  return v;
 }
 
 /* public methods */
@@ -172,21 +194,43 @@ bolt_device_new_for_udev (BoltManager        *mgr,
                           struct udev_device *udev,
                           GError            **error)
 {
-  BoltDevice *dev;
-  const char *uid;
+  g_autofree char *uid = NULL;
+  g_autofree char *name = NULL;
+  g_autofree char *vendor = NULL;
 
-  uid = udev_device_get_sysattr_value (udev, "unique_id");
+  g_autoptr(DIR) devdir = NULL;
+  BoltDevice *dev;
+  const char *sysfs;
+  int fd;
+
+  sysfs = udev_device_get_syspath (udev);
+  devdir = bolt_opendir (sysfs, error);
+
+  if (devdir == NULL)
+    return NULL;
+
+  fd = dirfd (devdir);
+
+  uid = bolt_read_value_at (fd, "unique_id", error);
   if (uid == NULL)
-    {
-      g_set_error_literal (error,
-                           BOLT_ERROR, BOLT_ERROR_UDEV,
-                           "failed to read unique_id");
-      return NULL;
-    }
+    return NULL;
+
+  name = read_sysattr_name (fd, "device", error);
+  if (name == NULL)
+    return NULL;
+
+  vendor = read_sysattr_name (fd, "vendor", error);
+  if (vendor == NULL)
+    return NULL;
 
   dev = g_object_new (BOLT_TYPE_DEVICE,
-                      "uid", uid,
                       NULL);
+
+  dev->uid = g_steal_pointer (&uid);
+  dev->name = g_steal_pointer (&name);
+  dev->vendor = g_steal_pointer (&vendor);
+  dev->syspath = g_strdup (sysfs);
+  dev->devdir = g_steal_pointer (&devdir);
 
   return dev;
 }

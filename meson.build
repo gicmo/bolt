@@ -104,7 +104,8 @@ common_headers = [
 ]
 
 common_sources = [
-  'common/bolt-error.c'
+  'common/bolt-error.c',
+  'common/bolt-io.c'
 ]
 
 common_enums = gnome.mkenums_simple('common-enums',
