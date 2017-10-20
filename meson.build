@@ -1,6 +1,14 @@
-project('tbt', 'c')
+project('bolt',
+  'c',
+  version: '0.1',
+  license : 'LGPL-2.1+',
+  meson_version: '>= 0.42.0',
+  default_options: ['warning_level=1',
+                    'c_std=gnu99',
+                    'buildtype=debugoptimized'])
 
-# get suported warning flags
+
+# additional compiler warnings, if supported
 test_args = [
   '-fstack-protector-strong',
   '-Waggregate-return',
@@ -54,12 +62,10 @@ foreach arg: test_args
   endif
 endforeach
 
-libexecdir = join_paths(get_option('prefix'), get_option('libexecdir'))
-udevrulesdir = '/etc/udev/rules.d'
+
+# dependencies
 
 gnome = import('gnome')
-
-
 
 glib  = dependency('glib-2.0')
 gio   = dependency('gio-2.0')
@@ -67,51 +73,104 @@ unix  = dependency('gio-unix-2.0')
 udev  = dependency('libudev')
 umock = dependency('umockdev-1.0')
 
-tests = [
-  ['test_lib']
+
+# configuration & well known directories
+
+prefixdir = get_option('prefix')
+
+bindir = join_paths(prefixdir, get_option('bindir'))
+libexecdir = join_paths(prefixdir, get_option('libexecdir'))
+datadir = join_paths(prefixdir, get_option('datadir'))
+
+conf = configuration_data()
+conf.set_quoted('VERSION', meson.project_version())
+conf.set_quoted('PACKAGE_NAME', meson.project_name())
+conf.set_quoted('PACKAGE_VERSION', meson.project_version())
+conf.set_quoted('DATADIR', datadir)
+
+conf.set('_GNU_SOURCE', true)
+
+config_h = configure_file(output: 'config.h', configuration: conf)
+
+cargs = ['-DG_LOG_DOMAIN="Bolt"']
+
+
+# common static library
+#  contains code shared by daemon, command line tools
+common_deps = [glib, gio, udev, unix]
+
+common_headers = [
+  'common/bolt-error.h'
 ]
 
-subdir('lib')
+common_sources = [
+  'common/bolt-error.c'
+]
 
-executable('tbtctl',
-	   sources: [
-	     'ctl.c'
-	   ],
-	   dependencies: tbt,
-	   install: true)
+common_enums = gnome.mkenums_simple('common-enums',
+  sources: common_headers)
+
+gen_sources = [common_enums[0]]
+gen_headers = [common_enums[1]]
+
+common_lib = static_library('common',
+  sources: common_sources + gen_sources + gen_headers,
+  dependencies: common_deps,
+  include_directories: [
+    include_directories('.')
+])
+
+common = declare_dependency(
+  sources: gen_headers,
+  dependencies: common_deps,
+  link_with: common_lib,
+  include_directories: [
+    include_directories('common')
+])
 
 
-executable('tbtauth',
-	   sources: [
-	     'auth.c'
-	   ],
-	   dependencies: tbt,
-	   install: true,
-	   install_dir: libexecdir)
+# boltd - the main daemon
+daemon_sources = files([
+  'boltd/bolt-daemon.c',
+  'boltd/bolt-manager.c',
+  'boltd/bolt-device.c'
+])
 
-executable('tbtdb',
-	   sources: [
-	     'db.c'
-	   ],
-	   dependencies: tbt,
-	   install: true,
-	   install_dir: libexecdir)
+daemon_sources += gnome.gdbus_codegen('bolt-gdbus',
+  'dbus/org.freedesktop.Bolt.xml',
+  interface_prefix: 'org.freedesktop.Bolt1.',
+  namespace: 'BoltDBus')
 
-substs = configuration_data()
-substs.set('libexecdir', libexecdir)
+install_data(['dbus/org.freedesktop.Bolt.xml'],
+  install_dir : join_paths(datadir, 'dbus-1', 'interfaces')
+)
 
-gen = configure_file(input: 'tbt.rules.in',
-		     output: 'tbt.rules',
-		     configuration: substs)
 
-install_data(gen, install_dir: udevrulesdir)
+executable('boltd',
+  daemon_sources,
+  dependencies: [glib,
+                 gio,
+                 unix,
+                 udev,
+                 common],
+  c_args : [
+    cargs,
+  ],
+  install: true,
+  install_dir: libexecdir)
 
+
+# testing
+
+tests = [
+
+]
 
 foreach t: tests
   test_name = t.get(0)
   test_srcs = ['tests/@0@.c'.format(test_name), t.get(1, [])]
   e = executable(test_name, test_srcs,
-		 dependencies: [tbt, umock])
+		 dependencies: [common, umock])
 
   test_env = environment()
   test_env.prepend('LD_PRELOAD', 'libumockdev-preload.so.0')

@@ -1,0 +1,42 @@
+<!DOCTYPE node PUBLIC
+"-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/" xmlns:doc="http://www.freedesktop.org/dbus/1.0/doc.dtd">
+
+  <interface name="org.freedesktop.Bolt1.Manager">
+
+    <doc:doc>
+      <doc:description>
+        <doc:para>
+          Thunderbolt device management.
+        </doc:para>
+      </doc:description>
+    </doc:doc>
+
+    <property name="Version" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+        Version of the daemon.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+  </interface>
+
+  <interface name="org.freedesktop.Bolt1.Device">
+
+    <doc:doc>
+      <doc:description>
+        <doc:para>
+          Representation of a single Thunderbolt device.
+        </doc:para>
+      </doc:description>
+    </doc:doc>
+
+    <property name="Uid" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+        The unique-id of the device.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+  </interface>
+
+</node>
