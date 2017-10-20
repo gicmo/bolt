@@ -31,6 +31,8 @@ struct _BoltDevice
 {
   BoltDBusDeviceSkeleton object;
 
+  char                  *dbus_path;
+
   char                  *uid;
   char                  *name;
   char                  *vendor;
@@ -61,6 +63,8 @@ static void
 bolt_device_finalize (GObject *object)
 {
   BoltDevice *dev = BOLT_DEVICE (object);
+
+  g_free (dev->dbus_path);
 
   g_free (dev->uid);
   g_free (dev->name);
@@ -240,10 +244,11 @@ bolt_device_export (BoltDevice      *device,
                     GDBusConnection *connection,
                     GError         **error)
 {
-  g_autofree char *path = NULL;
+  const char *path;
 
-  path = g_strdup_printf ("/org/freedesktop/Bolt/devices/%s", device->uid);
-  g_strdelimit (path, "-", '_');
+  g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
+
+  path = bolt_device_get_object_path (device);
 
   g_debug ("Exporting device at: %s", path);
 
@@ -257,4 +262,22 @@ void
 bolt_device_unexport (BoltDevice *device)
 {
   g_dbus_interface_skeleton_unexport (G_DBUS_INTERFACE_SKELETON (device));
+}
+
+const char *
+bolt_device_get_object_path (BoltDevice *device)
+{
+  g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
+
+  if (device->dbus_path == NULL)
+    {
+      char *path = NULL;
+
+      path = g_strdup_printf ("/org/freedesktop/Bolt/devices/%s", device->uid);
+      g_strdelimit (path, "-", '_');
+
+      device->dbus_path = path;
+    }
+
+  return device->dbus_path;
 }
