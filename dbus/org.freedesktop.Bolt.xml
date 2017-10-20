@@ -37,6 +37,24 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="Name" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+	The name of the device.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+    <property name="Vendor" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+	The vendor of the device.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+    <property name="SysfsPath" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+	The sysfs path of the device, if it is connected.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
   </interface>
 
 </node>

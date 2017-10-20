@@ -30,6 +30,11 @@ struct _BoltDevice
   BoltDBusDeviceSkeleton object;
 
   char                  *uid;
+  char                  *name;
+  char                  *vendor;
+
+  /* when device is attached */
+  char *syspath;
 };
 
 
@@ -37,6 +42,9 @@ enum {
   PROP_0,
 
   PROP_UID,
+  PROP_NAME,
+  PROP_VENDOR,
+  PROP_SYSFS,
 
   PROP_LAST
 };
@@ -52,6 +60,9 @@ bolt_device_finalize (GObject *object)
   BoltDevice *dev = BOLT_DEVICE (object);
 
   g_free (dev->uid);
+  g_free (dev->name);
+  g_free (dev->vendor);
+  g_free (dev->syspath);
 
   G_OBJECT_CLASS (bolt_device_parent_class)->finalize (object);
 }
@@ -76,6 +87,18 @@ bolt_device_get_property (GObject    *object,
       g_value_set_string (value, dev->uid);
       break;
 
+    case PROP_NAME:
+      g_value_set_string (value, dev->name);
+      break;
+
+    case PROP_VENDOR:
+      g_value_set_string (value, dev->vendor);
+      break;
+
+    case PROP_SYSFS:
+      g_value_set_string (value, dev->syspath);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -93,6 +116,18 @@ bolt_device_set_property (GObject      *object,
     {
     case PROP_UID:
       dev->uid = g_value_dup_string (value);
+      break;
+
+    case PROP_NAME:
+      dev->vendor = g_value_dup_string (value);
+      break;
+
+    case PROP_VENDOR:
+      dev->name = g_value_dup_string (value);
+      break;
+
+    case PROP_SYSFS:
+      dev->syspath = g_value_dup_string (value);
       break;
 
     default:
@@ -114,6 +149,20 @@ bolt_device_class_init (BoltDeviceClass *klass)
   g_object_class_override_property (gobject_class,
                                     PROP_UID,
                                     "uid");
+
+  g_object_class_override_property (gobject_class,
+                                    PROP_NAME,
+                                    "name");
+
+  g_object_class_override_property (gobject_class,
+                                    PROP_VENDOR,
+                                    "vendor");
+
+  g_object_class_override_property (gobject_class,
+                                    PROP_SYSFS,
+                                    "sysfs-path");
+
+}
 }
 
 /* public methods */
