@@ -19,6 +19,20 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <method name="ListDevices">
+      <arg name="devices" direction="out" type="ao">
+        <doc:doc><doc:summary>An array of object paths for the devices.</doc:summary></doc:doc>
+      </arg>
+
+      <doc:doc>
+        <doc:description>
+          <doc:para>
+            List all known devices, i.e. connected or stored in the database.
+          </doc:para>
+        </doc:description>
+      </doc:doc>
+    </method>
+
   </interface>
 
   <interface name="org.freedesktop.Bolt1.Device">

@@ -40,6 +40,11 @@ static gboolean bolt_manager_initialize (GInitable    *initable,
                                          GCancellable *cancellable,
                                          GError      **error);
 
+/* dbus method calls */
+static gboolean handle_list_devices (BoltDBusManager       *object,
+                                     GDBusMethodInvocation *invocation,
+                                     gpointer               user_data);
+
 struct _BoltManager
 {
   BoltDBusManagerSkeleton object;
@@ -118,6 +123,8 @@ static void
 bolt_manager_init (BoltManager *mgr)
 {
   mgr->devices = g_ptr_array_new_with_free_func (g_object_unref);
+
+  g_signal_connect (mgr, "handle-list-devices", G_CALLBACK (handle_list_devices), NULL);
 }
 
 static void
@@ -335,6 +342,28 @@ bolt_manager_initialize (GInitable    *initable,
   return TRUE;
 }
 
+/* dbus methods */
+static gboolean
+handle_list_devices (BoltDBusManager       *obj,
+                     GDBusMethodInvocation *inv,
+                     gpointer               user_data)
+{
+  BoltManager *mgr = BOLT_MANAGER (obj);
+  const char **devs;
+
+  devs = g_newa (const char *, mgr->devices->len);
+
+  for (guint i = 0; i < mgr->devices->len; i++)
+    {
+      BoltDevice *d = g_ptr_array_index (mgr->devices, i);
+      devs[i] = bolt_device_get_object_path (d);
+    }
+
+  bolt_dbus_manager_complete_list_devices (obj, inv, devs);
+  return TRUE;
+}
+
+/* public methods */
 
 gboolean
 bolt_manager_export (BoltManager     *mgr,
