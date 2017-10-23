@@ -36,7 +36,7 @@ BoltDevice *      bolt_device_new_for_udev (BoltManager        *manager,
                                             GError            **error);
 
 
-gboolean          bolt_device_export (BoltDevice      *device,
+const char *      bolt_device_export (BoltDevice      *device,
                                       GDBusConnection *connection,
                                       GError         **error);
 

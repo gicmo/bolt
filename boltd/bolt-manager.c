@@ -419,7 +419,6 @@ handle_udev_device_added (BoltManager        *mgr,
   GDBusConnection *bus;
   BoltDevice *dev;
   const char *opath;
-  gboolean ok;
 
   dev = bolt_device_new_for_udev (mgr, udev, &err);
   if (dev == NULL)
@@ -435,14 +434,13 @@ handle_udev_device_added (BoltManager        *mgr,
   if (bus == NULL)
     return;
 
-  ok = bolt_device_export (dev, bus, &err);
-  if (!ok)
+  opath = bolt_device_export (dev, bus, &err);
+  if (opath == NULL)
     {
       g_warning ("Could not export device: %s", err->message);
       return;
     }
 
-  opath = bolt_device_get_object_path (dev);
   bolt_dbus_manager_emit_device_added (BOLT_DBUS_MANAGER (mgr), opath);
 }
 
@@ -521,10 +519,10 @@ bolt_manager_export (BoltManager     *mgr,
     {
       g_autoptr(GError) err  = NULL;
       BoltDevice *dev = g_ptr_array_index (mgr->devices, i);
-      gboolean ok;
+      const char *opath;
 
-      ok = bolt_device_export (dev, connection, error);
-      if (!ok)
+      opath = bolt_device_export (dev, connection, error);
+      if (opath == NULL)
         g_warning ("error exporting device: %s", err->message);
 
     }

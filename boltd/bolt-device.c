@@ -246,12 +246,13 @@ bolt_device_new_for_udev (BoltManager        *mgr,
   return dev;
 }
 
-gboolean
+const char *
 bolt_device_export (BoltDevice      *device,
                     GDBusConnection *connection,
                     GError         **error)
 {
   const char *path;
+  gboolean ok;
 
   g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
 
@@ -259,10 +260,11 @@ bolt_device_export (BoltDevice      *device,
 
   g_debug ("Exporting device at: %s", path);
 
-  return g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (device),
-                                           connection,
-                                           path,
-                                           error);
+  ok = g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (device),
+                                         connection,
+                                         path,
+                                         error);
+  return ok ? path : NULL;
 }
 
 void
