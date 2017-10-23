@@ -19,6 +19,8 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <!-- methods -->
+
     <method name="ListDevices">
       <arg name="devices" direction="out" type="ao">
         <doc:doc><doc:summary>An array of object paths for the devices.</doc:summary></doc:doc>
@@ -32,6 +34,29 @@
         </doc:description>
       </doc:doc>
     </method>
+
+    <!-- signals -->
+
+    <signal name="DeviceAdded">
+      <arg name="device" type="o">
+        <doc:doc><doc:summary>Object path of the new device.</doc:summary></doc:doc>
+      </arg>
+
+      <doc:doc><doc:description><doc:para>
+        A new device was added.
+      </doc:para></doc:description></doc:doc>
+    </signal>
+
+    <signal name="DeviceRemoved">
+      <arg name="device" type="o">
+        <doc:doc><doc:summary>Object path of the removed device.</doc:summary></doc:doc>
+      </arg>
+
+      <doc:doc><doc:description><doc:para>
+        A device was removed.
+      </doc:para></doc:description></doc:doc>
+    </signal>
+
 
   </interface>
 
