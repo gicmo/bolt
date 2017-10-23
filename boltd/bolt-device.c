@@ -23,6 +23,7 @@
 #include "bolt-device.h"
 #include "bolt-error.h"
 #include "bolt-io.h"
+#include "bolt-manager.h"
 
 #include <dirent.h>
 #include <libudev.h>
@@ -31,11 +32,14 @@ struct _BoltDevice
 {
   BoltDBusDeviceSkeleton object;
 
-  char                  *dbus_path;
+  /* weak reference */
+  BoltManager *mgr;
 
-  char                  *uid;
-  char                  *name;
-  char                  *vendor;
+  char        *dbus_path;
+
+  char        *uid;
+  char        *name;
+  char        *vendor;
 
   /* when device is attached */
   char *syspath;
@@ -235,6 +239,9 @@ bolt_device_new_for_udev (BoltManager        *mgr,
   dev->vendor = g_steal_pointer (&vendor);
   dev->syspath = g_strdup (sysfs);
   dev->devdir = g_steal_pointer (&devdir);
+
+  g_object_add_weak_pointer (G_OBJECT (mgr),
+                             (gpointer *) &dev->mgr);
 
   return dev;
 }
