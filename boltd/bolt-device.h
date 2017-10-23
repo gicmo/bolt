@@ -44,4 +44,8 @@ void              bolt_device_unexport (BoltDevice *device);
 
 const char *      bolt_device_get_object_path (BoltDevice *device);
 
+const char *      bolt_device_get_uid (BoltDevice *dev);
+
+const char *      bolt_device_get_syspath (BoltDevice *dev);
+
 G_END_DECLS

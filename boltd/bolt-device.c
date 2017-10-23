@@ -293,3 +293,15 @@ bolt_device_get_object_path (BoltDevice *device)
 
   return device->dbus_path;
 }
+
+const char *
+bolt_device_get_uid (BoltDevice *dev)
+{
+  return dev->uid;
+}
+
+const char *
+bolt_device_get_syspath (BoltDevice *dev)
+{
+  return dev->syspath;
+}
