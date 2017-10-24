@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "bolt-dbus.h"
 #include "bolt-device.h"
 #include "bolt-error.h"
 #include "bolt-io.h"
@@ -41,6 +42,8 @@ struct _BoltDevice
   char        *name;
   char        *vendor;
 
+  BoltStatus   status;
+
   /* when device is attached */
   char *syspath;
   DIR  *devdir;
@@ -53,6 +56,7 @@ enum {
   PROP_UID,
   PROP_NAME,
   PROP_VENDOR,
+  PROP_STATUS,
   PROP_SYSFS,
 
   PROP_LAST
@@ -109,6 +113,10 @@ bolt_device_get_property (GObject    *object,
       g_value_set_string (value, dev->vendor);
       break;
 
+    case PROP_STATUS:
+      g_value_set_uint (value, dev->status);
+      break;
+
     case PROP_SYSFS:
       g_value_set_string (value, dev->syspath);
       break;
@@ -138,6 +146,10 @@ bolt_device_set_property (GObject      *object,
 
     case PROP_VENDOR:
       dev->name = g_value_dup_string (value);
+      break;
+
+    case PROP_STATUS:
+      dev->status = g_value_get_uint (value);
       break;
 
     case PROP_SYSFS:
@@ -173,6 +185,10 @@ bolt_device_class_init (BoltDeviceClass *klass)
                                     "vendor");
 
   g_object_class_override_property (gobject_class,
+                                    PROP_STATUS,
+                                    "status");
+
+  g_object_class_override_property (gobject_class,
                                     PROP_SYSFS,
                                     "sysfs-path");
 
@@ -193,6 +209,68 @@ read_sysattr_name (int fd, const char *attr, GError **error)
     v = bolt_read_value_at (fd, attr, error);
 
   return v;
+}
+
+static gint
+read_sysfs_attr_int (struct udev_device *device, const char *attr)
+{
+  const char *str;
+  char *end;
+  gint64 val;
+
+  str = udev_device_get_sysattr_value (device, attr);
+
+  if (str == NULL)
+    return 0;
+
+  val = g_ascii_strtoull (str, &end, 0);
+
+  if (str == end)
+    return 0;
+
+  if (val > G_MAXINT || val < G_MININT)
+    {
+      g_warning ("value read from sysfs outside of guint's range.");
+      val = 0;
+    }
+
+  return (gint) val;
+}
+
+static gboolean
+string_nonzero (const char *str)
+{
+  return str != NULL && str[0] != '\0';
+}
+
+static BoltStatus
+bolt_status_from_udev (struct udev_device *udev)
+{
+  gint authorized;
+  const char *key;
+  gboolean have_key;
+
+  authorized = read_sysfs_attr_int (udev, "authorized");
+
+  if (authorized == 2)
+    return BOLT_STATUS_AUTHORIZED_SECURE;
+
+  key = udev_device_get_sysattr_value (udev, "key");
+  have_key = string_nonzero (key);
+
+  if (authorized == 1)
+    {
+      if (have_key)
+        return BOLT_STATUS_AUTHORIZED_NEWKEY;
+      else
+        return BOLT_STATUS_AUTHORIZED;
+    }
+  else if (authorized == 0 && have_key)
+    {
+      return BOLT_STATUS_AUTH_ERROR;
+    }
+
+  return BOLT_STATUS_CONNECTED;
 }
 
 /* public methods */
@@ -239,6 +317,7 @@ bolt_device_new_for_udev (BoltManager        *mgr,
   dev->vendor = g_steal_pointer (&vendor);
   dev->syspath = g_strdup (sysfs);
   dev->devdir = g_steal_pointer (&devdir);
+  dev->status = bolt_status_from_udev (udev);
 
   g_object_add_weak_pointer (G_OBJECT (mgr),
                              (gpointer *) &dev->mgr);

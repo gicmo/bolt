@@ -88,6 +88,12 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="Status" type="u" access="read">
+      <doc:doc><doc:description><doc:para>
+	The current status of the device.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <property name="SysfsPath" type="s" access="read">
       <doc:doc><doc:description><doc:para>
 	The sysfs path of the device, if it is connected.
