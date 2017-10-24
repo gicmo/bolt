@@ -166,6 +166,24 @@ executable('boltd',
   install_dir: libexecdir)
 
 
+# command line tools
+
+executable('boltctl',
+   ['cli/bolt-client.c',
+    'cli/bolt-device.c',
+    'cli/bolt-proxy.c',
+    'cli/boltctl.c'],
+  dependencies: [glib,
+                 gio,
+                 unix,
+                 common],
+  c_args : [
+    cargs,
+  ],
+  install: true,
+  install_dir: bindir)
+
+
 # testing
 
 tests = [
