@@ -46,7 +46,6 @@ struct _BoltDevice
 
   /* when device is attached */
   char *syspath;
-  DIR  *devdir;
 };
 
 
@@ -78,9 +77,6 @@ bolt_device_finalize (GObject *object)
   g_free (dev->name);
   g_free (dev->vendor);
   g_free (dev->syspath);
-
-  if (dev->devdir)
-    closedir (dev->devdir);
 
   G_OBJECT_CLASS (bolt_device_parent_class)->finalize (object);
 }
@@ -141,11 +137,11 @@ bolt_device_set_property (GObject      *object,
       break;
 
     case PROP_NAME:
-      dev->vendor = g_value_dup_string (value);
+      dev->name = g_value_dup_string (value);
       break;
 
     case PROP_VENDOR:
-      dev->name = g_value_dup_string (value);
+      dev->vendor = g_value_dup_string (value);
       break;
 
     case PROP_STATUS:
@@ -196,17 +192,25 @@ bolt_device_class_init (BoltDeviceClass *klass)
 
 /* internal methods */
 
-static char *
-read_sysattr_name (int fd, const char *attr, GError **error)
+static const char *
+read_sysattr_name (struct udev_device *udev, const char *attr, GError **error)
 {
   g_autofree char *s = NULL;
-  char *v;
+  const char *v;
 
   s = g_strdup_printf ("%s_name", attr);
+  v = udev_device_get_sysattr_value (udev, s);
 
-  v = bolt_read_value_at (fd, s, NULL);
-  if (!v)
-    v = bolt_read_value_at (fd, attr, error);
+  if (v != NULL)
+    return v;
+
+  v = udev_device_get_sysattr_value (udev, attr);
+
+  if (v == NULL) {
+    g_set_error (error,
+                 BOLT_ERROR, BOLT_ERROR_UDEV,
+                 "failed to get sysfs attr: %s", attr);
+  }
 
   return v;
 }
@@ -280,43 +284,39 @@ bolt_device_new_for_udev (BoltManager        *mgr,
                           struct udev_device *udev,
                           GError            **error)
 {
-  g_autofree char *uid = NULL;
-  g_autofree char *name = NULL;
-  g_autofree char *vendor = NULL;
-
-  g_autoptr(DIR) devdir = NULL;
+  const char *uid;
+  const char *name;
+  const char *vendor;
+  const char *syspath;
   BoltDevice *dev;
-  const char *sysfs;
-  int fd;
 
-  sysfs = udev_device_get_syspath (udev);
-  devdir = bolt_opendir (sysfs, error);
 
-  if (devdir == NULL)
-    return NULL;
+  uid = udev_device_get_sysattr_value (udev, "unique_id");
+  if (udev == NULL)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                   "could not get unique_id for udev");
+      return NULL;
+    }
 
-  fd = dirfd (devdir);
+  syspath = udev_device_get_syspath (udev);
+  g_return_val_if_fail (syspath != NULL, NULL);
 
-  uid = bolt_read_value_at (fd, "unique_id", error);
-  if (uid == NULL)
-    return NULL;
-
-  name = read_sysattr_name (fd, "device", error);
+  name = read_sysattr_name (udev, "device", error);
   if (name == NULL)
     return NULL;
 
-  vendor = read_sysattr_name (fd, "vendor", error);
+  vendor = read_sysattr_name (udev, "vendor", error);
   if (vendor == NULL)
     return NULL;
 
   dev = g_object_new (BOLT_TYPE_DEVICE,
+                      "uid", uid,
+                      "name", name,
+                      "vendor", vendor,
+                      "sysfs-path", syspath,
                       NULL);
 
-  dev->uid = g_steal_pointer (&uid);
-  dev->name = g_steal_pointer (&name);
-  dev->vendor = g_steal_pointer (&vendor);
-  dev->syspath = g_strdup (sysfs);
-  dev->devdir = g_steal_pointer (&devdir);
   dev->status = bolt_status_from_udev (udev);
 
   g_object_add_weak_pointer (G_OBJECT (mgr),
