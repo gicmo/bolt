@@ -100,6 +100,19 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <!-- methods -->
+
+    <method name="Authorize">
+
+      <doc:doc>
+        <doc:description>
+          <doc:para>
+            Authorize the device.
+          </doc:para>
+        </doc:description>
+      </doc:doc>
+    </method>
+
   </interface>
 
 </node>

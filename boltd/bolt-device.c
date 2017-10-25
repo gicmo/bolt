@@ -29,6 +29,11 @@
 #include <dirent.h>
 #include <libudev.h>
 
+/* dbus method calls */
+static gboolean    handle_authorize (BoltDBusDevice        *object,
+                                     GDBusMethodInvocation *invocation,
+                                     gpointer               user_data);
+
 struct _BoltDevice
 {
   BoltDBusDeviceSkeleton object;
@@ -82,9 +87,10 @@ bolt_device_finalize (GObject *object)
 }
 
 static void
-bolt_device_init (BoltDevice *mgr)
+bolt_device_init (BoltDevice *dev)
 {
-
+  g_signal_connect (dev, "handle-authorize",
+                    G_CALLBACK (handle_authorize), NULL);
 }
 
 static void
@@ -206,11 +212,10 @@ read_sysattr_name (struct udev_device *udev, const char *attr, GError **error)
 
   v = udev_device_get_sysattr_value (udev, attr);
 
-  if (v == NULL) {
+  if (v == NULL)
     g_set_error (error,
                  BOLT_ERROR, BOLT_ERROR_UDEV,
                  "failed to get sysfs attr: %s", attr);
-  }
 
   return v;
 }
@@ -275,6 +280,178 @@ bolt_status_from_udev (struct udev_device *udev)
     }
 
   return BOLT_STATUS_CONNECTED;
+}
+
+/*  device authorization */
+
+typedef void (*AuthCallback) (BoltDevice *dev,
+                              gboolean    ok,
+                              GError    **error,
+                              gpointer    user_data);
+
+typedef struct
+{
+  char level;
+
+  /* the outer callback  */
+  AuthCallback callback;
+  gpointer     user_data;
+
+} AuthData;
+
+static void
+auth_data_free (gpointer data)
+{
+  AuthData *auth = data;
+
+  g_debug ("freeing auth data");
+  g_slice_free (AuthData, auth);
+}
+
+static void
+authorize_in_thread (GTask        *task,
+                     gpointer      source,
+                     gpointer      context,
+                     GCancellable *cancellable)
+{
+  g_autoptr(DIR) devdir = NULL;
+  g_autoptr(GError) error = NULL;
+  BoltDevice *dev = source;
+  AuthData *auth = context;
+  gboolean ok;
+
+  devdir = bolt_opendir (dev->syspath, &error);
+  if (devdir == NULL)
+    {
+      g_task_return_error (task, error);
+      return;
+    }
+
+  ok = bolt_verify_uid (dirfd (devdir), dev->uid, &error);
+  if (!ok)
+    {
+      g_task_return_error (task, error);
+      return;
+    }
+
+  ok = bolt_write_char_at (dirfd (devdir),
+                           "authorized",
+                           auth->level,
+                           &error);
+
+  if (!ok)
+    {
+      g_task_return_new_error (task,
+                               BOLT_ERROR, BOLT_ERROR_FAILED,
+                               "failed to authorize device: %s",
+                               error->message);
+    }
+  else
+    {
+      g_task_return_boolean (task, TRUE);
+    }
+}
+
+static void
+authorize_thread_done (GObject      *object,
+                       GAsyncResult *res,
+                       gpointer      user_data)
+{
+  BoltDevice *dev = BOLT_DEVICE (object);
+  GTask *task = G_TASK (res);
+
+  g_autoptr(GError) error = NULL;
+  AuthData *auth;
+  gboolean ok;
+
+  auth = g_task_get_task_data (task);
+
+  ok = g_task_propagate_boolean (task, &error);
+
+  if (ok)
+    dev->status = BOLT_STATUS_AUTH_ERROR;
+  else
+    dev->status = BOLT_STATUS_AUTHORIZED;
+
+  if (auth->callback)
+    auth->callback (dev, ok, &error, auth->user_data);
+}
+
+static gboolean
+bolt_device_authorize (BoltDevice  *dev,
+                       AuthCallback callback,
+                       gpointer     user_data,
+                       GError     **error)
+{
+  AuthData *auth_data;
+  GTask *task;
+
+  if (dev->status != BOLT_STATUS_CONNECTED &&
+      dev->status != BOLT_STATUS_AUTH_ERROR)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "wrong device state: %u", dev->status);
+      return FALSE;
+    }
+
+  task = g_task_new (dev, NULL, authorize_thread_done, NULL);
+
+  auth_data = g_slice_new (AuthData);
+  auth_data->level = '1';
+  auth_data->callback = callback;
+  auth_data->user_data = user_data;
+  g_task_set_task_data (task, auth_data, auth_data_free);
+
+  dev->status = BOLT_STATUS_AUTHORIZING;
+  g_object_notify (G_OBJECT (dev), "status");
+
+  g_task_run_in_thread (task, authorize_in_thread);
+  g_object_unref (task);
+
+  return TRUE;
+}
+
+
+/* dbus methods */
+
+static void
+handle_authorize_done (BoltDevice *dev,
+                       gboolean    ok,
+                       GError    **error,
+                       gpointer    user_data)
+{
+  GDBusMethodInvocation *invocation = user_data;
+
+  if (ok)
+    {
+      bolt_dbus_device_complete_authorize (BOLT_DBUS_DEVICE (dev),
+                                           invocation);
+    }
+  else
+    {
+      g_dbus_method_invocation_take_error (invocation, *error);
+      error = NULL;
+    }
+}
+
+static gboolean
+handle_authorize (BoltDBusDevice        *object,
+                  GDBusMethodInvocation *invocation,
+                  gpointer               user_data)
+{
+  BoltDevice *dev = BOLT_DEVICE (object);
+  GError *error = NULL;
+  gboolean ok;
+
+  ok = bolt_device_authorize (dev,
+                              handle_authorize_done,
+                              invocation,
+                              &error);
+
+  if (!ok)
+    g_dbus_method_invocation_take_error (invocation, error);
+
+  return TRUE;
 }
 
 /* public methods */
