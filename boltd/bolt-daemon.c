@@ -123,11 +123,14 @@ main (int argc, char **argv)
   gboolean replace = FALSE;
   gboolean verbose = FALSE;
   gboolean show_version = FALSE;
+  gboolean session_bus = FALSE;
+  GBusType bus_type = G_BUS_TYPE_SYSTEM;
   GBusNameOwnerFlags flags;
 
   g_autoptr(GError) error = NULL;
   const GOptionEntry options[] = {
     { "replace", 'r', 0, G_OPTION_ARG_NONE, &replace,  "Replace old daemon.", NULL },
+    { "session-bus", 0, 0, G_OPTION_ARG_NONE, &session_bus, "Use the session bus.", NULL},
     { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose,  "Enable debug output.", NULL },
     { "version", 0, 0, G_OPTION_ARG_NONE, &show_version, "Print daemon version.", NULL},
     { NULL }
@@ -181,7 +184,10 @@ main (int argc, char **argv)
   if (replace)
     flags |= G_BUS_NAME_OWNER_FLAGS_REPLACE;
 
-  name_owner_id = g_bus_own_name (G_BUS_TYPE_SESSION,
+  if (session_bus)
+    bus_type = G_BUS_TYPE_SESSION;
+
+  name_owner_id = g_bus_own_name (bus_type,
                                   BOLT_DBUS_NAME,
                                   flags,
                                   on_bus_acquired,
