@@ -81,6 +81,7 @@ prefixdir = get_option('prefix')
 bindir = join_paths(prefixdir, get_option('bindir'))
 libexecdir = join_paths(prefixdir, get_option('libexecdir'))
 datadir = join_paths(prefixdir, get_option('datadir'))
+sysconfdir = get_option('sysconfdir')
 
 conf = configuration_data()
 conf.set_quoted('VERSION', meson.project_version())
@@ -144,6 +145,10 @@ daemon_sources += gnome.gdbus_codegen('bolt-gdbus',
 
 install_data(['dbus/org.freedesktop.Bolt.xml'],
   install_dir : join_paths(datadir, 'dbus-1', 'interfaces')
+)
+
+install_data(['dbus/org.freedesktop.Bolt.conf'],
+  install_dir : join_paths(sysconfdir, 'dbus-1', 'system.d')
 )
 
 
