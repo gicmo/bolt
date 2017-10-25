@@ -1,0 +1,171 @@
+/*
+ * Copyright © 2017 Red Hat, Inc
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Authors:
+ *       Christian J. Kellner <christian@kellner.me>
+ */
+
+#include "bolt-error.h"
+#include "bolt-io.h"
+
+#include <glib.h>
+#include <gio/gio.h>
+#include <glib/gprintf.h>
+
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <locale.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h> /* unlinkat */
+
+static void
+cleanup_dir (DIR *d)
+{
+  struct dirent *de = NULL;
+
+  for (errno = 0, de = readdir (d); de != NULL; errno = 0, de = readdir (d))
+    {
+      g_autoptr(GError) error = NULL;
+      int uflag               = 0;
+
+      if (!g_strcmp0 (de->d_name, ".") ||
+          !g_strcmp0 (de->d_name, ".."))
+        continue;
+
+      if (de->d_type == DT_DIR)
+        {
+          g_autoptr(DIR) cd = NULL;
+
+          cd = bolt_opendir_at (dirfd (d), de->d_name, O_RDONLY, &error);
+          if (cd == NULL)
+            continue;
+
+          cleanup_dir (cd);
+          uflag = AT_REMOVEDIR;
+        }
+
+      unlinkat (dirfd (d), de->d_name, uflag);
+    }
+}
+
+
+typedef struct
+{
+  char *path;
+} TestIO;
+
+static void
+test_io_setup (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) error = NULL;
+
+  tt->path = g_dir_make_tmp ("bolt.io.XXXXXX",
+                             &error);
+
+  if (tt->path == NULL)
+    {
+      g_critical ("Could not create tmp dir: %s",
+                  error->message);
+      return;
+    }
+
+}
+
+static void
+test_io_tear_down (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(DIR) d = NULL;
+  g_autoptr(GError) error = NULL;
+
+  d = bolt_opendir (tt->path, &error);
+
+  if (d)
+    {
+      g_debug ("Cleaning up: %s", tt->path);
+      cleanup_dir (d);
+    }
+  else if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+    {
+      g_warning ("Could not clean up dir: %s", error->message);
+    }
+}
+
+
+static const char *valid_uid = "f96b4cc77f196068ec454cb6006514c602d1011f47dd275cf5c6b8a47744f049";
+
+static void
+test_io_verify (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(DIR) d = NULL;
+  g_autofree char *uid_path = NULL;
+  gboolean ok;
+
+  uid_path = g_build_filename (tt->path, "unique_id", NULL);
+
+  ok = g_file_set_contents (uid_path,
+                            "wrong_to_small",
+                            -1,
+                            &error);
+  g_assert_true (ok);
+  g_assert_no_error (error);
+  d = bolt_opendir (tt->path, &error);
+
+  g_assert_nonnull (d);
+  g_assert_no_error (error);
+
+  /* must fail */
+  ok = bolt_verify_uid (dirfd (d), valid_uid, &error);
+  g_assert_false (ok);
+  g_assert_error (error, BOLT_ERROR, BOLT_ERROR_FAILED);
+  g_clear_error (&error);
+
+
+  ok = g_file_set_contents (uid_path,
+                            valid_uid,
+                            -1,
+                            &error);
+  g_assert_true (ok);
+  g_assert_no_error (error);
+
+  /* must work */
+  ok = bolt_verify_uid (dirfd (d), valid_uid, &error);
+  g_assert_true (ok);
+  g_assert_no_error (error);
+  g_clear_error (&error);
+
+  unlinkat (dirfd (d), "unique_id", 0);
+}
+
+int
+main (int argc, char **argv)
+{
+
+  setlocale (LC_ALL, "");
+
+  g_test_init (&argc, &argv, NULL);
+
+  g_test_add ("/common/io/verify",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_io_verify,
+              test_io_tear_down);
+
+  return g_test_run ();
+}

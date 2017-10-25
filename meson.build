@@ -169,7 +169,7 @@ executable('boltd',
 # testing
 
 tests = [
-
+  ['test-common']
 ]
 
 foreach t: tests
