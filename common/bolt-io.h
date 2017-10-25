@@ -21,6 +21,7 @@
 #pragma once
 
 #include <glib.h>
+#include <dirent.h>
 #include <sys/types.h>
 
 G_BEGIN_DECLS
@@ -37,6 +38,11 @@ gboolean   bolt_close (int      fd,
 DIR *      bolt_opendir (const char *path,
                          GError    **error);
 
+DIR *      bolt_opendir_at (int         dirfd,
+                            const char *name,
+                            int         oflag,
+                            GError    **error);
+
 int        bolt_openat (int         dirfd,
                         const char *path,
                         int         oflag,
@@ -45,5 +51,14 @@ int        bolt_openat (int         dirfd,
 char *     bolt_read_value_at (int         dirfd,
                                const char *name,
                                GError    **error);
+
+gboolean   bolt_write_char_at (int         dirfd,
+                               const char *name,
+                               char        value,
+                               GError    **error);
+
+gboolean   bolt_verify_uid (int         dirfd,
+                            const char *uid,
+                            GError    **error);
 
 G_END_DECLS

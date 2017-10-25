@@ -27,6 +27,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
+#include <string.h>
+
+#include "bolt-error.h"
 
 #include "bolt-io.h"
 
@@ -126,6 +129,35 @@ bolt_openat (int dirfd, const char *path, int oflag, GError **error)
   return fd;
 }
 
+
+DIR *
+bolt_opendir_at (int         dirfd,
+                 const char *name,
+                 int         oflag,
+                 GError    **error)
+{
+  int fd = -1;
+  DIR *cd;
+
+  fd = bolt_openat (dirfd, name, oflag, error);
+  if (fd < 0)
+    return NULL;
+
+  cd = fdopendir (fd);
+  if (cd == NULL)
+    {
+      g_set_error (error, G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "failed to open directory: %s",
+                   g_strerror (errno));
+
+      (void) close (fd);
+    }
+
+  return cd;
+}
+
+
 char *
 bolt_read_value_at (int         dirfd,
                     const char *name,
@@ -169,4 +201,73 @@ bolt_read_value_at (int         dirfd,
   g_strstrip (line);
 
   return g_strdup (line);
+}
+
+gboolean
+bolt_write_char_at (int         dirfd,
+                    const char *name,
+                    char        value,
+                    GError    **error)
+{
+  int fd;
+  ssize_t n;
+
+  fd = bolt_openat (dirfd, name, O_WRONLY | O_CLOEXEC, error);
+  if (fd < 0)
+    return FALSE;
+
+retry:
+  n = write (fd, &value, 1);
+
+  if (n == -1)
+    {
+      int errsv = errno;
+      if (errsv == EINTR)
+        goto retry;
+
+      /* TODO: handle key error */
+      g_set_error (error,
+                   G_IO_ERROR,
+                   g_io_error_from_errno (errsv),
+                   "write error: %s",
+                   g_strerror (errno));
+    }
+
+  (void) close (fd);
+
+  return n > 0;
+}
+
+gboolean
+bolt_verify_uid (int         dirfd,
+                 const char *want,
+                 GError    **error)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *have = NULL;
+  gsize want_len;
+  gsize have_len;
+  gboolean ok;
+
+  have = bolt_read_value_at (dirfd, "unique_id", &err);
+
+  if (have == NULL)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "unique id verification failed: %s",
+                   err->message);
+      return FALSE;
+    }
+
+  have_len = strlen (have);
+  want_len = strlen (want);
+
+  ok = have_len == want_len && !memcmp (want, have, have_len);
+
+  if (!ok)
+    g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                 "unique id verification failed [%s != %s]",
+                 have, want);
+
+  return ok;
 }
