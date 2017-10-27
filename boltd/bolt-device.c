@@ -535,6 +535,12 @@ bolt_device_unexport (BoltDevice *device)
 }
 
 const char *
+bolt_device_get_name (BoltDevice *dev)
+{
+  return dev->name;
+}
+
+const char *
 bolt_device_get_object_path (BoltDevice *device)
 {
   g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
@@ -562,4 +568,10 @@ const char *
 bolt_device_get_syspath (BoltDevice *dev)
 {
   return dev->syspath;
+}
+
+const char *
+bolt_device_get_vendor (BoltDevice *dev)
+{
+  return dev->vendor;
 }
