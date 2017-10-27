@@ -133,7 +133,6 @@ common = declare_dependency(
 
 # boltd - the main daemon
 daemon_sources = files([
-  'boltd/bolt-daemon.c',
   'boltd/bolt-manager.c',
   'boltd/bolt-device.c'
 ])
@@ -151,14 +150,32 @@ install_data(['dbus/org.freedesktop.Bolt.conf'],
   install_dir : join_paths(sysconfdir, 'dbus-1', 'system.d')
 )
 
+daemon_deps = [
+  glib,
+  gio,
+  unix,
+  udev,
+  common
+]
+
+daemon_library = static_library('tbt',
+  sources: daemon_sources,
+	dependencies: daemon_deps,
+	include_directories: [
+    include_directories('boltd')
+])
+
+libdaemon = declare_dependency(
+  dependencies: daemon_deps,
+	link_with: [daemon_library],
+	include_directories: [
+    include_directories('boltd')
+])
+
 
 executable('boltd',
-  daemon_sources,
-  dependencies: [glib,
-                 gio,
-                 unix,
-                 udev,
-                 common],
+  daemon_sources + ['boltd/bolt-daemon.c'],
+  dependencies: [libdaemon],
   c_args : [
     cargs,
   ],
