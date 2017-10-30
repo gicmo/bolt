@@ -39,6 +39,7 @@ enum {
   PROP_UID,
   PROP_NAME,
   PROP_VENDOR,
+  PROP_SECURITY,
 
   PROP_LAST
 };
@@ -66,6 +67,7 @@ bolt_device_get_dbus_props (guint *n)
     {"Uid",      "uid",       PROP_UID,        NULL},
     {"Name",     "name",      PROP_NAME,       NULL},
     {"Vendor",   "vendor",    PROP_VENDOR,     NULL},
+    {"Security", "security",  PROP_SECURITY,   NULL},
   };
 
   *n = G_N_ELEMENTS (dbus_props);
@@ -105,6 +107,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NICK);
 
+  props[PROP_SECURITY] =
+    g_param_spec_enum ("security",
+                       NULL, NULL,
+                       BOLT_TYPE_SECURITY,
+                       BOLT_SECURITY_NONE,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_NICK);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,

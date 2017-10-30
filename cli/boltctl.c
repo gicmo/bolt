@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "bolt-client.h"
+#include "bolt-enums.h"
 #include "bolt-error.h"
 
 #include <gio/gio.h>
@@ -36,18 +37,22 @@ print_device (BoltDevice *dev)
   g_autofree char *uid = NULL;
   g_autofree char *name = NULL;
   g_autofree char *vendor = NULL;
+  BoltSecurity security = BOLT_SECURITY_NONE;
 
   g_object_get (dev,
                 "object-path", &path,
                 "name", &name,
                 "vendor", &vendor,
                 "uid", &uid,
+                "security", &security,
                 NULL);
 
   g_print (" %s\n", name);
   g_print ("   uid: %s\n", uid);
   g_print ("   dbus object path: %s\n", path);
   g_print ("   vendor: %s\n", vendor);
+  g_print ("   security: %s\n",
+           bolt_security_to_string (security));
 
 }
 
