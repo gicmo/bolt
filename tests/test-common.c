@@ -18,6 +18,8 @@
  *       Christian J. Kellner <christian@kellner.me>
  */
 
+#include "config.h"
+
 #include "bolt-error.h"
 #include "bolt-io.h"
 
