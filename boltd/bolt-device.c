@@ -51,7 +51,8 @@ struct _BoltDevice
   BoltStatus   status;
 
   /* when device is attached */
-  char *syspath;
+  char        *syspath;
+  BoltSecurity security;
 };
 
 
@@ -63,6 +64,7 @@ enum {
   PROP_VENDOR,
   PROP_STATUS,
   PROP_SYSFS,
+  PROP_SECURITY,
 
   PROP_LAST
 };
@@ -122,6 +124,10 @@ bolt_device_get_property (GObject    *object,
 
     case PROP_SYSFS:
       g_value_set_string (value, dev->syspath);
+      break;
+
+    case PROP_SECURITY:
+      g_value_set_uint (value, dev->security);
       break;
 
     default:
@@ -194,6 +200,10 @@ bolt_device_class_init (BoltDeviceClass *klass)
   g_object_class_override_property (gobject_class,
                                     PROP_SYSFS,
                                     "sysfs-path");
+
+  g_object_class_override_property (gobject_class,
+                                    PROP_SECURITY,
+                                    "security");
 
 }
 
@@ -281,6 +291,51 @@ bolt_status_from_udev (struct udev_device *udev)
     }
 
   return BOLT_STATUS_CONNECTED;
+}
+
+
+static struct udev_device *
+domain_for_device (struct udev_device *udev)
+{
+  struct udev_device *parent;
+  gboolean found;
+
+  found = FALSE;
+  parent = udev;
+  do
+    {
+      const char *name;
+      parent = udev_device_get_parent (parent);
+      if (!parent)
+        break;
+
+      name = udev_device_get_sysname (parent);
+      found = g_str_has_prefix (name, "domain");
+
+    }
+  while (!found);
+
+  return found ? parent : NULL;
+}
+
+static BoltSecurity
+security_for_udev (struct udev_device *udev)
+{
+  struct udev_device *parent = NULL;
+  const char *v;
+  BoltSecurity s;
+
+  parent = domain_for_device (udev);
+  if (parent == NULL)
+    {
+      g_warning ("Failed to determine domain device");
+      return BOLT_SECURITY_NONE;
+    }
+
+  v = udev_device_get_sysattr_value (parent, "security");
+  s = bolt_security_from_string (v);
+
+  return s;
 }
 
 /*  device authorization */
@@ -496,6 +551,7 @@ bolt_device_new_for_udev (BoltManager        *mgr,
                       NULL);
 
   dev->status = bolt_status_from_udev (udev);
+  dev->security = security_for_udev (udev);
 
   g_object_add_weak_pointer (G_OBJECT (mgr),
                              (gpointer *) &dev->mgr);
