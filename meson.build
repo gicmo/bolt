@@ -101,15 +101,17 @@ cargs = ['-DG_LOG_DOMAIN="Bolt"']
 common_deps = [glib, gio, udev, unix]
 
 common_headers = [
+  'common/bolt-enums.h',
   'common/bolt-error.h'
 ]
 
 common_sources = [
+  'common/bolt-enums.c',
   'common/bolt-error.c',
   'common/bolt-io.c'
 ]
 
-common_enums = gnome.mkenums_simple('common-enums',
+common_enums = gnome.mkenums_simple('bolt-enum-types',
   sources: common_headers)
 
 gen_sources = [common_enums[0]]

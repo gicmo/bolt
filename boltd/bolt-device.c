@@ -22,6 +22,7 @@
 
 #include "bolt-dbus.h"
 #include "bolt-device.h"
+#include "bolt-enums.h"
 #include "bolt-error.h"
 #include "bolt-io.h"
 #include "bolt-manager.h"

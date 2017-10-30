@@ -18,8 +18,11 @@
  *       Christian J. Kellner <christian@kellner.me>
  */
 
+#include "config.h"
+
 #include "bolt-dbus.h"
 #include "bolt-device.h"
+#include "bolt-enums.h"
 #include "bolt-error.h"
 
 #include <gio/gio.h>
