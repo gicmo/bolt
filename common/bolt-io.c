@@ -36,9 +36,9 @@
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (FILE, fclose);
 
 int
-bolt_open (const char *path, int flags, GError **error)
+bolt_open (const char *path, int flags, int mode, GError **error)
 {
-  int fd = open (path, flags);
+  int fd = g_open (path, flags, mode);
 
   if (fd < 0)
     {

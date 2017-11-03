@@ -21,8 +21,11 @@
 #pragma once
 
 #include <glib.h>
+
 #include <dirent.h>
+#include <fcntl.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 G_BEGIN_DECLS
 
@@ -30,6 +33,7 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (DIR, closedir);
 
 int        bolt_open (const char *path,
                       int         flags,
+                      int         mode,
                       GError    **error);
 
 gboolean   bolt_close (int      fd,
