@@ -621,6 +621,12 @@ bolt_device_get_uid (BoltDevice *dev)
   return dev->uid;
 }
 
+BoltSecurity
+bolt_device_get_security (BoltDevice *dev)
+{
+  return dev->security;
+}
+
 const char *
 bolt_device_get_syspath (BoltDevice *dev)
 {

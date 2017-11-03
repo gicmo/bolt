@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "bolt-enums.h"
 #include "bolt-gdbus.h"
 #include "bolt-manager.h"
 
@@ -47,6 +48,8 @@ const char *      bolt_device_get_name (BoltDevice *dev);
 const char *      bolt_device_get_object_path (BoltDevice *device);
 
 const char *      bolt_device_get_uid (BoltDevice *dev);
+
+BoltSecurity      bolt_device_get_security (BoltDevice *dev);
 
 const char *      bolt_device_get_syspath (BoltDevice *dev);
 
