@@ -40,5 +40,7 @@ enum {
 GQuark bolt_error_quark (void);
 #define BOLT_ERROR (bolt_error_quark ())
 
+/* helper function to check for certain error types */
+gboolean bolt_err_notfound (const GError *error);
 
 G_END_DECLS
