@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include <gio/gio.h>
+#include <glib/gstdio.h>
 
 #include <fcntl.h>
 #include <errno.h>
@@ -85,6 +86,105 @@ bolt_close (int fd, GError **error)
                g_strerror (errno));
 
   return FALSE;
+}
+
+gboolean
+bolt_read_all (int      fd,
+               void    *buf,
+               gssize   nbytes,
+               gsize   *nread,
+               GError **error)
+{
+  char *data = buf;
+  gsize count = 0;
+  gboolean ok = TRUE;
+
+  if (nbytes < 0)
+    nbytes = strlen (data);
+
+  do
+    {
+      ssize_t n;
+
+      n = read (fd, data, nbytes);
+
+      if (n < 0)
+        {
+          if (errno == EINTR)
+            continue;
+
+          g_set_error (error, G_IO_ERROR,
+                       g_io_error_from_errno (errno),
+                       "read error: %s",
+                       g_strerror (errno));
+          ok = FALSE;
+          break;
+        }
+      else if (n == 0)
+        {
+          break;
+        }
+
+      data += n;
+      count += n;
+      nbytes -= n;
+
+    }
+  while (nbytes > 0);
+
+  if (nread)
+    *nread = count;
+
+  return ok;
+}
+
+gboolean
+bolt_write_all (int         fd,
+                const void *buf,
+                gssize      nbytes,
+                GError    **error)
+{
+  const char *data = buf;
+  gboolean ok = TRUE;
+
+  if (nbytes < 0)
+    nbytes = strlen (data);
+
+  do
+    {
+
+      ssize_t n;
+
+      n = write (fd, data, nbytes);
+      if (n < 0)
+        {
+          if (errno == EINTR)
+            continue;
+
+          g_set_error (error, G_IO_ERROR,
+                       g_io_error_from_errno (errno),
+                       "write error: %s",
+                       g_strerror (errno));
+          ok = FALSE;
+        }
+      else if (nbytes > 0 && n == 0)
+        {
+          g_set_error (error, G_IO_ERROR,
+                       g_io_error_from_errno (EIO),
+                       "write error (zero write)");
+          ok = FALSE;
+        }
+
+      if (!ok)
+        break;
+
+      data += n;
+      nbytes -= n;
+
+    }
+  while (nbytes > 0);
+
+  return ok;
 }
 
 DIR *
@@ -157,6 +257,97 @@ bolt_opendir_at (int         dirfd,
   return cd;
 }
 
+
+gboolean
+bolt_closedir (DIR     *d,
+               GError **error)
+{
+  int r;
+
+  r = closedir (d);
+
+  if (r < 0)
+    {
+      g_set_error (error,
+                   G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "failed close dir: %s",
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+
+gboolean
+bolt_rmdir (const char *name,
+            GError    **error)
+{
+  int r;
+
+  r = rmdir (name);
+
+  if (r < 0)
+    {
+      g_set_error (error,
+                   G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "failed to remove directory '%s': %s",
+                   name,
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+gboolean
+bolt_unlink (const char *name,
+             GError    **error)
+{
+  int r;
+
+  r = unlink (name);
+
+  if (r < 0)
+    {
+      g_set_error (error,
+                   G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "failed to unlink '%s': %s",
+                   name,
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+
+gboolean
+bolt_unlink_at (int         dirfd,
+                const char *name,
+                int         flag,
+                GError    **error)
+{
+  int r;
+
+  r = unlinkat (dirfd, name, flag);
+
+  if (r < 0)
+    {
+      g_set_error (error,
+                   G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "failed to unlink '%s': %s",
+                   name,
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  return TRUE;
+}
 
 char *
 bolt_read_value_at (int         dirfd,

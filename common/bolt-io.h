@@ -39,6 +39,17 @@ int        bolt_open (const char *path,
 gboolean   bolt_close (int      fd,
                        GError **error);
 
+gboolean   bolt_read_all (int      fd,
+                          void    *buf,
+                          gssize   nbytes,
+                          gsize   *nread,
+                          GError **error);
+
+gboolean   bolt_write_all (int         fd,
+                           const void *buf,
+                           gssize      nbytes,
+                           GError    **error);
+
 DIR *      bolt_opendir (const char *path,
                          GError    **error);
 
@@ -47,10 +58,24 @@ DIR *      bolt_opendir_at (int         dirfd,
                             int         oflag,
                             GError    **error);
 
+gboolean   bolt_closedir (DIR     *d,
+                          GError **error);
+
+gboolean   bolt_rmdir (const char *name,
+                       GError    **error);
+
 int        bolt_openat (int         dirfd,
                         const char *path,
                         int         oflag,
                         GError    **error);
+
+gboolean   bolt_unlink (const char *name,
+                        GError    **error);
+
+gboolean   bolt_unlink_at (int         dirfd,
+                           const char *name,
+                           int         flag,
+                           GError    **error);
 
 char *     bolt_read_value_at (int         dirfd,
                                const char *name,
@@ -64,5 +89,6 @@ gboolean   bolt_write_char_at (int         dirfd,
 gboolean   bolt_verify_uid (int         dirfd,
                             const char *uid,
                             GError    **error);
+
 
 G_END_DECLS
