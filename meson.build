@@ -160,7 +160,7 @@ daemon_deps = [
   common
 ]
 
-daemon_library = static_library('tbt',
+daemon_library = static_library('daemon',
   sources: daemon_sources,
 	dependencies: daemon_deps,
 	include_directories: [
@@ -176,7 +176,7 @@ libdaemon = declare_dependency(
 
 
 executable('boltd',
-  daemon_sources + ['boltd/bolt-daemon.c'],
+  ['boltd/bolt-daemon.c'],
   dependencies: [libdaemon],
   c_args : [
     cargs,
