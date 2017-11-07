@@ -22,6 +22,7 @@
 
 #include "bolt-error.h"
 #include "bolt-io.h"
+#include "bolt-rnd.h"
 
 #include <glib.h>
 #include <gio/gio.h>
@@ -31,6 +32,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <locale.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h> /* unlinkat */
@@ -65,6 +67,70 @@ cleanup_dir (DIR *d)
     }
 }
 
+typedef struct
+{
+  int dummy;
+} TestRng;
+
+typedef void (*rng_t) (void *buf,
+                       gsize n);
+
+static guint
+test_rng_loop (guint N, rng_t fn)
+{
+  char buf[256] = { 0, };
+  guint count[256] = {0, };
+  guint hits = 0;
+
+  for (guint n = 0; n < N; n++)
+    {
+      memset (buf, 0, sizeof (buf));
+      fn (buf, sizeof (buf));
+
+      for (guint i = 0; i < 256; i++)
+        if (buf[i] == 0)
+          count[i]++;
+    }
+
+  for (guint i = 0; i < 256; i++)
+    hits = MAX (hits, count[i]);
+
+  return hits;
+}
+
+static void
+no_rng (void *buf, gsize n)
+{
+  /* noop  */
+}
+
+static void
+test_rng (TestRng *tt, gconstpointer user_data)
+{
+  char buf[10] = {0, };
+  guint hits;
+  gboolean ok;
+  static guint N = 10;
+
+  hits = test_rng_loop (N, no_rng);
+  g_assert_cmpuint (hits, ==, 10);
+
+  hits = test_rng_loop (N, bolt_random_prng);
+  g_assert_cmpuint (hits, <, 10);
+
+  hits = test_rng_loop (N, (rng_t) bolt_get_random_data);
+  g_assert_cmpuint (hits, <, 10);
+
+  ok = bolt_random_urandom (buf, sizeof (buf));
+  if (!ok)
+    {
+      g_debug ("urandom RNG seems to not be working");
+      return;
+    }
+
+  hits = test_rng_loop (N, (rng_t) bolt_random_urandom);
+  g_assert_cmpuint (hits, <, 10);
+}
 
 typedef struct
 {
@@ -161,6 +227,13 @@ main (int argc, char **argv)
   setlocale (LC_ALL, "");
 
   g_test_init (&argc, &argv, NULL);
+
+  g_test_add ("/common/rng",
+              TestRng,
+              NULL,
+              NULL,
+              test_rng,
+              NULL);
 
   g_test_add ("/common/io/verify",
               TestIO,
