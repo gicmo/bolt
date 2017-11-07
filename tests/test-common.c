@@ -23,6 +23,7 @@
 #include "bolt-error.h"
 #include "bolt-io.h"
 #include "bolt-rnd.h"
+#include "bolt-str.h"
 
 #include <glib.h>
 #include <gio/gio.h>
@@ -132,6 +133,41 @@ test_rng (TestRng *tt, gconstpointer user_data)
   g_assert_cmpuint (hits, <, 10);
 }
 
+static void
+test_erase (TestRng *tt, gconstpointer user_data)
+{
+  char buf[256] = {0, };
+  char *d1, *d2, *n0 = NULL;
+  size_t n;
+
+  bolt_get_random_data (buf, sizeof (buf) - 1);
+  d1 = g_strdup (buf);
+  d2 = g_strdup (buf);
+
+  g_assert_nonnull (d2);
+  g_assert_nonnull (d2);
+
+  /* make sure we don't crash on NULL */
+  bolt_str_erase (NULL);
+  bolt_str_erase (n0);
+  bolt_str_erase_clear (&n0);
+
+  bolt_str_erase_clear (&d2);
+  g_assert_null (d2);
+
+  n = strlen (d1);
+  bolt_str_erase (d1);
+  g_assert_cmpstr (d1, !=, buf);
+
+  g_assert_cmpuint (strlen (d1), ==, 0);
+  for (guint i = 0; i < n; i++)
+    g_assert_cmpint (d1[i], ==, 0);
+
+  bolt_erase_n (buf, sizeof (buf));
+  for (guint i = 0; i < n; i++)
+    g_assert_cmpint (buf[i], ==, 0);
+}
+
 typedef struct
 {
   char *path;
@@ -233,6 +269,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_rng,
+              NULL);
+
+  g_test_add ("/common/erase",
+              TestRng,
+              NULL,
+              NULL,
+              test_erase,
               NULL);
 
   g_test_add ("/common/io/verify",
