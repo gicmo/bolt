@@ -91,6 +91,14 @@ conf.set_quoted('DATADIR', datadir)
 
 conf.set('_GNU_SOURCE', true)
 
+foreach fn : [
+  ['explicit_bzero' ,   '''#include <string.h>''']
+]
+
+  have = compiler.has_function(fn[0], prefix : fn[1])
+  conf.set10('HAVE_FN_' + fn[0].to_upper(), have)
+endforeach
+
 config_h = configure_file(output: 'config.h', configuration: conf)
 
 cargs = ['-DG_LOG_DOMAIN="Bolt"']
@@ -109,7 +117,8 @@ common_sources = [
   'common/bolt-enums.c',
   'common/bolt-error.c',
   'common/bolt-io.c',
-  'common/bolt-rnd.c'
+  'common/bolt-rnd.c',
+  'common/bolt-str.c'
 ]
 
 common_enums = gnome.mkenums_simple('bolt-enum-types',
@@ -212,9 +221,9 @@ tests = [
 
 foreach t: tests
   test_name = t.get(0)
-  test_srcs = ['tests/@0@.c'.format(test_name), t.get(1, [])]
-  e = executable(test_name, test_srcs,
-		 dependencies: [common, umock])
+  test_deps = [common] + t.get(1, [])
+  test_srcs = ['tests/@0@.c'.format(test_name), t.get(2, [])]
+  e = executable(test_name, test_srcs, dependencies: test_deps)
 
   test_env = environment()
   test_env.prepend('LD_PRELOAD', 'libumockdev-preload.so.0')
