@@ -51,7 +51,8 @@ typedef enum {
   BOLT_STATUS_AUTHORIZED_NEWKEY,
   BOLT_STATUS_GHOST,
 
-  BOLT_STATUS_LAST
+  BOLT_STATUS_LAST,
+  BOLT_STATUS_INVALID = BOLT_STATUS_LAST
 
 } BoltStatus;
 
@@ -71,7 +72,10 @@ typedef enum {
   BOLT_SECURITY_NONE = 0,
   BOLT_SECURITY_DPONLY = 1,
   BOLT_SECURITY_USER = '1',
-  BOLT_SECURITY_SECURE = '2'
+  BOLT_SECURITY_SECURE = '2',
+
+  BOLT_SECURITY_LAST,
+  BOLT_SECURITY_INVALID = BOLT_SECURITY_LAST
 
 } BoltSecurity;
 
@@ -82,20 +86,21 @@ const char *     bolt_security_to_string (BoltSecurity security);
 /**
  * BoltPolicy:
  * @BOLT_POLICY_DEFAULT: Default policy.
+ * @BOLT_POLICY_MANUAL: Manual authorization of the device.
  * @BOLT_POLICY_AUTO: Connect the device automatically,
  *   with the best possible security level supported
  *   by the domain controller.
- * @BOLT_POLICY_MANUAL: Manual authorization of the device.
  *
  * What do to for connected devices.
  */
 typedef enum {
 
   BOLT_POLICY_DEFAULT = 0,
-  BOLT_POLICY_AUTO = 1,
-  BOLT_POLICY_MANUAL = 2,
+  BOLT_POLICY_MANUAL = 1,
+  BOLT_POLICY_AUTO = 2,
 
-  BOLT_POLICY_LAST
+  BOLT_POLICY_LAST,
+  BOLT_POLICY_INVALID = BOLT_POLICY_LAST
 
 } BoltPolicy;
 
