@@ -96,6 +96,33 @@ bolt_manager_finalize (GObject *object)
 {
   BoltManager *mgr = BOLT_MANAGER (object);
 
+  if (mgr->udev_monitor)
+    {
+      udev_monitor_unref (mgr->udev_monitor);
+      mgr->udev_monitor = NULL;
+
+      g_source_destroy (mgr->udev_source);
+      g_source_unref (mgr->udev_source);
+      mgr->udev_source = NULL;
+    }
+
+  if (mgr->kernel_monitor)
+    {
+      udev_monitor_unref (mgr->kernel_monitor);
+      mgr->kernel_monitor = NULL;
+
+      g_source_destroy (mgr->kernel_source);
+      g_source_unref (mgr->kernel_source);
+      mgr->kernel_source = NULL;
+    }
+
+  if (mgr->udev)
+    {
+      udev_unref (mgr->udev);
+      mgr->udev = NULL;
+    }
+
+
   g_ptr_array_free (mgr->devices, TRUE);
 
   G_OBJECT_CLASS (bolt_manager_parent_class)->finalize (object);
