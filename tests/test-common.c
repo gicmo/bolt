@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "bolt-error.h"
+#include "bolt-fs.h"
 #include "bolt-io.h"
 #include "bolt-rnd.h"
 #include "bolt-str.h"
@@ -168,6 +169,7 @@ test_erase (TestRng *tt, gconstpointer user_data)
     g_assert_cmpint (buf[i], ==, 0);
 }
 
+
 typedef struct
 {
   char *path;
@@ -256,6 +258,55 @@ test_io_verify (TestIO *tt, gconstpointer user_data)
   unlinkat (dirfd (d), "unique_id", 0);
 }
 
+static void
+test_fs (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GFile) base = NULL;
+  g_autoptr(GFile) dir = NULL;
+  g_autoptr(GFile) target = NULL;
+  g_autoptr(GError) error = NULL;
+  g_autofree char *path = NULL;
+  gboolean ok;
+
+  base = g_file_new_for_path (tt->path);
+
+  dir = g_file_get_child (base, "in/a/galaxy/far/far");
+  target = g_file_get_child (dir, "luke");
+
+  ok = bolt_fs_make_parent_dirs (target, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  ok = g_file_query_exists (target, NULL);
+  g_assert_false (ok);
+
+  ok = g_file_query_exists (dir, NULL);
+  g_assert_true (ok);
+
+  ok = bolt_fs_make_parent_dirs (target, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  ok = bolt_fs_make_parent_dirs (dir, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  g_clear_object (&target);
+  target = g_file_get_child (base, "darth");
+
+  path = g_file_get_path (target);
+  ok = g_file_set_contents (path, "vader", -1, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  ok = g_file_query_exists (target, NULL);
+  g_assert_true (ok);
+
+  ok = bolt_fs_make_parent_dirs (target, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -283,6 +334,13 @@ main (int argc, char **argv)
               NULL,
               test_io_setup,
               test_io_verify,
+              test_io_tear_down);
+
+  g_test_add ("/common/fs",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_fs,
               test_io_tear_down);
 
   return g_test_run ();
