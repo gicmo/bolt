@@ -392,7 +392,7 @@ bolt_store_put_device (BoltStore  *store,
       if (ok)
         {
           ok = g_file_replace_contents (keypath,
-                                        key->data, BOLT_KEY_STR_BYTES,
+                                        key->data, BOLT_KEY_STR_CHARS,
                                         NULL, FALSE,
                                         0, NULL,
                                         NULL, &err);
@@ -544,13 +544,13 @@ bolt_store_get_key (BoltStore  *store,
   if (fd < 0)
     return NULL;
 
-  ok = bolt_read_all (fd, key->data, BOLT_KEY_RAW_BYTES, &len, error);
+  ok = bolt_read_all (fd, key->data, BOLT_KEY_RAW_CHARS, &len, error);
   close (fd);
 
   if (!ok)
     return NULL;
 
-  g_debug ("Read key for %s of len: %zu", uid, len);
+  g_debug ("[%s] Read key of len: %zu", uid, len);
   key->fresh = FALSE;
 
   return g_steal_pointer (&key);
