@@ -150,7 +150,8 @@ common = declare_dependency(
 # boltd - the main daemon
 daemon_sources = files([
   'boltd/bolt-manager.c',
-  'boltd/bolt-device.c'
+  'boltd/bolt-device.c',
+  'boltd/bolt-store.c'
 ])
 
 daemon_sources += gnome.gdbus_codegen('bolt-gdbus',
