@@ -188,6 +188,10 @@ bolt_device_set_property (GObject      *object,
       dev->syspath = g_value_dup_string (value);
       break;
 
+    case PROP_SECURITY:
+      dev->security = g_value_get_uint (value);
+      break;
+
     case PROP_STORED:
       dev->store = g_value_get_uint (value);
       break;
