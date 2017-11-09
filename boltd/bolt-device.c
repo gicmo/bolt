@@ -169,14 +169,17 @@ bolt_device_set_property (GObject      *object,
   switch (prop_id)
     {
     case PROP_UID:
+      g_return_if_fail (dev->uid == NULL);
       dev->uid = g_value_dup_string (value);
       break;
 
     case PROP_NAME:
+      g_clear_pointer (&dev->name, g_free);
       dev->name = g_value_dup_string (value);
       break;
 
     case PROP_VENDOR:
+      g_clear_pointer (&dev->vendor, g_free);
       dev->vendor = g_value_dup_string (value);
       break;
 
@@ -185,6 +188,7 @@ bolt_device_set_property (GObject      *object,
       break;
 
     case PROP_SYSFS:
+      g_clear_pointer (&dev->syspath, g_free);
       dev->syspath = g_value_dup_string (value);
       break;
 
