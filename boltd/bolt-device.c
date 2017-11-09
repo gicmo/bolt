@@ -673,11 +673,22 @@ bolt_device_new_for_udev (BoltManager        *mgr,
   dev->status = bolt_status_from_udev (udev);
   dev->security = security_for_udev (udev);
 
+  bolt_device_set_manager (dev, mgr);
+
+  return dev;
+}
+
+void
+bolt_device_set_manager (BoltDevice  *dev,
+                         BoltManager *mgr)
+{
+  if (dev->mgr != NULL)
+    g_object_remove_weak_pointer (G_OBJECT (mgr),
+                                  (gpointer *) &dev->mgr);
+
   dev->mgr = mgr;
   g_object_add_weak_pointer (G_OBJECT (mgr),
                              (gpointer *) &dev->mgr);
-
-  return dev;
 }
 
 const char *

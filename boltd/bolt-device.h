@@ -36,6 +36,8 @@ BoltDevice *      bolt_device_new_for_udev (BoltManager        *manager,
                                             struct udev_device *udev,
                                             GError            **error);
 
+void              bolt_device_set_manager (BoltDevice  *device,
+                                           BoltManager *manager);
 
 const char *      bolt_device_export (BoltDevice      *device,
                                       GDBusConnection *connection,
