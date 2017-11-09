@@ -57,7 +57,15 @@ static void          handle_udev_device_changed (BoltManager        *mgr,
                                                  struct udev_device *udev);
 
 static void          hanlde_udev_device_removed (BoltManager *mgr,
-                                                 const char  *sysfs);
+                                                 BoltDevice  *dev);
+
+static void          handle_udev_device_attached (BoltManager        *mgr,
+                                                  BoltDevice         *dev,
+                                                  struct udev_device *udev);
+
+static void          handle_udev_device_detached (BoltManager *mgr,
+                                                  BoltDevice  *dev);
+
 
 /* dbus method calls */
 static gboolean handle_list_devices (BoltDBusManager       *object,
@@ -290,11 +298,12 @@ handle_uevent_udev (GIOChannel  *source,
                     GIOCondition condition,
                     gpointer     user_data)
 {
-  BoltManager *mgr = BOLT_MANAGER (user_data);
-
+  g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(udev_device) device = NULL;
+  BoltManager *mgr;
   const char *action;
 
+  mgr = BOLT_MANAGER (user_data);
   device = udev_monitor_receive_device (mgr->udev_monitor);
 
   if (device == NULL)
@@ -309,21 +318,22 @@ handle_uevent_udev (GIOChannel  *source,
   if (g_str_equal (action, "add") ||
       g_str_equal (action, "change"))
     {
-      /* filter sysfs devices (e.g. the domain) that don't have
-       * the unique_id attribute */
-      g_autoptr(BoltDevice) dev = NULL;
       const char *uid;
 
+      /* filter sysfs devices (e.g. the domain) that don't have
+       * the unique_id attribute */
       uid = udev_device_get_sysattr_value (device, "unique_id");
       if (uid == NULL)
         return G_SOURCE_CONTINUE;
 
       dev = bolt_manager_get_device_by_uid (mgr, uid);
 
-      if (dev)
-        handle_udev_device_changed (mgr, dev, device);
-      else
+      if (!dev)
         handle_udev_device_added (mgr, device);
+      else if (!bolt_device_is_connected (dev))
+        handle_udev_device_attached (mgr, dev, device);
+      else
+        handle_udev_device_changed (mgr, dev, device);
     }
   else if (g_strcmp0 (action, "remove") == 0)
     {
@@ -342,7 +352,17 @@ handle_uevent_udev (GIOChannel  *source,
       if (name && g_str_has_prefix (name, "domain"))
         return G_SOURCE_CONTINUE;
 
-      hanlde_udev_device_removed (mgr, syspath);
+      dev = bolt_manager_get_device_by_syspath (mgr, syspath);
+
+      /* if we don't have any records of the device,
+       *  then we don't care */
+      if (!dev)
+        return G_SOURCE_CONTINUE;
+
+      if (bolt_device_get_store (dev) > 0)
+        handle_udev_device_detached (mgr, dev);
+      else
+        hanlde_udev_device_removed (mgr, dev);
     }
 
   return G_SOURCE_CONTINUE;
@@ -353,10 +373,13 @@ bolt_manager_initialize (GInitable    *initable,
                          GCancellable *cancellable,
                          GError      **error)
 {
-  BoltManager *mgr = BOLT_MANAGER (initable);
+  g_auto(GStrv) ids = NULL;
+  BoltManager *mgr;
   struct udev_enumerate *enumerate;
   struct udev_list_entry *l, *devices;
   gboolean ok;
+
+  mgr = BOLT_MANAGER (initable);
 
   mgr->udev = udev_new ();
   if (mgr->udev == NULL)
@@ -387,21 +410,58 @@ bolt_manager_initialize (GInitable    *initable,
   udev_enumerate_add_match_subsystem (enumerate, "thunderbolt");
   /* only devices (i.e. not the domain controller) */
   udev_enumerate_add_match_sysattr (enumerate, "unique_id", NULL);
+
+
+  ids = bolt_store_list_uids (mgr->store, error);
+  if (ids == NULL)
+    {
+      g_prefix_error (error, "failed to list devices in store");
+      return FALSE;
+    }
+
+  g_debug ("Loading devices from store");
+  for (guint i = 0; i < g_strv_length (ids); i++)
+    {
+      g_autoptr(GError) err = NULL;
+      BoltDevice *dev = NULL;
+      const char *uid = ids[i];
+
+      dev = bolt_store_get_device (mgr->store, uid, &err);
+      if (dev == NULL)
+        {
+          g_warning ("[%s] failed to load from store: %s",
+                     uid, err->message);
+          continue;
+        }
+
+      g_ptr_array_add (mgr->devices, dev);
+    }
+
+  g_debug ("Enumerating devices from udev");
   udev_enumerate_scan_devices (enumerate);
   devices = udev_enumerate_get_list_entry (enumerate);
 
   for (l = devices; l; l = udev_list_entry_get_next (l))
     {
       g_autoptr(udev_device) udevice = NULL;
+      g_autoptr(BoltDevice) dev = NULL;
+      const char *uid;
+      const char *syspath;
 
-      udevice = udev_device_new_from_syspath (udev_enumerate_get_udev (enumerate),
-                                              udev_list_entry_get_name (l));
+      syspath = udev_list_entry_get_name (l);
+      udevice = udev_device_new_from_syspath (mgr->udev, syspath);
 
       if (udevice == NULL)
         continue;
 
-      /* filter ensures we have a valid thunderbolt device */
-      handle_udev_device_added (mgr, udevice);
+      uid = udev_device_get_sysattr_value (udevice, "unique_id");
+      g_assert (uid); /* cant really happen due to the match rule */
+
+      dev = bolt_manager_get_device_by_uid (mgr, uid);
+      if (dev)
+        handle_udev_device_attached (mgr, dev, udevice);
+      else
+        handle_udev_device_added (mgr, udevice);
     }
 
   return TRUE;
@@ -451,6 +511,8 @@ handle_udev_device_added (BoltManager        *mgr,
   GDBusConnection *bus;
   BoltDevice *dev;
   const char *opath;
+  const char *uid;
+  const char *syspath;
 
   dev = bolt_device_new_for_udev (mgr, udev, &err);
   if (dev == NULL)
@@ -460,6 +522,10 @@ handle_udev_device_added (BoltManager        *mgr,
     }
 
   g_ptr_array_add (mgr->devices, dev);
+
+  uid = bolt_device_get_uid (dev);
+  syspath = udev_device_get_syspath (udev);
+  g_debug ("[%s] added (%s)", uid, syspath);
 
   /* if we have a valid dbus connection */
   bus = g_dbus_interface_skeleton_get_connection (G_DBUS_INTERFACE_SKELETON (mgr));
@@ -488,18 +554,15 @@ handle_udev_device_changed (BoltManager        *mgr,
 
 static void
 hanlde_udev_device_removed (BoltManager *mgr,
-                            const char  *syspath)
+                            BoltDevice  *dev)
 {
-  g_autoptr(BoltDevice) dev = NULL;
   const char *opath;
+  const char *uid;
+  const char *syspath;
 
-  dev = bolt_manager_get_device_by_syspath (mgr, syspath);
-
-  if (dev == NULL)
-    {
-      g_warning ("uevent remove event for unknown device: %s", syspath);
-      return;
-    }
+  uid = bolt_device_get_uid (dev);
+  syspath = bolt_device_get_syspath (dev);
+  g_debug ("[%s] removed (%s)", uid, syspath);
 
   g_ptr_array_remove_fast (mgr->devices, dev);
 
@@ -510,6 +573,35 @@ hanlde_udev_device_removed (BoltManager *mgr,
 
   bolt_dbus_manager_emit_device_removed (BOLT_DBUS_MANAGER (mgr), opath);
   bolt_device_unexport (dev);
+}
+
+static void
+handle_udev_device_attached (BoltManager        *mgr,
+                             BoltDevice         *dev,
+                             struct udev_device *udev)
+{
+  const char *uid;
+  const char *syspath;
+
+  uid = bolt_device_get_uid (dev);
+  syspath = udev_device_get_syspath (udev);
+  g_debug ("[%s] connected (%s)", uid, syspath);
+
+  bolt_device_connected (dev, udev);
+}
+
+static void
+handle_udev_device_detached (BoltManager *mgr,
+                             BoltDevice  *dev)
+{
+  const char *uid;
+  const char *syspath;
+
+  uid = bolt_device_get_uid (dev);
+  syspath = bolt_device_get_syspath (dev);
+  g_debug ("[%s] disconnected (%s)", uid, syspath);
+
+  bolt_device_disconnected (dev);
 }
 
 
