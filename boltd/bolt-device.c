@@ -53,6 +53,11 @@ struct _BoltDevice
   /* when device is attached */
   char        *syspath;
   BoltSecurity security;
+
+  /* when device is stored */
+  BoltPolicy policy;
+  guint      store; /* currently: 0,no / 1,yes */
+  guint      key; /* currently 0,no / 1,yes */
 };
 
 
@@ -63,8 +68,13 @@ enum {
   PROP_NAME,
   PROP_VENDOR,
   PROP_STATUS,
+
   PROP_SYSFS,
   PROP_SECURITY,
+
+  PROP_STORED,
+  PROP_POLICY,
+  PROP_HAVE_KEY,
 
   PROP_LAST
 };
@@ -130,6 +140,18 @@ bolt_device_get_property (GObject    *object,
       g_value_set_uint (value, dev->security);
       break;
 
+    case PROP_STORED:
+      g_value_set_uint (value, dev->store);
+      break;
+
+    case PROP_POLICY:
+      g_value_set_uint (value, dev->policy);
+      break;
+
+    case PROP_HAVE_KEY:
+      g_value_set_uint (value, dev->key);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -163,6 +185,18 @@ bolt_device_set_property (GObject      *object,
 
     case PROP_SYSFS:
       dev->syspath = g_value_dup_string (value);
+      break;
+
+    case PROP_STORED:
+      dev->store = g_value_get_uint (value);
+      break;
+
+    case PROP_POLICY:
+      dev->policy = g_value_get_uint (value);
+      break;
+
+    case PROP_HAVE_KEY:
+      dev->key = g_value_get_uint (value);
       break;
 
     default:
@@ -204,6 +238,18 @@ bolt_device_class_init (BoltDeviceClass *klass)
   g_object_class_override_property (gobject_class,
                                     PROP_SECURITY,
                                     "security");
+
+  g_object_class_override_property (gobject_class,
+                                    PROP_STORED,
+                                    "store");
+
+  g_object_class_override_property (gobject_class,
+                                    PROP_POLICY,
+                                    "policy");
+
+  g_object_class_override_property (gobject_class,
+                                    PROP_HAVE_KEY,
+                                    "key");
 
 }
 
@@ -591,6 +637,12 @@ bolt_device_unexport (BoltDevice *device)
   g_dbus_interface_skeleton_unexport (G_DBUS_INTERFACE_SKELETON (device));
 }
 
+guint
+bolt_device_get_key (BoltDevice *dev)
+{
+  return dev->key;
+}
+
 const char *
 bolt_device_get_name (BoltDevice *dev)
 {
@@ -615,6 +667,12 @@ bolt_device_get_object_path (BoltDevice *device)
   return device->dbus_path;
 }
 
+BoltPolicy
+bolt_device_get_policy (BoltDevice *dev)
+{
+  return dev->policy;
+}
+
 const char *
 bolt_device_get_uid (BoltDevice *dev)
 {
@@ -625,6 +683,12 @@ BoltSecurity
 bolt_device_get_security (BoltDevice *dev)
 {
   return dev->security;
+}
+
+guint
+bolt_device_get_store (BoltDevice *dev)
+{
+  return dev->store;
 }
 
 const char *

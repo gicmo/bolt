@@ -43,13 +43,19 @@ const char *      bolt_device_export (BoltDevice      *device,
 
 void              bolt_device_unexport (BoltDevice *device);
 
+guint             bolt_device_get_key (BoltDevice *dev);
+
 const char *      bolt_device_get_name (BoltDevice *dev);
 
 const char *      bolt_device_get_object_path (BoltDevice *device);
 
+BoltPolicy        bolt_device_get_policy (BoltDevice *dev);
+
 const char *      bolt_device_get_uid (BoltDevice *dev);
 
 BoltSecurity      bolt_device_get_security (BoltDevice *dev);
+
+guint             bolt_device_get_store (BoltDevice *dev);
 
 const char *      bolt_device_get_syspath (BoltDevice *dev);
 

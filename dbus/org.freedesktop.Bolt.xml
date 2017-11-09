@@ -107,6 +107,24 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="Store" type="u" access="read">
+      <doc:doc><doc:description><doc:para>
+	Indication if the device is stored.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+    <property name="Policy" type="u" access="read">
+      <doc:doc><doc:description><doc:para>
+	The authorization policy of the device.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+    <property name="Key" type="u" access="read">
+      <doc:doc><doc:description><doc:para>
+	If a key is associated with the device.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <!-- methods -->
 
     <method name="Authorize">
