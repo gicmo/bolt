@@ -712,6 +712,46 @@ bolt_device_unexport (BoltDevice *device)
   g_dbus_interface_skeleton_unexport (G_DBUS_INTERFACE_SKELETON (device));
 }
 
+
+BoltStatus
+bolt_device_connected (BoltDevice         *dev,
+                       struct udev_device *udev)
+{
+  const char *syspath;
+  BoltSecurity security;
+  BoltStatus status;
+
+  syspath = udev_device_get_syspath (udev);
+  status = bolt_status_from_udev (udev);
+  security = security_for_udev (udev);
+
+  g_object_set (G_OBJECT (dev),
+                "sysfs-path", syspath,
+                "security", security,
+                "status", status,
+                NULL);
+
+  return status;
+}
+
+BoltStatus
+bolt_device_disconnected (BoltDevice *dev)
+{
+  g_object_set (G_OBJECT (dev),
+                "sysfs-path", NULL,
+                "security", BOLT_SECURITY_NONE,
+                "status", BOLT_STATUS_DISCONNECTED,
+                NULL);
+
+  return dev->status;
+}
+
+gboolean
+bolt_device_is_connected (BoltDevice *device)
+{
+  return device->status > BOLT_STATUS_CONNECTING;
+}
+
 guint
 bolt_device_get_key (BoltDevice *dev)
 {

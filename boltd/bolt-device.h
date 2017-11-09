@@ -43,6 +43,13 @@ const char *      bolt_device_export (BoltDevice      *device,
 
 void              bolt_device_unexport (BoltDevice *device);
 
+BoltStatus        bolt_device_connected (BoltDevice         *dev,
+                                         struct udev_device *udev);
+
+BoltStatus        bolt_device_disconnected (BoltDevice *dev);
+
+gboolean          bolt_device_is_connected (BoltDevice *device);
+
 guint             bolt_device_get_key (BoltDevice *dev);
 
 const char *      bolt_device_get_name (BoltDevice *dev);
