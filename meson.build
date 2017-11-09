@@ -83,11 +83,14 @@ libexecdir = join_paths(prefixdir, get_option('libexecdir'))
 datadir = join_paths(prefixdir, get_option('datadir'))
 sysconfdir = get_option('sysconfdir')
 
+dbdir = get_option('db-path')
+
 conf = configuration_data()
 conf.set_quoted('VERSION', meson.project_version())
 conf.set_quoted('PACKAGE_NAME', meson.project_name())
 conf.set_quoted('PACKAGE_VERSION', meson.project_version())
 conf.set_quoted('DATADIR', datadir)
+conf.set_quoted('BOLT_DBDIR', dbdir)
 
 conf.set('_GNU_SOURCE', true)
 
@@ -231,3 +234,6 @@ foreach t: tests
   test(test_name, e, env: test_env, timeout : 120)
 
 endforeach
+
+msg = '  database path:       @0@'.format(dbdir)
+message('\n' + msg)

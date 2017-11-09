@@ -1,0 +1,1 @@
+option('db-path', type : 'string', value : '/var/lib/thunderbolt', description : 'Directory for the device database')
