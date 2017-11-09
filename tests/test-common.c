@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "bolt-enums.h"
 #include "bolt-error.h"
 #include "bolt-fs.h"
 #include "bolt-io.h"
@@ -69,10 +70,25 @@ cleanup_dir (DIR *d)
     }
 }
 
+
 typedef struct
 {
   int dummy;
 } TestRng;
+
+static void
+test_enums (TestRng *tt, gconstpointer user_data)
+{
+  g_assert_cmpstr (bolt_security_to_string (BOLT_SECURITY_NONE), ==, "none");
+  g_assert_cmpstr (bolt_security_to_string (BOLT_SECURITY_DPONLY), ==, "dponly");
+  g_assert_cmpstr (bolt_security_to_string (BOLT_SECURITY_USER), ==, "user");
+  g_assert_cmpstr (bolt_security_to_string (BOLT_SECURITY_SECURE), ==, "secure");
+
+  g_assert_cmpuint (bolt_security_from_string ("none"), ==, BOLT_SECURITY_NONE);
+  g_assert_cmpuint (bolt_security_from_string ("dponly"), ==, BOLT_SECURITY_DPONLY);
+  g_assert_cmpuint (bolt_security_from_string ("user"), ==, BOLT_SECURITY_USER);
+  g_assert_cmpuint (bolt_security_from_string ("secure"), ==, BOLT_SECURITY_SECURE);
+}
 
 typedef void (*rng_t) (void *buf,
                        gsize n);
@@ -314,6 +330,13 @@ main (int argc, char **argv)
   setlocale (LC_ALL, "");
 
   g_test_init (&argc, &argv, NULL);
+
+  g_test_add ("/common/enums",
+              TestRng,
+              NULL,
+              NULL,
+              test_enums,
+              NULL);
 
   g_test_add ("/common/rng",
               TestRng,
