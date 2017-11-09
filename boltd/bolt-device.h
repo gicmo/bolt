@@ -57,6 +57,8 @@ BoltSecurity      bolt_device_get_security (BoltDevice *dev);
 
 guint             bolt_device_get_store (BoltDevice *dev);
 
+BoltStatus        bolt_device_get_status (BoltDevice *dev);
+
 const char *      bolt_device_get_syspath (BoltDevice *dev);
 
 const char *      bolt_device_get_vendor (BoltDevice *dev);

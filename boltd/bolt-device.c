@@ -760,6 +760,12 @@ bolt_device_get_security (BoltDevice *dev)
   return dev->security;
 }
 
+BoltStatus
+bolt_device_get_status (BoltDevice *dev)
+{
+  return dev->status;
+}
+
 guint
 bolt_device_get_store (BoltDevice *dev)
 {
