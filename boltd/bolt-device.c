@@ -26,6 +26,7 @@
 #include "bolt-error.h"
 #include "bolt-io.h"
 #include "bolt-manager.h"
+#include "bolt-store.h"
 
 #include <dirent.h>
 #include <libudev.h>
@@ -393,7 +394,9 @@ typedef void (*AuthCallback) (BoltDevice *dev,
 
 typedef struct
 {
-  char level;
+  BoltSecurity level;
+  BoltKey     *key;
+  BoltPolicy   policy;
 
   /* the outer callback  */
   AuthCallback callback;
@@ -410,36 +413,58 @@ auth_data_free (gpointer data)
   g_slice_free (AuthData, auth);
 }
 
+static gboolean
+authorize_device_internal (BoltDevice *dev,
+                           AuthData   *auth,
+                           GError    **error)
+{
+  g_autoptr(DIR) devdir = NULL;
+  gboolean ok;
+
+  devdir = bolt_opendir (dev->syspath, error);
+  if (devdir == NULL)
+    return FALSE;
+
+  ok = bolt_verify_uid (dirfd (devdir), dev->uid, error);
+  if (!ok)
+    return FALSE;
+
+  if (auth->key)
+    {
+      int keyfd;
+
+      g_debug ("[%s] writing key", dev->uid);
+      keyfd = bolt_openat (dirfd (devdir), "key", O_WRONLY | O_CLOEXEC, error);
+      if (keyfd < 0)
+        return FALSE;
+
+      ok = bolt_key_write_to (auth->key, keyfd, &auth->level, error);
+      close (keyfd);
+      if (!ok)
+        return FALSE;
+    }
+
+  g_debug ("[%s] writing authorization", dev->uid);
+  ok = bolt_write_char_at (dirfd (devdir),
+                           "authorized",
+                           auth->level,
+                           error);
+
+  return ok;
+}
+
 static void
 authorize_in_thread (GTask        *task,
                      gpointer      source,
                      gpointer      context,
                      GCancellable *cancellable)
 {
-  g_autoptr(DIR) devdir = NULL;
   g_autoptr(GError) error = NULL;
   BoltDevice *dev = source;
   AuthData *auth = context;
   gboolean ok;
 
-  devdir = bolt_opendir (dev->syspath, &error);
-  if (devdir == NULL)
-    {
-      g_task_return_error (task, error);
-      return;
-    }
-
-  ok = bolt_verify_uid (dirfd (devdir), dev->uid, &error);
-  if (!ok)
-    {
-      g_task_return_error (task, error);
-      return;
-    }
-
-  ok = bolt_write_char_at (dirfd (devdir),
-                           "authorized",
-                           auth->level,
-                           &error);
+  ok = authorize_device_internal (dev, auth, &error);
 
   if (!ok)
     {
@@ -459,24 +484,45 @@ authorize_thread_done (GObject      *object,
                        GAsyncResult *res,
                        gpointer      user_data)
 {
-  BoltDevice *dev = BOLT_DEVICE (object);
-  GTask *task = G_TASK (res);
-
   g_autoptr(GError) error = NULL;
+  BoltDevice *dev = BOLT_DEVICE (object);
+  BoltStore *store;
+  GTask *task = G_TASK (res);
   AuthData *auth;
   gboolean ok;
 
+  store = bolt_manager_get_store (dev->mgr);
   auth = g_task_get_task_data (task);
-
   ok = g_task_propagate_boolean (task, &error);
 
   if (ok)
-    dev->status = BOLT_STATUS_AUTH_ERROR;
+    {
+      if (auth->level == BOLT_SECURITY_SECURE)
+        dev->status = BOLT_STATUS_AUTHORIZED_SECURE;
+      else if (auth->key)
+        dev->status = BOLT_STATUS_AUTHORIZED_NEWKEY;
+      else
+        dev->status = BOLT_STATUS_AUTHORIZED;
+
+      if (!dev->store)
+        {
+          ok = bolt_store_put_device (store,
+                                      dev,
+                                      BOLT_POLICY_AUTO,
+                                      auth->key,
+                                      &error);
+        }
+    }
   else
-    dev->status = BOLT_STATUS_AUTHORIZED;
+    {
+      dev->status = BOLT_STATUS_AUTH_ERROR;
+    }
+
+  g_object_notify (G_OBJECT (dev), "status");
 
   if (auth->callback)
     auth->callback (dev, ok, &error, auth->user_data);
+
 }
 
 static gboolean
@@ -486,6 +532,9 @@ bolt_device_authorize (BoltDevice  *dev,
                        GError     **error)
 {
   AuthData *auth_data;
+  BoltStore *store;
+  BoltSecurity level;
+  BoltKey *key;
   GTask *task;
 
   if (dev->status != BOLT_STATUS_CONNECTED &&
@@ -496,10 +545,27 @@ bolt_device_authorize (BoltDevice  *dev,
       return FALSE;
     }
 
-  task = g_task_new (dev, NULL, authorize_thread_done, NULL);
+  store = bolt_manager_get_store (dev->mgr);
+  level = dev->security;
+  key = NULL;
 
+  if (level == BOLT_SECURITY_SECURE)
+    {
+      if (!dev->store)
+        key = bolt_store_create_key (store, dev->uid, error);
+      else if (dev->key)
+        key = bolt_store_get_key (store, dev->uid, error);
+      else
+        level = BOLT_SECURITY_USER;
+    }
+
+  if (level == BOLT_SECURITY_SECURE && key == NULL)
+    return FALSE;
+
+  task = g_task_new (dev, NULL, authorize_thread_done, NULL);
   auth_data = g_slice_new (AuthData);
-  auth_data->level = '1';
+  auth_data->level = level;
+  auth_data->key = key;
   auth_data->callback = callback;
   auth_data->user_data = user_data;
   g_task_set_task_data (task, auth_data, auth_data_free);
@@ -599,6 +665,7 @@ bolt_device_new_for_udev (BoltManager        *mgr,
   dev->status = bolt_status_from_udev (udev);
   dev->security = security_for_udev (udev);
 
+  dev->mgr = mgr;
   g_object_add_weak_pointer (G_OBJECT (mgr),
                              (gpointer *) &dev->mgr);
 
