@@ -133,6 +133,7 @@ gen_sources = [common_enums[0]]
 gen_headers = [common_enums[1]]
 
 common_lib = static_library('common',
+  c_args : [cargs],
   sources: common_sources + gen_sources + gen_headers,
   dependencies: common_deps,
   include_directories: [
@@ -177,6 +178,7 @@ daemon_deps = [
 ]
 
 daemon_library = static_library('daemon',
+  c_args : [cargs],
   sources: daemon_sources,
 	dependencies: daemon_deps,
 	include_directories: [
