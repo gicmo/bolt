@@ -24,11 +24,16 @@
 
 G_BEGIN_DECLS
 
+/* forward declaration to avoid circular imports */
+typedef struct _BoltStore BoltStore;
+
 #define BOLT_TYPE_MANAGER bolt_manager_get_type ()
 G_DECLARE_FINAL_TYPE (BoltManager, bolt_manager, BOLT, MANAGER, BoltDBusManagerSkeleton);
 
 gboolean         bolt_manager_export (BoltManager     *mgr,
                                       GDBusConnection *connection,
                                       GError         **error);
+
+BoltStore *      bolt_manager_get_store (BoltManager *mgr);
 
 G_END_DECLS

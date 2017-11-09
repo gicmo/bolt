@@ -23,6 +23,7 @@
 #include "bolt-device.h"
 #include "bolt-error.h"
 #include "bolt-manager.h"
+#include "bolt-store.h"
 
 #include <libudev.h>
 
@@ -67,13 +68,16 @@ struct _BoltManager
 {
   BoltDBusManagerSkeleton object;
 
-  struct udev            *udev;
-  struct udev_monitor    *udev_monitor;
-  struct udev_monitor    *kernel_monitor;
-  GSource                *udev_source;
-  GSource                *kernel_source;
+  /* udev */
+  struct udev         *udev;
+  struct udev_monitor *udev_monitor;
+  struct udev_monitor *kernel_monitor;
+  GSource             *udev_source;
+  GSource             *kernel_source;
 
-  GPtrArray              *devices;
+  /* state */
+  BoltStore *store;
+  GPtrArray *devices;
 };
 
 enum {
@@ -122,7 +126,7 @@ bolt_manager_finalize (GObject *object)
       mgr->udev = NULL;
     }
 
-
+  g_clear_object (&mgr->store);
   g_ptr_array_free (mgr->devices, TRUE);
 
   G_OBJECT_CLASS (bolt_manager_parent_class)->finalize (object);
@@ -168,6 +172,7 @@ static void
 bolt_manager_init (BoltManager *mgr)
 {
   mgr->devices = g_ptr_array_new_with_free_func (g_object_unref);
+  mgr->store = bolt_store_new (BOLT_DBDIR);
 
   g_signal_connect (mgr, "handle-list-devices", G_CALLBACK (handle_list_devices), NULL);
 }
@@ -555,4 +560,10 @@ bolt_manager_export (BoltManager     *mgr,
     }
 
   return TRUE;
+}
+
+BoltStore *
+bolt_manager_get_store (BoltManager *mgr)
+{
+  return mgr->store;
 }
