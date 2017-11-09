@@ -221,7 +221,8 @@ executable('boltctl',
 # testing
 
 tests = [
-  ['test-common']
+  ['test-common'],
+  ['test-store', [libdaemon]]
 ]
 
 foreach t: tests
