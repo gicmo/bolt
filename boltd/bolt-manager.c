@@ -26,6 +26,7 @@
 #include "bolt-store.h"
 
 #include <libudev.h>
+#include <string.h>
 
 typedef struct udev_monitor udev_monitor;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_monitor, udev_monitor_unref);
@@ -48,6 +49,12 @@ static BoltDevice *  bolt_manager_get_device_by_syspath (BoltManager *mgr,
 
 static BoltDevice *  bolt_manager_get_device_by_uid (BoltManager *mgr,
                                                      const char  *uid);
+
+static BoltDevice *  bolt_manager_get_parent (BoltManager *mgr,
+                                              BoltDevice  *dev);
+
+static GPtrArray *   bolt_manager_get_children (BoltManager *mgr,
+                                                BoltDevice  *target);
 
 static void          handle_udev_device_added (BoltManager        *mgr,
                                                struct udev_device *udev);
@@ -434,6 +441,7 @@ bolt_manager_initialize (GInitable    *initable,
           continue;
         }
 
+      bolt_device_set_manager (dev, mgr);
       g_ptr_array_add (mgr->devices, dev);
     }
 
@@ -503,6 +511,73 @@ bolt_manager_get_device_by_uid (BoltManager *mgr,
   return NULL;
 }
 
+
+static BoltDevice *
+bolt_manager_get_parent (BoltManager *mgr,
+                         BoltDevice  *dev)
+{
+  g_autofree char *path = NULL;
+  const char *syspath;
+  const char *start;
+  char *pos;
+
+  syspath = bolt_device_get_syspath (dev);
+  g_return_val_if_fail (syspath != NULL, NULL);
+
+  path = g_strdup (syspath);
+  start = path + strlen ("/sys");
+
+  pos = strrchr (start, '/');
+  if (!pos || pos < start + 2)
+    return NULL;
+
+  *pos = '\0';
+
+  return bolt_manager_get_device_by_syspath (mgr, path);
+}
+
+static GPtrArray *
+bolt_manager_get_children (BoltManager *mgr,
+                           BoltDevice  *target)
+{
+  GPtrArray *res;
+
+  res = g_ptr_array_new_with_free_func (g_object_unref);
+
+  for (guint i = 0; i < mgr->devices->len; i++)
+    {
+      g_autoptr(BoltDevice) parent = NULL;
+      BoltDevice *dev = g_ptr_array_index (mgr->devices, i);
+
+      parent = bolt_manager_get_parent (mgr, dev);
+      if (parent != target)
+        continue;
+
+      g_ptr_array_add (res, g_object_ref (dev));
+    }
+
+  return res;
+}
+
+/* device authorization */
+static void
+handle_device_authorized (BoltDevice *dev,
+                          gboolean    ok,
+                          GError    **error,
+                          gpointer    user_data)
+{
+  const char *uid;
+
+  uid = bolt_device_get_uid (dev);
+
+  if (ok)
+    g_debug ("[%s] authorized", uid);
+  else
+    g_warning ("[%s] authorization failed: %s",
+               uid, (*error)->message);
+}
+
+/* udev callbacks */
 static void
 handle_udev_device_added (BoltManager        *mgr,
                           struct udev_device *udev)
@@ -547,9 +622,43 @@ handle_udev_device_changed (BoltManager        *mgr,
                             BoltDevice         *dev,
                             struct udev_device *udev)
 {
-  const char *uid = bolt_device_get_uid (dev);
+  g_autoptr(GPtrArray) children = NULL;
+  BoltStatus after;
+  const char *uid;
 
-  g_debug ("udev device changed: %s", uid);
+  uid = bolt_device_get_uid (dev);
+  after = bolt_device_update_from_udev (dev, udev);
+
+  g_debug ("[%s] device changed: %x",
+           uid, after);
+
+  if (!bolt_status_is_authorized (after))
+    return;
+
+  children = bolt_manager_get_children (mgr, dev);
+
+  for (guint i = 0; i < children->len; i++)
+    {
+      g_autoptr(GError) err = NULL;
+      BoltDevice *child = g_ptr_array_index (children, i);
+      BoltStatus status = bolt_device_get_status (child);
+      BoltPolicy policy = bolt_device_get_policy (child);
+      const char *cid = bolt_device_get_uid (child);
+      gboolean ok;
+
+      g_debug ("[%s] checking possible authorization: %s (%x)",
+               cid, bolt_policy_to_string (policy), status);
+
+      if (bolt_status_is_authorized (status) ||
+          policy != BOLT_POLICY_AUTO)
+        continue;
+
+      ok = bolt_device_authorize (child, handle_device_authorized, NULL, &err);
+      if (!ok)
+        g_warning ("[%s] failed to initiate authorization: %s",
+                   cid, err->message);
+    }
+
 }
 
 static void
@@ -580,14 +689,54 @@ handle_udev_device_attached (BoltManager        *mgr,
                              BoltDevice         *dev,
                              struct udev_device *udev)
 {
+  g_autoptr(BoltDevice) parent = NULL;
+  g_autoptr(GError) error = NULL;
   const char *uid;
   const char *syspath;
+  BoltStatus status;
+  BoltPolicy policy;
+  guint store;
+  gboolean ok;
+
 
   uid = bolt_device_get_uid (dev);
   syspath = udev_device_get_syspath (udev);
   g_debug ("[%s] connected (%s)", uid, syspath);
 
-  bolt_device_connected (dev, udev);
+  status = bolt_device_connected (dev, udev);
+
+  if (status != BOLT_STATUS_CONNECTED)
+    return;
+
+  store = bolt_device_get_store (dev);
+  /* sanity check */
+  g_return_if_fail (store > 0);
+
+  policy = bolt_device_get_policy (dev);
+  g_debug ("[%s] policy: %s", uid, bolt_policy_to_string (policy));
+  if (policy != BOLT_POLICY_AUTO)
+    return;
+
+  parent = bolt_manager_get_parent (mgr, dev);
+  if (parent)
+    {
+      const char *pid = bolt_device_get_uid (parent);
+      status = bolt_device_get_status (parent);
+      if (!bolt_status_is_authorized (status))
+        {
+          g_debug ("[%s] parent [%s] not authorized", uid, pid);
+          return;
+        }
+    }
+  else
+    {
+      g_warning ("[%s] could not find parent", uid);
+    }
+
+  ok = bolt_device_authorize (dev, handle_device_authorized, NULL, &error);
+  if (!ok)
+    g_warning ("[%s] failed to initiate authorization: %s",
+               uid, error->message);
 }
 
 static void
