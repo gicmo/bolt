@@ -758,6 +758,19 @@ bolt_device_is_connected (BoltDevice *device)
   return device->status > BOLT_STATUS_CONNECTING;
 }
 
+BoltStatus
+bolt_device_update_from_udev (BoltDevice         *dev,
+                              struct udev_device *udev)
+{
+  BoltStatus status = bolt_status_from_udev (udev);
+
+  g_object_set (G_OBJECT (dev),
+                "status", status,
+                NULL);
+
+  return status;
+}
+
 guint
 bolt_device_get_key (BoltDevice *dev)
 {

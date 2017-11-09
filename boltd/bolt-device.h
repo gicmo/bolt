@@ -57,6 +57,9 @@ BoltStatus        bolt_device_disconnected (BoltDevice *dev);
 
 gboolean          bolt_device_is_connected (BoltDevice *device);
 
+BoltStatus        bolt_device_update_from_udev (BoltDevice         *dev,
+                                                struct udev_device *udev);
+
 gboolean          bolt_device_authorize (BoltDevice  *dev,
                                          AuthCallback callback,
                                          gpointer     user_data,
