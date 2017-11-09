@@ -122,6 +122,19 @@ no_rng (void *buf, gsize n)
   /* noop  */
 }
 
+#if HAVE_FN_GETRANDOM
+static void
+getrandom_rng (void *buf, gsize n)
+{
+  g_autoptr(GError) error = NULL;
+  gboolean ok;
+
+  ok = bolt_random_getrandom (buf, n, 0, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+}
+#endif
+
 static void
 test_rng (TestRng *tt, gconstpointer user_data)
 {
@@ -140,14 +153,25 @@ test_rng (TestRng *tt, gconstpointer user_data)
   g_assert_cmpuint (hits, <, 10);
 
   ok = bolt_random_urandom (buf, sizeof (buf));
-  if (!ok)
+  if (ok)
+    {
+      hits = test_rng_loop (N, (rng_t) bolt_random_urandom);
+      g_assert_cmpuint (hits, <, 10);
+    }
+  else
     {
       g_debug ("urandom RNG seems to not be working");
-      return;
     }
 
-  hits = test_rng_loop (N, (rng_t) bolt_random_urandom);
+
+#if HAVE_FN_GETRANDOM
+  g_debug ("testing getrandom");
+  hits = test_rng_loop (N, (rng_t) getrandom_rng);
   g_assert_cmpuint (hits, <, 10);
+#else
+  g_debug ("getrandom RNG not available");
+#endif
+
 }
 
 static void
