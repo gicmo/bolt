@@ -140,7 +140,7 @@ main (int argc, char **argv)
   g_setenv ("GIO_USE_VFS", "local", TRUE);
   g_set_prgname (argv[0]);
 
-  g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE, log_handler, NULL);
+  g_log_set_default_handler (log_handler, NULL);
 
   context = g_option_context_new ("");
 
