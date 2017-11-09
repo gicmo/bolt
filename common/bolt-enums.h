@@ -56,6 +56,8 @@ typedef enum {
 
 } BoltStatus;
 
+gboolean         bolt_status_is_authorized (BoltStatus status);
+
 /**
  * BoltSecurity:
  * @BOLT_SECURITY_UNKNOWN : Unknown security.

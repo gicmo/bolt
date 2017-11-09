@@ -24,6 +24,13 @@
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
 
+gboolean
+bolt_status_is_authorized (BoltStatus status)
+{
+  return status == BOLT_STATUS_AUTHORIZED ||
+         status == BOLT_STATUS_AUTHORIZED_SECURE ||
+         status == BOLT_STATUS_AUTHORIZED_NEWKEY;
+}
 
 BoltSecurity
 bolt_security_from_string (const char *str)
