@@ -32,6 +32,11 @@ G_BEGIN_DECLS
 #define BOLT_TYPE_DEVICE bolt_device_get_type ()
 G_DECLARE_FINAL_TYPE (BoltDevice, bolt_device, BOLT, DEVICE, BoltDBusDeviceSkeleton);
 
+typedef void (*AuthCallback) (BoltDevice *dev,
+                              gboolean    ok,
+                              GError    **error,
+                              gpointer    user_data);
+
 BoltDevice *      bolt_device_new_for_udev (BoltManager        *manager,
                                             struct udev_device *udev,
                                             GError            **error);
@@ -51,6 +56,11 @@ BoltStatus        bolt_device_connected (BoltDevice         *dev,
 BoltStatus        bolt_device_disconnected (BoltDevice *dev);
 
 gboolean          bolt_device_is_connected (BoltDevice *device);
+
+gboolean          bolt_device_authorize (BoltDevice  *dev,
+                                         AuthCallback callback,
+                                         gpointer     user_data,
+                                         GError     **error);
 
 guint             bolt_device_get_key (BoltDevice *dev);
 

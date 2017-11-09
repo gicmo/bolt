@@ -395,11 +395,6 @@ security_for_udev (struct udev_device *udev)
 
 /*  device authorization */
 
-typedef void (*AuthCallback) (BoltDevice *dev,
-                              gboolean    ok,
-                              GError    **error,
-                              gpointer    user_data);
-
 typedef struct
 {
   BoltSecurity level;
@@ -533,7 +528,7 @@ authorize_thread_done (GObject      *object,
 
 }
 
-static gboolean
+gboolean
 bolt_device_authorize (BoltDevice  *dev,
                        AuthCallback callback,
                        gpointer     user_data,
