@@ -23,26 +23,61 @@
 #include "bolt-io.h"
 #include "bolt-rnd.h"
 
+#include <gio/gio.h>
+
+#include <errno.h>
 #include <string.h>
+#if HAVE_FN_GETRANDOM
+#include <sys/random.h>
+# else
+# define GRND_NONBLOCK 0
+#endif
 
 int
 bolt_get_random_data (void *buf, gsize n)
 {
   gboolean ok;
-  BoltRng method = BOLT_RNG_URANDOM;
+
+  ok = bolt_random_getrandom (buf, n, GRND_NONBLOCK, NULL);
+  if (ok)
+    return BOLT_RNG_GETRANDOM;
 
   ok = bolt_random_urandom (buf, n);
 
-  if (!ok)
-    {
-      method = BOLT_RNG_PRNG;
-      bolt_random_prng (buf, n);
-    }
+  if (ok)
+    return BOLT_RNG_URANDOM;
 
-  return method;
+  bolt_random_prng (buf, n);
+  return BOLT_RNG_PRNG;
 }
 
 /* specific implementations */
+gboolean
+bolt_random_getrandom (void    *buf,
+                       gsize    n,
+                       unsigned flags,
+                       GError **error)
+{
+  int r = -1;
+
+#if HAVE_FN_GETRANDOM
+  r = getrandom (buf, n, flags);
+#else
+  errno = ENOSYS;
+#endif
+
+  if (r < 0)
+    {
+      g_set_error (error, G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "failed to get random data: %s",
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 gboolean
 bolt_random_urandom (void *buf, gsize n)
 {

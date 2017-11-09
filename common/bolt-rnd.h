@@ -28,13 +28,18 @@ G_BEGIN_DECLS
 typedef enum {
   BOLT_RNG_ERROR = -1,
   BOLT_RNG_URANDOM = 1,
-  BOLT_RNG_PRNG = 2
+  BOLT_RNG_PRNG = 2,
+  BOLT_RNG_GETRANDOM = 3,
 } BoltRng;
 
 BoltRng  bolt_get_random_data (void *buf,
                                gsize n);
 
 /* specific implementations */
+gboolean bolt_random_getrandom (void    *buf,
+                                gsize    n,
+                                unsigned flags,
+                                GError **error);
 gboolean bolt_random_urandom (void *buf,
                               gsize n);
 void     bolt_random_prng (void *buf,

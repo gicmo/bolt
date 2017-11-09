@@ -95,7 +95,8 @@ conf.set_quoted('BOLT_DBDIR', dbdir)
 conf.set('_GNU_SOURCE', true)
 
 foreach fn : [
-  ['explicit_bzero' ,   '''#include <string.h>''']
+  ['explicit_bzero', '''#include <string.h>'''],
+  ['getrandom',      '''#include <sys/random.h>''']
 ]
 
   have = compiler.has_function(fn[0], prefix : fn[1])
