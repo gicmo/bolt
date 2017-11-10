@@ -23,12 +23,18 @@
 #include "bolt-client.h"
 #include "bolt-enums.h"
 #include "bolt-error.h"
+#include "bolt-term.h"
 
 #include <gio/gio.h>
 
 #include <locale.h>
 #include <stdlib.h>
 
+static const char *
+yes_no (gboolean b)
+{
+  return b ? "yes" : "no ";
+}
 
 static void
 print_device (BoltDevice *dev)
@@ -38,22 +44,99 @@ print_device (BoltDevice *dev)
   g_autofree char *name = NULL;
   g_autofree char *vendor = NULL;
   BoltSecurity security = BOLT_SECURITY_NONE;
+  BoltStatus status;
+  BoltDatabase store;
+  BoltKeyState keystate;
+  BoltPolicy policy;
+  const char *status_color;
+  const char *status_symbol;
+  const char *tree_branch;
+  const char *tree_right;
+  const char *tree_space;
+  gboolean stored;
 
   g_object_get (dev,
                 "object-path", &path,
                 "name", &name,
                 "vendor", &vendor,
+                "status", &status,
                 "uid", &uid,
                 "security", &security,
+                "store", &store,
+                "policy", &policy,
+                "key", &keystate,
                 NULL);
 
-  g_print (" %s\n", name);
-  g_print ("   uid: %s\n", uid);
-  g_print ("   dbus object path: %s\n", path);
-  g_print ("   vendor: %s\n", vendor);
-  g_print ("   security: %s\n",
-           bolt_security_to_string (security));
+  status_symbol = bolt_glyph (BLACK_CIRCLE);
+  tree_branch = bolt_glyph (TREE_BRANCH);
+  tree_right = bolt_glyph (TREE_RIGHT);
+  tree_space = bolt_glyph (TREE_SPACE);
 
+  switch (status)
+    {
+    case BOLT_STATUS_DISCONNECTED:
+      status_symbol = bolt_glyph (WHITE_CIRCLE);
+      status_color = bolt_color (ANSI_NORMAL);
+      break;
+
+    case BOLT_STATUS_CONNECTED:
+      status_color = bolt_color (ANSI_YELLOW);
+      break;
+
+    case BOLT_STATUS_AUTHORIZED:
+    case BOLT_STATUS_AUTHORIZED_NEWKEY:
+    case BOLT_STATUS_AUTHORIZED_SECURE:
+      status_color = bolt_color (ANSI_GREEN);
+      break;
+
+    case BOLT_STATUS_AUTH_ERROR:
+      status_color = bolt_color (ANSI_RED);
+      break;
+
+    default:
+      status_color = bolt_color (ANSI_NORMAL);
+      break;
+    }
+
+  g_print (" %s%s%s %s\n",
+           status_color,
+           status_symbol,
+           bolt_color (ANSI_NORMAL),
+           name);
+
+  g_print ("   %s uuid:      %s\n", tree_branch, uid);
+  g_print ("   %s vendor:    %s\n", tree_branch, vendor);
+  g_print ("   %s dbus path: %s\n", tree_branch, path);
+  g_print ("   %s status:    %x\n", tree_branch, status);
+
+  if (status > BOLT_STATUS_CONNECTING)
+    g_print ("   %s security:  %s\n", tree_branch,
+             bolt_security_to_string (security));
+
+  stored = store != BOLT_DB_NONE;
+  g_print ("   %s stored:    %s\n", tree_right, yes_no (stored));
+
+  if (stored)
+    {
+      const char *pstr = bolt_policy_to_string (policy);
+      const char *kstr;
+
+      if (keystate == BOLT_KEY_MISSING)
+        kstr = "no";
+      else if (keystate == BOLT_KEY_HAVE)
+        kstr = "yes";
+      else if (keystate == BOLT_KEY_NEW)
+        kstr = "yes (new)";
+      else
+        kstr = "unknown";
+
+      g_print ("   %s %s policy: %s\n", tree_space, tree_branch, pstr);
+      g_print ("   %s %s key:    %s\n", tree_space, tree_right, kstr);
+
+    }
+
+
+  g_print ("\n");
 }
 
 static int
