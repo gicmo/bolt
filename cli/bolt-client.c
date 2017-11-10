@@ -148,6 +148,25 @@ bolt_client_init (BoltClient *cli)
 {
 }
 
+static gint
+device_sort (gconstpointer ap,
+             gconstpointer bp)
+{
+  BoltDevice *a = BOLT_DEVICE (*((BoltDevice **) ap));
+  BoltDevice *b = BOLT_DEVICE (*((BoltDevice **) bp));
+  char *pa, *pb;
+
+  g_object_get (a,
+                "syspath", &pa,
+                NULL);
+
+  g_object_get (b,
+                "syspath", &pb,
+                NULL);
+
+  return g_strcmp0 (pa, pb);
+}
+
 /* dbus signals */
 
 static void
@@ -249,6 +268,7 @@ bolt_client_list_devices (BoltClient *client,
       g_ptr_array_add (devices, dev);
     }
 
+  g_ptr_array_sort (devices, device_sort);
   return g_steal_pointer (&devices);
 }
 
