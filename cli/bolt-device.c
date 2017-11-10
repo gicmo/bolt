@@ -39,7 +39,12 @@ enum {
   PROP_UID,
   PROP_NAME,
   PROP_VENDOR,
+  PROP_STATUS,
+  PROP_SYSPATH,
   PROP_SECURITY,
+  PROP_STORE,
+  PROP_POLICY,
+  PROP_KEY,
 
   PROP_LAST
 };
@@ -64,10 +69,15 @@ static const BoltProxyProp *
 bolt_device_get_dbus_props (guint *n)
 {
   static BoltProxyProp dbus_props[] = {
-    {"Uid",      "uid",       PROP_UID,        NULL},
-    {"Name",     "name",      PROP_NAME,       NULL},
-    {"Vendor",   "vendor",    PROP_VENDOR,     NULL},
-    {"Security", "security",  PROP_SECURITY,   NULL},
+    {"Uid",       "uid",       PROP_UID,        NULL},
+    {"Name",      "name",      PROP_NAME,       NULL},
+    {"Vendor",    "vendor",    PROP_VENDOR,     NULL},
+    {"Status",    "status",    PROP_STATUS,     NULL},
+    {"SysfsPath", "syspath",   PROP_SYSPATH,    NULL},
+    {"Security",  "security",  PROP_SECURITY,   NULL},
+    {"Store",     "store",     PROP_STORE,      NULL},
+    {"Policy",    "policy",    PROP_POLICY,     NULL},
+    {"Key",       "key",       PROP_KEY,        NULL}
   };
 
   *n = G_N_ELEMENTS (dbus_props);
@@ -107,11 +117,50 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NICK);
 
+  props[PROP_STATUS] =
+    g_param_spec_enum ("status",
+                       NULL, NULL,
+                       BOLT_TYPE_STATUS,
+                       BOLT_STATUS_DISCONNECTED,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_NICK);
+
+  props[PROP_SYSPATH] =
+    g_param_spec_string ("syspath",
+                         NULL, NULL,
+                         "unknown",
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_NICK);
+
   props[PROP_SECURITY] =
     g_param_spec_enum ("security",
                        NULL, NULL,
                        BOLT_TYPE_SECURITY,
                        BOLT_SECURITY_NONE,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_NICK);
+
+  props[PROP_STORE] =
+    g_param_spec_enum ("store",
+                       NULL, NULL,
+                       BOLT_TYPE_DATABASE,
+                       BOLT_DB_NONE,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_NICK);
+
+  props[PROP_POLICY] =
+    g_param_spec_enum ("policy",
+                       NULL, NULL,
+                       BOLT_TYPE_POLICY,
+                       BOLT_POLICY_DEFAULT,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_NICK);
+
+  props[PROP_KEY] =
+    g_param_spec_enum ("key",
+                       NULL, NULL,
+                       BOLT_TYPE_KEY_STATE,
+                       BOLT_KEY_MISSING,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_NICK);
 
