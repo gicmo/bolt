@@ -59,6 +59,37 @@ typedef enum {
 gboolean         bolt_status_is_authorized (BoltStatus status);
 
 /**
+ * BoltDatabase:
+ * @BOLT_DB_NONE: not stored
+ * @BOLT_DB_FSDB: file system database
+ *
+ * The database used in the store.
+ */
+typedef enum {
+
+  BOLT_DB_NONE,
+  BOLT_DB_FSDB = 1
+
+} BoltDatabase;
+
+/**
+ * BoltKeyState:
+ * @BOLT_KEY_MISSING: no key
+ * @BOLT_KEY_HAVE: key exists
+ * @BOLT_KEY_NEW: key is new
+ *
+ * The state of the key.
+ */
+
+typedef enum {
+
+  BOLT_KEY_MISSING = 0,
+  BOLT_KEY_HAVE = 1,
+  BOLT_KEY_NEW = 2
+
+} BoltKeyState;
+
+/**
  * BoltSecurity:
  * @BOLT_SECURITY_UNKNOWN : Unknown security.
  * @BOLT_SECURITY_NONE    : No security, all devices are automatically connected.
