@@ -772,13 +772,15 @@ handle_list_devices (BoltDBusManager       *obj,
   BoltManager *mgr = BOLT_MANAGER (obj);
   const char **devs;
 
-  devs = g_newa (const char *, mgr->devices->len);
+  devs = g_newa (const char *, mgr->devices->len + 1);
 
   for (guint i = 0; i < mgr->devices->len; i++)
     {
       BoltDevice *d = g_ptr_array_index (mgr->devices, i);
       devs[i] = bolt_device_get_object_path (d);
     }
+
+  devs[mgr->devices->len] = NULL;
 
   bolt_dbus_manager_complete_list_devices (obj, inv, devs);
   return TRUE;
