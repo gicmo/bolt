@@ -571,7 +571,7 @@ authorize_device_finish (BoltDevice *dev,
   uid = bolt_device_get_uid (dev);
 
   if (ok)
-    g_debug ("[%s] authorized", uid);
+    g_info ("[%s] authorized", uid);
   else
     g_warning ("[%s] authorization failed: %s",
                uid, (*error)->message);
@@ -585,6 +585,7 @@ authorize_device_idle (gpointer user_data)
   const char *uid = bolt_device_get_uid (dev);
   gboolean ok;
 
+  g_info ("[%s] authorizing", uid);
   ok = bolt_device_authorize (dev,
                               authorize_device_finish,
                               NULL,
@@ -643,7 +644,7 @@ handle_udev_device_added (BoltManager        *mgr,
 
   uid = bolt_device_get_uid (dev);
   syspath = udev_device_get_syspath (udev);
-  g_debug ("[%s] added (%s)", uid, syspath);
+  g_info ("[%s] added (%s)", uid, syspath);
 
   /* if we have a valid dbus connection */
   bus = g_dbus_interface_skeleton_get_connection (G_DBUS_INTERFACE_SKELETON (mgr));
@@ -652,10 +653,9 @@ handle_udev_device_added (BoltManager        *mgr,
 
   opath = bolt_device_export (dev, bus, &err);
   if (opath == NULL)
-    {
-      g_warning ("Could not export device: %s", err->message);
-      return;
-    }
+    g_warning ("[%s] error exporting: %s", uid, err->message);
+  else
+    g_debug ("[%s] exporting device: %s", uid, opath);
 
   bolt_dbus_manager_emit_device_added (BOLT_DBUS_MANAGER (mgr), opath);
 }
@@ -672,8 +672,7 @@ handle_udev_device_changed (BoltManager        *mgr,
   uid = bolt_device_get_uid (dev);
   after = bolt_device_update_from_udev (dev, udev);
 
-  g_debug ("[%s] device changed: %x",
-           uid, after);
+  g_info ("[%s] device changed: %x", uid, after);
 
   if (!bolt_status_is_authorized (after))
     return;
@@ -697,7 +696,7 @@ hanlde_udev_device_removed (BoltManager *mgr,
 
   uid = bolt_device_get_uid (dev);
   syspath = bolt_device_get_syspath (dev);
-  g_debug ("[%s] removed (%s)", uid, syspath);
+  g_info ("[%s] removed (%s)", uid, syspath);
 
   g_ptr_array_remove_fast (mgr->devices, dev);
 
@@ -725,7 +724,7 @@ handle_udev_device_attached (BoltManager        *mgr,
 
   uid = bolt_device_get_uid (dev);
   syspath = bolt_device_get_syspath (dev);
-  g_debug ("[%s] connected: %x (%s)", uid, status, syspath);
+  g_info ("[%s] connected: %x (%s)", uid, status, syspath);
 
   if (status != BOLT_STATUS_CONNECTED)
     return;
@@ -758,7 +757,7 @@ handle_udev_device_detached (BoltManager *mgr,
 
   uid = bolt_device_get_uid (dev);
   syspath = bolt_device_get_syspath (dev);
-  g_debug ("[%s] disconnected (%s)", uid, syspath);
+  g_info ("[%s] disconnected (%s)", uid, syspath);
 
   bolt_device_disconnected (dev);
 }
