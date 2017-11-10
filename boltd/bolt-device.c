@@ -698,8 +698,6 @@ bolt_device_export (BoltDevice      *device,
 
   path = bolt_device_get_object_path (device);
 
-  g_debug ("Exporting device at: %s", path);
-
   ok = g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (device),
                                          connection,
                                          path,
@@ -710,11 +708,6 @@ bolt_device_export (BoltDevice      *device,
 void
 bolt_device_unexport (BoltDevice *device)
 {
-  const char *path;
-
-  path = bolt_device_get_object_path (device);
-
-  g_debug ("Unexporting device at: %s", path);
   g_dbus_interface_skeleton_unexport (G_DBUS_INTERFACE_SKELETON (device));
 }
 
