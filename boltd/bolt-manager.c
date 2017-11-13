@@ -522,7 +522,8 @@ bolt_manager_get_parent (BoltManager *mgr,
   char *pos;
 
   syspath = bolt_device_get_syspath (dev);
-  g_return_val_if_fail (syspath != NULL, NULL);
+  if (syspath == NULL)
+    return NULL;
 
   path = g_strdup (syspath);
   start = path + strlen ("/sys");
