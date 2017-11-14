@@ -277,39 +277,39 @@ bolt_client_get_device (BoltClient *client,
                         const char *uid,
                         GError    **error)
 {
-  g_autoptr(GPtrArray) devices = NULL;
+  g_autoptr(GVariant) val = NULL;
+  g_autoptr(GError) err = NULL;
+  BoltDevice *dev = NULL;
+  GDBusConnection *bus = NULL;
+  const char *opath = NULL;
+  GDBusProxy *proxy;
 
-  g_return_val_if_fail (client != NULL, NULL);
-  g_return_val_if_fail (uid != NULL, NULL);
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
 
-  devices = bolt_client_list_devices (client,
-                                      error);
+  proxy = bolt_proxy_get_proxy (BOLT_PROXY (client));
+  val = g_dbus_proxy_call_sync (proxy,
+                                "DeviceByUid",
+                                g_variant_new ("(s)", uid),
+                                G_DBUS_CALL_FLAGS_NONE,
+                                -1,
+                                NULL,
+                                &err);
 
-  if (devices == NULL)
+  if (val == NULL)
     {
-      g_prefix_error (error, "Could not find device: ");
+      if (g_dbus_error_is_remote_error (err))
+        g_dbus_error_strip_remote_error (err);
+
+      g_propagate_error (error, g_steal_pointer (&err));
       return NULL;
     }
 
-  for (guint i = 0; i < devices->len; i++)
-    {
-      g_autofree char *id = NULL;
-      BoltDevice *dev = g_ptr_array_index (devices, i);
+  bus = g_dbus_proxy_get_connection (proxy);
+  g_variant_get (val, "(&o)", &opath);
 
-      g_object_get (dev,
-                    "uid", &id,
-                    NULL);
+  if (opath == NULL)
+    return NULL;
 
-      if (id && g_str_equal (id, uid))
-        {
-          g_object_ref (dev);
-          g_ptr_array_remove_index_fast (devices, i);
-          return dev;
-        }
-    }
-
-  g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
-               "Could not find device");
-
-  return NULL;
+  dev = bolt_device_new_for_object_path (bus, opath, error);
+  return dev;
 }
