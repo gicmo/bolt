@@ -79,6 +79,10 @@ static gboolean handle_list_devices (BoltDBusManager       *object,
                                      GDBusMethodInvocation *invocation,
                                      gpointer               user_data);
 
+static gboolean handle_device_by_uid (BoltDBusManager       *object,
+                                      GDBusMethodInvocation *invocation,
+                                      gpointer               user_data);
+
 struct _BoltManager
 {
   BoltDBusManagerSkeleton object;
@@ -190,6 +194,7 @@ bolt_manager_init (BoltManager *mgr)
   mgr->store = bolt_store_new (BOLT_DBDIR);
 
   g_signal_connect (mgr, "handle-list-devices", G_CALLBACK (handle_list_devices), NULL);
+  g_signal_connect (mgr, "handle-device-by-uid", G_CALLBACK (handle_device_by_uid), NULL);
 }
 
 static void
@@ -786,6 +791,38 @@ handle_list_devices (BoltDBusManager       *obj,
   bolt_dbus_manager_complete_list_devices (obj, inv, devs);
   return TRUE;
 }
+
+static gboolean
+handle_device_by_uid (BoltDBusManager       *obj,
+                      GDBusMethodInvocation *inv,
+                      gpointer               user_data)
+{
+  g_autoptr(BoltDevice) dev = NULL;
+  BoltManager *mgr;
+  GVariant *params;
+  const char *uid;
+  const char *opath;
+
+  mgr = BOLT_MANAGER (obj);
+
+  params = g_dbus_method_invocation_get_parameters (inv);
+  g_variant_get (params, "(&s)", &uid);
+  dev = bolt_manager_get_device_by_uid (mgr, uid);
+
+  if (!dev)
+    {
+      g_dbus_method_invocation_return_error (inv,
+                                             G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                                             "device with id '%s' could not be found.",
+                                             uid);
+      return TRUE;
+    }
+
+  opath = bolt_device_get_object_path (dev);
+  bolt_dbus_manager_complete_device_by_uid (obj, inv, opath);
+  return TRUE;
+}
+
 
 /* public methods */
 
