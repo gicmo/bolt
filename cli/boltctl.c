@@ -43,6 +43,7 @@ print_device (BoltDevice *dev)
   g_autofree char *uid = NULL;
   g_autofree char *name = NULL;
   g_autofree char *vendor = NULL;
+  g_autofree char *syspath = NULL;
   BoltSecurity security = BOLT_SECURITY_NONE;
   BoltStatus status;
   BoltDatabase store;
@@ -62,6 +63,7 @@ print_device (BoltDevice *dev)
                 "status", &status,
                 "uid", &uid,
                 "security", &security,
+                "syspath", &syspath,
                 "store", &store,
                 "policy", &policy,
                 "key", &keystate,
@@ -104,17 +106,26 @@ print_device (BoltDevice *dev)
            bolt_color (ANSI_NORMAL),
            name);
 
-  g_print ("   %s uuid:      %s\n", tree_branch, uid);
-  g_print ("   %s vendor:    %s\n", tree_branch, vendor);
-  g_print ("   %s dbus path: %s\n", tree_branch, path);
-  g_print ("   %s status:    %x\n", tree_branch, status);
+  g_print ("   %s uuid:        %s\n", tree_branch, uid);
+  g_print ("   %s vendor:      %s\n", tree_branch, vendor);
+  g_print ("   %s dbus path:   %s\n", tree_branch, path);
+  g_print ("   %s status:      %x\n", tree_branch, status);
 
   if (status > BOLT_STATUS_CONNECTING)
-    g_print ("   %s security:  %s\n", tree_branch,
-             bolt_security_to_string (security));
+    {
+      g_print ("   %s %s syspath:  %s\n",
+               bolt_glyph (TREE_VERTICAL),
+               tree_branch,
+               syspath);
+      g_print ("   %s %s security: %s\n",
+               bolt_glyph (TREE_VERTICAL),
+               tree_right,
+               bolt_security_to_string (security));
+    }
+
 
   stored = store != BOLT_DB_NONE;
-  g_print ("   %s stored:    %s\n", tree_right, yes_no (stored));
+  g_print ("   %s stored:      %s\n", tree_right, yes_no (stored));
 
   if (stored)
     {
@@ -130,8 +141,8 @@ print_device (BoltDevice *dev)
       else
         kstr = "unknown";
 
-      g_print ("   %s %s policy: %s\n", tree_space, tree_branch, pstr);
-      g_print ("   %s %s key:    %s\n", tree_space, tree_right, kstr);
+      g_print ("   %s %s policy:   %s\n", tree_space, tree_branch, pstr);
+      g_print ("   %s %s key:      %s\n", tree_space, tree_right, kstr);
 
     }
 
