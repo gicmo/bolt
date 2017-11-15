@@ -118,7 +118,7 @@ print_device (BoltDevice *dev, gboolean verbose)
     g_print ("   %s dbus path:   %s\n", tree_branch, path);
   g_print ("   %s status:      %s\n", tree_branch, status_text);
 
-  if (status > BOLT_STATUS_CONNECTING)
+  if (bolt_status_is_connected (status))
     {
       if (verbose)
         {

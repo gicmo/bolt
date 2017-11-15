@@ -787,7 +787,7 @@ bolt_device_disconnected (BoltDevice *dev)
 gboolean
 bolt_device_is_connected (BoltDevice *device)
 {
-  return device->status > BOLT_STATUS_CONNECTING;
+  return bolt_status_is_connected (device->status);
 }
 
 BoltStatus

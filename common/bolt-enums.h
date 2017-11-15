@@ -26,30 +26,24 @@
 /**
  * BoltStatus
  * @BOLT_STATUS_DISCONNECTED: Device is not connected.
- * @BOLT_STATUS_CONNECTING: Device is currently connecting.
  * @BOLT_STATUS_CONNECTED: Device is connected, but not authorized.
  * @BOLT_STATUS_AUTHORIZING: Device is currently authorizing.
  * @BOLT_STATUS_AUTH_ERROR: Failed to authorize a device via a key.
  * @BOLT_STATUS_AUTHORIZED: Device connected and authorized.
  * @BOLT_STATUS_AUTHORIZED_SECURE: Device connected and securely authorized via a key.
  * @BOLT_STATUS_AUTHORIZED_NEWKEY: Device connected and authorized via a new key.
- * @BOLT_STATUS_GHOST: A parent device is authorizing and therefore the status
- *  of the device is not know, but most likely it will reappear after the parent
- *  device is done authenticating.
  *
  * The current status of the device.
  */
 typedef enum {
 
   BOLT_STATUS_DISCONNECTED = 0,
-  BOLT_STATUS_CONNECTING,
   BOLT_STATUS_CONNECTED,
   BOLT_STATUS_AUTHORIZING,
   BOLT_STATUS_AUTH_ERROR,
   BOLT_STATUS_AUTHORIZED,
   BOLT_STATUS_AUTHORIZED_SECURE,
   BOLT_STATUS_AUTHORIZED_NEWKEY,
-  BOLT_STATUS_GHOST,
 
   BOLT_STATUS_LAST,
   BOLT_STATUS_INVALID = BOLT_STATUS_LAST
