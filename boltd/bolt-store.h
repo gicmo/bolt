@@ -60,6 +60,10 @@ BoltDevice *      bolt_store_get_device (BoltStore  *store,
                                          const char *uid,
                                          GError    **error);
 
+gboolean          bolt_store_del_device (BoltStore  *store,
+                                         const char *uid,
+                                         GError    **error);
+
 BoltKey *         bolt_store_create_key (BoltStore  *store,
                                          const char *uid,
                                          GError    **error);
@@ -68,6 +72,10 @@ guint             bolt_store_have_key (BoltStore  *store,
                                        const char *uid);
 
 BoltKey *         bolt_store_get_key (BoltStore  *store,
+                                      const char *uid,
+                                      GError    **error);
+
+gboolean          bolt_store_del_key (BoltStore  *store,
                                       const char *uid,
                                       GError    **error);
 

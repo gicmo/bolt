@@ -475,6 +475,21 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
                        NULL);
 }
 
+gboolean
+bolt_store_del_device (BoltStore  *store,
+                       const char *uid,
+                       GError    **error)
+{
+  g_autoptr(GFile) devpath = NULL;
+  gboolean ok;
+
+  devpath = g_file_get_child (store->devices, uid);
+  ok = g_file_delete (devpath, NULL, error);
+
+
+  return ok;
+}
+
 BoltKey *
 bolt_store_create_key (BoltStore  *store,
                        const char *uid,
@@ -554,4 +569,18 @@ bolt_store_get_key (BoltStore  *store,
   key->fresh = FALSE;
 
   return g_steal_pointer (&key);
+}
+
+gboolean
+bolt_store_del_key (BoltStore  *store,
+                    const char *uid,
+                    GError    **error)
+{
+  g_autoptr(GFile) keypath = NULL;
+  gboolean ok;
+
+  keypath = g_file_get_child (store->keys, uid);
+  ok = g_file_delete (keypath, NULL, error);
+
+  return ok;
 }
