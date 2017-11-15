@@ -51,6 +51,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   BoltPolicy policy;
   const char *status_color;
   const char *status_symbol;
+  const char *status_text;
   const char *tree_branch;
   const char *tree_right;
   const char *tree_space;
@@ -79,24 +80,29 @@ print_device (BoltDevice *dev, gboolean verbose)
     case BOLT_STATUS_DISCONNECTED:
       status_symbol = bolt_glyph (WHITE_CIRCLE);
       status_color = bolt_color (ANSI_NORMAL);
+      status_text = "disconnected";
       break;
 
     case BOLT_STATUS_CONNECTED:
       status_color = bolt_color (ANSI_YELLOW);
+      status_text = "connected";
       break;
 
     case BOLT_STATUS_AUTHORIZED:
     case BOLT_STATUS_AUTHORIZED_NEWKEY:
     case BOLT_STATUS_AUTHORIZED_SECURE:
       status_color = bolt_color (ANSI_GREEN);
+      status_text = "authorized";
       break;
 
     case BOLT_STATUS_AUTH_ERROR:
       status_color = bolt_color (ANSI_RED);
+      status_text = "authorization error";
       break;
 
     default:
       status_color = bolt_color (ANSI_NORMAL);
+      status_text = "unknown";
       break;
     }
 
@@ -110,7 +116,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   g_print ("   %s vendor:      %s\n", tree_branch, vendor);
   if (verbose)
     g_print ("   %s dbus path:   %s\n", tree_branch, path);
-  g_print ("   %s status:      %x\n", tree_branch, status);
+  g_print ("   %s status:      %s\n", tree_branch, status_text);
 
   if (status > BOLT_STATUS_CONNECTING)
     {
