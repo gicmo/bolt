@@ -73,6 +73,10 @@ static void          handle_udev_device_attached (BoltManager        *mgr,
 static void          handle_udev_device_detached (BoltManager *mgr,
                                                   BoltDevice  *dev);
 
+static void          handle_store_device_removed (BoltStore   *store,
+                                                  const char  *uid,
+                                                  BoltManager *mgr);
+
 
 /* dbus method calls */
 static gboolean handle_list_devices (BoltDBusManager       *object,
@@ -195,6 +199,8 @@ bolt_manager_init (BoltManager *mgr)
 
   g_signal_connect (mgr, "handle-list-devices", G_CALLBACK (handle_list_devices), NULL);
   g_signal_connect (mgr, "handle-device-by-uid", G_CALLBACK (handle_device_by_uid), NULL);
+
+  g_signal_connect (mgr->store, "device-removed", G_CALLBACK (handle_store_device_removed), mgr);
 }
 
 static void
@@ -768,6 +774,44 @@ handle_udev_device_detached (BoltManager *mgr,
   bolt_device_disconnected (dev);
 }
 
+static void
+handle_store_device_removed (BoltStore   *store,
+                             const char  *uid,
+                             BoltManager *mgr)
+{
+  g_autoptr(BoltDevice) dev = NULL;
+  BoltStatus status;
+  const char *opath;
+
+  dev = bolt_manager_get_device_by_uid (mgr, uid);
+  g_info ("[%s] removed from store: %p", uid, dev);
+
+  if (!dev)
+    return;
+
+  /* TODO: maybe move to a new bolt_device_removed (dev) */
+  g_object_set (dev,
+                "store", BOLT_DB_NONE,
+                "key", BOLT_KEY_MISSING,
+                "policy", BOLT_POLICY_DEFAULT,
+                NULL);
+
+  status = bolt_device_get_status (dev);
+  /* if the device is connected, keep it around */
+  if (status != BOLT_STATUS_DISCONNECTED)
+    return;
+
+  g_ptr_array_remove_fast (mgr->devices, dev);
+  opath = bolt_device_get_object_path (dev);
+
+  if (opath == NULL)
+    return;
+
+  bolt_dbus_manager_emit_device_removed (BOLT_DBUS_MANAGER (mgr), opath);
+  bolt_device_unexport (dev);
+  g_debug ("[%s] unexported", uid);
+
+}
 
 /* dbus methods */
 static gboolean
