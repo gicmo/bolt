@@ -57,6 +57,7 @@ typedef enum {
 } BoltStatus;
 
 gboolean         bolt_status_is_authorized (BoltStatus status);
+gboolean         bolt_status_is_connected (BoltStatus status);
 
 /**
  * BoltDatabase:

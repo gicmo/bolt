@@ -32,6 +32,12 @@ bolt_status_is_authorized (BoltStatus status)
          status == BOLT_STATUS_AUTHORIZED_NEWKEY;
 }
 
+gboolean
+bolt_status_is_connected (BoltStatus status)
+{
+  return status > BOLT_STATUS_DISCONNECTED;
+}
+
 BoltSecurity
 bolt_security_from_string (const char *str)
 {
