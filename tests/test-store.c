@@ -213,6 +213,50 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   key = bolt_store_get_key (tt->store, uid, &error);
   g_assert_no_error (error);
   g_assert_nonnull (stored);
+
+  /* ** deletion */
+
+  /* non-existent */
+  ok = bolt_store_del_device (tt->store, "transmogrifier", &error);
+  g_assert_nonnull (error);
+  g_assert_true (bolt_err_notfound (error));
+  g_clear_error (&error);
+  g_assert_no_error (error);
+
+  ok = bolt_store_del_key (tt->store, "sesamoeffnedich", &error);
+  g_assert_nonnull (error);
+  g_assert_true (bolt_err_notfound (error));
+  g_clear_error (&error);
+  g_assert_no_error (error);
+
+  /* remove existing device & key */
+  ok = bolt_store_del_device (tt->store, uid, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  keystate = bolt_store_have_key (tt->store, uid);
+  g_assert_cmpuint (keystate, !=, 0);
+
+  ok = bolt_store_del_key (tt->store, uid, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  /* check that they are gone indeed */
+  ok = bolt_store_del_device (tt->store, uid, &error);
+  g_assert_nonnull (error);
+  g_assert_true (bolt_err_notfound (error));
+  g_clear_error (&error);
+  g_assert_no_error (error);
+
+  keystate = bolt_store_have_key (tt->store, uid);
+  g_assert_cmpuint (keystate, ==, 0);
+
+  ok = bolt_store_del_key (tt->store, uid, &error);
+  g_assert_nonnull (error);
+  g_assert_true (bolt_err_notfound (error));
+  g_clear_error (&error);
+  g_assert_no_error (error);
+
 }
 
 
