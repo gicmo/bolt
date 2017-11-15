@@ -133,8 +133,9 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_autoptr(BoltKey) key = NULL;
   g_autoptr(GError) error = NULL;
   char uid[] = "fbc83890-e9bf-45e5-a777-b3728490989c";
+  BoltKeyState keystate;
   gboolean ok;
-  guint keystate;
+
 
   dev = g_object_new (BOLT_TYPE_DEVICE,
                       "uid", uid,
@@ -165,8 +166,8 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_assert_cmpstr (bolt_device_get_vendor (stored), ==, bolt_device_get_vendor (dev));
 
   g_assert_cmpuint (bolt_device_get_policy (stored), ==, BOLT_POLICY_AUTO);
-  g_assert_cmpuint (bolt_device_get_store (stored), ==, 1);
-  g_assert_cmpuint (bolt_device_get_key (stored), ==, 0);
+  g_assert_cmpuint (bolt_device_get_store (stored), ==, BOLT_DB_FSDB);
+  g_assert_cmpuint (bolt_device_get_key (stored), ==, BOLT_KEY_MISSING);
 
   g_clear_object (&stored);
   g_clear_object (&dev);

@@ -430,7 +430,7 @@ bolt_store_put_device (BoltStore  *store,
       if (!ok)
         g_warning ("failed to store key: %s", err->message);
       else
-        keystate = 1;
+        keystate = BOLT_KEY_HAVE;
     }
 
   ok = g_file_replace_contents (entry,
@@ -443,7 +443,7 @@ bolt_store_put_device (BoltStore  *store,
   if (ok)
     {
       g_object_set (device,
-                    "store", 1,
+                    "store", BOLT_DB_FSDB,
                     "policy", policy,
                     "key", keystate,
                     NULL);
@@ -464,9 +464,9 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
   g_autofree char *data  = NULL;
   g_autofree char *polstr = NULL;
   BoltPolicy policy;
+  BoltKeyState key;
   gboolean ok;
   gsize len;
-  guint key;
 
   g_return_val_if_fail (store != NULL, FALSE);
   g_return_val_if_fail (uid != NULL, FALSE);
@@ -501,7 +501,7 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
                        "name", name,
                        "vendor", vendor,
                        "status", BOLT_STATUS_DISCONNECTED,
-                       "store", 1,
+                       "store", BOLT_DB_FSDB,
                        "policy", policy,
                        "key", key,
                        NULL);
@@ -551,7 +551,7 @@ bolt_store_create_key (BoltStore  *store,
 }
 
 
-guint
+BoltKeyState
 bolt_store_have_key (BoltStore  *store,
                      const char *uid)
 {
@@ -564,7 +564,7 @@ bolt_store_have_key (BoltStore  *store,
   keyinfo = g_file_query_info (keypath, "standard::*", 0, NULL, &err);
 
   if (keyinfo != NULL)
-    key = 1; /* todo: check size */
+    key = BOLT_KEY_HAVE; /* todo: check size */
   else if (!bolt_err_notfound (err))
     g_warning ("error querying key info for %s: %s", uid, err->message);
 

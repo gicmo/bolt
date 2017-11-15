@@ -65,7 +65,7 @@ gboolean          bolt_device_authorize (BoltDevice  *dev,
                                          gpointer     user_data,
                                          GError     **error);
 
-guint             bolt_device_get_key (BoltDevice *dev);
+BoltKeyState      bolt_device_get_key (BoltDevice *dev);
 
 const char *      bolt_device_get_name (BoltDevice *dev);
 
@@ -77,7 +77,7 @@ const char *      bolt_device_get_uid (BoltDevice *dev);
 
 BoltSecurity      bolt_device_get_security (BoltDevice *dev);
 
-guint             bolt_device_get_store (BoltDevice *dev);
+BoltDatabase      bolt_device_get_store (BoltDevice *dev);
 
 BoltStatus        bolt_device_get_status (BoltDevice *dev);
 

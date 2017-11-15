@@ -377,7 +377,7 @@ handle_uevent_udev (GIOChannel  *source,
       if (!dev)
         return G_SOURCE_CONTINUE;
 
-      if (bolt_device_get_store (dev) > 0)
+      if (bolt_device_get_store (dev) > BOLT_DB_NONE)
         handle_udev_device_detached (mgr, dev);
       else
         hanlde_udev_device_removed (mgr, dev);

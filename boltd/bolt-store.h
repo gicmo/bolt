@@ -68,7 +68,7 @@ BoltKey *         bolt_store_create_key (BoltStore  *store,
                                          const char *uid,
                                          GError    **error);
 
-guint             bolt_store_have_key (BoltStore  *store,
+BoltKeyState      bolt_store_have_key (BoltStore  *store,
                                        const char *uid);
 
 BoltKey *         bolt_store_get_key (BoltStore  *store,

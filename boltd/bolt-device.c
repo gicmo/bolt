@@ -61,9 +61,9 @@ struct _BoltDevice
   BoltSecurity security;
 
   /* when device is stored */
-  BoltPolicy policy;
-  guint      store; /* currently: 0,no / 1,yes */
-  guint      key; /* currently 0,no / 1,yes */
+  BoltPolicy   policy;
+  BoltDatabase store;
+  BoltKeyState key;
 };
 
 
@@ -803,7 +803,7 @@ bolt_device_update_from_udev (BoltDevice         *dev,
   return status;
 }
 
-guint
+BoltKeyState
 bolt_device_get_key (BoltDevice *dev)
 {
   return dev->key;
@@ -857,7 +857,7 @@ bolt_device_get_status (BoltDevice *dev)
   return dev->status;
 }
 
-guint
+BoltDatabase
 bolt_device_get_store (BoltDevice *dev)
 {
   return dev->store;
