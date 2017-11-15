@@ -37,7 +37,7 @@ yes_no (gboolean b)
 }
 
 static void
-print_device (BoltDevice *dev)
+print_device (BoltDevice *dev, gboolean verbose)
 {
   g_autofree char *path = NULL;
   g_autofree char *uid = NULL;
@@ -108,15 +108,19 @@ print_device (BoltDevice *dev)
 
   g_print ("   %s uuid:        %s\n", tree_branch, uid);
   g_print ("   %s vendor:      %s\n", tree_branch, vendor);
-  g_print ("   %s dbus path:   %s\n", tree_branch, path);
+  if (verbose)
+    g_print ("   %s dbus path:   %s\n", tree_branch, path);
   g_print ("   %s status:      %x\n", tree_branch, status);
 
   if (status > BOLT_STATUS_CONNECTING)
     {
-      g_print ("   %s %s syspath:  %s\n",
-               bolt_glyph (TREE_VERTICAL),
-               tree_branch,
-               syspath);
+      if (verbose)
+        {
+          g_print ("   %s %s syspath:  %s\n",
+                   bolt_glyph (TREE_VERTICAL),
+                   tree_branch,
+                   syspath);
+        }
       g_print ("   %s %s security: %s\n",
                bolt_glyph (TREE_VERTICAL),
                tree_right,
@@ -270,7 +274,7 @@ info (BoltClient *client, int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  print_device (dev);
+  print_device (dev, TRUE);
   return EXIT_SUCCESS;
 }
 
@@ -338,7 +342,7 @@ list_devices (BoltClient *client, int argc, char **argv)
   for (guint i = 0; i < devices->len; i++)
     {
       BoltDevice *dev = g_ptr_array_index (devices, i);
-      print_device (dev);
+      print_device (dev, FALSE);
     }
 
   return EXIT_SUCCESS;
