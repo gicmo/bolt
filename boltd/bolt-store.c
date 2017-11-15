@@ -191,6 +191,16 @@ enum {
 
 static GParamSpec *store_props[PROP_STORE_LAST] = { NULL, };
 
+
+enum {
+  SIGNAL_DEVICE_ADDED,
+  SIGNAL_DEVICE_REMOVED,
+  SIGNAL_LAST
+};
+
+static guint signals[SIGNAL_LAST] = {0};
+
+
 G_DEFINE_TYPE (BoltStore,
                bolt_store,
                G_TYPE_OBJECT)
@@ -287,6 +297,26 @@ bolt_store_class_init (BoltStoreClass *klass)
   g_object_class_install_properties (gobject_class,
                                      PROP_STORE_LAST,
                                      store_props);
+
+  signals[SIGNAL_DEVICE_ADDED] =
+    g_signal_new ("device-added",
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  NULL,
+                  G_TYPE_NONE,
+                  1, G_TYPE_STRING);
+
+  signals[SIGNAL_DEVICE_REMOVED] =
+    g_signal_new ("device-removed",
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  NULL,
+                  G_TYPE_NONE,
+                  1, G_TYPE_STRING);
 }
 
 /* internal methods */
@@ -417,6 +447,8 @@ bolt_store_put_device (BoltStore  *store,
                     "policy", policy,
                     "key", keystate,
                     NULL);
+
+      g_signal_emit (store, signals[SIGNAL_DEVICE_ADDED], 0, uid);
     }
 
   return ok;
@@ -486,6 +518,8 @@ bolt_store_del_device (BoltStore  *store,
   devpath = g_file_get_child (store->devices, uid);
   ok = g_file_delete (devpath, NULL, error);
 
+  if (ok)
+    g_signal_emit (store, signals[SIGNAL_DEVICE_REMOVED], 0, uid);
 
   return ok;
 }
