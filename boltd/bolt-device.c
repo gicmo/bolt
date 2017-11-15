@@ -36,6 +36,11 @@ static gboolean    handle_authorize (BoltDBusDevice        *object,
                                      GDBusMethodInvocation *invocation,
                                      gpointer               user_data);
 
+
+static gboolean    handle_forget (BoltDBusDevice        *object,
+                                  GDBusMethodInvocation *invocation,
+                                  gpointer               user_data);
+
 struct _BoltDevice
 {
   BoltDBusDeviceSkeleton object;
@@ -105,6 +110,8 @@ bolt_device_init (BoltDevice *dev)
 {
   g_signal_connect (dev, "handle-authorize",
                     G_CALLBACK (handle_authorize), NULL);
+  g_signal_connect (dev, "handle-forget",
+                    G_CALLBACK (handle_forget), NULL);
 }
 
 static void
@@ -621,6 +628,38 @@ handle_authorize (BoltDBusDevice        *object,
 
   if (!ok)
     g_dbus_method_invocation_take_error (invocation, error);
+
+  return TRUE;
+}
+
+static gboolean
+handle_forget (BoltDBusDevice        *object,
+               GDBusMethodInvocation *inv,
+               gpointer               user_data)
+{
+  g_autoptr(GError) key_err = NULL;
+  g_autoptr(GError) dev_err = NULL;
+  BoltDevice *dev;
+  BoltStore *store;
+  gboolean key_ok, dev_ok;
+
+  dev = BOLT_DEVICE (object);
+  store = bolt_manager_get_store (dev->mgr);
+
+  key_ok = bolt_store_del_key (store, dev->uid, &key_err);
+  if (!key_ok && bolt_err_notfound (key_err))
+    key_ok = TRUE;
+
+  dev_ok = bolt_store_del_device (store, dev->uid, &dev_err);
+
+  g_debug ("[%s] forgetting: key: %d, dev: %d", dev->uid, key_ok, dev_ok);
+
+  if (!dev_ok)
+    g_dbus_method_invocation_take_error (inv, g_steal_pointer (&dev_err));
+  else if (!key_ok)
+    g_dbus_method_invocation_take_error (inv, g_steal_pointer (&key_err));
+  else
+    bolt_dbus_device_complete_forget (BOLT_DBUS_DEVICE (dev), inv);
 
   return TRUE;
 }

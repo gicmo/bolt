@@ -156,6 +156,18 @@
       </doc:doc>
     </method>
 
+    <method name="Forget">
+
+      <doc:doc>
+        <doc:description>
+          <doc:para>
+            Remove the device and any associated inforamtion,
+	    such as the policy and its key, from the store.
+          </doc:para>
+        </doc:description>
+      </doc:doc>
+    </method>
+
   </interface>
 
 </node>
