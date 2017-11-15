@@ -34,4 +34,7 @@ BoltDevice *  bolt_device_new_for_object_path (GDBusConnection *bus,
 gboolean      bolt_device_authorize (BoltDevice *dev,
                                      GError    **error);
 
+gboolean      bolt_device_forget (BoltDevice *dev,
+                                  GError    **error);
+
 G_END_DECLS

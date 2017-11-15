@@ -223,3 +223,34 @@ bolt_device_authorize (BoltDevice *dev,
 
   return TRUE;
 }
+
+
+gboolean
+bolt_device_forget (BoltDevice *dev,
+                    GError    **error)
+{
+  g_autoptr(GError) err = NULL;
+  GDBusProxy *proxy;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+
+  proxy = bolt_proxy_get_proxy (BOLT_PROXY (dev));
+  g_dbus_proxy_call_sync (proxy,
+                          "Forget",
+                          NULL,
+                          G_DBUS_CALL_FLAGS_NONE,
+                          -1,
+                          NULL,
+                          &err);
+
+  if (err != NULL)
+    {
+      if (g_dbus_error_is_remote_error (err))
+        g_dbus_error_strip_remote_error (err);
+
+      g_propagate_error (error, g_steal_pointer (&err));
+      return FALSE;
+    }
+
+  return TRUE;
+}
