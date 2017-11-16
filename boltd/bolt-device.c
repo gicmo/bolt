@@ -61,7 +61,7 @@ struct _BoltDevice
   BoltSecurity security;
 
   /* when device is stored */
-  gboolean     stored;
+  BoltStore   *store;
   BoltPolicy   policy;
   BoltKeyState key;
 };
@@ -70,6 +70,11 @@ struct _BoltDevice
 enum {
   PROP_0,
 
+  PROP_STORE,
+
+  PROP_LAST,
+
+  /* overridden */
   PROP_UID,
   PROP_NAME,
   PROP_VENDOR,
@@ -81,10 +86,9 @@ enum {
   PROP_STORED,
   PROP_POLICY,
   PROP_HAVE_KEY,
-
-  PROP_LAST
 };
 
+static GParamSpec *props[PROP_LAST] = {NULL, };
 
 G_DEFINE_TYPE (BoltDevice,
                bolt_device,
@@ -94,6 +98,8 @@ static void
 bolt_device_finalize (GObject *object)
 {
   BoltDevice *dev = BOLT_DEVICE (object);
+
+  g_clear_object (&dev->store);
 
   g_free (dev->dbus_path);
 
@@ -124,6 +130,10 @@ bolt_device_get_property (GObject    *object,
 
   switch (prop_id)
     {
+    case PROP_STORE:
+      g_value_set_object (value, dev->store);
+      break;
+
     case PROP_UID:
       g_value_set_string (value, dev->uid);
       break;
@@ -149,7 +159,7 @@ bolt_device_get_property (GObject    *object,
       break;
 
     case PROP_STORED:
-      g_value_set_boolean (value, dev->stored);
+      g_value_set_boolean (value, dev->store != NULL);
       break;
 
     case PROP_POLICY:
@@ -175,6 +185,12 @@ bolt_device_set_property (GObject      *object,
 
   switch (prop_id)
     {
+
+    case PROP_STORE:
+      dev->store = g_value_dup_object (value);
+      g_object_notify (object, "stored");
+      break;
+
     case PROP_UID:
       g_return_if_fail (dev->uid == NULL);
       dev->uid = g_value_dup_string (value);
@@ -203,10 +219,6 @@ bolt_device_set_property (GObject      *object,
       dev->security = g_value_get_uint (value);
       break;
 
-    case PROP_STORED:
-      dev->stored = g_value_get_boolean (value);
-      break;
-
     case PROP_POLICY:
       dev->policy = g_value_get_uint (value);
       break;
@@ -230,6 +242,17 @@ bolt_device_class_init (BoltDeviceClass *klass)
 
   gobject_class->get_property = bolt_device_get_property;
   gobject_class->set_property = bolt_device_set_property;
+
+  props[PROP_STORE] =
+    g_param_spec_object ("store",
+                         NULL, NULL,
+                         BOLT_TYPE_STORE,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_NICK);
+
+  g_object_class_install_properties (gobject_class,
+                                     PROP_LAST,
+                                     props);
 
   g_object_class_override_property (gobject_class,
                                     PROP_UID,
@@ -496,12 +519,10 @@ authorize_thread_done (GObject      *object,
 {
   g_autoptr(GError) error = NULL;
   BoltDevice *dev = BOLT_DEVICE (object);
-  BoltStore *store;
   GTask *task = G_TASK (res);
   AuthData *auth;
   gboolean ok;
 
-  store = bolt_manager_get_store (dev->mgr);
   auth = g_task_get_task_data (task);
   ok = g_task_propagate_boolean (task, &error);
 
@@ -514,8 +535,11 @@ authorize_thread_done (GObject      *object,
       else
         dev->status = BOLT_STATUS_AUTHORIZED;
 
-      if (!dev->stored)
+      if (!dev->store)
         {
+          BoltStore *store;
+
+          store = bolt_manager_get_store (dev->mgr);
           ok = bolt_store_put_device (store,
                                       dev,
                                       BOLT_POLICY_AUTO,
@@ -561,7 +585,7 @@ bolt_device_authorize (BoltDevice  *dev,
 
   if (level == BOLT_SECURITY_SECURE)
     {
-      if (!dev->stored)
+      if (dev->store == NULL)
         key = bolt_store_create_key (store, dev->uid, error);
       else if (dev->key)
         key = bolt_store_get_key (store, dev->uid, error);
@@ -860,7 +884,7 @@ bolt_device_get_status (BoltDevice *dev)
 gboolean
 bolt_device_get_stored (BoltDevice *dev)
 {
-  return dev->stored;
+  return dev->store != NULL;
 }
 
 const char *

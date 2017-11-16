@@ -791,7 +791,7 @@ handle_store_device_removed (BoltStore   *store,
 
   /* TODO: maybe move to a new bolt_device_removed (dev) */
   g_object_set (dev,
-                "stored", TRUE,
+                "store", NULL,
                 "key", BOLT_KEY_MISSING,
                 "policy", BOLT_POLICY_DEFAULT,
                 NULL);
