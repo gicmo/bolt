@@ -23,32 +23,10 @@
 #include <glib-object.h>
 
 #include "bolt-device.h"
+#include "bolt-key.h"
 #include "bolt-enums.h"
 
 G_BEGIN_DECLS
-
-/* BoltKey - represents a key to authorize devices with */
-#define BOLT_TYPE_KEY bolt_key_get_type ()
-G_DECLARE_FINAL_TYPE (BoltKey, bolt_key, BOLT, KEY, GObject);
-
-#define BOLT_KEY_RAW_BYTES 32
-#define BOLT_KEY_STR_BYTES 33
-#define BOLT_KEY_RAW_CHARS 64
-#define BOLT_KEY_STR_CHARS 65
-
-BoltKey  *        bolt_key_new (void);
-
-gboolean          bolt_key_write_to (BoltKey      *key,
-                                     int           fd,
-                                     BoltSecurity *level,
-                                     GError      **error);
-
-gboolean          bolt_key_save_file (BoltKey *key,
-                                      GFile   *file,
-                                      GError **error);
-
-BoltKey *         bolt_key_load_file (GFile   *file,
-                                      GError **error);
 
 
 /* BoltStore - database for devices, keys */
