@@ -664,17 +664,15 @@ handle_forget (BoltDBusDevice        *object,
   g_autoptr(GError) key_err = NULL;
   g_autoptr(GError) dev_err = NULL;
   BoltDevice *dev;
-  BoltStore *store;
   gboolean key_ok, dev_ok;
 
   dev = BOLT_DEVICE (object);
-  store = bolt_manager_get_store (dev->mgr);
 
-  key_ok = bolt_store_del_key (store, dev->uid, &key_err);
+  key_ok = bolt_store_del_key (dev->store, dev->uid, &key_err);
   if (!key_ok && bolt_err_notfound (key_err))
     key_ok = TRUE;
 
-  dev_ok = bolt_store_del_device (store, dev->uid, &dev_err);
+  dev_ok = bolt_store_del_device (dev->store, dev->uid, &dev_err);
 
   g_debug ("[%s] forgetting: key: %d, dev: %d", dev->uid, key_ok, dev_ok);
 
