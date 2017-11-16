@@ -44,6 +44,12 @@ static gboolean bolt_manager_initialize (GInitable    *initable,
 
 /*  */
 
+static void          manager_register_device (BoltManager *mgr,
+                                              BoltDevice  *device);
+
+static void          manager_deregister_device (BoltManager *mgr,
+                                                BoltDevice  *device);
+
 static BoltDevice *  bolt_manager_get_device_by_syspath (BoltManager *mgr,
                                                          const char  *sysfs);
 
@@ -452,8 +458,7 @@ bolt_manager_initialize (GInitable    *initable,
           continue;
         }
 
-      g_object_set (dev, "manager", mgr, NULL);
-      g_ptr_array_add (mgr->devices, dev);
+      manager_register_device (mgr, dev);
     }
 
   g_debug ("Enumerating devices from udev");
@@ -484,6 +489,22 @@ bolt_manager_initialize (GInitable    *initable,
     }
 
   return TRUE;
+}
+
+static void
+manager_register_device (BoltManager *mgr,
+                         BoltDevice  *dev)
+{
+
+  g_object_set (dev, "manager", mgr, NULL);
+  g_ptr_array_add (mgr->devices, dev);
+}
+
+static void
+manager_deregister_device (BoltManager *mgr,
+                           BoltDevice  *dev)
+{
+  g_ptr_array_remove_fast (mgr->devices, dev);
 }
 
 static BoltDevice *
@@ -652,8 +673,7 @@ handle_udev_device_added (BoltManager        *mgr,
       return;
     }
 
-  g_object_set (dev, "manager", mgr, NULL);
-  g_ptr_array_add (mgr->devices, dev);
+  manager_register_device (mgr, dev);
 
   uid = bolt_device_get_uid (dev);
   syspath = udev_device_get_syspath (udev);
@@ -711,7 +731,7 @@ hanlde_udev_device_removed (BoltManager *mgr,
   syspath = bolt_device_get_syspath (dev);
   g_info ("[%s] removed (%s)", uid, syspath);
 
-  g_ptr_array_remove_fast (mgr->devices, dev);
+  manager_deregister_device (mgr, dev);
 
   opath = bolt_device_get_object_path (dev);
 
@@ -802,7 +822,7 @@ handle_store_device_removed (BoltStore   *store,
   if (status != BOLT_STATUS_DISCONNECTED)
     return;
 
-  g_ptr_array_remove_fast (mgr->devices, dev);
+  manager_deregister_device (mgr, dev);
   opath = bolt_device_get_object_path (dev);
 
   if (opath == NULL)
