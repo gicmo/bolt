@@ -377,7 +377,7 @@ handle_uevent_udev (GIOChannel  *source,
       if (!dev)
         return G_SOURCE_CONTINUE;
 
-      if (bolt_device_get_store (dev) > BOLT_DB_NONE)
+      if (bolt_device_get_stored (dev))
         handle_udev_device_detached (mgr, dev);
       else
         hanlde_udev_device_removed (mgr, dev);
@@ -617,7 +617,7 @@ maybe_authorize_device (BoltManager *mgr,
   BoltStatus status = bolt_device_get_status (dev);
   BoltPolicy policy = bolt_device_get_policy (dev);
   const char *uid = bolt_device_get_uid (dev);
-  guint store;
+  gboolean stored;
 
   g_debug ("[%s] checking possible authorization: %s (%x)",
            uid, bolt_policy_to_string (policy), status);
@@ -626,9 +626,9 @@ maybe_authorize_device (BoltManager *mgr,
       policy != BOLT_POLICY_AUTO)
     return;
 
-  store = bolt_device_get_store (dev);
+  stored = bolt_device_get_stored (dev);
   /* sanity check, because we already checked the policy */
-  g_return_if_fail (store > 0);
+  g_return_if_fail (stored);
 
   g_idle_add (authorize_device_idle, g_object_ref (dev));
 }
@@ -791,7 +791,7 @@ handle_store_device_removed (BoltStore   *store,
 
   /* TODO: maybe move to a new bolt_device_removed (dev) */
   g_object_set (dev,
-                "store", BOLT_DB_NONE,
+                "stored", TRUE,
                 "key", BOLT_KEY_MISSING,
                 "policy", BOLT_POLICY_DEFAULT,
                 NULL);

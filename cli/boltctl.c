@@ -46,7 +46,6 @@ print_device (BoltDevice *dev, gboolean verbose)
   g_autofree char *syspath = NULL;
   BoltSecurity security = BOLT_SECURITY_NONE;
   BoltStatus status;
-  BoltDatabase store;
   BoltKeyState keystate;
   BoltPolicy policy;
   const char *status_color;
@@ -65,7 +64,7 @@ print_device (BoltDevice *dev, gboolean verbose)
                 "uid", &uid,
                 "security", &security,
                 "syspath", &syspath,
-                "store", &store,
+                "stored", &stored,
                 "policy", &policy,
                 "key", &keystate,
                 NULL);
@@ -133,8 +132,6 @@ print_device (BoltDevice *dev, gboolean verbose)
                bolt_security_to_string (security));
     }
 
-
-  stored = store != BOLT_DB_NONE;
   g_print ("   %s stored:      %s\n", tree_right, yes_no (stored));
 
   if (stored)

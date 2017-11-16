@@ -61,8 +61,8 @@ struct _BoltDevice
   BoltSecurity security;
 
   /* when device is stored */
+  gboolean     stored;
   BoltPolicy   policy;
-  BoltDatabase store;
   BoltKeyState key;
 };
 
@@ -149,7 +149,7 @@ bolt_device_get_property (GObject    *object,
       break;
 
     case PROP_STORED:
-      g_value_set_uint (value, dev->store);
+      g_value_set_boolean (value, dev->stored);
       break;
 
     case PROP_POLICY:
@@ -204,7 +204,7 @@ bolt_device_set_property (GObject      *object,
       break;
 
     case PROP_STORED:
-      dev->store = g_value_get_uint (value);
+      dev->stored = g_value_get_boolean (value);
       break;
 
     case PROP_POLICY:
@@ -257,7 +257,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
 
   g_object_class_override_property (gobject_class,
                                     PROP_STORED,
-                                    "store");
+                                    "stored");
 
   g_object_class_override_property (gobject_class,
                                     PROP_POLICY,
@@ -514,7 +514,7 @@ authorize_thread_done (GObject      *object,
       else
         dev->status = BOLT_STATUS_AUTHORIZED;
 
-      if (!dev->store)
+      if (!dev->stored)
         {
           ok = bolt_store_put_device (store,
                                       dev,
@@ -561,7 +561,7 @@ bolt_device_authorize (BoltDevice  *dev,
 
   if (level == BOLT_SECURITY_SECURE)
     {
-      if (!dev->store)
+      if (!dev->stored)
         key = bolt_store_create_key (store, dev->uid, error);
       else if (dev->key)
         key = bolt_store_get_key (store, dev->uid, error);
@@ -857,10 +857,10 @@ bolt_device_get_status (BoltDevice *dev)
   return dev->status;
 }
 
-BoltDatabase
-bolt_device_get_store (BoltDevice *dev)
+gboolean
+bolt_device_get_stored (BoltDevice *dev)
 {
-  return dev->store;
+  return dev->stored;
 }
 
 const char *

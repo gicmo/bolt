@@ -42,7 +42,7 @@ enum {
   PROP_STATUS,
   PROP_SYSPATH,
   PROP_SECURITY,
-  PROP_STORE,
+  PROP_STORED,
   PROP_POLICY,
   PROP_KEY,
 
@@ -75,7 +75,7 @@ bolt_device_get_dbus_props (guint *n)
     {"Status",    "status",    PROP_STATUS,     NULL},
     {"SysfsPath", "syspath",   PROP_SYSPATH,    NULL},
     {"Security",  "security",  PROP_SECURITY,   NULL},
-    {"Store",     "store",     PROP_STORE,      NULL},
+    {"Stored",    "stored",    PROP_STORED,     NULL},
     {"Policy",    "policy",    PROP_POLICY,     NULL},
     {"Key",       "key",       PROP_KEY,        NULL}
   };
@@ -140,13 +140,12 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_NICK);
 
-  props[PROP_STORE] =
-    g_param_spec_enum ("store",
-                       NULL, NULL,
-                       BOLT_TYPE_DATABASE,
-                       BOLT_DB_NONE,
-                       G_PARAM_READABLE |
-                       G_PARAM_STATIC_NICK);
+  props[PROP_STORED] =
+    g_param_spec_boolean ("stored",
+                          NULL, NULL,
+                          FALSE,
+                          G_PARAM_READABLE |
+                          G_PARAM_STATIC_NICK);
 
   props[PROP_POLICY] =
     g_param_spec_enum ("policy",

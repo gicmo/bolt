@@ -443,7 +443,7 @@ bolt_store_put_device (BoltStore  *store,
   if (ok)
     {
       g_object_set (device,
-                    "store", BOLT_DB_FSDB,
+                    "stored", TRUE,
                     "policy", policy,
                     "key", keystate,
                     NULL);
@@ -501,7 +501,7 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
                        "name", name,
                        "vendor", vendor,
                        "status", BOLT_STATUS_DISCONNECTED,
-                       "store", BOLT_DB_FSDB,
+                       "stored", TRUE,
                        "policy", policy,
                        "key", key,
                        NULL);

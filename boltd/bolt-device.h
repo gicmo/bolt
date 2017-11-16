@@ -77,7 +77,7 @@ const char *      bolt_device_get_uid (BoltDevice *dev);
 
 BoltSecurity      bolt_device_get_security (BoltDevice *dev);
 
-BoltDatabase      bolt_device_get_store (BoltDevice *dev);
+gboolean          bolt_device_get_stored (BoltDevice *dev);
 
 BoltStatus        bolt_device_get_status (BoltDevice *dev);
 

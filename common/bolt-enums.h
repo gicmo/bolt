@@ -54,20 +54,6 @@ gboolean         bolt_status_is_authorized (BoltStatus status);
 gboolean         bolt_status_is_connected (BoltStatus status);
 
 /**
- * BoltDatabase:
- * @BOLT_DB_NONE: not stored
- * @BOLT_DB_FSDB: file system database
- *
- * The database used in the store.
- */
-typedef enum {
-
-  BOLT_DB_NONE,
-  BOLT_DB_FSDB = 1
-
-} BoltDatabase;
-
-/**
  * BoltKeyState:
  * @BOLT_KEY_MISSING: no key
  * @BOLT_KEY_HAVE: key exists

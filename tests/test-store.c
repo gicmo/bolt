@@ -166,7 +166,7 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_assert_cmpstr (bolt_device_get_vendor (stored), ==, bolt_device_get_vendor (dev));
 
   g_assert_cmpuint (bolt_device_get_policy (stored), ==, BOLT_POLICY_AUTO);
-  g_assert_cmpuint (bolt_device_get_store (stored), ==, BOLT_DB_FSDB);
+  g_assert_cmpuint (bolt_device_get_stored (stored), ==, TRUE);
   g_assert_cmpuint (bolt_device_get_key (stored), ==, BOLT_KEY_MISSING);
 
   g_clear_object (&stored);
@@ -204,7 +204,7 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_assert_cmpstr (bolt_device_get_vendor (stored), ==, bolt_device_get_vendor (dev));
 
   g_assert_cmpuint (bolt_device_get_policy (stored), ==, BOLT_POLICY_MANUAL);
-  g_assert_cmpuint (bolt_device_get_store (stored), ==, 1);
+  g_assert_cmpuint (bolt_device_get_stored (stored), ==, TRUE);
   g_assert_cmpuint (bolt_device_get_key (stored), ==, 1);
 
   keystate = bolt_store_have_key (tt->store, uid);
