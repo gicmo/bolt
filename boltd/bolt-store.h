@@ -36,6 +36,8 @@ G_DECLARE_FINAL_TYPE (BoltKey, bolt_key, BOLT, KEY, GObject);
 #define BOLT_KEY_RAW_CHARS 64
 #define BOLT_KEY_STR_CHARS 65
 
+BoltKey  *        bolt_key_new (void);
+
 gboolean          bolt_key_write_to (BoltKey      *key,
                                      int           fd,
                                      BoltSecurity *level,
@@ -69,10 +71,6 @@ BoltDevice *      bolt_store_get_device (BoltStore  *store,
                                          GError    **error);
 
 gboolean          bolt_store_del_device (BoltStore  *store,
-                                         const char *uid,
-                                         GError    **error);
-
-BoltKey *         bolt_store_create_key (BoltStore  *store,
                                          const char *uid,
                                          GError    **error);
 

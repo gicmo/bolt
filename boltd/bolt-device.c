@@ -585,7 +585,6 @@ bolt_device_authorize (BoltDevice  *dev,
                        GError     **error)
 {
   AuthData *auth_data;
-  BoltStore *store;
   BoltSecurity level;
   BoltKey *key;
   GTask *task;
@@ -598,14 +597,13 @@ bolt_device_authorize (BoltDevice  *dev,
       return FALSE;
     }
 
-  store = bolt_manager_get_store (dev->mgr);
   level = dev->security;
   key = NULL;
 
   if (level == BOLT_SECURITY_SECURE)
     {
       if (dev->store == NULL)
-        key = bolt_store_create_key (store, dev->uid, error);
+        key = bolt_key_new ();
       else if (dev->key)
         key = bolt_store_get_key (dev->store, dev->uid, error);
       else

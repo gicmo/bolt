@@ -140,6 +140,28 @@ bolt_key_class_init (BoltKeyClass *klass)
 
 
 /* public methods */
+BoltKey  *
+bolt_key_new (void)
+{
+  BoltKey *key;
+  char data[BOLT_KEY_RAW_BYTES];
+
+  key = g_object_new (BOLT_TYPE_KEY, NULL);
+
+  bolt_get_random_data (data, BOLT_KEY_RAW_BYTES);
+
+  for (guint i = 0; i < BOLT_KEY_RAW_BYTES; i++)
+    {
+      char *pos = key->data + 2 * i;
+      gulong n = sizeof (key->data) - 2 * i;
+      g_snprintf (pos, n, "%02hhx", data[i]);
+    }
+
+  bolt_erase_n (data, sizeof (data));
+  key->fresh = TRUE;
+
+  return key;
+}
 
 gboolean
 bolt_key_write_to (BoltKey      *key,
@@ -559,32 +581,6 @@ bolt_store_del_device (BoltStore  *store,
 
   return ok;
 }
-
-BoltKey *
-bolt_store_create_key (BoltStore  *store,
-                       const char *uid,
-                       GError    **error)
-{
-  BoltKey *key;
-  char data[BOLT_KEY_RAW_BYTES];
-
-  key = g_object_new (BOLT_TYPE_KEY, NULL);
-
-  bolt_get_random_data (data, BOLT_KEY_RAW_BYTES);
-
-  for (guint i = 0; i < BOLT_KEY_RAW_BYTES; i++)
-    {
-      char *pos = key->data + 2 * i;
-      gulong n = sizeof (key->data) - 2 * i;
-      g_snprintf (pos, n, "%02hhx", data[i]);
-    }
-
-  bolt_erase_n (data, sizeof (data));
-  key->fresh = TRUE;
-
-  return key;
-}
-
 
 BoltKeyState
 bolt_store_have_key (BoltStore  *store,

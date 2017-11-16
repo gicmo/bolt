@@ -187,7 +187,7 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_clear_error (&error);
   g_assert_no_error (error);
 
-  key = bolt_store_create_key (tt->store, uid, &error);
+  key = bolt_key_new ();
   g_assert_no_error (error);
   g_assert_true (ok);
 
