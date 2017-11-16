@@ -452,7 +452,7 @@ bolt_manager_initialize (GInitable    *initable,
           continue;
         }
 
-      bolt_device_set_manager (dev, mgr);
+      g_object_set (dev, "manager", mgr, NULL);
       g_ptr_array_add (mgr->devices, dev);
     }
 
@@ -645,13 +645,14 @@ handle_udev_device_added (BoltManager        *mgr,
   const char *uid;
   const char *syspath;
 
-  dev = bolt_device_new_for_udev (mgr, udev, &err);
+  dev = bolt_device_new_for_udev (udev, &err);
   if (dev == NULL)
     {
       g_warning ("Could not create device for udev: %s", err->message);
       return;
     }
 
+  g_object_set (dev, "manager", mgr, NULL);
   g_ptr_array_add (mgr->devices, dev);
 
   uid = bolt_device_get_uid (dev);

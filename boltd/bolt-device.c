@@ -70,6 +70,7 @@ struct _BoltDevice
 enum {
   PROP_0,
 
+  PROP_MANAGER,
   PROP_STORE,
 
   PROP_LAST,
@@ -130,6 +131,10 @@ bolt_device_get_property (GObject    *object,
 
   switch (prop_id)
     {
+    case PROP_MANAGER:
+      g_value_set_object (value, dev->mgr);
+      break;
+
     case PROP_STORE:
       g_value_set_object (value, dev->store);
       break;
@@ -185,6 +190,13 @@ bolt_device_set_property (GObject      *object,
 
   switch (prop_id)
     {
+
+    case PROP_MANAGER:
+      g_return_if_fail (dev->mgr == NULL);
+      dev->mgr = g_value_get_object (value);
+      g_object_add_weak_pointer (G_OBJECT (dev->mgr),
+                                 (gpointer *) &dev->mgr);
+      break;
 
     case PROP_STORE:
       dev->store = g_value_dup_object (value);
@@ -242,6 +254,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
 
   gobject_class->get_property = bolt_device_get_property;
   gobject_class->set_property = bolt_device_set_property;
+
+  props[PROP_MANAGER] =
+    g_param_spec_object ("manager",
+                         NULL, NULL,
+                         BOLT_TYPE_MANAGER,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_NICK);
 
   props[PROP_STORE] =
     g_param_spec_object ("store",
@@ -588,7 +607,7 @@ bolt_device_authorize (BoltDevice  *dev,
       if (dev->store == NULL)
         key = bolt_store_create_key (store, dev->uid, error);
       else if (dev->key)
-        key = bolt_store_get_key (store, dev->uid, error);
+        key = bolt_store_get_key (dev->store, dev->uid, error);
       else
         level = BOLT_SECURITY_USER;
     }
@@ -689,8 +708,7 @@ handle_forget (BoltDBusDevice        *object,
 /* public methods */
 
 BoltDevice *
-bolt_device_new_for_udev (BoltManager        *mgr,
-                          struct udev_device *udev,
+bolt_device_new_for_udev (struct udev_device *udev,
                           GError            **error)
 {
   const char *uid;
@@ -729,22 +747,7 @@ bolt_device_new_for_udev (BoltManager        *mgr,
   dev->status = bolt_status_from_udev (udev);
   dev->security = security_for_udev (udev);
 
-  bolt_device_set_manager (dev, mgr);
-
   return dev;
-}
-
-void
-bolt_device_set_manager (BoltDevice  *dev,
-                         BoltManager *mgr)
-{
-  if (dev->mgr != NULL)
-    g_object_remove_weak_pointer (G_OBJECT (mgr),
-                                  (gpointer *) &dev->mgr);
-
-  dev->mgr = mgr;
-  g_object_add_weak_pointer (G_OBJECT (mgr),
-                             (gpointer *) &dev->mgr);
 }
 
 const char *

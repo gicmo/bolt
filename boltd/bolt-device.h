@@ -22,7 +22,6 @@
 
 #include "bolt-enums.h"
 #include "bolt-gdbus.h"
-#include "bolt-manager.h"
 
 /* forward declaration */
 struct udev_device;
@@ -37,12 +36,8 @@ typedef void (*AuthCallback) (BoltDevice *dev,
                               GError    **error,
                               gpointer    user_data);
 
-BoltDevice *      bolt_device_new_for_udev (BoltManager        *manager,
-                                            struct udev_device *udev,
+BoltDevice *      bolt_device_new_for_udev (struct udev_device *udev,
                                             GError            **error);
-
-void              bolt_device_set_manager (BoltDevice  *device,
-                                           BoltManager *manager);
 
 const char *      bolt_device_export (BoltDevice      *device,
                                       GDBusConnection *connection,
