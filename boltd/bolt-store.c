@@ -39,7 +39,6 @@ struct _BoltKey
 {
   GObject  object;
 
-  char    *uid;
   char     data[BOLT_KEY_STR_CHARS];
   gboolean fresh;
 };
@@ -66,7 +65,6 @@ bolt_key_finalize (GObject *object)
   BoltKey *key = BOLT_KEY (object);
 
   bolt_erase_n (key->data, sizeof (key->data));
-  g_clear_pointer (&key->uid, g_free);
 
   G_OBJECT_CLASS (bolt_key_parent_class)->finalize (object);
 }
@@ -534,7 +532,6 @@ bolt_store_create_key (BoltStore  *store,
 
   key = g_object_new (BOLT_TYPE_KEY, NULL);
 
-  key->uid = g_strdup (uid);
   bolt_get_random_data (data, BOLT_KEY_RAW_BYTES);
 
   for (guint i = 0; i < BOLT_KEY_RAW_BYTES; i++)
@@ -584,7 +581,6 @@ bolt_store_get_key (BoltStore  *store,
   int fd;
 
   key = g_object_new (BOLT_TYPE_KEY, NULL);
-  key->uid = g_strdup (uid);
 
   keypath = g_file_get_child (store->keys, uid);
   path = g_file_get_path (keypath);
