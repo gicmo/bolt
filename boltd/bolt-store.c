@@ -165,6 +165,49 @@ bolt_key_write_to (BoltKey      *key,
   return ok;
 }
 
+gboolean
+bolt_key_save_file (BoltKey *key,
+                    GFile   *file,
+                    GError **error)
+{
+  gboolean ok;
+
+  ok = g_file_replace_contents (file,
+                                key->data, BOLT_KEY_STR_CHARS,
+                                NULL, FALSE,
+                                0, NULL,
+                                NULL, error);
+  return ok;
+}
+
+BoltKey *
+bolt_key_load_file (GFile   *file,
+                    GError **error)
+{
+  g_autoptr(BoltKey) key = NULL;
+  g_autofree char *path = NULL;
+  gboolean ok;
+  gsize len;
+  int fd;
+
+  key = g_object_new (BOLT_TYPE_KEY, NULL);
+  path = g_file_get_path (file);
+
+  fd = bolt_open (path, O_CLOEXEC | O_RDONLY, 0, error);
+  if (fd < 0)
+    return NULL;
+
+  ok = bolt_read_all (fd, key->data, BOLT_KEY_RAW_CHARS, &len, error);
+  close (fd);
+
+  if (!ok)
+    return NULL;
+
+  key->fresh = FALSE;
+
+  return g_steal_pointer (&key);
+}
+
 
 /* ************************************  */
 /* BoltStore */
@@ -418,13 +461,8 @@ bolt_store_put_device (BoltStore  *store,
       ok = bolt_fs_make_parent_dirs (keypath, &err);
 
       if (ok)
-        {
-          ok = g_file_replace_contents (keypath,
-                                        key->data, BOLT_KEY_STR_CHARS,
-                                        NULL, FALSE,
-                                        0, NULL,
-                                        NULL, &err);
-        }
+        ok = bolt_key_save_file (key, keypath, &err);
+
       if (!ok)
         g_warning ("failed to store key: %s", err->message);
       else
@@ -574,31 +612,10 @@ bolt_store_get_key (BoltStore  *store,
                     GError    **error)
 {
   g_autoptr(GFile) keypath = NULL;
-  g_autoptr(BoltKey) key = NULL;
-  g_autofree char *path = NULL;
-  gboolean ok;
-  gsize len;
-  int fd;
-
-  key = g_object_new (BOLT_TYPE_KEY, NULL);
 
   keypath = g_file_get_child (store->keys, uid);
-  path = g_file_get_path (keypath);
 
-  fd = bolt_open (path, O_CLOEXEC | O_RDONLY, 0, error);
-  if (fd < 0)
-    return NULL;
-
-  ok = bolt_read_all (fd, key->data, BOLT_KEY_RAW_CHARS, &len, error);
-  close (fd);
-
-  if (!ok)
-    return NULL;
-
-  g_debug ("[%s] Read key of len: %zu", uid, len);
-  key->fresh = FALSE;
-
-  return g_steal_pointer (&key);
+  return bolt_key_load_file (keypath, error);
 }
 
 gboolean

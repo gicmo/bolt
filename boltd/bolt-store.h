@@ -41,6 +41,14 @@ gboolean          bolt_key_write_to (BoltKey      *key,
                                      BoltSecurity *level,
                                      GError      **error);
 
+gboolean          bolt_key_save_file (BoltKey *key,
+                                      GFile   *file,
+                                      GError **error);
+
+BoltKey *         bolt_key_load_file (GFile   *file,
+                                      GError **error);
+
+
 /* BoltStore - database for devices, keys */
 #define BOLT_TYPE_STORE bolt_store_get_type ()
 G_DECLARE_FINAL_TYPE (BoltStore, bolt_store, BOLT, STORE, GObject);
