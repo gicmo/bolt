@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "bolt-auth.h"
 #include "bolt-enums.h"
 #include "bolt-gdbus.h"
 
@@ -30,11 +31,6 @@ G_BEGIN_DECLS
 
 #define BOLT_TYPE_DEVICE bolt_device_get_type ()
 G_DECLARE_FINAL_TYPE (BoltDevice, bolt_device, BOLT, DEVICE, BoltDBusDeviceSkeleton);
-
-typedef void (*AuthCallback) (BoltDevice *dev,
-                              gboolean    ok,
-                              GError    **error,
-                              gpointer    user_data);
 
 BoltDevice *      bolt_device_new_for_udev (struct udev_device *udev,
                                             GError            **error);
@@ -55,10 +51,10 @@ gboolean          bolt_device_is_connected (BoltDevice *device);
 BoltStatus        bolt_device_update_from_udev (BoltDevice         *dev,
                                                 struct udev_device *udev);
 
-gboolean          bolt_device_authorize (BoltDevice  *dev,
-                                         AuthCallback callback,
-                                         gpointer     user_data,
-                                         GError     **error);
+void              bolt_device_authorize (BoltDevice         *dev,
+                                         BoltAuth           *auth,
+                                         GAsyncReadyCallback callback,
+                                         gpointer            user_data);
 
 BoltKeyState      bolt_device_get_key (BoltDevice *dev);
 

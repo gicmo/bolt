@@ -475,13 +475,11 @@ security_for_udev (struct udev_device *udev)
 
 typedef struct
 {
-  BoltSecurity level;
-  BoltKey     *key;
-  BoltPolicy   policy;
+  BoltAuth *auth;
 
   /* the outer callback  */
-  AuthCallback callback;
-  gpointer     user_data;
+  GAsyncReadyCallback callback;
+  gpointer            user_data;
 
 } AuthData;
 
@@ -491,16 +489,22 @@ auth_data_free (gpointer data)
   AuthData *auth = data;
 
   g_debug ("freeing auth data");
+  g_clear_object (&auth->auth);
   g_slice_free (AuthData, auth);
 }
 
 static gboolean
 authorize_device_internal (BoltDevice *dev,
-                           AuthData   *auth,
+                           BoltAuth   *auth,
                            GError    **error)
 {
   g_autoptr(DIR) devdir = NULL;
+  BoltKey *key;
+  BoltSecurity level;
   gboolean ok;
+
+  key = bolt_auth_get_key (auth);
+  level = bolt_auth_get_level (auth);
 
   devdir = bolt_opendir (dev->syspath, error);
   if (devdir == NULL)
@@ -510,7 +514,7 @@ authorize_device_internal (BoltDevice *dev,
   if (!ok)
     return FALSE;
 
-  if (auth->key)
+  if (key)
     {
       int keyfd;
 
@@ -519,7 +523,7 @@ authorize_device_internal (BoltDevice *dev,
       if (keyfd < 0)
         return FALSE;
 
-      ok = bolt_key_write_to (auth->key, keyfd, &auth->level, error);
+      ok = bolt_key_write_to (key, keyfd, &level, error);
       close (keyfd);
       if (!ok)
         return FALSE;
@@ -528,9 +532,8 @@ authorize_device_internal (BoltDevice *dev,
   g_debug ("[%s] writing authorization", dev->uid);
   ok = bolt_write_char_at (dirfd (devdir),
                            "authorized",
-                           auth->level,
+                           level,
                            error);
-
   return ok;
 }
 
@@ -542,22 +545,18 @@ authorize_in_thread (GTask        *task,
 {
   g_autoptr(GError) error = NULL;
   BoltDevice *dev = source;
-  AuthData *auth = context;
+  AuthData *auth_data = context;
+  BoltAuth *auth = auth_data->auth;
   gboolean ok;
 
   ok = authorize_device_internal (dev, auth, &error);
 
   if (!ok)
-    {
-      g_task_return_new_error (task,
-                               BOLT_ERROR, BOLT_ERROR_FAILED,
-                               "failed to authorize device: %s",
-                               error->message);
-    }
+    g_task_return_new_error (task, BOLT_ERROR, BOLT_ERROR_FAILED,
+                             "failed to authorize device: %s",
+                             error->message);
   else
-    {
-      g_task_return_boolean (task, TRUE);
-    }
+    g_task_return_boolean (task, TRUE);
 }
 
 static void
@@ -568,136 +567,120 @@ authorize_thread_done (GObject      *object,
   g_autoptr(GError) error = NULL;
   BoltDevice *dev = BOLT_DEVICE (object);
   GTask *task = G_TASK (res);
-  AuthData *auth;
   BoltStatus status;
+  AuthData *auth_data;
+  BoltAuth *auth;
   gboolean ok;
 
-  auth = g_task_get_task_data (task);
+  auth_data = g_task_get_task_data (task);
+  auth = auth_data->auth;
+
   ok = g_task_propagate_boolean (task, &error);
 
-  if (ok)
-    {
-      if (auth->level == BOLT_SECURITY_SECURE)
-        status = BOLT_STATUS_AUTHORIZED_SECURE;
-      else if (auth->key)
-        status = BOLT_STATUS_AUTHORIZED_NEWKEY;
-      else
-        status = BOLT_STATUS_AUTHORIZED;
-
-      if (!dev->store)
-        {
-          BoltStore *store;
-
-          store = bolt_manager_get_store (dev->mgr);
-          ok = bolt_store_put_device (store,
-                                      dev,
-                                      BOLT_POLICY_AUTO,
-                                      auth->key,
-                                      &error);
-        }
-    }
-  else
+  if (!ok)
     {
       status = BOLT_STATUS_AUTH_ERROR;
+      g_object_set (dev, "status", status, NULL);
+      bolt_auth_return_error (auth, &error);
     }
 
-  g_object_set (dev, "status", status, NULL);
-
-  if (auth->callback)
-    auth->callback (dev, ok, &error, auth->user_data);
-
+  if (auth_data->callback)
+    auth_data->callback (G_OBJECT (dev),
+                         G_ASYNC_RESULT (auth),
+                         auth_data->user_data);
 }
 
-gboolean
-bolt_device_authorize (BoltDevice  *dev,
-                       AuthCallback callback,
-                       gpointer     user_data,
-                       GError     **error)
+void
+bolt_device_authorize (BoltDevice         *dev,
+                       BoltAuth           *auth,
+                       GAsyncReadyCallback callback,
+                       gpointer            user_data)
 {
   AuthData *auth_data;
-  BoltSecurity level;
-  BoltKey *key;
   GTask *task;
+
+  g_object_set (auth, "device", dev, NULL);
 
   if (dev->status != BOLT_STATUS_CONNECTED &&
       dev->status != BOLT_STATUS_AUTH_ERROR)
     {
-      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
-                   "wrong device state: %u", dev->status);
-      return FALSE;
+      bolt_auth_return_new_error (auth, BOLT_ERROR, BOLT_ERROR_FAILED,
+                                  "wrong device state: %u", dev->status);
+
+      if (callback)
+        callback (G_OBJECT (dev), G_ASYNC_RESULT (auth), user_data);
+
+      return;
     }
-
-  level = dev->security;
-  key = NULL;
-
-  if (level == BOLT_SECURITY_SECURE)
-    {
-      if (dev->store == NULL)
-        key = bolt_key_new ();
-      else if (dev->key)
-        key = bolt_store_get_key (dev->store, dev->uid, error);
-      else
-        level = BOLT_SECURITY_USER;
-    }
-
-  if (level == BOLT_SECURITY_SECURE && key == NULL)
-    return FALSE;
 
   task = g_task_new (dev, NULL, authorize_thread_done, NULL);
   auth_data = g_slice_new (AuthData);
-  auth_data->level = level;
-  auth_data->key = key;
   auth_data->callback = callback;
   auth_data->user_data = user_data;
+  auth_data->auth = g_object_ref (auth);
   g_task_set_task_data (task, auth_data, auth_data_free);
 
   g_object_set (dev, "status", BOLT_STATUS_AUTHORIZING, NULL);
 
   g_task_run_in_thread (task, authorize_in_thread);
   g_object_unref (task);
-
-  return TRUE;
 }
 
 
 /* dbus methods */
 
 static void
-handle_authorize_done (BoltDevice *dev,
-                       gboolean    ok,
-                       GError    **error,
-                       gpointer    user_data)
+handle_authorize_done (GObject      *device,
+                       GAsyncResult *res,
+                       gpointer      user_data)
 {
-  GDBusMethodInvocation *invocation = user_data;
+  GDBusMethodInvocation *inv;
+  GError *error = NULL;
+  BoltAuth *auth;
+  BoltDevice *dev;
+  gboolean ok;
 
+  dev = BOLT_DEVICE (device);
+  inv  = user_data;
+  auth = BOLT_AUTH (res);
+
+  ok = bolt_auth_check (auth, &error);
   if (ok)
-    {
-      bolt_dbus_device_complete_authorize (BOLT_DBUS_DEVICE (dev),
-                                           invocation);
-    }
+    bolt_dbus_device_complete_authorize (BOLT_DBUS_DEVICE (dev), inv);
   else
-    {
-      g_dbus_method_invocation_take_error (invocation, *error);
-      error = NULL;
-    }
+    g_dbus_method_invocation_take_error (inv, error);
 }
 
 static gboolean
 handle_authorize (BoltDBusDevice        *object,
-                  GDBusMethodInvocation *invocation,
+                  GDBusMethodInvocation *inv,
                   gpointer               user_data)
 {
   BoltDevice *dev = BOLT_DEVICE (object);
   GError *error = NULL;
-  gboolean ok;
+  BoltAuth *auth;
+  BoltSecurity level;
+  BoltKey *key;
 
-  ok = bolt_device_authorize (dev,
-                              handle_authorize_done,
-                              invocation,
-                              &error);
+  level = dev->security;
+  key = NULL;
 
-  if (!ok)
-    g_dbus_method_invocation_take_error (invocation, error);
+  if (level == BOLT_SECURITY_SECURE)
+    {
+      if (dev->key)
+        key = bolt_store_get_key (dev->store, dev->uid, &error);
+      else
+        level = BOLT_SECURITY_USER;
+    }
+
+  if (level == BOLT_SECURITY_SECURE && key == NULL)
+    {
+      g_dbus_method_invocation_take_error (inv, error);
+      return TRUE;
+    }
+
+  auth = bolt_auth_new (dev, level, key);
+  bolt_device_authorize (dev, auth, handle_authorize_done, inv);
 
   return TRUE;
 }

@@ -605,41 +605,48 @@ bolt_manager_get_children (BoltManager *mgr,
 }
 
 /* device authorization */
-static void
-authorize_device_finish (BoltDevice *dev,
-                         gboolean    ok,
-                         GError    **error,
-                         gpointer    user_data)
+typedef struct
 {
+  BoltAuth   *auth;
+  BoltDevice *dev;
+} AuthIdleData;
+
+static void
+authorize_device_finish (GObject      *source,
+                         GAsyncResult *res,
+                         gpointer      user_data)
+{
+  g_autoptr(GError) error = NULL;
+  BoltDevice *dev = BOLT_DEVICE (source);
+  BoltAuth *auth = BOLT_AUTH (res);
   const char *uid;
+  gboolean ok;
 
   uid = bolt_device_get_uid (dev);
+  ok = bolt_auth_check (auth, &error);
 
   if (ok)
     g_info ("[%s] authorized", uid);
   else
     g_warning ("[%s] authorization failed: %s",
-               uid, (*error)->message);
+               uid, error->message);
 }
 
 static gboolean
 authorize_device_idle (gpointer user_data)
 {
-  g_autoptr(GError) error = NULL;
-  BoltDevice *dev = BOLT_DEVICE (user_data);
+  AuthIdleData *data = user_data;
+  BoltDevice *dev = data->dev;
+  BoltAuth *auth = data->auth;
   const char *uid = bolt_device_get_uid (dev);
-  gboolean ok;
 
   g_info ("[%s] authorizing", uid);
-  ok = bolt_device_authorize (dev,
-                              authorize_device_finish,
-                              NULL,
-                              &error);
-  if (!ok)
-    g_warning ("[%s] failed to initiate authorization: %s",
-               uid, error->message);
+  bolt_device_authorize (dev, auth, authorize_device_finish, data);
 
-  g_object_unref (dev);
+  g_object_unref (data->auth);
+  g_object_unref (data->dev);
+  g_slice_free (AuthIdleData, data);
+
   return G_SOURCE_REMOVE;
 }
 
@@ -650,6 +657,9 @@ maybe_authorize_device (BoltManager *mgr,
   BoltStatus status = bolt_device_get_status (dev);
   BoltPolicy policy = bolt_device_get_policy (dev);
   const char *uid = bolt_device_get_uid (dev);
+  BoltKey *key = NULL;
+  BoltSecurity level;
+  AuthIdleData *data;
   gboolean stored;
 
   g_debug ("[%s] checking possible authorization: %s (%x)",
@@ -663,7 +673,21 @@ maybe_authorize_device (BoltManager *mgr,
   /* sanity check, because we already checked the policy */
   g_return_if_fail (stored);
 
-  g_idle_add (authorize_device_idle, g_object_ref (dev));
+  level = bolt_device_get_security (dev);
+  if (level == BOLT_SECURITY_SECURE &&
+      bolt_device_get_key (dev) != BOLT_KEY_MISSING)
+    {
+      g_autoptr(GError) err = NULL;
+      key = bolt_store_get_key (mgr->store, uid, &err);
+      if (key == NULL)
+        g_warning ("[%s] could not load key: %s", uid, err->message);
+    }
+
+  data = g_slice_new (AuthIdleData);
+  data->auth = bolt_auth_new (mgr, level, key);
+  data->dev = g_object_ref (dev);
+
+  g_idle_add (authorize_device_idle, data);
 }
 
 /* udev callbacks */
@@ -913,23 +937,53 @@ handle_device_by_uid (BoltDBusManager       *obj,
 }
 
 static void
-enroll_device_done (BoltDevice *dev,
-                    gboolean    ok,
-                    GError    **error,
-                    gpointer    user_data)
+enroll_device_done (GObject      *device,
+                    GAsyncResult *res,
+                    gpointer      user_data)
 {
-  GDBusMethodInvocation *invocation = user_data;
+  BoltAuth *auth;
+  BoltDevice *dev;
+  BoltManager *mgr;
+  GDBusMethodInvocation *inv;
+  GError *error = NULL;
+  const char *opath;
+  gboolean ok;
+
+  inv = user_data;
+  dev = BOLT_DEVICE (device);
+  auth = BOLT_AUTH (res);
+  mgr = BOLT_MANAGER (bolt_auth_get_origin (auth));
+  ok = bolt_auth_check (auth, &error);
 
   if (ok)
     {
-      bolt_dbus_device_complete_authorize (BOLT_DBUS_DEVICE (dev),
-                                           invocation);
+      GVariant *params;
+      guint32 p;
+      BoltPolicy policy;
+
+      params = g_dbus_method_invocation_get_parameters (inv);
+      g_variant_get_child (params, 1, "u", &p);
+
+      policy = p;
+      if (policy == BOLT_POLICY_DEFAULT)
+        policy = BOLT_POLICY_AUTO;
+
+      ok = bolt_store_put_device (mgr->store,
+                                  dev,
+                                  policy,
+                                  bolt_auth_get_key (auth),
+                                  &error);
     }
-  else
+
+  if (!ok)
     {
-      g_dbus_method_invocation_take_error (invocation, *error);
-      error = NULL;
+      g_dbus_method_invocation_take_error (inv, error);
+      return;
     }
+
+  opath = bolt_device_get_object_path (dev);
+  bolt_dbus_manager_complete_enroll_device (BOLT_DBUS_MANAGER (mgr), inv, opath);
+
 }
 
 static gboolean
@@ -938,35 +992,43 @@ handle_enroll_device (BoltDBusManager       *obj,
                       gpointer               user_data)
 {
   g_autoptr(BoltDevice) dev = NULL;
-  GError *error = NULL;
+  g_autoptr(BoltAuth) auth = NULL;
   BoltManager *mgr;
   GVariant *params;
   const char *uid;
-  gboolean ok;
-  guint32 p;
+  BoltSecurity level;
+  BoltKey *key;
 
   mgr = BOLT_MANAGER (obj);
 
   params = g_dbus_method_invocation_get_parameters (inv);
-  g_variant_get (params, "(&su)", &uid, &p);
+  g_variant_get_child (params, 0, "&s", &uid);
   dev = bolt_manager_get_device_by_uid (mgr, uid);
 
   if (!dev)
     {
-      g_dbus_method_invocation_return_error (inv,
-                                             G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+      g_dbus_method_invocation_return_error (inv, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                                              "device with id '%s' could not be found.",
                                              uid);
       return TRUE;
     }
 
-  ok = bolt_device_authorize (dev,
-                              enroll_device_done,
-                              inv,
-                              &error);
+  if (bolt_device_get_stored (dev))
+    {
+      g_dbus_method_invocation_return_error (inv, G_IO_ERROR, G_IO_ERROR_EXISTS,
+                                             "device with id '%s' already enrolled.",
+                                             uid);
+      return TRUE;
+    }
 
-  if (!ok)
-    g_dbus_method_invocation_take_error (inv, error);
+  level = bolt_device_get_security (dev);
+  key = NULL;
+
+  if (level == BOLT_SECURITY_SECURE)
+    key = bolt_key_new ();
+
+  auth = bolt_auth_new (mgr, level, key);
+  bolt_device_authorize (dev, auth, enroll_device_done, inv);
 
   return TRUE;
 
