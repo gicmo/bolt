@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "bolt-enums.h"
 #include "bolt-device.h"
 #include "bolt-proxy.h"
 
@@ -34,4 +35,8 @@ GPtrArray *     bolt_client_list_devices (BoltClient *client,
 BoltDevice *    bolt_client_get_device (BoltClient *client,
                                         const char *uid,
                                         GError    **error);
+BoltDevice *    bolt_client_enroll_device (BoltClient *client,
+                                           const char *uid,
+                                           BoltPolicy  policy,
+                                           GError    **error);
 G_END_DECLS

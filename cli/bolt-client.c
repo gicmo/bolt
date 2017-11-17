@@ -313,3 +313,48 @@ bolt_client_get_device (BoltClient *client,
   dev = bolt_device_new_for_object_path (bus, opath, error);
   return dev;
 }
+
+BoltDevice *
+bolt_client_enroll_device (BoltClient *client,
+                           const char *uid,
+                           BoltPolicy  policy,
+                           GError    **error)
+{
+  g_autoptr(GVariant) val = NULL;
+  g_autoptr(GError) err = NULL;
+  BoltDevice *dev = NULL;
+  GDBusConnection *bus = NULL;
+  GVariant *params = NULL;
+  const char *opath = NULL;
+  GDBusProxy *proxy;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
+
+  proxy = bolt_proxy_get_proxy (BOLT_PROXY (client));
+  params = g_variant_new ("(su)", uid, (guint32) policy);
+  val = g_dbus_proxy_call_sync (proxy,
+                                "EnrollDevice",
+                                params,
+                                G_DBUS_CALL_FLAGS_NONE,
+                                -1,
+                                NULL,
+                                &err);
+
+  if (val == NULL)
+    {
+      if (g_dbus_error_is_remote_error (err))
+        g_dbus_error_strip_remote_error (err);
+
+      g_propagate_error (error, g_steal_pointer (&err));
+      return NULL;
+    }
+
+  bus = g_dbus_proxy_get_connection (proxy);
+  g_variant_get (val, "(&o)", &opath);
+
+  if (opath == NULL)
+    return NULL;
+
+  dev = bolt_device_new_for_object_path (bus, opath, error);
+  return dev;
+}
