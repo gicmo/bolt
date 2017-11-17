@@ -741,7 +741,8 @@ handle_udev_device_changed (BoltManager        *mgr,
   uid = bolt_device_get_uid (dev);
   after = bolt_device_update_from_udev (dev, udev);
 
-  g_info ("[%s] device changed: %x", uid, after);
+  g_info ("[%s] device changed: %s", uid,
+          bolt_status_to_string (after));
 
   if (!bolt_status_is_authorized (after))
     return;
@@ -876,10 +877,14 @@ handle_device_status_changed (BoltDevice  *dev,
                               BoltManager *mgr)
 {
   const char *uid;
+  BoltStatus now;
 
   uid = bolt_device_get_uid (dev);
-  g_debug ("[%s] status changed: %x -> %x",
-           uid, old, bolt_device_get_status (dev));
+  now = bolt_device_get_status (dev);
+  g_debug ("[%s] status changed: %s -> %s",
+           uid,
+           bolt_status_to_string (old),
+           bolt_status_to_string (now));
 }
 
 /* dbus methods */
