@@ -231,3 +231,9 @@ bolt_key_load_file (GFile   *file,
 
   return g_steal_pointer (&key);
 }
+
+BoltKeyState
+bolt_key_get_state (BoltKey *key)
+{
+  return key->fresh ? BOLT_KEY_NEW : BOLT_KEY_HAVE;
+}

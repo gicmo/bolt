@@ -49,4 +49,6 @@ gboolean          bolt_key_save_file (BoltKey *key,
 BoltKey *         bolt_key_load_file (GFile   *file,
                                       GError **error);
 
+BoltKeyState      bolt_key_get_state (BoltKey *key);
+
 G_END_DECLS

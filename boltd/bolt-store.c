@@ -285,7 +285,7 @@ bolt_store_put_device (BoltStore  *store,
       if (!ok)
         g_warning ("failed to store key: %s", err->message);
       else
-        keystate = BOLT_KEY_HAVE;
+        keystate = bolt_key_get_state (key);
     }
 
   ok = g_file_replace_contents (entry,
