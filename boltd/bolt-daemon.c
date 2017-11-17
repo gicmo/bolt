@@ -22,6 +22,7 @@
 
 #include "bolt-dbus.h"
 #include "bolt-manager.h"
+#include "bolt-term.h"
 
 #include <gio/gio.h>
 
@@ -29,24 +30,10 @@
 #include <stdlib.h>
 
 
-#define ANSI_NORMAL "\x1B[0m"
-#define ANSI_RED "\x1B[0;31m"
-#define ANSI_GREEN "\x1B[0;32m"
-#define ANSI_YELLOW "\x1B[0;33m"
-#define ANSI_BLUE "\x1B[0;34m"
-#define ANSI_HIGHLIGHT_BLACK "\x1B[0;1;30m"
-#define ANSI_HIGHLIGHT_RED "\x1B[0;1;31m"
-
 /* globals */
 static BoltManager *manager = NULL;
 static GMainLoop *main_loop = NULL;
 static guint name_owner_id = 0;
-
-static const char *
-ansi_color (const char *c)
-{
-  return c;
-}
 
 #define TIME_MAXFMT 255
 static void
@@ -55,7 +42,7 @@ log_handler (const gchar   *log_domain,
              const gchar   *message,
              gpointer       user_data)
 {
-  const char *normal = ansi_color (ANSI_NORMAL);
+  const char *normal = bolt_color (ANSI_NORMAL);
   const char *fg = normal;
   gchar the_time[TIME_MAXFMT];
   time_t now;
@@ -66,17 +53,17 @@ log_handler (const gchar   *log_domain,
 
   if (tm && strftime (the_time, sizeof (the_time), "%T", tm) > 0)
     {
-      const char *gray = ansi_color (ANSI_HIGHLIGHT_BLACK);
+      const char *gray = bolt_color (ANSI_HIGHLIGHT_BLACK);
       g_printerr ("%s%s%s ", gray, the_time, normal);
     }
 
   if (log_level == G_LOG_LEVEL_CRITICAL ||
       log_level == G_LOG_LEVEL_ERROR)
-    fg = ansi_color (ANSI_RED);
+    fg = bolt_color (ANSI_RED);
   else if (log_level == G_LOG_LEVEL_WARNING)
-    fg = ansi_color (ANSI_YELLOW);
+    fg = bolt_color (ANSI_YELLOW);
   else if (log_level == G_LOG_LEVEL_INFO)
-    fg = ansi_color (ANSI_BLUE);
+    fg = bolt_color (ANSI_BLUE);
 
   g_printerr ("%s%s%s\n", fg, message, normal);
 }
