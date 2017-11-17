@@ -201,6 +201,44 @@ authorize (BoltClient *client, int argc, char **argv)
 
 
 static int
+enroll (BoltClient *client, int argc, char **argv)
+{
+  g_autoptr(GOptionContext) optctx = NULL;
+  g_autoptr(BoltDevice) dev = NULL;
+  g_autoptr(GError) error = NULL;
+  const char *uid;
+
+  optctx = g_option_context_new ("DEVICE");
+  g_option_context_set_summary (optctx, "Information about a thunderbolt device");
+  g_option_context_set_strict_posix (optctx, TRUE);
+
+  if (!g_option_context_parse (optctx, &argc, &argv, &error))
+    {
+      g_printerr ("Failed to parse command line arguments.\n");
+      return EXIT_FAILURE;
+    }
+
+  if (argc < 2)
+    {
+      char *help = g_option_context_get_help (optctx, TRUE, NULL);
+      g_printerr ("%s\n", help);
+      return EXIT_FAILURE;
+    }
+
+  uid = argv[1];
+
+  dev = bolt_client_enroll_device (client, uid, BOLT_POLICY_DEFAULT, &error);
+  if (dev == NULL)
+    {
+      g_printerr ("%s\n", error->message);
+      return EXIT_FAILURE;
+    }
+
+  print_device (dev, TRUE);
+  return EXIT_SUCCESS;
+}
+
+static int
 forget (BoltClient *client, int argc, char **argv)
 {
   g_autoptr(GOptionContext) optctx = NULL;
@@ -365,6 +403,7 @@ typedef struct SubCommand
 
 static SubCommand subcommands[] = {
   {"authorize",    authorize},
+  {"enroll",       enroll},
   {"forget",       forget},
   {"info",         info},
   {"list",         list_devices},
