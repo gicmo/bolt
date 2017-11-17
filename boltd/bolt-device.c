@@ -91,6 +91,13 @@ enum {
 
 static GParamSpec *props[PROP_LAST] = {NULL, };
 
+enum {
+  SIGNAL_STATUS_CHANGED,
+  SIGNAL_LAST
+};
+
+static guint signals[SIGNAL_LAST] = {0};
+
 G_DEFINE_TYPE (BoltDevice,
                bolt_device,
                BOLT_DBUS_TYPE_DEVICE_SKELETON)
@@ -219,8 +226,19 @@ bolt_device_set_property (GObject      *object,
       break;
 
     case PROP_STATUS:
-      dev->status = g_value_get_uint (value);
-      break;
+      {
+        BoltStatus old = dev->status;
+        BoltStatus now = g_value_get_uint (value);
+        if (old == now)
+          break;
+
+        dev->status = now;
+        g_signal_emit (dev,
+                       signals[SIGNAL_STATUS_CHANGED],
+                       0,
+                       old);
+        break;
+      }
 
     case PROP_SYSFS:
       g_clear_pointer (&dev->syspath, g_free);
@@ -308,6 +326,17 @@ bolt_device_class_init (BoltDeviceClass *klass)
   g_object_class_override_property (gobject_class,
                                     PROP_HAVE_KEY,
                                     "key");
+
+
+  signals[SIGNAL_STATUS_CHANGED] =
+    g_signal_new ("status-changed",
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  NULL,
+                  G_TYPE_NONE,
+                  1, BOLT_TYPE_STATUS);
 
 }
 
@@ -540,6 +569,7 @@ authorize_thread_done (GObject      *object,
   BoltDevice *dev = BOLT_DEVICE (object);
   GTask *task = G_TASK (res);
   AuthData *auth;
+  BoltStatus status;
   gboolean ok;
 
   auth = g_task_get_task_data (task);
@@ -548,11 +578,11 @@ authorize_thread_done (GObject      *object,
   if (ok)
     {
       if (auth->level == BOLT_SECURITY_SECURE)
-        dev->status = BOLT_STATUS_AUTHORIZED_SECURE;
+        status = BOLT_STATUS_AUTHORIZED_SECURE;
       else if (auth->key)
-        dev->status = BOLT_STATUS_AUTHORIZED_NEWKEY;
+        status = BOLT_STATUS_AUTHORIZED_NEWKEY;
       else
-        dev->status = BOLT_STATUS_AUTHORIZED;
+        status = BOLT_STATUS_AUTHORIZED;
 
       if (!dev->store)
         {
@@ -568,10 +598,10 @@ authorize_thread_done (GObject      *object,
     }
   else
     {
-      dev->status = BOLT_STATUS_AUTH_ERROR;
+      status = BOLT_STATUS_AUTH_ERROR;
     }
 
-  g_object_notify (G_OBJECT (dev), "status");
+  g_object_set (dev, "status", status, NULL);
 
   if (auth->callback)
     auth->callback (dev, ok, &error, auth->user_data);
@@ -621,8 +651,7 @@ bolt_device_authorize (BoltDevice  *dev,
   auth_data->user_data = user_data;
   g_task_set_task_data (task, auth_data, auth_data_free);
 
-  dev->status = BOLT_STATUS_AUTHORIZING;
-  g_object_notify (G_OBJECT (dev), "status");
+  g_object_set (dev, "status", BOLT_STATUS_AUTHORIZING, NULL);
 
   g_task_run_in_thread (task, authorize_in_thread);
   g_object_unref (task);
