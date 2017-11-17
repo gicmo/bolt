@@ -96,6 +96,11 @@ static gboolean handle_device_by_uid (BoltDBusManager       *object,
                                       GDBusMethodInvocation *invocation,
                                       gpointer               user_data);
 
+static gboolean handle_enroll_device (BoltDBusManager       *object,
+                                      GDBusMethodInvocation *invocation,
+                                      gpointer               user_data);
+
+/*  */
 struct _BoltManager
 {
   BoltDBusManagerSkeleton object;
@@ -208,6 +213,7 @@ bolt_manager_init (BoltManager *mgr)
 
   g_signal_connect (mgr, "handle-list-devices", G_CALLBACK (handle_list_devices), NULL);
   g_signal_connect (mgr, "handle-device-by-uid", G_CALLBACK (handle_device_by_uid), NULL);
+  g_signal_connect (mgr, "handle-enroll-device", G_CALLBACK (handle_enroll_device), NULL);
 
   g_signal_connect (mgr->store, "device-removed", G_CALLBACK (handle_store_device_removed), mgr);
 }
@@ -904,6 +910,66 @@ handle_device_by_uid (BoltDBusManager       *obj,
   opath = bolt_device_get_object_path (dev);
   bolt_dbus_manager_complete_device_by_uid (obj, inv, opath);
   return TRUE;
+}
+
+static void
+enroll_device_done (BoltDevice *dev,
+                    gboolean    ok,
+                    GError    **error,
+                    gpointer    user_data)
+{
+  GDBusMethodInvocation *invocation = user_data;
+
+  if (ok)
+    {
+      bolt_dbus_device_complete_authorize (BOLT_DBUS_DEVICE (dev),
+                                           invocation);
+    }
+  else
+    {
+      g_dbus_method_invocation_take_error (invocation, *error);
+      error = NULL;
+    }
+}
+
+static gboolean
+handle_enroll_device (BoltDBusManager       *obj,
+                      GDBusMethodInvocation *inv,
+                      gpointer               user_data)
+{
+  g_autoptr(BoltDevice) dev = NULL;
+  GError *error = NULL;
+  BoltManager *mgr;
+  GVariant *params;
+  const char *uid;
+  gboolean ok;
+  guint32 p;
+
+  mgr = BOLT_MANAGER (obj);
+
+  params = g_dbus_method_invocation_get_parameters (inv);
+  g_variant_get (params, "(&su)", &uid, &p);
+  dev = bolt_manager_get_device_by_uid (mgr, uid);
+
+  if (!dev)
+    {
+      g_dbus_method_invocation_return_error (inv,
+                                             G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                                             "device with id '%s' could not be found.",
+                                             uid);
+      return TRUE;
+    }
+
+  ok = bolt_device_authorize (dev,
+                              enroll_device_done,
+                              inv,
+                              &error);
+
+  if (!ok)
+    g_dbus_method_invocation_take_error (inv, error);
+
+  return TRUE;
+
 }
 
 

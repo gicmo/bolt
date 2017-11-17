@@ -53,6 +53,30 @@
       </doc:doc>
     </method>
 
+    <method name="EnrollDevice">
+      <arg type='s' name='uid' direction='in'>
+        <doc:doc><doc:summary>The unique id of the device.</doc:summary>
+        </doc:doc>
+      </arg>
+      <arg type='u' name='policy' direction='in'>
+        <doc:doc><doc:summary>Policy to use for the device.</doc:summary>
+        </doc:doc>
+      </arg>
+      <arg name="device" direction="out" type="o">
+        <doc:doc><doc:summary>Object path for the devices.</doc:summary></doc:doc>
+      </arg>
+
+      <doc:doc>
+        <doc:description>
+          <doc:para>
+	    Authorize a device, and on success, store the device in the database.
+	    If policy is set to "Auto", the device will be automatically authorized
+	    in the future.
+          </doc:para>
+        </doc:description>
+      </doc:doc>
+    </method>
+
     <!-- signals -->
 
     <signal name="DeviceAdded">
