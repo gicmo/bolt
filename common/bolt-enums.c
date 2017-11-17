@@ -24,6 +24,18 @@
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
 
+const char *
+bolt_status_to_string (BoltStatus status)
+{
+  g_autoptr(GEnumClass) klass = NULL;
+  GEnumValue *value;
+
+  klass = g_type_class_ref (BOLT_TYPE_STATUS);
+  value = g_enum_get_value (klass, status);
+
+  return value->value_nick;
+}
+
 gboolean
 bolt_status_is_authorized (BoltStatus status)
 {
