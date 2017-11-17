@@ -198,7 +198,8 @@ bolt_key_save_file (BoltKey *key,
   ok = g_file_replace_contents (file,
                                 key->data, BOLT_KEY_STR_CHARS,
                                 NULL, FALSE,
-                                0, NULL,
+                                G_FILE_CREATE_PRIVATE,
+                                NULL,
                                 NULL, error);
   return ok;
 }
