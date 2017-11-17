@@ -83,6 +83,9 @@ static void          handle_store_device_removed (BoltStore   *store,
                                                   const char  *uid,
                                                   BoltManager *mgr);
 
+static void          handle_device_status_changed (BoltDevice  *dev,
+                                                   BoltStatus   old,
+                                                   BoltManager *mgr);
 
 /* dbus method calls */
 static gboolean handle_list_devices (BoltDBusManager       *object,
@@ -498,6 +501,8 @@ manager_register_device (BoltManager *mgr,
 
   g_object_set (dev, "manager", mgr, NULL);
   g_ptr_array_add (mgr->devices, dev);
+  g_signal_connect (dev, "status-changed",
+                    G_CALLBACK (handle_device_status_changed), mgr);
 }
 
 static void
@@ -505,6 +510,7 @@ manager_deregister_device (BoltManager *mgr,
                            BoltDevice  *dev)
 {
   g_ptr_array_remove_fast (mgr->devices, dev);
+  //  g_signal_handlers_unblock_by_func (dev, G_CALLBACK (handle_device_status_changed), mgr);
 }
 
 static BoltDevice *
@@ -832,6 +838,18 @@ handle_store_device_removed (BoltStore   *store,
   bolt_device_unexport (dev);
   g_debug ("[%s] unexported", uid);
 
+}
+
+static void
+handle_device_status_changed (BoltDevice  *dev,
+                              BoltStatus   old,
+                              BoltManager *mgr)
+{
+  const char *uid;
+
+  uid = bolt_device_get_uid (dev);
+  g_debug ("[%s] status changed: %x -> %x",
+           uid, old, bolt_device_get_status (dev));
 }
 
 /* dbus methods */
