@@ -1,0 +1,16 @@
+language: c
+sudo: required
+dist: trusty
+
+services:
+  - docker
+
+env:
+- OS=fedora
+
+
+install:
+- docker build -t bolt-$OS -f ./contrib/Dockerfile-$OS .
+
+script:
+- docker run -e -t -v `pwd`:/src bolt-$OS ./contrib/docker-build.sh
