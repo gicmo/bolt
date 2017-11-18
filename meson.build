@@ -85,12 +85,20 @@ sysconfdir = get_option('sysconfdir')
 
 dbdir = get_option('db-path')
 
+
+version_split = meson.project_version().split('.')
+version_major = version_split[0]
+version_minor = version_split[1]
+
 conf = configuration_data()
 conf.set_quoted('VERSION', meson.project_version())
 conf.set_quoted('PACKAGE_NAME', meson.project_name())
 conf.set_quoted('PACKAGE_VERSION', meson.project_version())
 conf.set_quoted('DATADIR', datadir)
 conf.set_quoted('BOLT_DBDIR', dbdir)
+
+conf.set('VERSION_MAJOR', version_major)
+conf.set('VERSION_MINOR', version_minor)
 
 conf.set('_GNU_SOURCE', true)
 
