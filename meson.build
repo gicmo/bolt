@@ -251,5 +251,7 @@ foreach t: tests
 
 endforeach
 
-msg = '  database path:       @0@'.format(dbdir)
-message('\n' + msg)
+msg = ['',
+  'version:             @0@'.format(meson.project_version()),
+  'database path:       @0@'.format(dbdir), ]
+message('\n  '.join(msg))
