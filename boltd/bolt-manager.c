@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "bolt-bouncer.h"
 #include "bolt-device.h"
 #include "bolt-error.h"
 #include "bolt-manager.h"
@@ -115,6 +116,9 @@ struct _BoltManager
   /* state */
   BoltStore *store;
   GPtrArray *devices;
+
+  /* policy enforcer */
+  BoltBouncer *bouncer;
 };
 
 enum {
@@ -414,6 +418,14 @@ bolt_manager_initialize (GInitable    *initable,
 
   mgr = BOLT_MANAGER (initable);
 
+  /* polkit setup */
+  mgr->bouncer = bolt_bouncer_new (cancellable, error);
+  if (mgr->bouncer == NULL)
+    return FALSE;
+
+  bolt_bouncer_add_client (mgr->bouncer, mgr);
+
+  /* udev setup*/
   mgr->udev = udev_new ();
   if (mgr->udev == NULL)
     {
@@ -507,6 +519,7 @@ manager_register_device (BoltManager *mgr,
 
   g_object_set (dev, "manager", mgr, NULL);
   g_ptr_array_add (mgr->devices, dev);
+  bolt_bouncer_add_client (mgr->bouncer, dev);
   g_signal_connect (dev, "status-changed",
                     G_CALLBACK (handle_device_status_changed), mgr);
 }

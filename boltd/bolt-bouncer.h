@@ -20,16 +20,17 @@
 
 #pragma once
 
-#include <glib.h>
-#include <string.h>
+#include <gio/gio.h>
 
 G_BEGIN_DECLS
 
-void bolt_erase_n (void *data,
-                   gsize n);
-void bolt_str_erase (char *str);
-void bolt_str_erase_clear (char **str);
+#define BOLT_TYPE_BOUNCER bolt_bouncer_get_type ()
+G_DECLARE_FINAL_TYPE (BoltBouncer, bolt_bouncer, BOLT, BOUNCER, GObject);
 
-#define bolt_streq(s1, s2) (g_strcmp0 (s1, s2) == 0)
+BoltBouncer * bolt_bouncer_new (GCancellable *cancellable,
+                                GError      **error);
+
+void          bolt_bouncer_add_client (BoltBouncer *bnc,
+                                       gpointer     client);
 
 G_END_DECLS

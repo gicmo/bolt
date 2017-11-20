@@ -1,0 +1,9 @@
+// -*- mode: js2 -*-
+polkit.addRule(function(action, subject) {
+    if ((action.id === "org.freedesktop.bolt.enroll" ||
+	 action.id === "org.freedesktop.bolt.authorize") &&
+        subject.active === true && subject.local === true &&
+        subject.isInGroup("@privileged_group@")) {
+            return polkit.Result.YES;
+    }
+});

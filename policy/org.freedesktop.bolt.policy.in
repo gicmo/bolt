@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1.0/policyconfig.dtd">
+<policyconfig>
+
+   <!--
+    Policy definitions for bolt actions.
+    Copyright (c) 2017 Christian J. Kellner <christian@kellner.me>
+   -->
+
+  <vendor>Thunderbolt System services</vendor>
+  <vendor_url>https://github.com/gicmo/bolt</vendor_url>
+  <icon_name>thunderbolt-symbolic</icon_name>
+
+  <action id="org.freedesktop.bolt.enroll">
+    <description>Enroll new thunderbolt devices</description>
+    <message>Authentication is required to enroll thunderbolt devices</message>
+    <icon_name>thunderbolt-symbolic</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.freedesktop.bolt.authorize">
+    <description>Authorize thunderbolt devices</description>
+    <message>Authentication is required to authorize thunderbolt devices</message>
+    <icon_name>thunderbolt-symbolic</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+  <action id="org.freedesktop.bolt.manage">
+    <description>Manage thunderbolt devices</description>
+    <message>Authentication is required to manage thunderbolt devices</message>
+    <icon_name>thunderbolt-symbolic</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+  </action>
+
+</policyconfig>

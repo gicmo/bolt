@@ -1,1 +1,2 @@
 option('db-path', type : 'string', value : '/var/lib/thunderbolt', description : 'Directory for the device database')
+option('privileged-group', type : 'string', value : 'wheel', description : 'Name of privileged group')

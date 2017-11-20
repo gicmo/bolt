@@ -65,14 +65,14 @@ endforeach
 
 # dependencies
 
-gnome = import('gnome')
+gnome  = import('gnome')
 
-glib  = dependency('glib-2.0')
-gio   = dependency('gio-2.0')
-unix  = dependency('gio-unix-2.0')
-udev  = dependency('libudev')
-umock = dependency('umockdev-1.0')
-
+glib   = dependency('glib-2.0')
+gio    = dependency('gio-2.0')
+unix   = dependency('gio-unix-2.0')
+udev   = dependency('libudev')
+umock  = dependency('umockdev-1.0')
+polkit = dependency('polkit-gobject-1')
 
 # configuration & well known directories
 
@@ -111,10 +111,17 @@ foreach fn : [
   conf.set10('HAVE_FN_' + fn[0].to_upper(), have)
 endforeach
 
+if polkit.version().version_compare('>= 0.114')
+  conf.set('HAVE_POLKIT_AUTOPTR', '1')
+endif
+
 config_h = configure_file(output: 'config.h', configuration: conf)
 
 cargs = ['-DG_LOG_DOMAIN="Bolt"']
 
+privileged_group = get_option('privileged-group')
+subs = configuration_data()
+subs.set('privileged_group', privileged_group)
 
 # common static library
 #  contains code shared by daemon, command line tools
@@ -161,6 +168,7 @@ common = declare_dependency(
 # boltd - the main daemon
 daemon_sources = files([
   'boltd/bolt-auth.c',
+  'boltd/bolt-bouncer.c',
   'boltd/bolt-manager.c',
   'boltd/bolt-device.c',
   'boltd/bolt-key.c',
@@ -180,9 +188,30 @@ install_data(['dbus/org.freedesktop.Bolt.conf'],
   install_dir : join_paths(sysconfdir, 'dbus-1', 'system.d')
 )
 
+policy_rules = configure_file(
+  input: 'policy/org.freedesktop.bolt.rules.in',
+  output: 'org.freedesktop.bolt.rules',
+  configuration: subs
+)
+
+install_data(policy_rules,
+  install_dir: join_paths(datadir, 'polkit-1', 'rules.d')
+)
+
+policy_file = configure_file(
+  input: 'policy/org.freedesktop.bolt.policy.in',
+  output: 'org.freedesktop.bolt.policy',
+  configuration: subs
+)
+
+install_data(policy_file,
+  install_dir: join_paths(datadir, 'polkit-1', 'actions')
+)
+
 daemon_deps = [
   glib,
   gio,
+  polkit,
   unix,
   udev,
   common
@@ -253,5 +282,6 @@ endforeach
 
 msg = ['',
   'version:             @0@'.format(meson.project_version()),
-  'database path:       @0@'.format(dbdir), ]
+  'database path:       @0@'.format(dbdir),
+  'privileged group:    @0@'.format(privileged_group) ]
 message('\n  '.join(msg))
