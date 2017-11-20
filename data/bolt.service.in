@@ -1,0 +1,19 @@
+[Unit]
+Description=Thunderbolt system service
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.Bolt
+ExecStart=@libexecdir@/boltd
+#Environment="G_MESSAGES_DEBUG=all"
+Restart=on-failure
+
+MemoryDenyWriteExecute=yes
+PrivateTmp=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectKernelModules=yes
+ProtectSystem=full
+RestrictAddressFamilies=AF_NETLINK AF_UNIX
+RestrictRealtime=yes
+ReadWritePaths=@dbdir@

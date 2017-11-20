@@ -69,8 +69,10 @@ gnome  = import('gnome')
 
 glib    = dependency('glib-2.0')
 gio     = dependency('gio-2.0')
+gudev   = dependency('gudev-1.0')
+libudev = dependency('libudev')
 unix    = dependency('gio-unix-2.0')
-udev    = dependency('libudev')
+udev    = dependency('udev')
 umock   = dependency('umockdev-1.0')
 polkit  = dependency('polkit-gobject-1')
 systemd = dependency('systemd')
@@ -85,7 +87,8 @@ datadir = join_paths(prefixdir, get_option('datadir'))
 sysconfdir = get_option('sysconfdir')
 
 dbdir = get_option('db-path')
-
+udevdir = udev.get_pkgconfig_variable('udevdir')
+unitdir = systemd.get_pkgconfig_variable('systemdsystemunitdir')
 
 version_split = meson.project_version().split('.')
 version_major = version_split[0]
@@ -122,11 +125,15 @@ cargs = ['-DG_LOG_DOMAIN="Bolt"']
 
 privileged_group = get_option('privileged-group')
 subs = configuration_data()
+subs.set('dbdir', dbdir)
+subs.set('libexecdir', libexecdir)
 subs.set('privileged_group', privileged_group)
+subs.set('version', meson.project_version())
+
 
 # common static library
 #  contains code shared by daemon, command line tools
-common_deps = [glib, gio, udev, unix]
+common_deps = [glib, gio, libudev, unix]
 
 common_headers = [
   'common/bolt-enums.h',
@@ -189,6 +196,16 @@ install_data(['dbus/org.freedesktop.Bolt.conf'],
   install_dir : join_paths(sysconfdir, 'dbus-1', 'system.d')
 )
 
+service_file = configure_file(
+  input: 'data/org.freedesktop.bolt.service.in',
+  output: 'org.freedesktop.bolt.service',
+  configuration: subs
+)
+
+install_data(service_file,
+  install_dir: join_paths(datadir, 'dbus-1', 'system-services')
+)
+
 policy_rules = configure_file(
   input: 'policy/org.freedesktop.bolt.rules.in',
   output: 'org.freedesktop.bolt.rules',
@@ -209,12 +226,26 @@ install_data(policy_file,
   install_dir: join_paths(datadir, 'polkit-1', 'actions')
 )
 
+unit_file = configure_file(
+  input: 'data/bolt.service.in',
+  output: 'bolt.service',
+  configuration: subs
+)
+
+install_data(unit_file,
+  install_dir: unitdir
+)
+
+install_data('data/90-bolt.rules',
+  install_dir: join_paths(udevdir, 'rules.d')
+)
+
 daemon_deps = [
   glib,
   gio,
+  libudev,
   polkit,
   unix,
-  udev,
   common
 ]
 
@@ -281,8 +312,15 @@ foreach t: tests
 
 endforeach
 
+# all done, phew
+
 msg = ['',
   'version:             @0@'.format(meson.project_version()),
   'database path:       @0@'.format(dbdir),
-  'privileged group:    @0@'.format(privileged_group) ]
+  'privileged group:    @0@'.format(privileged_group),
+  '',
+  'udevdir:             @0@'.format(udevdir),
+  'systemd unitdir:     @0@'.format(unitdir),
+  ''
+  ]
 message('\n  '.join(msg))

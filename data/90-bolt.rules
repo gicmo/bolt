@@ -1,0 +1,12 @@
+# bolt udev rules
+#
+# SPDX-License-Identifier: GPL-2.1+
+#
+# (c) Christian J. Kellner <ckellner@edhat.com>
+
+ACTION=="remove", GOTO="bolt_end"
+
+# start bolt service if we have a thunderbolt device connected
+SUBSYSTEM=="thunderbolt", TAG+="systemd", ENV{SYSTEMD_WANTS}+="bolt.service"
+
+LABEL="bolt_end"
