@@ -9,11 +9,11 @@ RUN dnf --enablerepo=updates-testing -y install \
     gtk-doc \
     libgudev-devel \
     meson \
-    umockdev-devel \
+    polkit-devel \
     rpm-build \
     redhat-rpm-config \
-    systemd-devel
+    systemd-devel \
+    umockdev-devel
 
 RUN mkdir /src
 WORKDIR /src
-
