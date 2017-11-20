@@ -77,10 +77,12 @@ umock   = dependency('umockdev-1.0')
 polkit  = dependency('polkit-gobject-1')
 systemd = dependency('systemd')
 
+git     = find_program('git', required: false)
 # configuration & well known directories
 
 prefixdir = get_option('prefix')
 
+srcdir = meson.source_root()
 bindir = join_paths(prefixdir, get_option('bindir'))
 libexecdir = join_paths(prefixdir, get_option('libexecdir'))
 datadir = join_paths(prefixdir, get_option('datadir'))
@@ -130,6 +132,22 @@ subs.set('libexecdir', libexecdir)
 subs.set('privileged_group', privileged_group)
 subs.set('version', meson.project_version())
 
+longdate = run_command('date', '+%a %b %d %Y').stdout().strip()
+subs.set('longdate', longdate)
+
+subs.set('reltag', 'pre1')
+if git.found()
+  gitres = run_command(git, ['--git-dir=@0@/.git'.format(srcdir),
+                             'rev-parse',
+                             '--short=7',
+                             'HEAD'])
+  if gitres.returncode() == 0
+    gitrev = gitres.stdout().strip()
+    gitdate = run_command('date', '+%Y%m%d').stdout().strip()
+    # YYYYMMDD<scm><revision>
+    subs.set('reltag', '@0@git@1@'.format(gitdate, gitrev))
+  endif
+endif
 
 # common static library
 #  contains code shared by daemon, command line tools
@@ -311,6 +329,14 @@ foreach t: tests
   test(test_name, e, env: test_env, timeout : 120)
 
 endforeach
+
+# contrib
+
+spec_file = configure_file(
+  input: 'contrib/bolt.spec.in',
+  output: 'bolt.spec',
+  configuration: subs
+)
 
 # all done, phew
 

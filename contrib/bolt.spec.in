@@ -1,0 +1,63 @@
+Name: bolt
+Version: @version@
+Release: @reltag@%{?dist}
+Summary: Thunderbolt system services
+License: GPLv2+
+URL: https://github.com/gicmo/bolt
+Source0: %{url}/releases/download/%{version}/%{name}-%{version}.tar.xz
+
+BuildRequires: meson
+BuildRequires: gtk-doc
+BuildRequires: libudev-devel
+BuildRequires: pkgconfig(gio-2.0)
+BuildRequires: pkgconfig(gudev-1.0)
+BuildRequires: pkgconfig(libudev)
+BuildRequires: pkgconfig(systemd)
+BuildRequires: polkit-devel
+BuildRequires: umockdev-devel
+BuildRequires: systemd
+%{?systemd_requires}
+
+%description
+bolt is a daemon that enables the authorization of Thunderbolt 3
+devices.
+
+%prep
+%setup -q
+
+%build
+%meson
+%meson_build
+
+%check
+%meson_test
+
+%install
+%meson_install
+
+%post
+%systemd_post %{name}.service
+
+%preun
+%systemd_preun %{name}.service
+
+%postun
+%systemd_postun_with_restart %{name}.service
+
+%files
+%defattr(-,root,root,-)
+%doc README.md
+%{_bindir}/boltctl
+%{_libexecdir}/boltd
+%{_unitdir}/%{name}.service
+%{_udevrulesdir}/*-%{name}.rules
+%{_sysconfdir}/dbus-1/system.d/org.freedesktop.Bolt.conf
+%{_datadir}/dbus-1/interfaces/org.freedesktop.Bolt.xml
+%{_datadir}/polkit-1/actions/org.freedesktop.bolt.policy
+%{_datadir}/polkit-1/rules.d/org.freedesktop.bolt.rules
+%{_datadir}/dbus-1/system-services/org.freedesktop.bolt.service
+%{_unitdir}/bolt.service
+
+%changelog
+* @longdate@ Christian Kellner <ckellner@redhat.com> - @version@-@reltag@
+- build from git sources.
