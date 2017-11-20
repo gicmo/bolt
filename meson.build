@@ -67,12 +67,13 @@ endforeach
 
 gnome  = import('gnome')
 
-glib   = dependency('glib-2.0')
-gio    = dependency('gio-2.0')
-unix   = dependency('gio-unix-2.0')
-udev   = dependency('libudev')
-umock  = dependency('umockdev-1.0')
-polkit = dependency('polkit-gobject-1')
+glib    = dependency('glib-2.0')
+gio     = dependency('gio-2.0')
+unix    = dependency('gio-unix-2.0')
+udev    = dependency('libudev')
+umock   = dependency('umockdev-1.0')
+polkit  = dependency('polkit-gobject-1')
+systemd = dependency('systemd')
 
 # configuration & well known directories
 
