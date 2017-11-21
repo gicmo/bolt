@@ -266,7 +266,9 @@ setup_monitor (BoltManager   *mgr,
 
   udev_monitor_set_receive_buffer_size (monitor, 128 * 1024 * 1024);
 
-  res = udev_monitor_filter_add_match_subsystem_devtype (monitor, "thunderbolt", NULL);
+  res = udev_monitor_filter_add_match_subsystem_devtype (monitor,
+                                                         "thunderbolt",
+                                                         "thunderbolt_device");
   if (res < 0)
     {
       g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_UDEV,
@@ -455,7 +457,7 @@ bolt_manager_initialize (GInitable    *initable,
   udev_enumerate_add_match_subsystem (enumerate, "thunderbolt");
   /* only devices (i.e. not the domain controller) */
   udev_enumerate_add_match_sysattr (enumerate, "unique_id", NULL);
-
+  udev_enumerate_add_match_property (enumerate, "DEVTYPE", "thunderbolt_device");
 
   ids = bolt_store_list_uids (mgr->store, error);
   if (ids == NULL)
