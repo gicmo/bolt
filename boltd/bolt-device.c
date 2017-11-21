@@ -853,6 +853,16 @@ bolt_device_disconnected (BoltDevice *dev)
                 "status", BOLT_STATUS_DISCONNECTED,
                 NULL);
 
+  /* check if we have a new key for the device, and
+   * if so, change its state to KEY_HAVE, because
+   * now it is not new anymore.
+   */
+  if (dev->key == BOLT_KEY_NEW)
+    {
+      dev->key = BOLT_KEY_HAVE;
+      g_object_notify (G_OBJECT (dev), "key");
+    }
+
   return dev->status;
 }
 
