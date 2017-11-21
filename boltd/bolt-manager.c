@@ -511,6 +511,7 @@ bolt_manager_initialize (GInitable    *initable,
         handle_udev_device_added (mgr, udevice);
     }
 
+  udev_enumerate_unref (enumerate);
   return TRUE;
 }
 
