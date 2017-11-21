@@ -488,7 +488,7 @@ bolt_manager_initialize (GInitable    *initable,
   udev_enumerate_scan_devices (enumerate);
   devices = udev_enumerate_get_list_entry (enumerate);
 
-  for (l = devices; l; l = udev_list_entry_get_next (l))
+  udev_list_entry_foreach (l, devices)
     {
       g_autoptr(udev_device) udevice = NULL;
       g_autoptr(BoltDevice) dev = NULL;
