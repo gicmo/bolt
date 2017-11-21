@@ -482,7 +482,7 @@ bolt_sysfs_domain_for_device (struct udev_device *udev)
 }
 
 static BoltSecurity
-security_for_udev (struct udev_device *udev)
+bolt_sysfs_security_for_device (struct udev_device *udev)
 {
   struct udev_device *parent = NULL;
   const char *v;
@@ -787,7 +787,7 @@ bolt_device_new_for_udev (struct udev_device *udev,
                       NULL);
 
   dev->status = bolt_status_from_udev (udev);
-  dev->security = security_for_udev (udev);
+  dev->security = bolt_sysfs_security_for_device (udev);
 
   return dev;
 }
@@ -829,7 +829,7 @@ bolt_device_connected (BoltDevice         *dev,
 
   syspath = udev_device_get_syspath (udev);
   status = bolt_status_from_udev (udev);
-  security = security_for_udev (udev);
+  security = bolt_sysfs_security_for_device (udev);
   parent = bolt_sysfs_get_parent_uid (udev);
 
   g_object_set (G_OBJECT (dev),
