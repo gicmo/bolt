@@ -44,6 +44,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   g_autofree char *name = NULL;
   g_autofree char *vendor = NULL;
   g_autofree char *syspath = NULL;
+  g_autofree char *parent = NULL;
   BoltSecurity security = BOLT_SECURITY_NONE;
   BoltStatus status;
   BoltKeyState keystate;
@@ -63,6 +64,7 @@ print_device (BoltDevice *dev, gboolean verbose)
                 "status", &status,
                 "uid", &uid,
                 "security", &security,
+                "parent", &parent,
                 "syspath", &syspath,
                 "stored", &stored,
                 "policy", &policy,
@@ -121,6 +123,10 @@ print_device (BoltDevice *dev, gboolean verbose)
     {
       if (verbose)
         {
+          g_print ("   %s %s parent:   %s\n",
+                   bolt_glyph (TREE_VERTICAL),
+                   tree_branch,
+                   parent);
           g_print ("   %s %s syspath:  %s\n",
                    bolt_glyph (TREE_VERTICAL),
                    tree_branch,
