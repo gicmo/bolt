@@ -27,6 +27,7 @@
 #include "bolt-io.h"
 #include "bolt-manager.h"
 #include "bolt-store.h"
+#include "bolt-str.h"
 
 #include <dirent.h>
 #include <libudev.h>
@@ -457,7 +458,7 @@ bolt_status_from_udev (struct udev_device *udev)
 
 
 static struct udev_device *
-domain_for_device (struct udev_device *udev)
+bolt_sysfs_domain_for_device (struct udev_device *udev)
 {
   struct udev_device *parent;
   gboolean found;
@@ -466,13 +467,13 @@ domain_for_device (struct udev_device *udev)
   parent = udev;
   do
     {
-      const char *name;
+      const char *devtype;
       parent = udev_device_get_parent (parent);
       if (!parent)
         break;
 
-      name = udev_device_get_sysname (parent);
-      found = g_str_has_prefix (name, "domain");
+      devtype = udev_device_get_devtype (parent);
+      found = bolt_streq (devtype, "thunderbolt_domain");
 
     }
   while (!found);
@@ -487,7 +488,7 @@ security_for_udev (struct udev_device *udev)
   const char *v;
   BoltSecurity s;
 
-  parent = domain_for_device (udev);
+  parent = bolt_sysfs_domain_for_device (udev);
   if (parent == NULL)
     {
       g_warning ("Failed to determine domain device");
