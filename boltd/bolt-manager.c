@@ -688,7 +688,7 @@ maybe_authorize_device (BoltManager *mgr,
 
   level = bolt_device_get_security (dev);
   if (level == BOLT_SECURITY_SECURE &&
-      bolt_device_get_key (dev) != BOLT_KEY_MISSING)
+      bolt_device_get_keystate (dev) != BOLT_KEY_MISSING)
     {
       g_autoptr(GError) err = NULL;
       key = bolt_store_get_key (mgr->store, uid, &err);

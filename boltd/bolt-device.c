@@ -886,7 +886,7 @@ bolt_device_update_from_udev (BoltDevice         *dev,
 }
 
 BoltKeyState
-bolt_device_get_key (BoltDevice *dev)
+bolt_device_get_keystate (BoltDevice *dev)
 {
   return dev->key;
 }
