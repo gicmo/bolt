@@ -59,6 +59,7 @@ struct _BoltDevice
   /* when device is attached */
   char        *syspath;
   BoltSecurity security;
+  char        *parent;
 
   /* when device is stored */
   BoltStore   *store;
@@ -81,6 +82,7 @@ enum {
   PROP_VENDOR,
   PROP_STATUS,
 
+  PROP_PARENT,
   PROP_SYSFS,
   PROP_SECURITY,
 
@@ -114,6 +116,8 @@ bolt_device_finalize (GObject *object)
   g_free (dev->uid);
   g_free (dev->name);
   g_free (dev->vendor);
+
+  g_free (dev->parent);
   g_free (dev->syspath);
 
   G_OBJECT_CLASS (bolt_device_parent_class)->finalize (object);
@@ -160,6 +164,10 @@ bolt_device_get_property (GObject    *object,
 
     case PROP_STATUS:
       g_value_set_uint (value, dev->status);
+      break;
+
+    case PROP_PARENT:
+      g_value_set_string (value, dev->parent);
       break;
 
     case PROP_SYSFS:
@@ -240,6 +248,11 @@ bolt_device_set_property (GObject      *object,
         break;
       }
 
+    case PROP_PARENT:
+      g_clear_pointer (&dev->parent, g_free);
+      dev->parent = g_value_dup_string (value);
+      break;
+
     case PROP_SYSFS:
       g_clear_pointer (&dev->syspath, g_free);
       dev->syspath = g_value_dup_string (value);
@@ -306,6 +319,10 @@ bolt_device_class_init (BoltDeviceClass *klass)
   g_object_class_override_property (gobject_class,
                                     PROP_STATUS,
                                     "status");
+
+  g_object_class_override_property (gobject_class,
+                                    PROP_PARENT,
+                                    "parent");
 
   g_object_class_override_property (gobject_class,
                                     PROP_SYSFS,
@@ -394,6 +411,18 @@ static gboolean
 string_nonzero (const char *str)
 {
   return str != NULL && str[0] != '\0';
+}
+
+static const char *
+bolt_sysfs_get_parent_uid (struct udev_device *udev)
+{
+  struct udev_device *parent;
+  const char *uid = NULL;
+
+  parent = udev_device_get_parent (udev);
+  if (parent)
+    uid = udev_device_get_sysattr_value (parent, "unique_id");
+  return uid;
 }
 
 static BoltStatus
@@ -725,8 +754,8 @@ bolt_device_new_for_udev (struct udev_device *udev,
   const char *name;
   const char *vendor;
   const char *syspath;
+  const char *parent;
   BoltDevice *dev;
-
 
   uid = udev_device_get_sysattr_value (udev, "unique_id");
   if (udev == NULL)
@@ -747,11 +776,13 @@ bolt_device_new_for_udev (struct udev_device *udev,
   if (vendor == NULL)
     return NULL;
 
+  parent = bolt_sysfs_get_parent_uid (udev);
   dev = g_object_new (BOLT_TYPE_DEVICE,
                       "uid", uid,
                       "name", name,
                       "vendor", vendor,
                       "sysfs-path", syspath,
+                      "parent", parent,
                       NULL);
 
   dev->status = bolt_status_from_udev (udev);
@@ -791,18 +822,23 @@ bolt_device_connected (BoltDevice         *dev,
                        struct udev_device *udev)
 {
   const char *syspath;
+  const char *parent;
   BoltSecurity security;
   BoltStatus status;
 
   syspath = udev_device_get_syspath (udev);
   status = bolt_status_from_udev (udev);
   security = security_for_udev (udev);
+  parent = bolt_sysfs_get_parent_uid (udev);
 
   g_object_set (G_OBJECT (dev),
+                "parent", parent,
                 "sysfs-path", syspath,
                 "security", security,
                 "status", status,
                 NULL);
+
+  g_debug ("[%s] parent is %s", dev->uid, dev->parent);
 
   return status;
 }
@@ -811,6 +847,7 @@ BoltStatus
 bolt_device_disconnected (BoltDevice *dev)
 {
   g_object_set (G_OBJECT (dev),
+                "parent", NULL,
                 "sysfs-path", NULL,
                 "security", BOLT_SECURITY_NONE,
                 "status", BOLT_STATUS_DISCONNECTED,

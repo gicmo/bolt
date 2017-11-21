@@ -40,6 +40,7 @@ enum {
   PROP_NAME,
   PROP_VENDOR,
   PROP_STATUS,
+  PROP_PARENT,
   PROP_SYSPATH,
   PROP_SECURITY,
   PROP_STORED,
@@ -73,6 +74,7 @@ bolt_device_get_dbus_props (guint *n)
     {"Name",      "name",      PROP_NAME,       NULL},
     {"Vendor",    "vendor",    PROP_VENDOR,     NULL},
     {"Status",    "status",    PROP_STATUS,     NULL},
+    {"Parent",    "parent",    PROP_PARENT,     NULL},
     {"SysfsPath", "syspath",   PROP_SYSPATH,    NULL},
     {"Security",  "security",  PROP_SECURITY,   NULL},
     {"Stored",    "stored",    PROP_STORED,     NULL},
@@ -124,6 +126,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        BOLT_STATUS_DISCONNECTED,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_NICK);
+
+  props[PROP_PARENT] =
+    g_param_spec_string ("parent",
+                         NULL, NULL,
+                         "unknown",
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_NICK);
 
   props[PROP_SYSPATH] =
     g_param_spec_string ("syspath",

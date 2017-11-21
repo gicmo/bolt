@@ -149,6 +149,14 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="Parent" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+	The unique id of the parent the device. The only
+	device without a parent will be the device that
+	represents the host controller.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <property name="Stored" type="b" access="read">
       <doc:doc><doc:description><doc:para>
 	Indication if the device is stored.
