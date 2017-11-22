@@ -218,8 +218,6 @@ bolt_proxy_handle_props_changed (GDBusProxy *proxy,
 
   pp = BOLT_PROXY_GET_CLASS (user_data)->get_dbus_props (&n);
 
-  g_printerr ("properties changed!");
-
   g_variant_get (changed_properties, "a{sv}", &iter);
   while (g_variant_iter_next (iter, "{&sv}", &key, NULL))
     {
