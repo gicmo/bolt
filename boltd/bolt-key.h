@@ -30,10 +30,8 @@ G_BEGIN_DECLS
 #define BOLT_TYPE_KEY bolt_key_get_type ()
 G_DECLARE_FINAL_TYPE (BoltKey, bolt_key, BOLT, KEY, GObject);
 
-#define BOLT_KEY_RAW_BYTES 32
-#define BOLT_KEY_STR_BYTES 33
-#define BOLT_KEY_RAW_CHARS 64
-#define BOLT_KEY_STR_CHARS 65
+#define BOLT_KEY_BYTES 32
+#define BOLT_KEY_CHARS 64
 
 BoltKey  *        bolt_key_new (void);
 

@@ -38,9 +38,10 @@
 
 struct _BoltKey
 {
-  GObject  object;
+  GObject object;
 
-  char     data[BOLT_KEY_STR_CHARS];
+  /* the actual key plus the null char */
+  char     data[BOLT_KEY_CHARS + 1];
   gboolean fresh;
 };
 
@@ -145,13 +146,13 @@ BoltKey  *
 bolt_key_new (void)
 {
   BoltKey *key;
-  char data[BOLT_KEY_RAW_BYTES];
+  char data[BOLT_KEY_BYTES];
 
   key = g_object_new (BOLT_TYPE_KEY, NULL);
 
-  bolt_get_random_data (data, BOLT_KEY_RAW_BYTES);
+  bolt_get_random_data (data, BOLT_KEY_BYTES);
 
-  for (guint i = 0; i < BOLT_KEY_RAW_BYTES; i++)
+  for (guint i = 0; i < BOLT_KEY_BYTES; i++)
     {
       char *pos = key->data + 2 * i;
       gulong n = sizeof (key->data) - 2 * i;
@@ -181,7 +182,7 @@ bolt_key_write_to (BoltKey      *key,
   if (key->data[0] == '\0')
     return TRUE;
 
-  ok = bolt_write_all (fd, key->data, BOLT_KEY_RAW_CHARS, error);
+  ok = bolt_write_all (fd, key->data, BOLT_KEY_CHARS, error);
   if (ok && !key->fresh)
     *level = BOLT_SECURITY_SECURE;
 
@@ -196,7 +197,7 @@ bolt_key_save_file (BoltKey *key,
   gboolean ok;
 
   ok = g_file_replace_contents (file,
-                                key->data, BOLT_KEY_STR_CHARS,
+                                key->data, BOLT_KEY_CHARS,
                                 NULL, FALSE,
                                 G_FILE_CREATE_PRIVATE,
                                 NULL,
@@ -221,7 +222,8 @@ bolt_key_load_file (GFile   *file,
   if (fd < 0)
     return NULL;
 
-  ok = bolt_read_all (fd, key->data, BOLT_KEY_RAW_CHARS, &len, error);
+  memset (key->data, 0, sizeof (key->data));
+  ok = bolt_read_all (fd, key->data, BOLT_KEY_CHARS, &len, error);
   close (fd);
 
   if (!ok)
