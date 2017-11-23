@@ -90,6 +90,9 @@ bolt_random_urandom (void *buf, gsize n)
     return FALSE;
 
   ok = bolt_read_all (rndfd, buf, n, NULL, NULL);
+
+  (void) close (rndfd);
+
   return ok;
 }
 
