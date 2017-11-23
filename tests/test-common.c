@@ -93,11 +93,12 @@ test_enums (TestRng *tt, gconstpointer user_data)
 typedef void (*rng_t) (void *buf,
                        gsize n);
 
+#define RNG_COUNT 258
 static guint
 test_rng_loop (guint N, rng_t fn)
 {
-  char buf[256] = { 0, };
-  guint count[256] = {0, };
+  char buf[RNG_COUNT] = { 0, };
+  guint count[RNG_COUNT] = {0, };
   guint hits = 0;
 
   for (guint n = 0; n < N; n++)
@@ -105,12 +106,12 @@ test_rng_loop (guint N, rng_t fn)
       memset (buf, 0, sizeof (buf));
       fn (buf, sizeof (buf));
 
-      for (guint i = 0; i < 256; i++)
+      for (guint i = 0; i < RNG_COUNT; i++)
         if (buf[i] == 0)
           count[i]++;
     }
 
-  for (guint i = 0; i < 256; i++)
+  for (guint i = 0; i < RNG_COUNT; i++)
     hits = MAX (hits, count[i]);
 
   return hits;
