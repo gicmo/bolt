@@ -121,6 +121,13 @@ bolt_device_finalize (GObject *object)
   g_free (dev->parent);
   g_free (dev->syspath);
 
+  if (dev->mgr)
+    {
+      g_object_remove_weak_pointer (G_OBJECT (dev->mgr),
+                                    (gpointer *) &dev->mgr);
+      dev->mgr = NULL;
+    }
+
   G_OBJECT_CLASS (bolt_device_parent_class)->finalize (object);
 }
 
