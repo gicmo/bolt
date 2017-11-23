@@ -78,6 +78,8 @@ polkit  = dependency('polkit-gobject-1')
 systemd = dependency('systemd')
 
 git     = find_program('git', required: false)
+a2x     = find_program(['a2x', 'a2x.py'], required: false)
+
 # configuration & well known directories
 
 prefixdir = get_option('prefix')
@@ -87,6 +89,7 @@ bindir = join_paths(prefixdir, get_option('bindir'))
 libexecdir = join_paths(prefixdir, get_option('libexecdir'))
 datadir = join_paths(prefixdir, get_option('datadir'))
 sysconfdir = get_option('sysconfdir')
+mandir = get_option('mandir')
 
 dbdir = get_option('db-path')
 udevdir = udev.get_pkgconfig_variable('udevdir')
@@ -338,6 +341,32 @@ spec_file = configure_file(
   configuration: subs
 )
 
+# documentation
+
+build_man = a2x.found()
+if build_man
+
+  man = custom_target(
+    'boltctl-man',
+    build_by_default: true,
+    input: 'docs/boltctl.1.txt',
+    output: 'boltctl.1',
+    command: [
+      a2x,
+      '-d', 'manpage',
+      '-f', 'manpage',
+      '-D', '@OUTDIR@',
+      '-a', 'manmanual=bolt Manual',
+      '-a', 'mansource=bolt',
+      '-a', 'revnumber=@0@'.format(meson.project_version()),
+      '@INPUT@'
+    ],
+    install: true,
+    install_dir: join_paths(mandir, 'man1'),
+  )
+
+endif
+
 # all done, phew
 
 msg = ['',
@@ -347,6 +376,8 @@ msg = ['',
   '',
   'udevdir:             @0@'.format(udevdir),
   'systemd unitdir:     @0@'.format(unitdir),
+  '',
+  'build manpage:       @0@'.format(build_man),
   ''
   ]
 message('\n  '.join(msg))
