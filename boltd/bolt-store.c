@@ -386,7 +386,7 @@ bolt_store_have_key (BoltStore  *store,
   g_autoptr(GFileInfo) keyinfo = NULL;
   g_autoptr(GFile) keypath = NULL;
   g_autoptr(GError) err = NULL;
-  guint key = 0;
+  guint key = BOLT_KEY_MISSING;
 
   keypath = g_file_get_child (store->keys, uid);
   keyinfo = g_file_query_info (keypath, "standard::*", 0, NULL, &err);
