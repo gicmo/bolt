@@ -30,6 +30,29 @@
 #include <locale.h>
 #include <stdlib.h>
 
+static int
+usage_error (GError *error)
+{
+  g_printerr ("%s:", g_get_application_name ());
+  g_printerr ("%s error: %s", bolt_color (ANSI_RED), bolt_color (ANSI_NORMAL));
+  g_printerr ("%s", error->message);
+  g_printerr ("\n");
+  g_printerr ("Try \"%s --help\" for more information.", g_get_prgname ());
+  g_printerr ("\n");
+
+  return EXIT_FAILURE;
+}
+
+static int
+usage_error_need_arg (const char *arg)
+{
+  g_autoptr(GError) error = NULL;
+
+  g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "missing argument '%s'", arg);
+  return usage_error (error);
+}
+
 static const char *
 yes_no (gboolean b)
 {
@@ -172,22 +195,13 @@ authorize (BoltClient *client, int argc, char **argv)
   const char *uid;
   gboolean ok;
 
-  optctx = g_option_context_new ("DEVICE");
-  g_option_context_set_summary (optctx, "Authorize a thunderbolt device");
-  g_option_context_set_strict_posix (optctx, TRUE);
+  optctx = g_option_context_new ("DEVICE - Authorize a device");
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
-    {
-      g_printerr ("Failed to parse command line arguments.\n");
-      return EXIT_FAILURE;
-    }
+    return usage_error (error);
 
   if (argc < 2)
-    {
-      char *help = g_option_context_get_help (optctx, TRUE, NULL);
-      g_printerr ("%s\n", help);
-      return EXIT_FAILURE;
-    }
+    return usage_error_need_arg ("DEVICE");
 
   uid = argv[1];
 
@@ -214,22 +228,13 @@ enroll (BoltClient *client, int argc, char **argv)
   g_autoptr(GError) error = NULL;
   const char *uid;
 
-  optctx = g_option_context_new ("DEVICE");
-  g_option_context_set_summary (optctx, "Information about a thunderbolt device");
-  g_option_context_set_strict_posix (optctx, TRUE);
+  optctx = g_option_context_new ("DEVICE - Authorize and store a device");
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
-    {
-      g_printerr ("Failed to parse command line arguments.\n");
-      return EXIT_FAILURE;
-    }
+    return usage_error (error);
 
   if (argc < 2)
-    {
-      char *help = g_option_context_get_help (optctx, TRUE, NULL);
-      g_printerr ("%s\n", help);
-      return EXIT_FAILURE;
-    }
+    return usage_error_need_arg ("DEVICE");
 
   uid = argv[1];
 
@@ -253,22 +258,13 @@ forget (BoltClient *client, int argc, char **argv)
   const char *uid;
   gboolean ok;
 
-  optctx = g_option_context_new ("DEVICE");
-  g_option_context_set_summary (optctx, "Forget a thunderbolt device");
-  g_option_context_set_strict_posix (optctx, TRUE);
+  optctx = g_option_context_new ("DEVICE - Remove a device form the store");
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
-    {
-      g_printerr ("Failed to parse command line arguments.\n");
-      return EXIT_FAILURE;
-    }
+    return usage_error (error);
 
   if (argc < 2)
-    {
-      char *help = g_option_context_get_help (optctx, TRUE, NULL);
-      g_printerr ("%s\n", help);
-      return EXIT_FAILURE;
-    }
+    return usage_error_need_arg ("DEVICE");
 
   uid = argv[1];
 
@@ -295,22 +291,13 @@ info (BoltClient *client, int argc, char **argv)
   g_autoptr(GError) error = NULL;
   const char *uid;
 
-  optctx = g_option_context_new ("DEVICE");
-  g_option_context_set_summary (optctx, "Information about a thunderbolt device");
-  g_option_context_set_strict_posix (optctx, TRUE);
+  optctx = g_option_context_new ("DEVICE - Show information about a device");
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
-    {
-      g_printerr ("Failed to parse command line arguments.\n");
-      return EXIT_FAILURE;
-    }
+    return usage_error (error);
 
   if (argc < 2)
-    {
-      char *help = g_option_context_get_help (optctx, TRUE, NULL);
-      g_printerr ("%s\n", help);
-      return EXIT_FAILURE;
-    }
+    return usage_error_need_arg ("DEVICE");
 
   uid = argv[1];
 
@@ -350,9 +337,15 @@ handle_device_removed (BoltClient *cli,
 static int
 monitor (BoltClient *client, int argc, char **argv)
 {
+  g_autoptr(GOptionContext) optctx = NULL;
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GMainLoop) main_loop = NULL;
   g_autofree char *version = NULL;
 
-  g_autoptr(GMainLoop) main_loop = NULL;
+  optctx = g_option_context_new ("- Watch for changes");
+
+  if (!g_option_context_parse (optctx, &argc, &argv, &error))
+    return usage_error (error);
 
   g_object_get (client, "version", &version, NULL);
   g_print ("Daemon Version: %s\n", version);
@@ -375,8 +368,14 @@ monitor (BoltClient *client, int argc, char **argv)
 static int
 list_devices (BoltClient *client, int argc, char **argv)
 {
-  g_autoptr(GPtrArray) devices = NULL;
+  g_autoptr(GOptionContext) optctx = NULL;
   g_autoptr(GError) error = NULL;
+  g_autoptr(GPtrArray) devices = NULL;
+
+  optctx = g_option_context_new ("- List thunderbolt devices");
+
+  if (!g_option_context_parse (optctx, &argc, &argv, &error))
+    return usage_error (error);
 
   devices = bolt_client_list_devices (client, &error);
   if (devices == NULL)
@@ -416,6 +415,19 @@ static SubCommand subcommands[] = {
   {"monitor",      monitor}
 };
 
+static void
+option_context_make_summary (GOptionContext *ctx)
+{
+  g_autoptr(GString) s = NULL;
+
+  s = g_string_new ("Commands:");
+
+  for (size_t i = 0; i < G_N_ELEMENTS (subcommands); i++)
+    g_string_append_printf (s, "\n  %s", subcommands[i].name);
+
+  g_option_context_set_summary (ctx, s->str);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -424,34 +436,22 @@ main (int argc, char **argv)
   g_autoptr(GError) error = NULL;
   g_autofree char *cmdline = NULL;
   SubCommand *cmd = NULL;
+  const char *cmdname = NULL;
 
   setlocale (LC_ALL, "");
 
-  optctx = g_option_context_new (NULL);
+  optctx = g_option_context_new ("[COMMAND]");
 
-  g_option_context_set_summary (optctx, "Manage thunderbolt devices");
+  option_context_make_summary (optctx);
   g_option_context_set_strict_posix (optctx, TRUE);
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
-    {
-      g_printerr ("%s: %s", g_get_application_name (), error->message);
-      g_printerr ("\n");
-      g_printerr ("Try \"%s --help\" for more information.",
-                  g_get_prgname ());
-      g_printerr ("\n");
-
-      return EXIT_FAILURE;
-    }
+    return usage_error (error);
 
   if (argc < 2)
-    {
-      g_printerr ("Usage %s COMMAND\n", argv[0]);
-      for (size_t i = 0; i < G_N_ELEMENTS (subcommands); i++)
-        g_printerr (" %s\n", subcommands[i].name);
-
-      return EXIT_FAILURE;
-    }
-
+    cmdname = "list";
+  else
+    cmdname = argv[1];
 
   client = bolt_client_new (&error);
 
@@ -462,13 +462,14 @@ main (int argc, char **argv)
     }
 
   for (size_t i = 0; !cmd && i < G_N_ELEMENTS (subcommands); i++)
-    if (g_str_equal (argv[1], subcommands[i].name))
+    if (g_str_equal (cmdname, subcommands[i].name))
       cmd = &subcommands[i];
 
   if (cmd == NULL)
     {
-      g_printerr ("Unknown subcommand: %s", argv[1]);
-      return EXIT_FAILURE;
+      g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "Invalid command: %s", cmdname);
+      return usage_error (error);
     }
 
   cmdline = g_strconcat (g_get_prgname (),
@@ -476,6 +477,7 @@ main (int argc, char **argv)
                          cmd->name,
                          NULL);
 
+  g_set_prgname (cmdline);
   argv[1] = cmdline;
   argv += 1;
   argc -= 1;
