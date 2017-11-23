@@ -228,7 +228,7 @@ enroll (BoltClient *client, int argc, char **argv)
   g_autoptr(GError) error = NULL;
   const char *uid;
 
-  optctx = g_option_context_new ("DEVICE - Authorize and store a device");
+  optctx = g_option_context_new ("DEVICE - Authorize and store a device in the database");
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
     return usage_error (error);
@@ -404,17 +404,19 @@ typedef struct SubCommand
 {
   const char *name;
   run_t       fn;
+  const char *desc;
 } SubCommand;
 
 static SubCommand subcommands[] = {
-  {"authorize",    authorize},
-  {"enroll",       enroll},
-  {"forget",       forget},
-  {"info",         info},
-  {"list",         list_devices},
-  {"monitor",      monitor}
+  {"authorize",    authorize,     "Authorize a device"},
+  {"enroll",       enroll,        "Authorize and store a device in the database"},
+  {"forget",       forget,        "Remove a stored device from the database"},
+  {"info",         info,          "Show information about a device"},
+  {"list",         list_devices,  "List connected and stored devices"},
+  {"monitor",      monitor,       "Listen and print changes"}
 };
 
+#define SUMMARY_SPACING 17
 static void
 option_context_make_summary (GOptionContext *ctx)
 {
@@ -423,7 +425,12 @@ option_context_make_summary (GOptionContext *ctx)
   s = g_string_new ("Commands:");
 
   for (size_t i = 0; i < G_N_ELEMENTS (subcommands); i++)
-    g_string_append_printf (s, "\n  %s", subcommands[i].name);
+    {
+      const SubCommand *c = &subcommands[i];
+      int spacing = SUMMARY_SPACING - strlen (c->name);
+      g_string_append_printf (s, "\n  %s", c->name);
+      g_string_append_printf (s, "%*s%s", spacing, "", c->desc);
+    }
 
   g_option_context_set_summary (ctx, s->str);
 }
