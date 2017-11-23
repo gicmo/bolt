@@ -1015,11 +1015,11 @@ handle_enroll_device (BoltDBusManager       *obj,
 {
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(BoltAuth) auth = NULL;
+  g_autoptr(BoltKey) key = NULL;
   BoltManager *mgr;
   GVariant *params;
   const char *uid;
   BoltSecurity level;
-  BoltKey *key;
 
   mgr = BOLT_MANAGER (obj);
 
