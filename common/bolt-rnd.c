@@ -83,17 +83,23 @@ bolt_random_urandom (void *buf, gsize n)
 {
   gboolean ok;
   int rndfd;
+  gsize len;
 
   rndfd = bolt_open ("/dev/urandom", O_RDONLY | O_CLOEXEC | O_NOCTTY, 0, NULL);
 
   if (rndfd < 0)
     return FALSE;
 
-  ok = bolt_read_all (rndfd, buf, n, NULL, NULL);
+  ok = bolt_read_all (rndfd, buf, n, &len, NULL);
 
   (void) close (rndfd);
 
-  return ok;
+  /* NB: accroding to the man page random(4), "when calling
+     read(2) for the device /dev/urandom, reads of up to 256
+     bytes will return as many bytes as are requested and will
+     not be interrupted by a signal handler".
+   */
+  return ok && len == n;
 }
 
 void
