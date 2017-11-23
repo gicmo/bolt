@@ -41,7 +41,7 @@ gboolean   bolt_close (int      fd,
 
 gboolean   bolt_read_all (int      fd,
                           void    *buf,
-                          gssize   nbytes,
+                          gsize    nbytes,
                           gsize   *nread,
                           GError **error);
 

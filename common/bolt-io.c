@@ -91,16 +91,13 @@ bolt_close (int fd, GError **error)
 gboolean
 bolt_read_all (int      fd,
                void    *buf,
-               gssize   nbytes,
+               gsize    nbytes,
                gsize   *nread,
                GError **error)
 {
   char *data = buf;
   gsize count = 0;
   gboolean ok = TRUE;
-
-  if (nbytes < 0)
-    nbytes = strlen (data);
 
   do
     {
