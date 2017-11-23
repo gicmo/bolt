@@ -452,8 +452,6 @@ main (int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  /* register the back-mapping from to our error */
-  (void) BOLT_ERROR;
 
   client = bolt_client_new (&error);
 

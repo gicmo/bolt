@@ -288,6 +288,9 @@ bolt_proxy_initable_init (GInitable    *initable,
       return FALSE;
     }
 
+  /* register the back-mapping from to our error */
+  (void) BOLT_ERROR;
+
   self->proxy = g_dbus_proxy_new_sync (self->bus,
                                        G_DBUS_PROXY_FLAGS_NONE,
                                        NULL,
