@@ -25,6 +25,7 @@
 #include "bolt-error.h"
 #include "bolt-manager.h"
 #include "bolt-store.h"
+#include "bolt-str.h"
 
 #include <libudev.h>
 #include <string.h>
@@ -374,7 +375,7 @@ handle_uevent_udev (GIOChannel  *source,
       else
         handle_udev_device_changed (mgr, dev, device);
     }
-  else if (g_strcmp0 (action, "remove") == 0)
+  else if (g_str_equal (action, "remove"))
     {
       const char *syspath;
       const char *name;
@@ -547,7 +548,7 @@ bolt_manager_get_device_by_syspath (BoltManager *mgr,
       BoltDevice *dev = g_ptr_array_index (mgr->devices, i);
       const char *have = bolt_device_get_syspath (dev);
 
-      if (have && g_str_equal (have, sysfs))
+      if (bolt_streq (have, sysfs))
         return g_object_ref (dev);
 
     }
@@ -563,7 +564,7 @@ bolt_manager_get_device_by_uid (BoltManager *mgr,
     {
       BoltDevice *dev = g_ptr_array_index (mgr->devices, i);
 
-      if (!g_strcmp0 (bolt_device_get_uid (dev), uid))
+      if (bolt_streq (bolt_device_get_uid (dev), uid))
         return g_object_ref (dev);
 
     }
