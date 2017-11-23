@@ -401,14 +401,14 @@ read_sysfs_attr_int (struct udev_device *device, const char *attr)
   if (str == NULL)
     return 0;
 
-  val = g_ascii_strtoull (str, &end, 0);
+  val = g_ascii_strtoll (str, &end, 0);
 
   if (str == end)
     return 0;
 
   if (val > G_MAXINT || val < G_MININT)
     {
-      g_warning ("value read from sysfs outside of guint's range.");
+      g_warning ("value read from sysfs outside of gint's range.");
       val = 0;
     }
 
