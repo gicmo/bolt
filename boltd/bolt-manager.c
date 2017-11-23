@@ -658,7 +658,7 @@ authorize_device_idle (gpointer user_data)
   const char *uid = bolt_device_get_uid (dev);
 
   g_info ("[%s] authorizing", uid);
-  bolt_device_authorize (dev, auth, authorize_device_finish, data);
+  bolt_device_authorize (dev, auth, authorize_device_finish, NULL);
 
   g_object_unref (data->auth);
   g_object_unref (data->dev);
