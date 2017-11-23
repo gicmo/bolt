@@ -39,7 +39,6 @@ void             bolt_auth_return_new_error (BoltAuth   *auth,
                                              gint        code,
                                              const char *format,
                                              ...) G_GNUC_PRINTF (4, 5);
-;
 
 void             bolt_auth_return_error (BoltAuth *auth,
                                          GError  **error);
