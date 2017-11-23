@@ -5,8 +5,10 @@
 <policyconfig>
 
    <!--
-    Policy definitions for bolt actions.
-    Copyright (c) 2017 Christian J. Kellner <christian@kellner.me>
+       Policy definitions for bolt actions.
+       Copyright © 2017 Red Hat, Inc
+       Authors:
+             Christian J. Kellner <ckellner@edhat.com>
    -->
 
   <vendor>Thunderbolt System services</vendor>

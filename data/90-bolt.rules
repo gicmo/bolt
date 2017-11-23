@@ -2,7 +2,11 @@
 #
 # SPDX-License-Identifier: GPL-2.1+
 #
-# (c) Christian J. Kellner <ckellner@edhat.com>
+# Copyright © 2017 Red Hat, Inc
+#
+# Authors:
+#       Christian J. Kellner <ckellner@edhat.com>
+#
 
 ACTION=="remove", GOTO="bolt_end"
 
