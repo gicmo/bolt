@@ -226,6 +226,14 @@ bolt_key_load_file (GFile   *file,
   ok = bolt_read_all (fd, key->data, BOLT_KEY_CHARS, &len, error);
   close (fd);
 
+  if (len != BOLT_KEY_CHARS)
+    {
+      /* TODO: better error here */
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "unexpected key size (corrupt key?): %zu", len);
+      return NULL;
+    }
+
   if (!ok)
     return NULL;
 
