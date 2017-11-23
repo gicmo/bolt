@@ -100,10 +100,18 @@ void
 bolt_random_prng (void *buf, gsize n)
 {
   char *ptr = buf;
+  const gsize l = n % sizeof (guint32);
+  const gsize k = n - l;
 
-  for (gsize i = 0; i < n; i += sizeof (guint32))
+  for (gsize i = 0; i < k; i += sizeof (guint32))
     {
       guint32 r = g_random_int ();
       memcpy (ptr + i, &r, sizeof (guint32));
+    }
+
+  if (l > 0)
+    {
+      guint32 r = g_random_int ();
+      memcpy (ptr + k, &r, l);
     }
 }
