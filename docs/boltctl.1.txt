@@ -1,0 +1,75 @@
+boltctl(1)
+==========
+
+NAME
+----
+boltctl - control the thunderbolt device manger
+
+SYNOPSIS
+--------
+[verse]
+*boltctl* 'authorize' 'DEVICE'
+*boltctl* 'enroll' 'DEVICE'
+*boltctl* 'forget' 'DEVICE'
+*boltctl* 'info' 'DEVICE'
+*boltctl* 'list'
+*boltctl* 'monitor'
+
+DESCRIPTION
+------------
+
+'boltctl' is the command line interface to interact with 'boltd', the
+system daemon that manages Thunderbolt 3(TM) devices. It can be used to
+query the state of devices as well as manage them.
+
+Devices can be globally identified via their unique identifier
+(uuid). All commands that take a 'DEVICE' identifier expect this
+unique id.
+
+If no command is given, it is equivalent to 'boltctl list'.
+
+COMMANDS
+--------
+
+authorize 'DEVICE'
+~~~~~~~~~~~~~~~~~~
+
+Authorize a currently unauthorized device identified via its unique id
+(uuid) 'DEVICE'. If a key is stored in the database itwill be used,
+given the security level of the domain supports secure device
+connection. Use 'boltcl list' to find out the uuid of a device.
+
+enroll 'DEVICE'
+~~~~~~~~~~~~~~~
+
+Authorize and record the device with the unique id 'DEVICE' in the
+database. If the domain supports secure connection a new key will be
+generated and stored in the database alongside the device name and
+vendor name. The key, if created, will be used in the future to
+securely authorize the device.
+
+forget 'DEVICE'
+~~~~~~~~~~~~~~~
+
+Remove the information about the device with the unique id 'DEVICE'
+from the database. This includes the key, if one was previously
+generated.
+
+info 'DEVICE'
+~~~~~~~~~~~~
+
+Display information about the device with the unique id 'DEVICE'.
+
+list
+~~~~
+
+List and print information about all connected and stored devices.
+
+monitor
+~~~~~~~
+
+Listen for and show changes in connected devices.
+
+Author
+------
+Written by Christian Kellner <ckellner@redhat.com>.
