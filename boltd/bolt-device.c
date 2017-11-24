@@ -914,7 +914,7 @@ bolt_device_get_object_path (BoltDevice *device)
     {
       char *path = NULL;
 
-      path = g_strdup_printf ("/org/freedesktop/Bolt/devices/%s", device->uid);
+      path = g_strdup_printf (BOLT_DBUS_PATH "/devices/%s", device->uid);
       g_strdelimit (path, "-", '_');
 
       device->dbus_path = path;
