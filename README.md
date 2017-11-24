@@ -2,13 +2,13 @@ bolt
 ====
 
 Userpsace system daemon to enable security levels for *Thunderbolt™ 3*
-on GNU/Linux.
+on GNU/Linux®.
 
 Introduction
 ------------
 
 Thunderbolt™ is the brand name of a hardware interface developed by
-Intel that allows the connection of external peripherals to a
+Intel® that allows the connection of external peripherals to a
 computer.
 
 Devices connected via Thunderbolt can be DMA masters and thus read
@@ -29,7 +29,7 @@ The four security levels are:
  * `secure`: As 'user', but also challenge the device with a secret
              key to verify its identity.
 
-The Linux kernel, starting with version 4.13, provides a interface via
+The Linux kernel, starting with version 4.13, provides an interface via
 sysfs that enables userspace query the security level, the status of
 connected devices and, most importantly, to authorize devices, if the
 security level demands it.
