@@ -62,6 +62,10 @@ foreach arg: test_args
   endif
 endforeach
 
+# build options
+
+build_man = get_option('man')
+req_man = build_man == 'true'
 
 # dependencies
 
@@ -78,7 +82,7 @@ polkit  = dependency('polkit-gobject-1')
 systemd = dependency('systemd')
 
 git     = find_program('git', required: false)
-a2x     = find_program(['a2x', 'a2x.py'], required: false)
+a2x     = find_program(['a2x', 'a2x.py'], required: req_man)
 
 # configuration & well known directories
 
@@ -343,7 +347,7 @@ spec_file = configure_file(
 
 # documentation
 
-build_man = a2x.found()
+build_man = build_man != false and a2x.found()
 if build_man
 
   man = custom_target(
