@@ -102,6 +102,10 @@ static gboolean handle_enroll_device (BoltDBusManager       *object,
                                       GDBusMethodInvocation *invocation,
                                       gpointer               user_data);
 
+static gboolean handle_forget_device (BoltDBusManager       *object,
+                                      GDBusMethodInvocation *invocation,
+                                      gpointer               user_data);
+
 /*  */
 struct _BoltManager
 {
@@ -216,6 +220,7 @@ bolt_manager_init (BoltManager *mgr)
   g_signal_connect (mgr, "handle-list-devices", G_CALLBACK (handle_list_devices), NULL);
   g_signal_connect (mgr, "handle-device-by-uid", G_CALLBACK (handle_device_by_uid), NULL);
   g_signal_connect (mgr, "handle-enroll-device", G_CALLBACK (handle_enroll_device), NULL);
+  g_signal_connect (mgr, "handle-forget-device", G_CALLBACK (handle_forget_device), NULL);
 
   g_signal_connect (mgr->store, "device-removed", G_CALLBACK (handle_store_device_removed), mgr);
 }
@@ -1053,6 +1058,51 @@ handle_enroll_device (BoltDBusManager       *obj,
 
 }
 
+static gboolean
+handle_forget_device (BoltDBusManager       *obj,
+                      GDBusMethodInvocation *inv,
+                      gpointer               user_data)
+{
+  g_autoptr(BoltDevice) dev = NULL;
+  g_autoptr(GError) key_err = NULL;
+  g_autoptr(GError) dev_err = NULL;
+  BoltManager *mgr;
+  gboolean key_ok, dev_ok;
+  GVariant *params;
+  const char *uid;
+
+  mgr = BOLT_MANAGER (obj);
+
+  params = g_dbus_method_invocation_get_parameters (inv);
+  g_variant_get (params, "(&s)", &uid);
+  dev = bolt_manager_get_device_by_uid (mgr, uid);
+
+  if (!dev)
+    {
+      g_dbus_method_invocation_return_error (inv,
+                                             G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                                             "device with id '%s' could not be found.",
+                                             uid);
+      return TRUE;
+    }
+
+  key_ok = bolt_store_del_key (mgr->store, uid, &key_err);
+  if (!key_ok && bolt_err_notfound (key_err))
+    key_ok = TRUE;
+
+  dev_ok = bolt_store_del_device (mgr->store, uid, &dev_err);
+
+  g_debug ("[%s] forgetting: key: %d, dev: %d", uid, key_ok, dev_ok);
+
+  if (!dev_ok)
+    g_dbus_method_invocation_take_error (inv, g_steal_pointer (&dev_err));
+  else if (!key_ok)
+    g_dbus_method_invocation_take_error (inv, g_steal_pointer (&key_err));
+  else
+    bolt_dbus_manager_complete_forget_device (BOLT_DBUS_MANAGER (mgr), inv);
+
+  return TRUE;
+}
 
 /* public methods */
 

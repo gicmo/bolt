@@ -253,7 +253,6 @@ static int
 forget (BoltClient *client, int argc, char **argv)
 {
   g_autoptr(GOptionContext) optctx = NULL;
-  g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(GError) error = NULL;
   const char *uid;
   gboolean ok;
@@ -268,14 +267,7 @@ forget (BoltClient *client, int argc, char **argv)
 
   uid = argv[1];
 
-  dev = bolt_client_get_device (client, uid, &error);
-  if (dev == NULL)
-    {
-      g_printerr ("%s\n", error->message);
-      return EXIT_FAILURE;
-    }
-
-  ok = bolt_device_forget (dev, &error);
+  ok = bolt_client_forget_device (client, uid, &error);
   if (!ok)
     g_printerr ("Failed to forget device: %s\n", error->message);
 
