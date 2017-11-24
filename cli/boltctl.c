@@ -340,7 +340,7 @@ monitor (BoltClient *client, int argc, char **argv)
   g_autoptr(GOptionContext) optctx = NULL;
   g_autoptr(GError) error = NULL;
   g_autoptr(GMainLoop) main_loop = NULL;
-  g_autofree char *version = NULL;
+  guint version = 0;
 
   optctx = g_option_context_new ("- Watch for changes");
 
@@ -348,7 +348,7 @@ monitor (BoltClient *client, int argc, char **argv)
     return usage_error (error);
 
   g_object_get (client, "version", &version, NULL);
-  g_print ("Daemon Version: %s\n", version);
+  g_print ("Daemon Version: %d.%u\n", VERSION_MAJOR, version);
   g_print ("Ready\n");
 
   main_loop = g_main_loop_new (NULL, FALSE);
