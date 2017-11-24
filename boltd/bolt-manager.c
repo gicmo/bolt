@@ -1066,7 +1066,7 @@ bolt_manager_export (BoltManager     *mgr,
 {
   if (!g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (mgr),
                                          connection,
-                                         "/org/freedesktop/Bolt",
+                                         BOLT_DBUS_PATH,
                                          error))
     return FALSE;
 
