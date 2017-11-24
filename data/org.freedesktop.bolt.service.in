@@ -1,5 +1,5 @@
 [D-BUS Service]
-Name=org.freedesktop.Bolt
+Name=org.freedesktop.bolt
 Exec=@libexecdir@/boltd
 User=root
 SystemdService=bolt.service

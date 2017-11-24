@@ -3,7 +3,7 @@
 "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node name="/" xmlns:doc="http://www.freedesktop.org/dbus/1.0/doc.dtd">
 
-  <interface name="org.freedesktop.Bolt1.Manager">
+  <interface name="org.freedesktop.bolt1.Manager">
 
     <doc:doc>
       <doc:description>
@@ -102,7 +102,7 @@
 
   </interface>
 
-  <interface name="org.freedesktop.Bolt1.Device">
+  <interface name="org.freedesktop.bolt1.Device">
 
     <doc:doc>
       <doc:description>
