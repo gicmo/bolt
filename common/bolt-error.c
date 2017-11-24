@@ -22,6 +22,8 @@
 
 #include "bolt-error.h"
 
+#include "bolt-dbus.h"
+
 #include <gio/gio.h>
 
 /**
@@ -31,8 +33,8 @@
  */
 
 static const GDBusErrorEntry bolt_error_entries[] = {
-  {BOLT_ERROR_FAILED,     "org.freedesktop.Bolt.Error.Failed"},
-  {BOLT_ERROR_UDEV,       "org.freedesktop.Bolt.Error.UDev"},
+  {BOLT_ERROR_FAILED,     BOLT_DBUS_NAME ".Error.Failed"},
+  {BOLT_ERROR_UDEV,       BOLT_DBUS_NAME ".Error.UDev"},
 };
 
 
