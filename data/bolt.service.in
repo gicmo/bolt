@@ -3,7 +3,7 @@ Description=Thunderbolt system service
 
 [Service]
 Type=dbus
-BusName=org.freedesktop.Bolt
+BusName=org.freedesktop.bolt
 ExecStart=@libexecdir@/boltd
 #Environment="G_MESSAGES_DEBUG=all"
 Restart=on-failure

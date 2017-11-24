@@ -20,8 +20,8 @@
 
 #pragma once
 
-#define BOLT_DBUS_NAME "org.freedesktop.Bolt"
-#define BOLT_DBUS_PATH "/org/freedesktop/Bolt"
-#define BOLT_DBUS_INTERFACE "org.freedesktop.Bolt1.Manager"
+#define BOLT_DBUS_NAME "org.freedesktop.bolt"
+#define BOLT_DBUS_PATH "/org/freedesktop/bolt"
+#define BOLT_DBUS_INTERFACE "org.freedesktop.bolt1.Manager"
 
-#define BOLT_DBUS_DEVICE_INTERFACE "org.freedesktop.Bolt1.Device"
+#define BOLT_DBUS_DEVICE_INTERFACE "org.freedesktop.bolt1.Device"

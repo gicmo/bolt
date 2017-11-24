@@ -209,7 +209,7 @@ daemon_sources = files([
 
 daemon_sources += gnome.gdbus_codegen('bolt-gdbus',
   'data/org.freedesktop.bolt.xml',
-  interface_prefix: 'org.freedesktop.Bolt1.',
+  interface_prefix: 'org.freedesktop.bolt1.',
   namespace: 'BoltDBus')
 
 install_data(['data/org.freedesktop.bolt.xml'],
