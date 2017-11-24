@@ -69,9 +69,9 @@
       <doc:doc>
         <doc:description>
           <doc:para>
-	    Authorize a device, and on success, store the device in the database.
-	    If policy is set to "Auto", the device will be automatically authorized
-	    in the future.
+            Authorize a device, and on success, store the device in the database.
+            If policy is set to "Auto", the device will be automatically authorized
+            in the future.
           </doc:para>
         </doc:description>
       </doc:doc>
@@ -120,58 +120,58 @@
 
     <property name="Name" type="s" access="read">
       <doc:doc><doc:description><doc:para>
-	The name of the device.
+        The name of the device.
       </doc:para></doc:description></doc:doc>
     </property>
 
     <property name="Vendor" type="s" access="read">
       <doc:doc><doc:description><doc:para>
-	The vendor of the device.
+        The vendor of the device.
       </doc:para></doc:description></doc:doc>
     </property>
 
     <property name="Status" type="u" access="read">
       <doc:doc><doc:description><doc:para>
-	The current status of the device.
+        The current status of the device.
       </doc:para></doc:description></doc:doc>
     </property>
 
     <property name="SysfsPath" type="s" access="read">
       <doc:doc><doc:description><doc:para>
-	The sysfs path of the device, if it is connected.
+        The sysfs path of the device, if it is connected.
       </doc:para></doc:description></doc:doc>
     </property>
 
     <property name="Security" type="u" access="read">
       <doc:doc><doc:description><doc:para>
-	The security level of the domain the device is
-	connected to.
+        The security level of the domain the device is
+        connected to.
       </doc:para></doc:description></doc:doc>
     </property>
 
     <property name="Parent" type="s" access="read">
       <doc:doc><doc:description><doc:para>
-	The unique id of the parent the device. The only
-	device without a parent will be the device that
-	represents the host controller.
+        The unique id of the parent the device. The only
+        device without a parent will be the device that
+        represents the host controller.
       </doc:para></doc:description></doc:doc>
     </property>
 
     <property name="Stored" type="b" access="read">
       <doc:doc><doc:description><doc:para>
-	Indication if the device is stored.
+        Indication if the device is stored.
       </doc:para></doc:description></doc:doc>
     </property>
 
     <property name="Policy" type="u" access="read">
       <doc:doc><doc:description><doc:para>
-	The authorization policy of the device.
+        The authorization policy of the device.
       </doc:para></doc:description></doc:doc>
     </property>
 
     <property name="Key" type="u" access="read">
       <doc:doc><doc:description><doc:para>
-	If a key is associated with the device.
+        If a key is associated with the device.
       </doc:para></doc:description></doc:doc>
     </property>
 
@@ -194,7 +194,7 @@
         <doc:description>
           <doc:para>
             Remove the device and any associated inforamtion,
-	    such as the policy and its key, from the store.
+            such as the policy and its key, from the store.
           </doc:para>
         </doc:description>
       </doc:doc>
