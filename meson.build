@@ -73,7 +73,6 @@ gnome  = import('gnome')
 
 glib    = dependency('glib-2.0')
 gio     = dependency('gio-2.0')
-gudev   = dependency('gudev-1.0')
 libudev = dependency('libudev')
 unix    = dependency('gio-unix-2.0')
 udev    = dependency('udev')
