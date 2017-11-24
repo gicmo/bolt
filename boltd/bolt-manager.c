@@ -184,7 +184,7 @@ bolt_manager_get_property (GObject    *object,
   switch (prop_id)
     {
     case PROP_VERSION:
-      g_value_set_string (value, PACKAGE_VERSION);
+      g_value_set_uint (value, VERSION_MINOR);
       break;
 
     default:
@@ -201,9 +201,6 @@ bolt_manager_set_property (GObject      *object,
 
   switch (prop_id)
     {
-    case PROP_VERSION:
-      break;
-
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }

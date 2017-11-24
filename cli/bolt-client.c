@@ -111,10 +111,11 @@ bolt_client_class_init (BoltClientClass *klass)
   proxy_class->get_dbus_signals = bolt_client_get_dbus_signals;
 
   props[PROP_VERSION]
-    = g_param_spec_string ("version",
-                           NULL, NULL,
-                           "unknown",
-                           G_PARAM_READABLE);
+    = g_param_spec_uint ("version",
+                         NULL, NULL,
+                         0, G_MAXUINT, 0,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_NAME);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
