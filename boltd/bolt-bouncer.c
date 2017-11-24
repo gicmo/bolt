@@ -126,7 +126,7 @@ handle_authorize_method (GDBusInterfaceSkeleton *iface,
     action = "org.freedesktop.bolt.enroll";
   else if (bolt_streq (method_name, "Authorize"))
     action = "org.freedesktop.bolt.authorize";
-  else if (bolt_streq (method_name, "Forget"))
+  else if (bolt_streq (method_name, "ForgetDevice"))
     action = "org.freedesktop.bolt.manage";
   else if (bolt_streq (method_name, "ListDevices"))
     authorized = TRUE;

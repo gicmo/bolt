@@ -39,4 +39,7 @@ BoltDevice *    bolt_client_enroll_device (BoltClient *client,
                                            const char *uid,
                                            BoltPolicy  policy,
                                            GError    **error);
+gboolean        bolt_client_forget_device (BoltClient *client,
+                                           const char *uid,
+                                           GError    **error);
 G_END_DECLS

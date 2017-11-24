@@ -77,6 +77,23 @@
       </doc:doc>
     </method>
 
+    <method name="ForgetDevice">
+
+      <arg type='s' name='uid' direction='in'>
+        <doc:doc><doc:summary>The unique id of the device.</doc:summary>
+        </doc:doc>
+      </arg>
+
+      <doc:doc>
+        <doc:description>
+          <doc:para>
+            Remove the device and any associated inforamtion,
+            such as the policy and its key, from the store.
+          </doc:para>
+        </doc:description>
+      </doc:doc>
+    </method>
+
     <!-- signals -->
 
     <signal name="DeviceAdded">
@@ -183,18 +200,6 @@
         <doc:description>
           <doc:para>
             Authorize the device.
-          </doc:para>
-        </doc:description>
-      </doc:doc>
-    </method>
-
-    <method name="Forget">
-
-      <doc:doc>
-        <doc:description>
-          <doc:para>
-            Remove the device and any associated inforamtion,
-            such as the policy and its key, from the store.
           </doc:para>
         </doc:description>
       </doc:doc>
