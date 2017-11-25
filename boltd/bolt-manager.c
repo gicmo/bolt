@@ -1022,18 +1022,27 @@ handle_enroll_device (BoltDBusManager       *obj,
   GVariant *params;
   const char *uid;
   BoltSecurity level;
+  guint32 policy;
 
   mgr = BOLT_MANAGER (obj);
 
   params = g_dbus_method_invocation_get_parameters (inv);
   g_variant_get_child (params, 0, "&s", &uid);
+  g_variant_get_child (params, 1, "u", &policy);
   dev = bolt_manager_get_device_by_uid (mgr, uid);
 
-  if (!dev)
+  if (!bolt_policy_validate ((BoltPolicy) policy))
     {
       g_dbus_method_invocation_return_error (inv, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
                                              "device with id '%s' could not be found.",
                                              uid);
+      return TRUE;
+    }
+
+  if (!dev)
+    {
+      g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                                             "invalid policy: %" G_GUINT32_FORMAT, policy);
       return TRUE;
     }
 
