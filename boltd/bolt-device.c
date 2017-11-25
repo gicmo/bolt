@@ -499,6 +499,12 @@ bolt_sysfs_security_for_device (struct udev_device *udev)
   v = udev_device_get_sysattr_value (parent, "security");
   s = bolt_security_from_string (v);
 
+  if (!bolt_security_validate (s))
+    {
+      g_warning ("invalid security: %s", v);
+      s = BOLT_SECURITY_NONE;
+    }
+
   return s;
 }
 
