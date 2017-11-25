@@ -227,8 +227,15 @@ enroll (BoltClient *client, int argc, char **argv)
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(GError) error = NULL;
   const char *uid;
+  BoltPolicy policy = BOLT_POLICY_DEFAULT;
+  static gchar *policy_arg;
+  static GOptionEntry options[] = {
+    { "policy", 0, 0, G_OPTION_ARG_STRING, &policy_arg, "Policy for the device; one of {auto, manual, *default}", "POLICY" },
+    { NULL }
+  };
 
   optctx = g_option_context_new ("DEVICE - Authorize and store a device in the database");
+  g_option_context_add_main_entries (optctx, options, NULL);
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
     return usage_error (error);
@@ -236,9 +243,18 @@ enroll (BoltClient *client, int argc, char **argv)
   if (argc < 2)
     return usage_error_need_arg ("DEVICE");
 
+  policy = bolt_policy_from_string (policy_arg);
+
+  if (!bolt_policy_validate (policy))
+    {
+      g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "invalid policy '%s'", policy_arg);
+      return usage_error (error);
+    }
+
   uid = argv[1];
 
-  dev = bolt_client_enroll_device (client, uid, BOLT_POLICY_DEFAULT, &error);
+  dev = bolt_client_enroll_device (client, uid, policy, &error);
   if (dev == NULL)
     {
       g_printerr ("%s\n", error->message);
