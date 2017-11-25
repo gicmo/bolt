@@ -346,6 +346,12 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
   polstr = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
   policy = bolt_policy_from_string (polstr);
 
+  if (!bolt_policy_validate (policy))
+    {
+      g_warning ("[%s] invalid policy in store: %s", uid, polstr);
+      policy = BOLT_POLICY_MANUAL;
+    }
+
   key = bolt_store_have_key (store, uid);
 
   g_return_val_if_fail (name != NULL, NULL);
