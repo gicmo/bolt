@@ -53,6 +53,7 @@ typedef enum {
 const char *     bolt_status_to_string (BoltStatus status);
 gboolean         bolt_status_is_authorized (BoltStatus status);
 gboolean         bolt_status_is_connected (BoltStatus status);
+gboolean         bolt_status_validate (BoltStatus status);
 
 /**
  * BoltKeyState:
@@ -97,6 +98,7 @@ typedef enum {
 
 BoltSecurity     bolt_security_from_string (const char *str);
 const char *     bolt_security_to_string (BoltSecurity security);
+gboolean         bolt_security_validate (BoltSecurity security);
 
 /**
  * BoltPolicy:
@@ -122,3 +124,4 @@ typedef enum {
 
 BoltPolicy       bolt_policy_from_string (const char *str);
 const char *     bolt_policy_to_string (BoltPolicy policy);
+gboolean         bolt_policy_validate (BoltPolicy policy);

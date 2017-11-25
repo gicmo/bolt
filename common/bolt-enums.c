@@ -30,6 +30,9 @@ bolt_status_to_string (BoltStatus status)
   g_autoptr(GEnumClass) klass = NULL;
   GEnumValue *value;
 
+  if (!bolt_status_validate (status))
+    return NULL;
+
   klass = g_type_class_ref (BOLT_TYPE_STATUS);
   value = g_enum_get_value (klass, status);
 
@@ -45,6 +48,12 @@ bolt_status_is_authorized (BoltStatus status)
 }
 
 gboolean
+bolt_status_validate (BoltStatus status)
+{
+  return status < BOLT_STATUS_INVALID && status >= 0;
+}
+
+gboolean
 bolt_status_is_connected (BoltStatus status)
 {
   return status > BOLT_STATUS_DISCONNECTED;
@@ -57,16 +66,13 @@ bolt_security_from_string (const char *str)
   GEnumValue *value;
 
   if (str == NULL)
-    return BOLT_SECURITY_NONE;
+    return BOLT_SECURITY_INVALID;
 
   klass = g_type_class_ref (BOLT_TYPE_SECURITY);
   value = g_enum_get_value_by_nick (klass, str);
 
   if (value == NULL)
-    {
-      g_warning ("Unknown security: %s", str);
-      return BOLT_SECURITY_NONE;
-    }
+    return BOLT_SECURITY_INVALID;
 
   return value->value;
 }
@@ -77,12 +83,20 @@ bolt_security_to_string (BoltSecurity security)
   g_autoptr(GEnumClass) klass = NULL;
   GEnumValue *value;
 
+  if (!bolt_security_validate (security))
+    return NULL;
+
   klass = g_type_class_ref (BOLT_TYPE_SECURITY);
   value = g_enum_get_value (klass, security);
 
   return value->value_nick;
 }
 
+gboolean
+bolt_security_validate (BoltSecurity security)
+{
+  return security < BOLT_SECURITY_INVALID && security >= 0;
+}
 
 BoltPolicy
 bolt_policy_from_string (const char *str)
@@ -97,10 +111,7 @@ bolt_policy_from_string (const char *str)
   value = g_enum_get_value_by_nick (klass, str);
 
   if (value == NULL)
-    {
-      g_warning ("Unknown device policy: %s", str);
-      return BOLT_POLICY_AUTO;
-    }
+      return BOLT_POLICY_INVALID;
 
   return value->value;
 }
@@ -111,8 +122,17 @@ bolt_policy_to_string (BoltPolicy policy)
   g_autoptr(GEnumClass) klass = NULL;
   GEnumValue *value;
 
+  if (!bolt_policy_validate (policy))
+    return NULL;
+
   klass = g_type_class_ref (BOLT_TYPE_POLICY);
   value = g_enum_get_value (klass, policy);
 
   return value->value_nick;
+}
+
+gboolean
+bolt_policy_validate (BoltPolicy policy)
+{
+  return policy < BOLT_POLICY_INVALID && policy >= 0;
 }
