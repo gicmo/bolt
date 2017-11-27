@@ -246,6 +246,34 @@ bolt_manager_initable_iface_init (GInitableIface *iface)
 }
 
 static gboolean
+monitor_add_filter (struct udev_monitor *monitor,
+                    const char          *subsystem_devtype,
+                    GError             **error)
+{
+  g_autofree char *subsystem = NULL;
+  char *devtype = NULL;
+  gboolean ok;
+  int r;
+
+  subsystem = g_strdup (subsystem_devtype);
+
+  devtype = strchr (subsystem, '/');
+  if (devtype != NULL)
+    *devtype++ = '\0';
+
+  r = udev_monitor_filter_add_match_subsystem_devtype (monitor,
+                                                       subsystem,
+                                                       devtype);
+  ok = r > -1;
+  if (!ok)
+    g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                 "udev: could not add match for '%s' (%s) to monitor",
+                 subsystem, devtype ? : "*");
+
+  return ok;
+}
+
+static gboolean
 setup_monitor (BoltManager   *mgr,
                const char    *name,
                GSourceFunc    callback,
@@ -256,6 +284,7 @@ setup_monitor (BoltManager   *mgr,
   g_autoptr(udev_monitor) monitor = NULL;
   g_autoptr(GIOChannel) channel = NULL;
   GSource *watch;
+  gboolean ok;
   int fd;
   int res;
 
@@ -269,15 +298,9 @@ setup_monitor (BoltManager   *mgr,
 
   udev_monitor_set_receive_buffer_size (monitor, 128 * 1024 * 1024);
 
-  res = udev_monitor_filter_add_match_subsystem_devtype (monitor,
-                                                         "thunderbolt",
-                                                         "thunderbolt_device");
-  if (res < 0)
-    {
-      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                           "udev: could not add match for 'thunderbolt' to monitor");
-      return FALSE;
-    }
+  ok = monitor_add_filter (monitor, "thunderbolt/thunderbolt_device", error);
+  if (!ok)
+    return FALSE;
 
   res = udev_monitor_enable_receiving (monitor);
   if (res < 0)
