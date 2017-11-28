@@ -114,9 +114,7 @@ struct _BoltManager
   /* udev */
   struct udev         *udev;
   struct udev_monitor *udev_monitor;
-  struct udev_monitor *kernel_monitor;
   GSource             *udev_source;
-  GSource             *kernel_source;
 
   /* state */
   BoltStore *store;
@@ -154,16 +152,6 @@ bolt_manager_finalize (GObject *object)
       g_source_destroy (mgr->udev_source);
       g_source_unref (mgr->udev_source);
       mgr->udev_source = NULL;
-    }
-
-  if (mgr->kernel_monitor)
-    {
-      udev_monitor_unref (mgr->kernel_monitor);
-      mgr->kernel_monitor = NULL;
-
-      g_source_destroy (mgr->kernel_source);
-      g_source_unref (mgr->kernel_source);
-      mgr->kernel_source = NULL;
     }
 
   if (mgr->udev)
@@ -332,33 +320,6 @@ setup_monitor (BoltManager   *mgr,
 }
 
 static gboolean
-handle_uevent_kernel (GIOChannel  *source,
-                      GIOCondition condition,
-                      gpointer     user_data)
-{
-  BoltManager *mgr = BOLT_MANAGER (user_data);
-
-  g_autoptr(udev_device) device = NULL;
-  const char *action;
-
-  device = udev_monitor_receive_device (mgr->kernel_monitor);
-
-  if (device == NULL)
-    return G_SOURCE_CONTINUE;
-
-  action = udev_device_get_action (device);
-  if (action == NULL)
-    return G_SOURCE_CONTINUE;
-
-  g_debug ("uevent [KERNEL]: %s", action);
-
-  //if (g_str_equal (action, "add"))
-  //  manager_devices_add_from_udev (mgr, device);
-
-  return G_SOURCE_CONTINUE;
-}
-
-static gboolean
 handle_uevent_udev (GIOChannel  *source,
                     GIOCondition condition,
                     gpointer     user_data)
@@ -461,14 +422,6 @@ bolt_manager_initialize (GInitable    *initable,
                            "udev: could not create udev handle");
       return FALSE;
     }
-
-  ok = setup_monitor (mgr, "kernel",
-                      (GSourceFunc) handle_uevent_kernel,
-                      &mgr->kernel_monitor, &mgr->kernel_source,
-                      error);
-
-  if (!ok)
-    return FALSE;
 
   ok = setup_monitor (mgr, "udev",
                       (GSourceFunc) handle_uevent_udev,
