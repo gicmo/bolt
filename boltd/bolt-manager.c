@@ -262,12 +262,13 @@ monitor_add_filter (struct udev_monitor *monitor,
 }
 
 static gboolean
-setup_monitor (BoltManager   *mgr,
-               const char    *name,
-               GSourceFunc    callback,
-               udev_monitor **monitor_out,
-               GSource      **watch_out,
-               GError       **error)
+setup_monitor (BoltManager        *mgr,
+               const char         *name,
+               const char * const *filter,
+               GSourceFunc         callback,
+               udev_monitor      **monitor_out,
+               GSource           **watch_out,
+               GError            **error)
 {
   g_autoptr(udev_monitor) monitor = NULL;
   g_autoptr(GIOChannel) channel = NULL;
@@ -286,9 +287,12 @@ setup_monitor (BoltManager   *mgr,
 
   udev_monitor_set_receive_buffer_size (monitor, 128 * 1024 * 1024);
 
-  ok = monitor_add_filter (monitor, "thunderbolt/thunderbolt_device", error);
-  if (!ok)
-    return FALSE;
+  for (guint i = 0; filter && filter[i] != NULL; i++)
+    {
+      ok = monitor_add_filter (monitor, filter[i], error);
+      if (!ok)
+        return FALSE;
+    }
 
   res = udev_monitor_enable_receiving (monitor);
   if (res < 0)
@@ -328,6 +332,8 @@ handle_uevent_udev (GIOChannel  *source,
   g_autoptr(udev_device) device = NULL;
   BoltManager *mgr;
   const char *action;
+  const char *subsystem;
+  const char *devtype;
 
   mgr = BOLT_MANAGER (user_data);
   device = udev_monitor_receive_device (mgr->udev_monitor);
@@ -339,7 +345,16 @@ handle_uevent_udev (GIOChannel  *source,
   if (action == NULL)
     return G_SOURCE_CONTINUE;
 
+  devtype = udev_device_get_devtype (device);
+  subsystem = udev_device_get_subsystem (device);
+
   g_debug ("uevent [ UDEV ]: %s", action);
+
+  /* beyond this point only thunderbolt/thunderbolt_device
+   * devices are allowed */
+  if (!bolt_streq (devtype, "thunderbolt_device") ||
+      !bolt_streq (subsystem, "thunderbolt"))
+    return G_SOURCE_CONTINUE;
 
   if (g_str_equal (action, "add") ||
       g_str_equal (action, "change"))
@@ -424,6 +439,7 @@ bolt_manager_initialize (GInitable    *initable,
     }
 
   ok = setup_monitor (mgr, "udev",
+                      NULL,
                       (GSourceFunc) handle_uevent_udev,
                       &mgr->udev_monitor, &mgr->udev_source,
                       error);
