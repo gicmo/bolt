@@ -58,7 +58,8 @@ static BoltDevice *  manager_find_device_by_syspath (BoltManager *mgr,
                                                      const char  *sysfs);
 
 static BoltDevice *  manager_find_device_by_uid (BoltManager *mgr,
-                                                 const char  *uid);
+                                                 const char  *uid,
+                                                 GError     **error);
 
 static BoltDevice *  bolt_manager_get_parent (BoltManager *mgr,
                                               BoltDevice  *dev);
@@ -422,7 +423,7 @@ handle_uevent_udev (GIOChannel  *source,
       if (uid == NULL)
         return G_SOURCE_CONTINUE;
 
-      dev = manager_find_device_by_uid (mgr, uid);
+      dev = manager_find_device_by_uid (mgr, uid, NULL);
 
       if (!dev)
         handle_udev_device_added (mgr, device);
@@ -565,7 +566,7 @@ bolt_manager_initialize (GInitable    *initable,
           continue;
         }
 
-      dev = manager_find_device_by_uid (mgr, uid);
+      dev = manager_find_device_by_uid (mgr, uid, NULL);
       if (dev)
         handle_udev_device_attached (mgr, dev, udevice);
       else
@@ -618,8 +619,17 @@ manager_find_device_by_syspath (BoltManager *mgr,
 
 static BoltDevice *
 manager_find_device_by_uid (BoltManager *mgr,
-                            const char  *uid)
+                            const char  *uid,
+                            GError     **error)
 {
+  if (uid == NULL || uid[0] == '\0')
+    {
+      g_set_error_literal (error, G_IO_ERROR,
+                           G_IO_ERROR_INVALID_ARGUMENT,
+                           "empty device unique_id");
+      return NULL;
+    }
+
   for (guint i = 0; i < mgr->devices->len; i++)
     {
       BoltDevice *dev = g_ptr_array_index (mgr->devices, i);
@@ -628,6 +638,10 @@ manager_find_device_by_uid (BoltManager *mgr,
         return g_object_ref (dev);
 
     }
+
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+               "device with id '%s' could not be found.",
+               uid);
 
   return NULL;
 }
@@ -918,7 +932,7 @@ handle_store_device_removed (BoltStore   *store,
   BoltStatus status;
   const char *opath;
 
-  dev = manager_find_device_by_uid (mgr, uid);
+  dev = manager_find_device_by_uid (mgr, uid, NULL);
   g_info ("[%s] removed from store: %p", uid, dev);
 
   if (!dev)
@@ -1163,6 +1177,7 @@ handle_device_by_uid (BoltDBusManager       *obj,
                       gpointer               user_data)
 {
   g_autoptr(BoltDevice) dev = NULL;
+  g_autoptr(GError) error = NULL;
   BoltManager *mgr;
   GVariant *params;
   const char *uid;
@@ -1172,14 +1187,11 @@ handle_device_by_uid (BoltDBusManager       *obj,
 
   params = g_dbus_method_invocation_get_parameters (inv);
   g_variant_get (params, "(&s)", &uid);
-  dev = manager_find_device_by_uid (mgr, uid);
+  dev = manager_find_device_by_uid (mgr, uid, &error);
 
-  if (!dev)
+  if (dev == NULL)
     {
-      g_dbus_method_invocation_return_error (inv,
-                                             G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                                             "device with id '%s' could not be found.",
-                                             uid);
+      g_dbus_method_invocation_return_gerror (inv, error);
       return TRUE;
     }
 
@@ -1246,6 +1258,7 @@ handle_enroll_device (BoltDBusManager       *obj,
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(BoltAuth) auth = NULL;
   g_autoptr(BoltKey) key = NULL;
+  g_autoptr(GError) error = NULL;
   BoltManager *mgr;
   GVariant *params;
   const char *uid;
@@ -1257,17 +1270,15 @@ handle_enroll_device (BoltDBusManager       *obj,
   params = g_dbus_method_invocation_get_parameters (inv);
   g_variant_get_child (params, 0, "&s", &uid);
   g_variant_get_child (params, 1, "u", &policy);
-  dev = manager_find_device_by_uid (mgr, uid);
+  dev = manager_find_device_by_uid (mgr, uid, &error);
 
-  if (!bolt_policy_validate ((BoltPolicy) policy))
+  if (dev == NULL)
     {
-      g_dbus_method_invocation_return_error (inv, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                                             "device with id '%s' could not be found.",
-                                             uid);
+      g_dbus_method_invocation_return_gerror (inv, error);
       return TRUE;
     }
 
-  if (!dev)
+  if (!bolt_policy_validate ((BoltPolicy) policy))
     {
       g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
                                              "invalid policy: %" G_GUINT32_FORMAT, policy);
@@ -1301,6 +1312,7 @@ handle_forget_device (BoltDBusManager       *obj,
                       gpointer               user_data)
 {
   g_autoptr(BoltDevice) dev = NULL;
+  g_autoptr(GError) error = NULL;
   g_autoptr(GError) key_err = NULL;
   g_autoptr(GError) dev_err = NULL;
   BoltManager *mgr;
@@ -1312,14 +1324,11 @@ handle_forget_device (BoltDBusManager       *obj,
 
   params = g_dbus_method_invocation_get_parameters (inv);
   g_variant_get (params, "(&s)", &uid);
-  dev = manager_find_device_by_uid (mgr, uid);
+  dev = manager_find_device_by_uid (mgr, uid, &error);
 
-  if (!dev)
+  if (dev == NULL)
     {
-      g_dbus_method_invocation_return_error (inv,
-                                             G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
-                                             "device with id '%s' could not be found.",
-                                             uid);
+      g_dbus_method_invocation_return_gerror (inv, error);
       return TRUE;
     }
 
