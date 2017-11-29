@@ -204,6 +204,7 @@ bolt_device_set_property (GObject      *object,
                           GParamSpec   *pspec)
 {
   BoltDevice *dev = BOLT_DEVICE (object);
+  GParamSpec *parent;
 
   switch (prop_id)
     {
@@ -275,6 +276,40 @@ bolt_device_set_property (GObject      *object,
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
+
+  /* This is one gross hack to make the DBus property change
+   * signal emission work.
+   *   The heart "problem" is a combination of two things:
+   *   1) the dbus object properties are override here,
+   *      which means the property setter from the parent
+   *      (the dbus skeleton) will not be called.
+   *   2) The dbus skeleton will only emit the signal on the
+   *      bus if it finds that the value has changed, which
+   *      it can only detect if its property setter was called
+   *   => We need to call the skeleton's set_property function
+   *      from here, so it can detect property changes itself.
+   */
+
+  /* all properties below PROP_LAST are our own, non-dbus props */
+  if (prop_id < PROP_LAST)
+    return;
+
+  /* we need to original GParamSpec, since the one we got is
+   * the new, overridden one */
+  parent = g_object_class_find_property (bolt_device_parent_class,
+                                         pspec->name);
+  if (parent == NULL)
+    return;
+
+  /* the prop_id is *our* prop_id, not the parent's prop_id, which
+   * we need. For this to work our property list *after* PROP_LAST
+   * need to be in sync with the parent */
+  prop_id -= PROP_LAST;
+
+  G_OBJECT_CLASS (bolt_device_parent_class)->set_property (object,
+                                                           prop_id,
+                                                           value,
+                                                           parent);
 }
 
 
@@ -836,10 +871,7 @@ bolt_device_disconnected (BoltDevice *dev)
    * now it is not new anymore.
    */
   if (dev->key == BOLT_KEY_NEW)
-    {
-      dev->key = BOLT_KEY_HAVE;
-      g_object_notify (G_OBJECT (dev), "key");
-    }
+    g_object_set (G_OBJECT (dev), "key", BOLT_KEY_HAVE, NULL);
 
   return dev->status;
 }

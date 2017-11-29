@@ -190,12 +190,19 @@ bolt_manager_set_property (GObject      *object,
                            const GValue *value,
                            GParamSpec   *pspec)
 {
+  GParamSpec *parent;
 
-  switch (prop_id)
-    {
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-    }
+  /* This is one gross hack, see bolt_device_set_property() for details */
+  parent = g_object_class_find_property (bolt_manager_parent_class,
+                                         pspec->name);
+
+  if (parent == NULL)
+    return;
+
+  G_OBJECT_CLASS (bolt_manager_parent_class)->set_property (object,
+                                                            prop_id,
+                                                            value,
+                                                            parent);
 }
 
 
