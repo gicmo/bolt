@@ -92,13 +92,13 @@ static void          handle_device_status_changed (BoltDevice  *dev,
                                                    BoltManager *mgr);
 
 static void          manager_probing_device_added (BoltManager        *mgr,
-                                                  struct udev_device *dev);
+                                                   struct udev_device *dev);
 
 static void          manager_probing_device_removed (BoltManager        *mgr,
-                                                    struct udev_device *dev);
+                                                     struct udev_device *dev);
 
 static void          manager_probing_activity (BoltManager *mgr,
-                                               gboolean weak);
+                                               gboolean     weak);
 
 static void          manager_add_domain (BoltManager        *mgr,
                                          struct udev_device *domain);
@@ -1005,7 +1005,7 @@ probing_timeout (gpointer user_data)
 
 static void
 manager_probing_activity (BoltManager *mgr,
-                          gboolean weak)
+                          gboolean     weak)
 {
   guint dt;
 
@@ -1035,7 +1035,7 @@ device_is_thunderbolt_root (struct udev_device *dev)
 
 static gboolean
 probing_add_root (BoltManager        *mgr,
-                    struct udev_device *dev)
+                  struct udev_device *dev)
 {
   const char *syspath;
   GPtrArray *roots;
@@ -1059,7 +1059,7 @@ probing_add_root (BoltManager        *mgr,
 
 static void
 manager_probing_device_added (BoltManager        *mgr,
-                             struct udev_device *dev)
+                              struct udev_device *dev)
 {
   const char *syspath;
   GPtrArray *roots;
@@ -1096,7 +1096,7 @@ manager_probing_device_added (BoltManager        *mgr,
 
 static void
 manager_probing_device_removed (BoltManager        *mgr,
-                               struct udev_device *dev)
+                                struct udev_device *dev)
 {
   const char *syspath;
   gboolean found;
@@ -1120,7 +1120,7 @@ manager_probing_device_removed (BoltManager        *mgr,
 
 static void
 manager_add_domain (BoltManager        *mgr,
-                      struct udev_device *domain)
+                    struct udev_device *domain)
 {
   struct udev_device *p = domain;
 
