@@ -582,7 +582,6 @@ manager_register_device (BoltManager *mgr,
                          BoltDevice  *dev)
 {
 
-  g_object_set (dev, "manager", mgr, NULL);
   g_ptr_array_add (mgr->devices, dev);
   bolt_bouncer_add_client (mgr->bouncer, dev);
   g_signal_connect (dev, "status-changed",

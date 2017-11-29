@@ -42,16 +42,14 @@ struct _BoltDevice
 {
   BoltDBusDeviceSkeleton object;
 
-  /* weak reference */
-  BoltManager *mgr;
+  /* device props */
+  char      *dbus_path;
 
-  char        *dbus_path;
+  char      *uid;
+  char      *name;
+  char      *vendor;
 
-  char        *uid;
-  char        *name;
-  char        *vendor;
-
-  BoltStatus   status;
+  BoltStatus status;
 
   /* when device is attached */
   char        *syspath;
@@ -68,7 +66,6 @@ struct _BoltDevice
 enum {
   PROP_0,
 
-  PROP_MANAGER,
   PROP_STORE,
 
   PROP_LAST,
@@ -117,13 +114,6 @@ bolt_device_finalize (GObject *object)
   g_free (dev->parent);
   g_free (dev->syspath);
 
-  if (dev->mgr)
-    {
-      g_object_remove_weak_pointer (G_OBJECT (dev->mgr),
-                                    (gpointer *) &dev->mgr);
-      dev->mgr = NULL;
-    }
-
   G_OBJECT_CLASS (bolt_device_parent_class)->finalize (object);
 }
 
@@ -144,10 +134,6 @@ bolt_device_get_property (GObject    *object,
 
   switch (prop_id)
     {
-    case PROP_MANAGER:
-      g_value_set_object (value, dev->mgr);
-      break;
-
     case PROP_STORE:
       g_value_set_object (value, dev->store);
       break;
@@ -208,14 +194,6 @@ bolt_device_set_property (GObject      *object,
 
   switch (prop_id)
     {
-
-    case PROP_MANAGER:
-      g_return_if_fail (dev->mgr == NULL);
-      dev->mgr = g_value_get_object (value);
-      g_object_add_weak_pointer (G_OBJECT (dev->mgr),
-                                 (gpointer *) &dev->mgr);
-      break;
-
     case PROP_STORE:
       dev->store = g_value_dup_object (value);
       g_object_notify (object, "stored");
@@ -322,13 +300,6 @@ bolt_device_class_init (BoltDeviceClass *klass)
 
   gobject_class->get_property = bolt_device_get_property;
   gobject_class->set_property = bolt_device_set_property;
-
-  props[PROP_MANAGER] =
-    g_param_spec_object ("manager",
-                         NULL, NULL,
-                         BOLT_TYPE_MANAGER,
-                         G_PARAM_READWRITE |
-                         G_PARAM_STATIC_NICK);
 
   props[PROP_STORE] =
     g_param_spec_object ("store",
