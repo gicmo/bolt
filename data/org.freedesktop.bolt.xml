@@ -19,6 +19,15 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="Probing" type="b" access="read">
+      <doc:doc><doc:description><doc:para>
+	Indication that a new thunderbolt device has been connected
+	and the manager is reacting to that. Probing should be
+	true as long as the new device (and any possible attached
+	peripherals) are initialized by the system.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <!-- methods -->
 
     <method name="ListDevices">

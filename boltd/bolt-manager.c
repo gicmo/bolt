@@ -30,6 +30,8 @@
 #include <libudev.h>
 #include <string.h>
 
+#define PROBING_SETTLE_TIME_MS 2000 /* in milli-seconds */
+
 typedef struct udev_monitor udev_monitor;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_monitor, udev_monitor_unref);
 
@@ -84,10 +86,23 @@ static void          handle_udev_device_detached (BoltManager *mgr,
 static void          handle_store_device_removed (BoltStore   *store,
                                                   const char  *uid,
                                                   BoltManager *mgr);
-
+/* acquiring indicator  */
 static void          handle_device_status_changed (BoltDevice  *dev,
                                                    BoltStatus   old,
                                                    BoltManager *mgr);
+
+static void          manager_probing_device_added (BoltManager        *mgr,
+                                                  struct udev_device *dev);
+
+static void          manager_probing_device_removed (BoltManager        *mgr,
+                                                    struct udev_device *dev);
+
+static void          manager_probing_activity (BoltManager *mgr,
+                                               gboolean weak);
+
+static void          manager_add_domain (BoltManager        *mgr,
+                                         struct udev_device *domain);
+
 
 /* dbus method calls */
 static gboolean handle_list_devices (BoltDBusManager       *object,
@@ -122,12 +137,20 @@ struct _BoltManager
 
   /* policy enforcer */
   BoltBouncer *bouncer;
+
+  /* probing indicator  */
+  guint      authorizing;     /* number of devices currently authorizing */
+  GPtrArray *probing_roots;   /* pci device tree root */
+  guint      probing_timeout; /* signal id & indicator */
+  gint64     probing_tstamp;  /* time stamp of last activity */
+  guint      probing_tsettle; /* how long to indicate after the last activity */
 };
 
 enum {
   PROP_0,
 
   PROP_VERSION,
+  PROP_PROBING,
 
   PROP_LAST
 };
@@ -160,6 +183,12 @@ bolt_manager_finalize (GObject *object)
       mgr->udev = NULL;
     }
 
+  if (mgr->probing_timeout)
+    {
+      g_source_remove (mgr->probing_timeout);
+      mgr->probing_timeout = 0;
+    }
+
   g_clear_object (&mgr->store);
   g_ptr_array_free (mgr->devices, TRUE);
 
@@ -173,10 +202,16 @@ bolt_manager_get_property (GObject    *object,
                            GValue     *value,
                            GParamSpec *pspec)
 {
+  BoltManager *mgr = BOLT_MANAGER (object);
+
   switch (prop_id)
     {
     case PROP_VERSION:
       g_value_set_uint (value, VERSION_MINOR);
+      break;
+
+    case PROP_PROBING:
+      g_value_set_boolean (value, mgr->probing_timeout > 0);
       break;
 
     default:
@@ -212,6 +247,9 @@ bolt_manager_init (BoltManager *mgr)
   mgr->devices = g_ptr_array_new_with_free_func (g_object_unref);
   mgr->store = bolt_store_new (BOLT_DBDIR);
 
+  mgr->probing_roots = g_ptr_array_new_with_free_func (g_free);
+  mgr->probing_tsettle = PROBING_SETTLE_TIME_MS; /* milliseconds */
+
   g_signal_connect (mgr, "handle-list-devices", G_CALLBACK (handle_list_devices), NULL);
   g_signal_connect (mgr, "handle-device-by-uid", G_CALLBACK (handle_device_by_uid), NULL);
   g_signal_connect (mgr, "handle-enroll-device", G_CALLBACK (handle_enroll_device), NULL);
@@ -232,6 +270,10 @@ bolt_manager_class_init (BoltManagerClass *klass)
   g_object_class_override_property (gobject_class,
                                     PROP_VERSION,
                                     "version");
+
+  g_object_class_override_property (gobject_class,
+                                    PROP_PROBING,
+                                    "probing");
 }
 
 static void
@@ -355,13 +397,19 @@ handle_uevent_udev (GIOChannel  *source,
   devtype = udev_device_get_devtype (device);
   subsystem = udev_device_get_subsystem (device);
 
-  g_debug ("uevent [ UDEV ]: %s", action);
+  if (g_str_equal (action, "add"))
+    manager_probing_device_added (mgr, device);
+  else if (g_str_equal (action, "remove"))
+    manager_probing_device_removed (mgr, device);
 
   /* beyond this point only thunderbolt/thunderbolt_device
    * devices are allowed */
   if (!bolt_streq (devtype, "thunderbolt_device") ||
       !bolt_streq (subsystem, "thunderbolt"))
     return G_SOURCE_CONTINUE;
+
+  g_debug ("uevent [ UDEV ]: %s (%s%s%s)", action,
+           subsystem, devtype ? "/" : "", devtype ? : "");
 
   if (g_str_equal (action, "add") ||
       g_str_equal (action, "change"))
@@ -454,13 +502,6 @@ bolt_manager_initialize (GInitable    *initable,
   if (!ok)
     return FALSE;
 
-  /* TODO: error checking */
-  enumerate = udev_enumerate_new (mgr->udev);
-  udev_enumerate_add_match_subsystem (enumerate, "thunderbolt");
-  /* only devices (i.e. not the domain controller) */
-  udev_enumerate_add_match_sysattr (enumerate, "unique_id", NULL);
-  udev_enumerate_add_match_property (enumerate, "DEVTYPE", "thunderbolt_device");
-
   ids = bolt_store_list_uids (mgr->store, error);
   if (ids == NULL)
     {
@@ -486,6 +527,11 @@ bolt_manager_initialize (GInitable    *initable,
       manager_register_device (mgr, dev);
     }
 
+  /* TODO: error checking */
+  enumerate = udev_enumerate_new (mgr->udev);
+  udev_enumerate_add_match_subsystem (enumerate, "thunderbolt");
+  /* only devices (i.e. not the domain controller) */
+
   g_debug ("Enumerating devices from udev");
   udev_enumerate_scan_devices (enumerate);
   devices = udev_enumerate_get_list_entry (enumerate);
@@ -496,6 +542,7 @@ bolt_manager_initialize (GInitable    *initable,
       g_autoptr(BoltDevice) dev = NULL;
       const char *uid;
       const char *syspath;
+      const char *devtype;
 
       syspath = udev_list_entry_get_name (l);
       udevice = udev_device_new_from_syspath (mgr->udev, syspath);
@@ -503,8 +550,20 @@ bolt_manager_initialize (GInitable    *initable,
       if (udevice == NULL)
         continue;
 
+      devtype = udev_device_get_devtype (udevice);
+
+      if (bolt_streq (devtype, "thunderbolt_domain"))
+        manager_add_domain (mgr, udevice);
+
+      if (!bolt_streq (devtype, "thunderbolt_device"))
+        continue;
+
       uid = udev_device_get_sysattr_value (udevice, "unique_id");
-      g_assert (uid); /* cant really happen due to the match rule */
+      if (uid == NULL)
+        {
+          g_warning ("thunderbolt device without uid");
+          continue;
+        }
 
       dev = bolt_manager_get_device_by_uid (mgr, uid);
       if (dev)
@@ -889,6 +948,7 @@ handle_store_device_removed (BoltStore   *store,
 
 }
 
+
 static void
 handle_device_status_changed (BoltDevice  *dev,
                               BoltStatus   old,
@@ -903,6 +963,175 @@ handle_device_status_changed (BoltDevice  *dev,
            uid,
            bolt_status_to_string (old),
            bolt_status_to_string (now));
+
+  if (now == old)
+    return; /* sanity check */
+
+  if (now == BOLT_STATUS_AUTHORIZING)
+    mgr->authorizing += 1;
+  else if (old == BOLT_STATUS_AUTHORIZING)
+    mgr->authorizing -= 1;
+
+  manager_probing_activity (mgr, !mgr->authorizing);
+}
+
+static gboolean
+probing_timeout (gpointer user_data)
+{
+  BoltManager *mgr;
+  gint64 now, dt, timeout;
+
+  mgr = BOLT_MANAGER (user_data);
+
+  if (mgr->authorizing > 0)
+    return G_SOURCE_CONTINUE;
+
+  now = g_get_monotonic_time ();
+  dt = now - mgr->probing_tstamp;
+
+  /* dt is in microseconds, probing timeout in
+   * milli seconds  */
+  timeout = mgr->probing_tsettle * 1000;
+  if (dt < timeout)
+    return G_SOURCE_CONTINUE;
+
+  /* we are done, remove us */
+  mgr->probing_timeout = 0;
+  g_object_set (mgr, "probing",  mgr->probing_timeout > 0, NULL);
+  g_debug ("probing: timeout, done: [%ld] (%ld)", dt, timeout);
+  g_dbus_interface_skeleton_flush (G_DBUS_INTERFACE_SKELETON (mgr));
+  return G_SOURCE_REMOVE;
+}
+
+static void
+manager_probing_activity (BoltManager *mgr,
+                          gboolean weak)
+{
+  guint dt;
+
+  mgr->probing_tstamp = g_get_monotonic_time ();
+  if (mgr->probing_timeout || weak)
+    return;
+
+  dt = mgr->probing_tsettle / 2;
+  g_debug ("probing: started [%u]", dt);
+  mgr->probing_timeout = g_timeout_add (dt, probing_timeout, mgr);
+  g_object_set (mgr, "probing",  mgr->probing_timeout > 0, NULL);
+  g_dbus_interface_skeleton_flush (G_DBUS_INTERFACE_SKELETON (mgr));
+}
+
+static gboolean
+device_is_thunderbolt_root (struct udev_device *dev)
+{
+  const char *driver;
+  const char *subsys;
+
+  driver = udev_device_get_driver (dev);
+  subsys = udev_device_get_subsystem (dev);
+
+  return bolt_streq (subsys, "pci") &&
+         bolt_streq (driver, "thunderbolt");
+}
+
+static gboolean
+probing_add_root (BoltManager        *mgr,
+                    struct udev_device *dev)
+{
+  const char *syspath;
+  GPtrArray *roots;
+
+  g_return_val_if_fail (device_is_thunderbolt_root (dev), FALSE);
+
+  /* we go two levels up */
+  for (guint i = 0; dev != NULL && i < 2; i++)
+    dev = udev_device_get_parent (dev);
+
+  if (dev == NULL)
+    return FALSE;
+
+  roots = mgr->probing_roots;
+  syspath = udev_device_get_syspath (dev);
+  g_ptr_array_add (roots, g_strdup (syspath));
+  g_debug ("probing: adding %s to roots", syspath);
+
+  return TRUE;
+}
+
+static void
+manager_probing_device_added (BoltManager        *mgr,
+                             struct udev_device *dev)
+{
+  const char *syspath;
+  GPtrArray *roots;
+  gboolean added;
+
+  syspath = udev_device_get_syspath (dev);
+
+  if (syspath == NULL)
+    return;
+
+  roots = mgr->probing_roots;
+  for (guint i = 0; i < roots->len; i++)
+    {
+      const char *r = g_ptr_array_index (roots, i);
+      if (g_str_has_prefix (syspath, r))
+        {
+          g_debug ("probing: match %s", syspath);
+          /* do something */
+          manager_probing_activity (mgr, FALSE);
+          return;
+        }
+    }
+
+  /* if we ended up here we didn't find a root,
+   * maybe we are one
+   */
+  if (!device_is_thunderbolt_root (dev))
+    return;
+
+  added = probing_add_root (mgr, dev);
+  if (added)
+    manager_probing_activity (mgr, FALSE);
+}
+
+static void
+manager_probing_device_removed (BoltManager        *mgr,
+                               struct udev_device *dev)
+{
+  const char *syspath;
+  gboolean found;
+  guint index;
+
+  syspath = udev_device_get_syspath (dev);
+
+  if (syspath == NULL)
+    return;
+
+  found = g_ptr_array_find_with_equal_func (mgr->probing_roots,
+                                            syspath,
+                                            g_str_equal,
+                                            &index);
+  if (!found)
+    return;
+
+  g_debug ("probing: removing %s from roots", syspath);
+  g_ptr_array_remove_index_fast (mgr->probing_roots, index);
+}
+
+static void
+manager_add_domain (BoltManager        *mgr,
+                      struct udev_device *domain)
+{
+  struct udev_device *p = domain;
+
+  /* walk up until we find the thunderbolt root */
+  while (p && !device_is_thunderbolt_root (p))
+    p = udev_device_get_parent (p);
+
+  if (p == NULL)
+    return;
+
+  probing_add_root (mgr, p);
 }
 
 /* dbus methods */
