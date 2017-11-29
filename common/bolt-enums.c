@@ -111,7 +111,7 @@ bolt_policy_from_string (const char *str)
   value = g_enum_get_value_by_nick (klass, str);
 
   if (value == NULL)
-      return BOLT_POLICY_INVALID;
+    return BOLT_POLICY_INVALID;
 
   return value->value;
 }
