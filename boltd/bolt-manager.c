@@ -54,11 +54,11 @@ static void          manager_register_device (BoltManager *mgr,
 static void          manager_deregister_device (BoltManager *mgr,
                                                 BoltDevice  *device);
 
-static BoltDevice *  bolt_manager_get_device_by_syspath (BoltManager *mgr,
-                                                         const char  *sysfs);
+static BoltDevice *  manager_find_device_by_syspath (BoltManager *mgr,
+                                                     const char  *sysfs);
 
-static BoltDevice *  bolt_manager_get_device_by_uid (BoltManager *mgr,
-                                                     const char  *uid);
+static BoltDevice *  manager_find_device_by_uid (BoltManager *mgr,
+                                                 const char  *uid);
 
 static BoltDevice *  bolt_manager_get_parent (BoltManager *mgr,
                                               BoltDevice  *dev);
@@ -422,7 +422,7 @@ handle_uevent_udev (GIOChannel  *source,
       if (uid == NULL)
         return G_SOURCE_CONTINUE;
 
-      dev = bolt_manager_get_device_by_uid (mgr, uid);
+      dev = manager_find_device_by_uid (mgr, uid);
 
       if (!dev)
         handle_udev_device_added (mgr, device);
@@ -448,7 +448,7 @@ handle_uevent_udev (GIOChannel  *source,
       if (name && g_str_has_prefix (name, "domain"))
         return G_SOURCE_CONTINUE;
 
-      dev = bolt_manager_get_device_by_syspath (mgr, syspath);
+      dev = manager_find_device_by_syspath (mgr, syspath);
 
       /* if we don't have any records of the device,
        *  then we don't care */
@@ -565,7 +565,7 @@ bolt_manager_initialize (GInitable    *initable,
           continue;
         }
 
-      dev = bolt_manager_get_device_by_uid (mgr, uid);
+      dev = manager_find_device_by_uid (mgr, uid);
       if (dev)
         handle_udev_device_attached (mgr, dev, udevice);
       else
@@ -597,8 +597,8 @@ manager_deregister_device (BoltManager *mgr,
 }
 
 static BoltDevice *
-bolt_manager_get_device_by_syspath (BoltManager *mgr,
-                                    const char  *sysfs)
+manager_find_device_by_syspath (BoltManager *mgr,
+                                const char  *sysfs)
 {
 
   g_return_val_if_fail (sysfs != NULL, NULL);
@@ -617,8 +617,8 @@ bolt_manager_get_device_by_syspath (BoltManager *mgr,
 }
 
 static BoltDevice *
-bolt_manager_get_device_by_uid (BoltManager *mgr,
-                                const char  *uid)
+manager_find_device_by_uid (BoltManager *mgr,
+                            const char  *uid)
 {
   for (guint i = 0; i < mgr->devices->len; i++)
     {
@@ -655,7 +655,7 @@ bolt_manager_get_parent (BoltManager *mgr,
 
   *pos = '\0';
 
-  return bolt_manager_get_device_by_syspath (mgr, path);
+  return manager_find_device_by_syspath (mgr, path);
 }
 
 static GPtrArray *
@@ -918,7 +918,7 @@ handle_store_device_removed (BoltStore   *store,
   BoltStatus status;
   const char *opath;
 
-  dev = bolt_manager_get_device_by_uid (mgr, uid);
+  dev = manager_find_device_by_uid (mgr, uid);
   g_info ("[%s] removed from store: %p", uid, dev);
 
   if (!dev)
@@ -1172,7 +1172,7 @@ handle_device_by_uid (BoltDBusManager       *obj,
 
   params = g_dbus_method_invocation_get_parameters (inv);
   g_variant_get (params, "(&s)", &uid);
-  dev = bolt_manager_get_device_by_uid (mgr, uid);
+  dev = manager_find_device_by_uid (mgr, uid);
 
   if (!dev)
     {
@@ -1257,7 +1257,7 @@ handle_enroll_device (BoltDBusManager       *obj,
   params = g_dbus_method_invocation_get_parameters (inv);
   g_variant_get_child (params, 0, "&s", &uid);
   g_variant_get_child (params, 1, "u", &policy);
-  dev = bolt_manager_get_device_by_uid (mgr, uid);
+  dev = manager_find_device_by_uid (mgr, uid);
 
   if (!bolt_policy_validate ((BoltPolicy) policy))
     {
@@ -1312,7 +1312,7 @@ handle_forget_device (BoltDBusManager       *obj,
 
   params = g_dbus_method_invocation_get_parameters (inv);
   g_variant_get (params, "(&s)", &uid);
-  dev = bolt_manager_get_device_by_uid (mgr, uid);
+  dev = manager_find_device_by_uid (mgr, uid);
 
   if (!dev)
     {
