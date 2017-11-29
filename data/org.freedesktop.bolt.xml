@@ -153,6 +153,14 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="Parent" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+        The unique id of the parent the device. The only
+        device without a parent will be the device that
+        represents the host controller.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <property name="SysfsPath" type="s" access="read">
       <doc:doc><doc:description><doc:para>
         The sysfs path of the device, if it is connected.
@@ -163,14 +171,6 @@
       <doc:doc><doc:description><doc:para>
         The security level of the domain the device is
         connected to.
-      </doc:para></doc:description></doc:doc>
-    </property>
-
-    <property name="Parent" type="s" access="read">
-      <doc:doc><doc:description><doc:para>
-        The unique id of the parent the device. The only
-        device without a parent will be the device that
-        represents the host controller.
       </doc:para></doc:description></doc:doc>
     </property>
 
