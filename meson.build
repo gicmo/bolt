@@ -71,7 +71,7 @@ req_man = build_man == 'true'
 
 gnome  = import('gnome')
 
-glib    = dependency('glib-2.0')
+glib    = dependency('glib-2.0', version: '>= 2.54.0')
 gio     = dependency('gio-2.0')
 libudev = dependency('libudev')
 unix    = dependency('gio-unix-2.0')
