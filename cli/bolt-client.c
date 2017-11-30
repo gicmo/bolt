@@ -316,10 +316,11 @@ bolt_client_get_device (BoltClient *client,
 }
 
 BoltDevice *
-bolt_client_enroll_device (BoltClient *client,
-                           const char *uid,
-                           BoltPolicy  policy,
-                           GError    **error)
+bolt_client_enroll_device (BoltClient   *client,
+                           const char   *uid,
+                           BoltPolicy    policy,
+                           BoltAuthFlags flags,
+                           GError      **error)
 {
   g_autoptr(GVariant) val = NULL;
   g_autoptr(GError) err = NULL;
@@ -332,7 +333,7 @@ bolt_client_enroll_device (BoltClient *client,
   g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
 
   proxy = bolt_proxy_get_proxy (BOLT_PROXY (client));
-  params = g_variant_new ("(su)", uid, (guint32) policy);
+  params = g_variant_new ("(suu)", uid, (guint32) policy, (guint32) flags);
   val = g_dbus_proxy_call_sync (proxy,
                                 "EnrollDevice",
                                 params,

@@ -203,8 +203,9 @@ bolt_device_new_for_object_path (GDBusConnection *bus,
 }
 
 gboolean
-bolt_device_authorize (BoltDevice *dev,
-                       GError    **error)
+bolt_device_authorize (BoltDevice   *dev,
+                       BoltAuthFlags flags,
+                       GError      **error)
 {
   g_autoptr(GError) err = NULL;
   GDBusProxy *proxy;
@@ -214,7 +215,7 @@ bolt_device_authorize (BoltDevice *dev,
   proxy = bolt_proxy_get_proxy (BOLT_PROXY (dev));
   g_dbus_proxy_call_sync (proxy,
                           "Authorize",
-                          NULL,
+                          g_variant_new ("(u)", (guint32) flags),
                           G_DBUS_CALL_FLAGS_NONE,
                           -1,
                           NULL,

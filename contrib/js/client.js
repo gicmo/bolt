@@ -28,6 +28,7 @@ const Signals = imports.signals;
 const BoltClientInterface = '<node> \
   <interface name="org.freedesktop.bolt1.Manager"> \
     <property name="Version" type="u" access="read"></property> \
+    <property name="Probing" type="b" access="read"></property> \
     <method name="ListDevices"> \
       <arg name="devices" direction="out" type="ao"> </arg> \
     </method> \
@@ -38,6 +39,7 @@ const BoltClientInterface = '<node> \
     <method name="EnrollDevice"> \
       <arg type="s" name="uid" direction="in"> </arg> \
       <arg type="u" name="policy" direction="in"> </arg> \
+      <arg type="u" name="flags" direction="in"> </arg> \
       <arg name="device" direction="out" type="o"> </arg> \
     </method> \
     <method name="ForgetDevice">  \
@@ -64,7 +66,9 @@ const BoltDeviceInterface = '<node> \
     <property name="Stored" type="b" access="read"></property> \
     <property name="Policy" type="u" access="read"></property> \
     <property name="Key" type="u" access="read"></property> \
-    <method name="Authorize"> </method> \
+    <method name="Authorize"> \
+      <arg type="u" name="flags" direction="in"> </arg> \
+    </method> \
   </interface> \
 </node>';
 

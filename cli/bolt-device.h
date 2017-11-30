@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "bolt-enums.h"
 #include "bolt-proxy.h"
 
 G_BEGIN_DECLS
@@ -31,8 +32,9 @@ BoltDevice *  bolt_device_new_for_object_path (GDBusConnection *bus,
                                                const char      *path,
                                                GError         **error);
 
-gboolean      bolt_device_authorize (BoltDevice *dev,
-                                     GError    **error);
+gboolean      bolt_device_authorize (BoltDevice   *dev,
+                                     BoltAuthFlags flags,
+                                     GError      **error);
 
 
 G_END_DECLS

@@ -192,6 +192,7 @@ authorize (BoltClient *client, int argc, char **argv)
   g_autoptr(GOptionContext) optctx = NULL;
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(GError) error = NULL;
+  BoltAuthFlags flags = BOLT_AUTH_NONE;
   const char *uid;
   gboolean ok;
 
@@ -212,7 +213,7 @@ authorize (BoltClient *client, int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  ok = bolt_device_authorize (dev, &error);
+  ok = bolt_device_authorize (dev, flags, &error);
   if (!ok)
     g_printerr ("Authorization error: %s\n", error->message);
 
@@ -228,6 +229,7 @@ enroll (BoltClient *client, int argc, char **argv)
   g_autoptr(GError) error = NULL;
   const char *uid;
   BoltPolicy policy = BOLT_POLICY_DEFAULT;
+  BoltAuthFlags flags = BOLT_AUTH_NONE;
   static gchar *policy_arg;
   static GOptionEntry options[] = {
     { "policy", 0, 0, G_OPTION_ARG_STRING, &policy_arg, "Policy for the device; one of {auto, manual, *default}", "POLICY" },
@@ -254,7 +256,7 @@ enroll (BoltClient *client, int argc, char **argv)
 
   uid = argv[1];
 
-  dev = bolt_client_enroll_device (client, uid, policy, &error);
+  dev = bolt_client_enroll_device (client, uid, policy, flags, &error);
   if (dev == NULL)
     {
       g_printerr ("%s\n", error->message);

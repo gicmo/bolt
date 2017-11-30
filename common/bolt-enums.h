@@ -125,3 +125,18 @@ typedef enum {
 BoltPolicy       bolt_policy_from_string (const char *str);
 const char *     bolt_policy_to_string (BoltPolicy policy);
 gboolean         bolt_policy_validate (BoltPolicy policy);
+
+/**
+ * BoltAuthFlags:
+ * @BOLT_AUTH_NONE: No flags set.
+ *
+ * Control authorization.
+ */
+typedef enum {
+
+  BOLT_AUTH_NONE,
+
+  BOLT_AUTH_FLAGS_LAST,
+  BOLT_AUTH_FLAGS_INVALID = BOLT_AUTH_FLAGS_LAST
+
+} BoltAuthFlags;

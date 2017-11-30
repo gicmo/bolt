@@ -35,10 +35,11 @@ GPtrArray *     bolt_client_list_devices (BoltClient *client,
 BoltDevice *    bolt_client_get_device (BoltClient *client,
                                         const char *uid,
                                         GError    **error);
-BoltDevice *    bolt_client_enroll_device (BoltClient *client,
-                                           const char *uid,
-                                           BoltPolicy  policy,
-                                           GError    **error);
+BoltDevice *    bolt_client_enroll_device (BoltClient   *client,
+                                           const char   *uid,
+                                           BoltPolicy    policy,
+                                           BoltAuthFlags flags,
+                                           GError      **error);
 gboolean        bolt_client_forget_device (BoltClient *client,
                                            const char *uid,
                                            GError    **error);
