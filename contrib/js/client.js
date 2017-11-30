@@ -102,7 +102,7 @@ var Client = new Lang.Class({
     _init: function(readyCallback) {
 	this._readyCallback = readyCallback;
 
-	new BoltClientProxy(
+	this._cli = new BoltClientProxy(
 	    Gio.DBus.system,
 	    BOLT_DBUS_NAME,
 	    BOLT_DBUS_PATH,
@@ -110,7 +110,7 @@ var Client = new Lang.Class({
 	);
 
 	this._signals = [];
-
+	this.probing = false;
     },
 
     _onProxyReady: function(proxy, error) {
@@ -119,9 +119,24 @@ var Client = new Lang.Class({
 	    return;
 	}
 	this._cli = proxy;
+	this._cli.connect('g-properties-changed', Lang.bind(this, this._onPropertiesChanged));
 	let s = this._cli.connectSignal('DeviceAdded', Lang.bind(this, this._onDeviceAdded));
 	this._signals.push(s);
+
+	this.probing = this._cli.Probing;
+	if (this.probing)
+	    this.emit('probing-changed', this.probing);
+
 	this._readyCallback(this);
+    },
+
+    _onPropertiesChanged: function(proxy, properties) {
+        let unpacked = properties.deep_unpack();
+        if (!('Probing' in unpacked))
+	    return;
+
+	this.probing = this._cli.Probing;
+	this.emit('probing-changed', this.probing);
     },
 
     _onDeviceAdded: function(proxy, emitter, params) {
@@ -138,6 +153,7 @@ var Client = new Lang.Class({
 	    let sid = this._signals.shift();
 	    this._cli.disconnectSignal(sid);
 	}
+	this._cli.disconnectAll();
 	this._cli = null;
     },
 
