@@ -73,13 +73,21 @@ on_bus_acquired (GDBusConnection *connection,
                  const gchar     *name,
                  gpointer         user_data)
 {
-  BoltManager *mgr = BOLT_MANAGER (user_data);
-
   g_autoptr(GError) error = NULL;
 
   g_debug ("Got the bus [%s]", name);
+  /*  */
+  manager = g_initable_new (BOLT_TYPE_MANAGER,
+                            NULL, &error,
+                            NULL);
 
-  if (!bolt_manager_export (mgr, connection, &error))
+  if (manager == NULL)
+    {
+      g_printerr ("Could not create manager: %s", error->message);
+      exit (EXIT_FAILURE);
+    }
+
+  if (!bolt_manager_export (manager, connection, &error))
     g_warning ("error: %s", error->message);
 
 }
@@ -160,17 +168,6 @@ main (int argc, char **argv)
 
   g_debug (PACKAGE_NAME " " PACKAGE_VERSION " starting up.");
 
-  /*  */
-  manager = g_initable_new (BOLT_TYPE_MANAGER,
-                            NULL, &error,
-                            NULL);
-
-  if (manager == NULL)
-    {
-      g_printerr ("Could not create manager: %s", error->message);
-      return EXIT_FAILURE;
-    }
-
   flags = G_BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT;
   if (replace)
     flags |= G_BUS_NAME_OWNER_FLAGS_REPLACE;
@@ -184,7 +181,7 @@ main (int argc, char **argv)
                                   on_bus_acquired,
                                   on_name_acquired,
                                   on_name_lost,
-                                  manager,
+                                  NULL,
                                   NULL);
 
   main_loop = g_main_loop_new (NULL, FALSE);
