@@ -1312,10 +1312,8 @@ handle_forget_device (BoltDBusManager       *obj,
 {
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(GError) error = NULL;
-  g_autoptr(GError) key_err = NULL;
-  g_autoptr(GError) dev_err = NULL;
   BoltManager *mgr;
-  gboolean key_ok, dev_ok;
+  gboolean ok;
   GVariant *params;
   const char *uid;
 
@@ -1327,22 +1325,14 @@ handle_forget_device (BoltDBusManager       *obj,
 
   if (dev == NULL)
     {
-      g_dbus_method_invocation_return_gerror (inv, error);
+      g_dbus_method_invocation_take_error (inv, g_steal_pointer (&error));
       return TRUE;
     }
 
-  key_ok = bolt_store_del_key (mgr->store, uid, &key_err);
-  if (!key_ok && bolt_err_notfound (key_err))
-    key_ok = TRUE;
+  ok = bolt_store_del (mgr->store, dev, &error);
 
-  dev_ok = bolt_store_del_device (mgr->store, uid, &dev_err);
-
-  g_debug ("[%s] forgetting: key: %d, dev: %d", uid, key_ok, dev_ok);
-
-  if (!dev_ok)
-    g_dbus_method_invocation_take_error (inv, g_steal_pointer (&dev_err));
-  else if (!key_ok)
-    g_dbus_method_invocation_take_error (inv, g_steal_pointer (&key_err));
+  if (!ok)
+    g_dbus_method_invocation_take_error (inv, g_steal_pointer (&error));
   else
     bolt_dbus_manager_complete_forget_device (BOLT_DBUS_MANAGER (mgr), inv);
 
