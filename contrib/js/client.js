@@ -218,3 +218,113 @@ var Client = new Lang.Class({
 });
 
 Signals.addSignalMethods(Client.prototype);
+
+/* helper class to automatically authorize new devices */
+var AuthRobot = new Lang.Class({
+    Name: 'BoltAuthRobot',
+
+    _init: function(client) {
+
+	this._client = client;
+
+	this._signals = [];
+
+	this._devicesToEnroll = [];
+	this._enrolling = false;
+
+	this._client.connect('device-added', Lang.bind(this, this._onDeviceAdded));
+    },
+
+    close: function() {
+	this.disconnectAll();
+	this._client = null;
+    },
+
+    _connectSignal: function(obj, name, callback) {
+	let signal_id = obj.connect(name, Lang.bind(this, callback));
+	this._signals.push([obj, signal_id]);
+	log('connecting sid: ' + signal_id + 'obj: ' + obj);
+    },
+
+    /* the "device-added" signal will be emitted by boltd for every
+     * device that is not currently stored in the database. We are
+     * only interested in those devices, because all known devices
+     * will be handled by the user himself */
+    _onDeviceAdded: function(cli, dev) {
+	log('[%s] device added: %s '.format(dev.Uid, dev.Name));
+
+	if (dev.Status !== Status.CONNECTED) {
+	    log('[%s] invalid state: %d'.format(dev.Uid, dev.Status));
+	    return;
+	}
+
+	/* check if we should enroll the device */
+	let res = [false];
+	this.emit('enroll-device', dev, res);
+	if (res[0] !== true) {
+	    return;
+	}
+
+	/* ok, we should authorize the device, add it to the back
+	 * of the list  */
+	log('[%s] scheduled for authorization'.format(dev.Uid));
+	this._devicesToEnroll.push(dev);
+	this._enrollDevices();
+    },
+
+    /* The enrollment queue:
+     *   - new devices will be added to the end of the array.
+     *   - an idle callback will be scheduled that will keep
+     *     calling itself as long as there a devices to be
+     *     enrolled.
+     */
+    _enrollDevices: function() {
+	if (this._enrolling) {
+	    return;
+	}
+
+	this.enrolling = true;
+	GLib.idle_add(GLib.PRIORITY_DEFAULT,
+		      Lang.bind(this, this._enrollDevicesIdle));
+    },
+
+    _onEnrollDone: function(device, error) {
+
+	log('[%s] enrolling done'.format(device.Uid));
+
+	if (error) {
+	    this.emit('enroll-failed', error, device);
+	}
+
+	/* TODO: scan the list of devices to be authorized for children
+	 *  of this device and remove them (and their children and
+	 *  their children and ....) from the device queue
+	 */
+	this._enrolling = this._devicesToEnroll.length > 0;
+	log('enrolling; keep going: ' + this._enrolling);
+
+	if (this._enrolling) {
+	    GLib.idle_add(GLib.PRIORITY_DEFAULT,
+			  Lang.bind(this, this._enrollDevicesIdle));
+	}
+    },
+
+    _enrollDevicesIdle: function() {
+	let devices = this._devicesToEnroll;
+
+	let dev = devices.shift();
+	if (dev === undefined) {
+	    return GLib.SOURCE_REMOVE;
+	}
+
+	log('[%s] enrolling device: %s'.format(dev.Uid, dev.Name));
+	this._client.enrollDevice(dev.Uid,
+				  Policy.DEFAULT,
+				  Lang.bind(this, this._onEnrollDone));
+	return GLib.SOURCE_REMOVE;
+    },
+
+
+});
+
+Signals.addSignalMethods(AuthRobot.prototype);
