@@ -430,3 +430,40 @@ bolt_store_del_key (BoltStore  *store,
 
   return ok;
 }
+
+gboolean
+bolt_store_del (BoltStore  *store,
+                BoltDevice *dev,
+                GError    **error)
+{
+  g_autoptr(GError) err = NULL;
+  const char *uid;
+  gboolean ok;
+
+  g_return_val_if_fail (store != NULL, FALSE);
+  g_return_val_if_fail (dev != NULL, FALSE);
+
+  uid = bolt_device_get_uid (dev);
+
+  ok = bolt_store_del_key (store, uid, &err);
+  if (!ok && !bolt_err_notfound (err))
+    {
+      g_propagate_prefixed_error (error,
+                                  g_steal_pointer (&err),
+                                  "could not delete key: ");
+      return FALSE;
+    }
+
+  ok = bolt_store_del_device (store, uid, error);
+
+  if (ok)
+    {
+      g_object_set (dev,
+                    "store", NULL,
+                    "key", BOLT_KEY_MISSING,
+                    "policy", BOLT_POLICY_DEFAULT,
+                    NULL);
+    }
+
+  return ok;
+}

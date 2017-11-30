@@ -38,6 +38,10 @@ BoltStore *       bolt_store_new (const char *path);
 GStrv             bolt_store_list_uids (BoltStore *store,
                                         GError   **error);
 
+gboolean          bolt_store_del (BoltStore  *store,
+                                  BoltDevice *dev,
+                                  GError    **error);
+
 gboolean          bolt_store_put_device (BoltStore  *store,
                                          BoltDevice *device,
                                          BoltPolicy  policy,
