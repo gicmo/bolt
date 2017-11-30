@@ -1379,9 +1379,3 @@ bolt_manager_export (BoltManager     *mgr,
 
   return TRUE;
 }
-
-BoltStore *
-bolt_manager_get_store (BoltManager *mgr)
-{
-  return mgr->store;
-}
