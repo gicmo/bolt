@@ -34,7 +34,7 @@
 #include <locale.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h> /* unlinkat */
+#include <unistd.h> /* unlinkat, truncate */
 
 static void
 cleanup_dir (DIR *d)
@@ -260,6 +260,59 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
 
 }
 
+static void
+test_key (TestStore *tt, gconstpointer user_data)
+{
+  g_autoptr(BoltKey) key = NULL;
+  g_autoptr(BoltKey) loaded = NULL;
+  g_autoptr(GFile) base = NULL;
+  g_autoptr(GFile) f = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GFileInfo) fi = NULL;
+  g_autofree char *p = NULL;
+  gboolean fresh = FALSE;
+  gboolean ok;
+  guint32 mode;
+  int r;
+
+  key = bolt_key_new ();
+  g_assert_nonnull (key);
+
+  g_object_get (key, "fresh", &fresh, NULL);
+  g_assert_true (fresh);
+  fresh = bolt_key_get_state (key);
+  g_assert_true (fresh);
+
+  base = g_file_new_for_path (tt->path);
+  f = g_file_get_child (base, "key");
+  g_assert_nonnull (base);
+  g_assert_nonnull (f);
+
+  ok = bolt_key_save_file (key, f, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  fi = g_file_query_info (f, "*", 0, NULL, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (fi);
+
+  mode = g_file_info_get_attribute_uint32 (fi, "unix::mode");
+  g_assert_cmpuint (mode & 0666, ==, 0600);
+
+  loaded = bolt_key_load_file (f, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (loaded);
+
+  /* corrupt the key */
+  p = g_file_get_path (f);
+  r = truncate (p, 32);
+
+  g_assert_cmpint (r, ==, 0);
+  loaded = bolt_key_load_file (f, &err);
+  g_assert_error (err, BOLT_ERROR, BOLT_ERROR_BADKEY);
+  g_assert_null (loaded);
+  g_clear_error (&err);
+}
 
 int
 main (int argc, char **argv)
@@ -268,6 +321,13 @@ main (int argc, char **argv)
   setlocale (LC_ALL, "");
 
   g_test_init (&argc, &argv, NULL);
+
+  g_test_add ("/daemon/key",
+              TestStore,
+              NULL,
+              test_store_setup,
+              test_key,
+              test_store_tear_down);
 
   g_test_add ("/daemon/store/basic",
               TestStore,
