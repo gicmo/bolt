@@ -414,17 +414,23 @@ retry:
         goto retry;
 
       if (errsv == ENOKEY)
-        g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_NOKEY,
-                             "device does not contain a key");
+        {
+          g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_NOKEY,
+                               "device does not contain a key");
+        }
       else if (errsv == EKEYREJECTED)
-        g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_BADKEY,
-                             "key was rejected");
+        {
+          g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_BADKEY,
+                               "key was rejected");
+        }
       else
-        g_set_error (error,
-                     G_IO_ERROR,
-                     g_io_error_from_errno (errsv),
-                     "write error: %s",
-                     g_strerror (errno));
+        {
+          g_set_error (error,
+                       G_IO_ERROR,
+                       g_io_error_from_errno (errsv),
+                       "write error: %s",
+                       g_strerror (errno));
+        }
     }
 
   (void) close (fd);

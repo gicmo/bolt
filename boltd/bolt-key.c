@@ -171,6 +171,7 @@ bolt_key_write_to (BoltKey      *key,
                    BoltSecurity *level,
                    GError      **error)
 {
+  g_autoptr(GError) err = NULL;
   gboolean ok;
 
   g_return_val_if_fail (BOLT_IS_KEY (key), FALSE);
@@ -182,8 +183,12 @@ bolt_key_write_to (BoltKey      *key,
   if (key->data[0] == '\0')
     return TRUE;
 
-  ok = bolt_write_all (fd, key->data, BOLT_KEY_CHARS, error);
-  if (ok && !key->fresh)
+  ok = bolt_write_all (fd, key->data, BOLT_KEY_CHARS, &err);
+  if (!ok && g_error_matches (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT))
+    g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_BADKEY, "invalid key data");
+  else if (!ok)
+    g_propagate_error (error, g_steal_pointer (&err));
+  else if (!key->fresh) /* ok == True */
     *level = BOLT_SECURITY_SECURE;
 
   return ok;
@@ -228,8 +233,7 @@ bolt_key_load_file (GFile   *file,
 
   if (len != BOLT_KEY_CHARS)
     {
-      /* TODO: better error here */
-      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_BADKEY,
                    "unexpected key size (corrupt key?): %zu", len);
       return NULL;
     }
