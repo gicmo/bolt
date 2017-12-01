@@ -336,6 +336,12 @@ foreach t: tests
 
 endforeach
 
+test_it = find_program(join_paths(srcdir, 'tests', 'test-integration'))
+test_env = environment()
+test_env.prepend('LD_PRELOAD', 'libumockdev-preload.so.0')
+test_env.prepend('BOLT_BUILD_DIR', meson.current_build_dir())
+test('test-integration', test_it, env: test_env, timeout: 120)
+
 # contrib
 
 spec_file = configure_file(

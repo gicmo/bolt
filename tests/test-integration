@@ -1,0 +1,178 @@
+#!/usr/bin/python3
+#
+# bolt integration test suite
+#
+# Copyright © 2017 Red Hat, Inc
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# Authors:
+#       Christian J. Kellner <christian@kellner.me>
+
+import os
+import sys
+import subprocess
+import unittest
+import time
+
+try:
+    import gi
+    from gi.repository import GLib
+    from gi.repository import Gio
+    gi.require_version('UMockdev', '1.0')
+    from gi.repository import UMockdev
+
+    import dbusmock
+except ImportError as e:
+    sys.stderr.write('Skipping integration test due to missing depdendencies: %s\n' % str(e))
+    sys.exit(0)
+
+DBUS_NAME = 'org.freedesktop.bolt'
+DBUS_PATH = '/org/freedesktop/bolt'
+DBUS_IFACE_PREFIX = 'org.freedesktop.bolt1.'
+DBUS_IFACE_MANAGER = DBUS_IFACE_PREFIX + 'Manager'
+DBUS_IFACE_DEVICE = DBUS_IFACE_PREFIX + 'Device'
+SERVICE_FILE = '/usr/share/dbus-1/system-services/org.freedesktop.bolt.service'
+
+
+class ProxyWrapper(object):
+    def __init__(self, bus, iname):
+        self._proxy = Gio.DBusProxy.new_sync(bus,
+                                             Gio.DBusProxyFlags.DO_NOT_AUTO_START,
+                                             None,
+                                             DBUS_NAME,
+                                             DBUS_PATH,
+                                             iname,
+                                             None)
+
+    def __getattr__(self, name):
+        c = name.split('_')
+        name = "".join(x.title() for x in c)
+        if name in self._proxy.get_cached_property_names():
+            value = self._proxy.get_cached_property(name)
+            if value is not None:
+                return value.unpack()
+            else:
+                return value
+
+        return getattr(self._proxy, name)
+
+
+class BoltTest(dbusmock.DBusTestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.paths = {}
+        if 'BOLT_BUILD_DIR' in os.environ:
+            print('Testing local build')
+            build_dir = os.environ['BOLT_BUILD_DIR']
+            cls.paths['daemon'] = os.path.join(build_dir, 'boltd')
+        elif 'UNDER_JHBUILD' in os.environ:
+            print('Testing JHBuild version')
+            jhbuild_prefix = os.environ['JHBUILD_PREFIX']
+            cls.paths['daemon'] = os.path.join(jhbuild_prefix, 'libexec', 'boltd')
+        else:
+            print('Testing installed system binaries')
+            with open(SERVICE_FILE) as f:
+                for line in f:
+                    if line.startswith('Exec='):
+                        print('found daemon')
+                        cls.paths['daemon'] = line.split('=', 1)[1].strip()
+                        break
+                assert 'daemon' in cls.paths, 'failed to read daemon path from DBus .service file'
+
+        cls.test_bus = Gio.TestDBus.new(Gio.TestDBusFlags.NONE)
+        cls.test_bus.up()
+        try:
+            del os.environ['DBUS_SESSION_BUS_ADDRESS']
+        except KeyError:
+            pass
+        os.environ['DBUS_SYSTEM_BUS_ADDRESS'] = cls.test_bus.get_bus_address()
+        cls.dbus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.test_bus.down()
+        dbusmock.DBusTestCase.tearDownClass()
+
+    def setUp(self):
+        self.testbed = UMockdev.Testbed.new()
+
+        self.client = None
+        self.log = None
+        self.daemon = None
+
+    def tearDown(self):
+        del self.testbed
+        self.daemon_stop()
+
+    # dbus helper methods
+    def get_dbus_property(self, name, interface=DBUS_IFACE_MANAGER):
+        proxy = Gio.DBusProxy.new_sync(self.dbus,
+                                       Gio.DBusProxyFlags.DO_NOT_AUTO_START,
+                                       None,
+                                       DBUS_NAME,
+                                       DBUS_PATH,
+                                       'org.freedesktop.DBus.Properties',
+                                       None)
+        return proxy.Get('(ss)', interface, name)
+
+    # daemon helper
+    def daemon_start(self):
+        env = os.environ.copy()
+        env['G_DEBUG'] = 'fatal-criticals'
+        env['UMOCKDEV_DIR'] = self.testbed.get_root_dir()
+        self.daemon = subprocess.Popen(self.paths['daemon'],
+                                       env=env,
+                                       stdout=self.log,
+                                       stderr=subprocess.STDOUT)
+
+        timeout_count = 100
+        timeout_sleep = 0.1
+        while timeout_count > 0:
+            time.sleep(timeout_sleep)
+            timeout_count -= 1
+            try:
+                self.get_dbus_property('Version')
+                break
+            except GLib.GError:
+                pass
+        else:
+            timeout_time = timeout_count * timeout_sleep
+            self.fail('daemon did not start in %d seconds' % timeout_time)
+
+        self.client = ProxyWrapper(self.dbus, DBUS_IFACE_MANAGER)
+        self.assertEqual(self.daemon.poll(), None, 'daemon crashed')
+
+    def daemon_stop(self):
+
+        if self.daemon:
+            try:
+                self.daemon.kill()
+            except OSError:
+                pass
+            self.daemon.wait()
+
+        self.daemon = None
+        self.client = None
+
+    def test_daemon_basic(self):
+        self.daemon_start()
+        version = self.client.version
+        assert version
+        self.daemon_stop()
+
+
+if __name__ == '__main__':
+    # run ourselves under umockdev
+    if 'umockdev' not in os.environ.get('LD_PRELOAD', ''):
+        os.execvp('umockdev-wrapper', ['umockdev-wrapper'] + sys.argv)
+
+    unittest.main()
