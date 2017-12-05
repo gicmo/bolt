@@ -348,6 +348,82 @@ test_fs (TestIO *tt, gconstpointer user_data)
   g_assert_true (ok);
 }
 
+static void
+test_str (TestRng *tt, gconstpointer user_data)
+{
+  GPtrArray *a = NULL;
+  GStrv r;
+
+  r = bolt_strv_from_ptr_array (NULL);
+  g_assert_null (r);
+
+  r = bolt_strv_from_ptr_array (&a);
+  g_assert_null (r);
+
+  a = g_ptr_array_new ();
+  r = bolt_strv_from_ptr_array (&a);
+  g_assert_nonnull (r);
+  g_assert_null (a);
+
+  g_assert_cmpuint (0U, ==, g_strv_length (r));
+  g_strfreev (r);
+
+  a = g_ptr_array_new ();
+  g_ptr_array_add (a, NULL);
+  r = bolt_strv_from_ptr_array (&a);
+  g_assert_nonnull (r);
+  g_assert_null (a);
+
+  g_assert_cmpuint (0U, ==, g_strv_length (r));
+  g_strfreev (r);
+
+  a = g_ptr_array_new ();
+  g_ptr_array_add (a, g_strdup ("test"));
+  r = bolt_strv_from_ptr_array (&a);
+  g_assert_nonnull (r);
+  g_assert_null (a);
+
+  g_assert_cmpuint (1U, ==, g_strv_length (r));
+  g_assert_true (g_strv_contains ((char const * const * ) r, "test"));
+  g_strfreev (r);
+}
+
+
+static void
+test_str_erase (TestRng *tt, gconstpointer user_data)
+{
+  char buf[256] = {0, };
+  char *d1, *d2, *n0 = NULL;
+  size_t n;
+
+  bolt_get_random_data (buf, sizeof (buf) - 1);
+  d1 = g_strdup (buf);
+  d2 = g_strdup (buf);
+
+  g_assert_nonnull (d2);
+  g_assert_nonnull (d2);
+
+  /* make sure we don't crash on NULL */
+  bolt_str_erase (NULL);
+  bolt_str_erase (n0);
+  bolt_str_erase_clear (&n0);
+
+  bolt_str_erase_clear (&d2);
+  g_assert_null (d2);
+
+  n = strlen (d1);
+  bolt_str_erase (d1);
+  g_assert_cmpstr (d1, !=, buf);
+
+  g_assert_cmpuint (strlen (d1), ==, 0);
+  for (guint i = 0; i < n; i++)
+    g_assert_cmpint (d1[i], ==, 0);
+
+  bolt_erase_n (buf, sizeof (buf));
+  for (guint i = 0; i < n; i++)
+    g_assert_cmpint (buf[i], ==, 0);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -390,6 +466,20 @@ main (int argc, char **argv)
               test_io_setup,
               test_fs,
               test_io_tear_down);
+
+  g_test_add ("/common/str",
+              TestRng,
+              NULL,
+              NULL,
+              test_str,
+              NULL);
+
+  g_test_add ("/common/str/erase",
+              TestRng,
+              NULL,
+              NULL,
+              test_str_erase,
+              NULL);
 
   return g_test_run ();
 }
