@@ -57,3 +57,20 @@ bolt_str_erase_clear (char **str)
   g_free (*str);
   *str = NULL;
 }
+
+GStrv
+bolt_strv_from_ptr_array (GPtrArray **array)
+{
+  GPtrArray *a;
+
+  if (array == NULL || *array == NULL)
+    return NULL;
+
+  a = *array;
+
+  if (a->len == 0 || a->pdata[a->len - 1] != NULL)
+    g_ptr_array_add (a, NULL);
+
+  *array = NULL;
+  return (GStrv) g_ptr_array_free (a, FALSE);
+}
