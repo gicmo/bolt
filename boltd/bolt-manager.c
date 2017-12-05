@@ -1112,6 +1112,7 @@ manager_probing_device_removed (BoltManager        *mgr,
                                 struct udev_device *dev)
 {
   const char *syspath;
+  GPtrArray *roots;
   gboolean found;
   guint index;
 
@@ -1120,10 +1121,16 @@ manager_probing_device_removed (BoltManager        *mgr,
   if (syspath == NULL)
     return;
 
-  found = g_ptr_array_find_with_equal_func (mgr->probing_roots,
-                                            syspath,
-                                            g_str_equal,
-                                            &index);
+  roots = mgr->probing_roots;
+  found = FALSE;
+  for (index = 0; index < roots->len; index++)
+    {
+      const char *r = g_ptr_array_index (roots, index);
+      found = g_str_equal (syspath, r);
+      if (found)
+        break;
+    }
+
   if (!found)
     return;
 
