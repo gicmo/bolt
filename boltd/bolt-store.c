@@ -25,6 +25,7 @@
 #include "bolt-error.h"
 #include "bolt-fs.h"
 #include "bolt-io.h"
+#include "bolt-str.h"
 
 #include <string.h>
 
@@ -205,18 +206,24 @@ GStrv
 bolt_store_list_uids (BoltStore *store,
                       GError   **error)
 {
+  g_autoptr(GError) err = NULL;
   g_autoptr(GDir) dir   = NULL;
   g_autofree char *path = NULL;
-  GPtrArray *ids;
+  g_autoptr(GPtrArray) ids = NULL;
   const char *name;
 
-  path = g_file_get_path (store->devices);
-
-  dir = g_dir_open (path, 0, error);
-  if (dir == NULL)
-    return NULL;
-
   ids = g_ptr_array_new ();
+
+  path = g_file_get_path (store->devices);
+  dir = g_dir_open (path, 0, &err);
+  if (dir == NULL)
+    {
+      if (bolt_err_notfound (err))
+        return bolt_strv_from_ptr_array (&ids);
+
+      g_propagate_error (error, g_steal_pointer (&err));
+      return NULL;
+    }
 
   while ((name = g_dir_read_name (dir)) != NULL)
     {
@@ -226,8 +233,7 @@ bolt_store_list_uids (BoltStore *store,
       g_ptr_array_add (ids, g_strdup (name));
     }
 
-  g_ptr_array_add (ids, NULL);
-  return (GStrv) g_ptr_array_free (ids, FALSE);
+  return bolt_strv_from_ptr_array (&ids);
 }
 
 gboolean
