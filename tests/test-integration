@@ -17,10 +17,14 @@
 # Authors:
 #       Christian J. Kellner <christian@kellner.me>
 
+import binascii
 import os
+import shutil
 import sys
 import subprocess
 import unittest
+import uuid
+import tempfile
 import time
 
 try:
@@ -66,6 +70,131 @@ class ProxyWrapper(object):
         return getattr(self._proxy, name)
 
 
+class Device(object):
+    def __init__(self, name, children=[]):
+        self._parent = None
+        self.children = [self._adopt(c) for c in children]
+        self.udev = None
+        self.name = name
+
+    def _adopt(self, device):
+        device.parent = self
+        return device
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @parent.setter
+    def parent(self, value):
+        self._parent = value
+
+    def connect(self, bed, ctx):
+        pass
+
+    def connect_tree(self, bed, ctx=None):
+        ctx = ctx or None
+        self.udev = self.connect(bed, ctx)
+        for device in self.children:
+            device.connect_tree(bed, ctx)
+
+
+class TbDomain(Device):
+    SECURITY_NONE = 'none'
+    SECURITY_USER = 'user'
+    SECURITY_SECURE = 'secure'
+
+    def __init__(self, security=SECURITY_SECURE, host=None):
+        assert host
+        super(TbDomain, self).__init__('domain', children=[host])
+        self.devices = {}
+        self.device_id = 0
+        self.security = security
+
+    def domain(self):
+        return self
+
+    @property
+    def domain_id(self):
+        return 0
+
+    def register(self, device):
+        device_id = self.device_id
+        self.device_id += 1
+
+        self.devices[device_id] = device
+        return self.domain_id, self.device_id
+
+    def connect(self, bed, ctx):
+        return bed.add_device('thunderbolt',
+                              'domain%d' % self.domain_id,
+                              None,
+                              ['security', self.security],
+                              ['DEVTYPE', 'thunderbolt_domain'])
+
+
+class TbD(Device):
+    def __init__(self, name, authorized=0, vendor=None, uid=None, children=None):
+        super(TbD, self).__init__(name, children or [])
+        self.uuid = uid or uuid.uuid4()
+        self.vendor = vendor or 'GNOME.org'
+        self.device_id = self._make_id(name)
+        self.vendor_id = self._make_id(self.vendor)
+        self.authorized = authorized
+
+    def _make_id(self, name):
+        return '0x%X' % binascii.crc32(name.encode('utf-8'))
+
+    def domain(self):
+        return self.parent.domain()
+
+    def connect(self, bed, ctx):
+        domain = self.domain()
+        dom_id, dev_id = domain.register(self)
+        return bed.add_device('thunderbolt',
+                              "%d-%d" % (dom_id, dev_id),
+                              self.parent.udev,
+                              ['device_name', self.name,
+                               'device', self.device_id,
+                               'vendor_name', self.vendor,
+                               'vendor', self.vendor_id,
+                               'authorized', '%d' % self.authorized,
+                               'key', '',
+                               'unique_id', str(self.uuid)],
+                              ['DEVTYPE', 'thunderbolt_device'])
+
+
+class TbHost(TbD):
+    def __init__(self, children):
+        super(TbHost, self).__init__('Laptop',
+                                     authorized=1,
+                                     uid='3b7d4bad-4fdf-44ff-8730-ffffdeadbabe',
+                                     children=children)
+        self.is_host = True
+
+
+class MockTree(object):
+    def __init__(self, domain):
+        self.domain = domain
+
+    def connect(self, testbed):
+        self.testbed = testbed
+        self.domain.connect_tree(testbed, None)
+
+    @property
+    def devices(self):
+        res = []
+        scan = [self.domain]
+        while len(scan):
+            head, *scan = scan
+            for d in head.children:
+                if not isinstance(d, TbD):
+                    continue
+                res.append(d)
+                scan.append(d)
+        return res
+
+
 class BoltTest(dbusmock.DBusTestCase):
     @classmethod
     def setUpClass(cls):
@@ -104,12 +233,14 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def setUp(self):
         self.testbed = UMockdev.Testbed.new()
+        self.dbpath = tempfile.mkdtemp()
 
         self.client = None
         self.log = None
         self.daemon = None
 
     def tearDown(self):
+        shutil.rmtree(self.dbpath)
         del self.testbed
         self.daemon_stop()
 
@@ -129,6 +260,7 @@ class BoltTest(dbusmock.DBusTestCase):
         env = os.environ.copy()
         env['G_DEBUG'] = 'fatal-criticals'
         env['UMOCKDEV_DIR'] = self.testbed.get_root_dir()
+        env['BOLT_DBPATH'] = self.dbpath
         self.daemon = subprocess.Popen(self.paths['daemon'],
                                        env=env,
                                        stdout=self.log,
@@ -163,10 +295,32 @@ class BoltTest(dbusmock.DBusTestCase):
         self.daemon = None
         self.client = None
 
-    def test_daemon_basic(self):
+    # mock tree stuff
+    def default_mock_tree(self):
+        # default mock tree
+        mt = MockTree(
+            TbDomain(host=TbHost([
+                TbD('Cable'),
+                TbD('Cable'),
+                TbD('Thunderbolt SSD')
+            ]))
+        )
+        return mt
+
+    # the actual tests
+    def test_basic(self):
         self.daemon_start()
         version = self.client.version
         assert version
+        d = self.client.list_devices()
+        self.assertEqual(len(d), 0)
+
+        # connect some device
+        tree = self.default_mock_tree()
+        tree.connect(self.testbed)
+        d = self.client.list_devices()
+        print(d, tree.devices)
+        self.assertEqual(len(d), len(tree.devices))
         self.daemon_stop()
 
 
