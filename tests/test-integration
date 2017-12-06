@@ -183,7 +183,7 @@ class TbDevice(Device):
 
     def __init__(self, name, authorized=0, vendor=None, uid=None, children=None):
         super(TbDevice, self).__init__(name, children or [])
-        self.unique_id = uid or uuid.uuid4()
+        self.unique_id = uid or str(uuid.uuid4())
         self.device_name = 'Thunderbolt ' + name
         self.device = self._make_id(self.device_name)
         self.vendor_name = vendor or 'GNOME.org'
