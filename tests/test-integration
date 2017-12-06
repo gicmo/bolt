@@ -117,11 +117,19 @@ class Device(object):
         i = chain.from_iterable([a, str(getattr(self, a.lower()))] for a in items)
         return list(i)
 
-    def collect(self, predicate=None):
+    def collect(self, predicate):
         children = self.children
-        tail = chain.from_iterable(c.collect(predicate) for c in children if predicate(c))
         head = [self] if predicate(self) else []
-        return head + list(tail)
+        tail = chain.from_iterable(c.collect(predicate) for c in children)
+        return head + list(filter(predicate, tail))
+
+    def first(self, predicate):
+        if predicate(self):
+            return self
+        for c in self.children:
+            found = c.first(predicate)
+            if found:
+                return found
 
     @property
     def parent(self):
@@ -155,16 +163,6 @@ class Device(object):
         bed.uevent(self.syspath, "remove")
         bed.remove_device(self.syspath)
         self.syspath = None
-
-    def tree_do(self, function, order='pre'):
-        if order not in ['pre', 'post']:
-            raise ValueError('Invalid oder: ' + order)
-        if order == 'pre':
-            function(self)
-        for c in self.children:
-            c.tree_do(function, order=order)
-        if order == 'post':
-            function(self)
 
 
 class TbDevice(Device):
@@ -233,6 +231,15 @@ class TbDomain(Device):
     def domain(self):
         return self
 
+    @staticmethod
+    def checkattr(d, k, v):
+        return hasattr(d, k) and getattr(d, k) == v
+
+    def find(self, **kwargs):
+        def finder(d):
+            return all([self.checkattr(d, k, v) for k, v in kwargs.items()])
+
+        return self.first(finder)
 
 # Test Suite
 class BoltTest(dbusmock.DBusTestCase):
@@ -362,14 +369,14 @@ class BoltTest(dbusmock.DBusTestCase):
         # connect all device
         tree = self.default_mock_tree()
         tree.connect_tree(self.testbed)
-        d = self.client.list_devices()
-        self.assertEqual(len(d), len(tree.devices))
-        print(tree.domain.devices)
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), len(tree.devices))
+        self.assertTrue(all(tree.find(unique_id=d.uid) for d in devices))
 
         # disconnect all devices again
         tree.disconnect(self.testbed)
-        d = self.client.list_devices()
-        self.assertEqual(len(d), 0)
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), 0)
         self.daemon_stop()
 
 
