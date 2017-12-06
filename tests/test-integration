@@ -241,6 +241,7 @@ class TbDomain(Device):
 
         return self.first(finder)
 
+
 # Test Suite
 class BoltTest(dbusmock.DBusTestCase):
     @staticmethod
@@ -358,6 +359,21 @@ class BoltTest(dbusmock.DBusTestCase):
         ]))
         return mt
 
+    def assertDeviceEqual(self, local, remote):
+        self.assertTrue(local and remote)
+        self.assertEqual(local.unique_id, remote.uid)
+        self.assertEqual(local.device_name, remote.Name)
+        self.assertEqual(local.vendor_name, remote.Vendor)
+
+        if local.parent is not None and isinstance(local.parent, TbDevice):
+            self.assertEqual(local.parent.unique_id, remote.parent)
+
+        # if we are "connected"
+        if local.syspath is not None:
+            self.assertEqual(local.syspath, remote.sysfs_path)
+
+        return True
+
     # the actual tests
     def test_basic(self):
         self.daemon_start()
@@ -371,7 +387,9 @@ class BoltTest(dbusmock.DBusTestCase):
         tree.connect_tree(self.testbed)
         devices = self.client.list_devices()
         self.assertEqual(len(devices), len(tree.devices))
-        self.assertTrue(all(tree.find(unique_id=d.uid) for d in devices))
+        for remote in devices:
+            local = tree.find(unique_id=remote.uid)
+            self.assertDeviceEqual(local, remote)
 
         # disconnect all devices again
         tree.disconnect(self.testbed)
