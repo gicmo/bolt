@@ -50,18 +50,21 @@ SERVICE_FILE = '/usr/share/dbus-1/system-services/org.freedesktop.bolt.service'
 
 
 class ProxyWrapper(object):
-    def __init__(self, bus, iname):
+    def __init__(self, bus, iname, path):
         self._proxy = Gio.DBusProxy.new_sync(bus,
                                              Gio.DBusProxyFlags.DO_NOT_AUTO_START,
                                              None,
                                              DBUS_NAME,
-                                             DBUS_PATH,
+                                             path,
                                              iname,
                                              None)
 
     def __getattr__(self, name):
-        c = name.split('_')
-        name = "".join(x.title() for x in c)
+        if '_' in name:
+            c = name.split('_')
+            name = "".join(x.title() for x in c)
+        else:
+            name = name[0].upper() + name[1:]
         if name in self._proxy.get_cached_property_names():
             value = self._proxy.get_cached_property(name)
             if value is not None:
@@ -70,6 +73,27 @@ class ProxyWrapper(object):
                 return value
 
         return getattr(self._proxy, name)
+
+
+class BoltDevice(ProxyWrapper):
+    def __init__(self, bus, path):
+        super(BoltDevice, self).__init__(bus,
+                                         DBUS_IFACE_DEVICE,
+                                         path)
+
+
+class BoltClient(ProxyWrapper):
+    def __init__(self, bus):
+        super(BoltClient, self).__init__(bus,
+                                         DBUS_IFACE_MANAGER,
+                                         DBUS_PATH)
+
+    def list_devices(self):
+        devices = self.ListDevices()
+        if devices is None:
+            return None
+        bus = self._proxy.get_connection()
+        return [BoltDevice(bus, d) for d in devices]
 
 
 # Mock Device Tree
@@ -302,7 +326,7 @@ class BoltTest(dbusmock.DBusTestCase):
             timeout_time = timeout_count * timeout_sleep
             self.fail('daemon did not start in %d seconds' % timeout_time)
 
-        self.client = ProxyWrapper(self.dbus, DBUS_IFACE_MANAGER)
+        self.client = BoltClient(self.dbus)
         self.assertEqual(self.daemon.poll(), None, 'daemon crashed')
 
     def daemon_stop(self):
