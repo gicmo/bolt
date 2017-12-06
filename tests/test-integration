@@ -27,6 +27,8 @@ import uuid
 import tempfile
 import time
 
+from itertools import chain
+
 try:
     import gi
     from gi.repository import GLib
@@ -70,16 +72,32 @@ class ProxyWrapper(object):
         return getattr(self._proxy, name)
 
 
+# Mock Device Tree
 class Device(object):
-    def __init__(self, name, children=[]):
+    subsystem = "unknown"
+    udev_attrs = []
+    udev_props = []
+
+    def __init__(self, name, children):
         self._parent = None
         self.children = [self._adopt(c) for c in children]
         self.udev = None
         self.name = name
+        self.syspath = None
 
     def _adopt(self, device):
         device.parent = self
         return device
+
+    def _get_own(self, items):
+        i = chain.from_iterable([a, str(getattr(self, a.lower()))] for a in items)
+        return list(i)
+
+    def collect(self, predicate=None):
+        children = self.children
+        tail = chain.from_iterable(c.collect(predicate) for c in children if predicate(c))
+        head = [self] if predicate(self) else []
+        return head + list(tail)
 
     @property
     def parent(self):
@@ -89,133 +107,137 @@ class Device(object):
     def parent(self, value):
         self._parent = value
 
-    def connect(self, bed, ctx):
-        pass
+    def connect_tree(self, bed):
+        self.connect(bed)
+        for c in self.children:
+            c.connect_tree(bed)
 
-    def connect_tree(self, bed, ctx=None):
-        ctx = ctx or None
-        self.udev = self.connect(bed, ctx)
-        for device in self.children:
-            device.connect_tree(bed, ctx)
+    def connect(self, bed):
+        print('connecting ' + self.name)
+        assert self.syspath is None
+        attributes = self._get_own(self.udev_attrs)
+        properties = self._get_own(self.udev_props)
+        sysparent = self.parent and self.parent.syspath
+        self.syspath = bed.add_device(self.subsystem,
+                                      self.name,
+                                      sysparent,
+                                      attributes,
+                                      properties)
 
+    def disconnect(self, bed):
+        print('disconnecting ' + self.name)
+        for c in self.children:
+            c.disconnect(bed)
+        bed.uevent(self.syspath, "remove")
+        bed.remove_device(self.syspath)
+        self.syspath = None
 
-class TbDomain(Device):
-    SECURITY_NONE = 'none'
-    SECURITY_USER = 'user'
-    SECURITY_SECURE = 'secure'
-
-    def __init__(self, security=SECURITY_SECURE, host=None):
-        assert host
-        super(TbDomain, self).__init__('domain', children=[host])
-        self.devices = {}
-        self.device_id = 0
-        self.security = security
-
-    def domain(self):
-        return self
-
-    @property
-    def domain_id(self):
-        return 0
-
-    def register(self, device):
-        device_id = self.device_id
-        self.device_id += 1
-
-        self.devices[device_id] = device
-        return self.domain_id, self.device_id
-
-    def connect(self, bed, ctx):
-        return bed.add_device('thunderbolt',
-                              'domain%d' % self.domain_id,
-                              None,
-                              ['security', self.security],
-                              ['DEVTYPE', 'thunderbolt_domain'])
+    def tree_do(self, function, order='pre'):
+        if order not in ['pre', 'post']:
+            raise ValueError('Invalid oder: ' + order)
+        if order == 'pre':
+            function(self)
+        for c in self.children:
+            c.tree_do(function, order=order)
+        if order == 'post':
+            function(self)
 
 
-class TbD(Device):
+class TbDevice(Device):
+    subsystem = "thunderbolt"
+    devtype = "thunderbolt_device"
+
+    udev_attrs = ['authorized',
+                  'device',
+                  'device_name',
+                  'key',
+                  'unique_id',
+                  'vendor',
+                  'vendor_name']
+
+    udev_props = ['DEVTYPE']
+
     def __init__(self, name, authorized=0, vendor=None, uid=None, children=None):
-        super(TbD, self).__init__(name, children or [])
-        self.uuid = uid or uuid.uuid4()
-        self.vendor = vendor or 'GNOME.org'
-        self.device_id = self._make_id(name)
-        self.vendor_id = self._make_id(self.vendor)
+        super(TbDevice, self).__init__(name, children or [])
+        self.unique_id = uid or uuid.uuid4()
+        self.device_name = 'Thunderbolt ' + name
+        self.device = self._make_id(self.device_name)
+        self.vendor_name = vendor or 'GNOME.org'
+        self.vendor = self._make_id(self.vendor_name)
         self.authorized = authorized
+        self.key = ""
 
     def _make_id(self, name):
         return '0x%X' % binascii.crc32(name.encode('utf-8'))
 
+    @property
     def domain(self):
-        return self.parent.domain()
-
-    def connect(self, bed, ctx):
-        domain = self.domain()
-        dom_id, dev_id = domain.register(self)
-        return bed.add_device('thunderbolt',
-                              "%d-%d" % (dom_id, dev_id),
-                              self.parent.udev,
-                              ['device_name', self.name,
-                               'device', self.device_id,
-                               'vendor_name', self.vendor,
-                               'vendor', self.vendor_id,
-                               'authorized', '%d' % self.authorized,
-                               'key', '',
-                               'unique_id', str(self.uuid)],
-                              ['DEVTYPE', 'thunderbolt_device'])
+        return self.parent.domain
 
 
-class TbHost(TbD):
+class TbHost(TbDevice):
     def __init__(self, children):
         super(TbHost, self).__init__('Laptop',
                                      authorized=1,
                                      uid='3b7d4bad-4fdf-44ff-8730-ffffdeadbabe',
                                      children=children)
-        self.is_host = True
 
 
-class MockTree(object):
-    def __init__(self, domain):
-        self.domain = domain
+class TbDomain(Device):
+    subsystem = "thunderbolt"
+    devtype = "thunderbolt_domain"
 
-    def connect(self, testbed):
-        self.testbed = testbed
-        self.domain.connect_tree(testbed, None)
+    udev_attrs = ['security']
+    udev_props = ['DEVTYPE']
+
+    SECURITY_NONE = 'none'
+    SECURITY_USER = 'user'
+    SECURITY_SECURE = 'secure'
+
+    def __init__(self, security=SECURITY_SECURE, index=0, host=None):
+        assert host
+        assert isinstance(host, TbHost)
+        name = 'domain%d' % index
+        super(TbDomain, self).__init__(name, children=[host])
+        self.security = security
 
     @property
     def devices(self):
-        res = []
-        scan = [self.domain]
-        while len(scan):
-            head, *scan = scan
-            for d in head.children:
-                if not isinstance(d, TbD):
-                    continue
-                res.append(d)
-                scan.append(d)
-        return res
+        return self.collect(lambda c: isinstance(c, TbDevice))
+
+    @property
+    def domain(self):
+        return self
 
 
+# Test Suite
 class BoltTest(dbusmock.DBusTestCase):
+    @staticmethod
+    def path_from_service_file(sf):
+        with open(SERVICE_FILE) as f:
+                for line in f:
+                    if not line.startswith('Exec='):
+                        continue
+                    return line.split('=', 1)[1].strip()
+        return None
+
     @classmethod
     def setUpClass(cls):
-        cls.paths = {}
+        path = None
         if 'BOLT_BUILD_DIR' in os.environ:
             print('Testing local build')
             build_dir = os.environ['BOLT_BUILD_DIR']
-            cls.paths['daemon'] = os.path.join(build_dir, 'boltd')
+            path = os.path.join(build_dir, 'boltd')
         elif 'UNDER_JHBUILD' in os.environ:
             print('Testing JHBuild version')
             jhbuild_prefix = os.environ['JHBUILD_PREFIX']
-            cls.paths['daemon'] = os.path.join(jhbuild_prefix, 'libexec', 'boltd')
+            path = os.path.join(jhbuild_prefix, 'libexec', 'boltd')
         else:
             print('Testing installed system binaries')
-            with open(SERVICE_FILE) as f:
-                for line in f:
-                    if line.startswith('Exec='):
-                        print('found daemon')
-                        cls.paths['daemon'] = line.split('=', 1)[1].strip()
-                        break
-                assert 'daemon' in cls.paths, 'failed to read daemon path from DBus .service file'
+            path = BoltTest.path_from_service_file(SERVICE_FILE)
+
+        assert path is not None, 'failed to find daemon'
+        cls.paths = {'daemon': path}
 
         cls.test_bus = Gio.TestDBus.new(Gio.TestDBusFlags.NONE)
         cls.test_bus.up()
@@ -266,7 +288,7 @@ class BoltTest(dbusmock.DBusTestCase):
                                        stdout=self.log,
                                        stderr=subprocess.STDOUT)
 
-        timeout_count = 100
+        timeout_count = 5
         timeout_sleep = 0.1
         while timeout_count > 0:
             time.sleep(timeout_sleep)
@@ -298,13 +320,11 @@ class BoltTest(dbusmock.DBusTestCase):
     # mock tree stuff
     def default_mock_tree(self):
         # default mock tree
-        mt = MockTree(
-            TbDomain(host=TbHost([
-                TbD('Cable'),
-                TbD('Cable'),
-                TbD('Thunderbolt SSD')
-            ]))
-        )
+        mt = TbDomain(host=TbHost([
+            TbDevice('Cable1'),
+            TbDevice('Cable2'),
+            TbDevice('SSD1')
+        ]))
         return mt
 
     # the actual tests
@@ -315,12 +335,17 @@ class BoltTest(dbusmock.DBusTestCase):
         d = self.client.list_devices()
         self.assertEqual(len(d), 0)
 
-        # connect some device
+        # connect all device
         tree = self.default_mock_tree()
-        tree.connect(self.testbed)
+        tree.connect_tree(self.testbed)
         d = self.client.list_devices()
-        print(d, tree.devices)
         self.assertEqual(len(d), len(tree.devices))
+        print(tree.domain.devices)
+
+        # disconnect all devices again
+        tree.disconnect(self.testbed)
+        d = self.client.list_devices()
+        self.assertEqual(len(d), 0)
         self.daemon_stop()
 
 
