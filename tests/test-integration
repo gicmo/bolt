@@ -36,10 +36,17 @@ try:
     gi.require_version('UMockdev', '1.0')
     from gi.repository import UMockdev
 
+    import dbus
     import dbusmock
 except ImportError as e:
     sys.stderr.write('Skipping integration test due to missing depdendencies: %s\n' % str(e))
     sys.exit(0)
+
+
+try:
+    from subprocess import DEVNULL
+except ImportError:
+    DEVNULL = open(os.devnull, 'wb')
 
 DBUS_NAME = 'org.freedesktop.bolt'
 DBUS_PATH = '/org/freedesktop/bolt'
@@ -132,10 +139,30 @@ class ProxyWrapper(object):
 
 
 class BoltDevice(ProxyWrapper):
+    DISCONNECTED = 0
+    CONNECTED = 1
+    AUTHORIZING = 2
+    AUTH_ERROR = 3
+    AUTHORIZED = 4
+    AUTHORIZED_SECURE = 5
+    AUTHORIZED_NEWKEY = 6
+
     def __init__(self, bus, path):
         super(BoltDevice, self).__init__(bus,
                                          DBUS_IFACE_DEVICE,
                                          path)
+
+    @property
+    def is_connected(self):
+        return self.status > self.DISCONNECTED
+
+    @property
+    def is_authorized(self):
+        return self.status >= self.AUTHORIZED
+
+    def authorize(self, flags=0):
+        self.Authorize('(u)', flags)
+        return True
 
 
 @Signal.enable
@@ -239,6 +266,7 @@ class Device(object):
                                       attributes,
                                       properties)
         self.root.device_connected(self)
+        self.testbed = bed
 
     def disconnect(self, bed):
         print('disconnecting ' + self.name)
@@ -248,6 +276,7 @@ class Device(object):
         bed.remove_device(self.syspath)
         self.root.device_disconnected(self)
         self.syspath = None
+        self.testbed = None
 
 
 class TbDevice(Device):
@@ -278,8 +307,53 @@ class TbDevice(Device):
         return '0x%X' % binascii.crc32(name.encode('utf-8'))
 
     @property
+    def authorized_file(self):
+        if self.syspath is None:
+            return None
+        return os.path.join(self.syspath, 'authorized')
+
+    @property
+    def bolt_status(self):
+        if self.syspath is None:
+            return BoltDevice.DISCONNECTED
+        elif self.authorized == 0:
+            return BoltDevice.CONNECTED
+        elif self.authorized == 1:
+            if self.key == "":
+                return BoltDevice.AUTHORIZED
+            else:
+                return BoltDevice.AUTHORIZED_NEWKEY
+        elif self.authorized == 2:
+            return BoltDevice.AUTHORIZED_SECURE
+
+    @property
     def domain(self):
         return self.parent.domain
+
+    @staticmethod
+    def is_unauthorized(d):
+        return isinstance(d, TbDevice) and d.authorized == 0
+
+    def connect(self, bed):
+        super(TbDevice, self).connect(bed)
+        f = Gio.file_new_for_path(self.authorized_file)
+        self._auth_monitor = f.monitor(Gio.FileMonitorFlags.NONE, None)
+        self._auth_monitor.connect('changed', self._auth_changed)
+
+    def reload_auth(self):
+        authorized = self.authorized
+        key = self.key
+        with open(self.authorized_file, 'r') as f:
+            data = f.read()
+            self.authorized = int(data)
+        with open(os.path.join(self.syspath, 'key'), 'r') as f:
+            self.key = f.read().strip()
+        if self.authorized != authorized or self.key != key:
+            if self.syspath:
+                self.testbed.uevent(self.syspath, 'change')
+
+    def _auth_changed(self):
+        self.reload_auth()
 
 
 class TbHost(TbDevice):
@@ -457,11 +531,13 @@ class BoltTest(dbusmock.DBusTestCase):
         self.client = None
         self.log = None
         self.daemon = None
+        self.polkitd = None
 
     def tearDown(self):
         shutil.rmtree(self.dbpath)
         del self.testbed
         self.daemon_stop()
+        self.polkitd_stop()
 
     # dbus helper methods
     def get_dbus_property(self, name, interface=DBUS_IFACE_MANAGER):
@@ -514,6 +590,18 @@ class BoltTest(dbusmock.DBusTestCase):
         self.daemon = None
         self.client = None
 
+    def polkitd_start(self):
+        self._polkitd, self._polkitd_obj = self.spawn_server_template(
+            'polkitd', {}, stdout=DEVNULL)
+        self.polkitd = dbus.Interface(self._polkitd_obj, dbusmock.MOCK_IFACE)
+
+    def polkitd_stop(self):
+        if self.polkitd is None:
+            return
+        self._polkitd.terminate()
+        self._polkitd.wait()
+        self.polkitd = None
+
     # mock tree stuff
     def default_mock_tree(self):
         # default mock tree
@@ -536,7 +624,9 @@ class BoltTest(dbusmock.DBusTestCase):
         # if we are "connected"
         if local.syspath is not None:
             self.assertEqual(local.syspath, remote.sysfs_path)
+            self.assertTrue(remote.is_connected)
 
+        self.assertEqual(local.bolt_status, remote.status)
         return True
 
     # the actual tests
@@ -583,6 +673,47 @@ class BoltTest(dbusmock.DBusTestCase):
             remote = self.client.device_by_uid(d.unique_id)
             self.assertIsNotNone(remote)
             self.assertDeviceEqual(d, remote)
+
+        self.daemon_stop()
+
+    def test_device_authorize(self):
+        self.daemon_start()
+        tree = self.default_mock_tree()
+        tree.connect_tree(self.testbed)
+
+        self.polkitd_start()
+
+        to_authorize = tree.collect(TbDevice.is_unauthorized)
+
+        # check that we are not allowed to authorize devices
+        for d in to_authorize:
+            remote = self.client.device_by_uid(d.unique_id)
+            with self.assertRaises(GLib.GError) as cm:
+                remote.authorize()
+            err = cm.exception
+            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+            self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
+
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.authorize'])
+        for d in to_authorize:
+            remote = self.client.device_by_uid(d.unique_id)
+            remote.authorize()
+            d.reload_auth()  # will emit the uevent, so the daemon can update
+            # force a property reload by creating a new proxy
+            remote = self.client.device_by_uid(d.unique_id)
+            count = 0
+            while remote.status == BoltDevice.AUTHORIZING:
+                time.sleep(0.05)
+                count += 1
+                self.assertGreater(20, count)
+                remote = self.client.device_by_uid(d.unique_id)
+
+            self.assertDeviceEqual(d, remote)
+
+        for d in to_authorize:
+            remote = self.client.device_by_uid(d.unique_id)
+            with self.assertRaises(GLib.GError) as cm:
+                remote.authorize()
 
         self.daemon_stop()
 
