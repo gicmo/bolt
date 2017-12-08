@@ -163,6 +163,13 @@ class BoltClient(ProxyWrapper):
         bus = self._proxy.get_connection()
         return [BoltDevice(bus, d) for d in devices]
 
+    def device_by_uid(self, uid):
+        object_path = self.DeviceByUid("(s)", uid)
+        if object_path is None:
+            return None
+        bus = self._proxy.get_connection()
+        return BoltDevice(bus, object_path)
+
 
 # Mock Device Tree
 @Signal.enable
@@ -558,6 +565,25 @@ class BoltTest(dbusmock.DBusTestCase):
 
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 0)
+        self.daemon_stop()
+
+    def test_device_by_uid(self):
+        self.daemon_start()
+
+        with self.assertRaises(GLib.GError):
+            self.client.device_by_uid("")
+
+        with self.assertRaises(GLib.GError):
+            self.client.device_by_uid("nonexistant")
+
+        tree = self.default_mock_tree()
+        tree.connect_tree(self.testbed)
+
+        for d in tree.devices:
+            remote = self.client.device_by_uid(d.unique_id)
+            self.assertIsNotNone(remote)
+            self.assertDeviceEqual(d, remote)
+
         self.daemon_stop()
 
 
