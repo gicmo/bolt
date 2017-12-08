@@ -49,6 +49,58 @@ DBUS_IFACE_DEVICE = DBUS_IFACE_PREFIX + 'Device'
 SERVICE_FILE = '/usr/share/dbus-1/system-services/org.freedesktop.bolt.service'
 
 
+class Signal(object):
+    def __init__(self, name):
+        self.name = name
+        self.callbacks = set()
+
+    def connect(self, callback):
+        self.callbacks.add(callback)
+
+    def disconnect(self, callback):
+        self.callbacks.remove(callback)
+
+    def disconnect_all(self):
+        self.callbacks = set()
+
+    def emit(self, *args, **kwargs):
+        for cb in self.callbacks:
+            cb(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        self.emit(*args, **kwargs)
+
+    def __iadd__(self, callback):
+        self.connect(callback)
+
+    def __idel__(self, callback):
+        self.disconnect(callback)
+
+    @staticmethod
+    def enable(klass):
+        lst = getattr(klass, 'signals', [])
+        methods = [m for m in dir(klass) if not m.startswith('__')]
+
+        def install(l):
+            if l is None:
+                return
+            if l in methods:
+                print('WARNING: signal "%s" will overwrite method' % l)
+
+            def getter(self):
+                return self.signals[l]
+
+            def setter(self, value):
+                return self.signals[l]
+
+            p = property(getter, setter)
+            setattr(klass, l, p)
+            return Signal(l)
+
+        klass.signals = {l: install(l) for l in lst}
+        return klass
+
+
 class ProxyWrapper(object):
     def __init__(self, bus, iname, path):
         self._proxy = Gio.DBusProxy.new_sync(bus,
@@ -74,6 +126,10 @@ class ProxyWrapper(object):
 
         return getattr(self._proxy, name)
 
+    @property
+    def object_path(self):
+        return self._proxy.get_object_path()
+
 
 class BoltDevice(ProxyWrapper):
     def __init__(self, bus, path):
@@ -82,11 +138,23 @@ class BoltDevice(ProxyWrapper):
                                          path)
 
 
+@Signal.enable
 class BoltClient(ProxyWrapper):
+    signals = ['device_added', 'device_removed']
+
     def __init__(self, bus):
         super(BoltClient, self).__init__(bus,
                                          DBUS_IFACE_MANAGER,
                                          DBUS_PATH)
+        self._proxy.connect('g-signal', self._on_dbus_signal)
+
+    def _on_dbus_signal(self, proxy, sender, signal, params):
+        bus = self._proxy.get_connection()
+        # print(self, sender, signal, params)
+        if signal == 'DeviceAdded':
+            self.device_added.emit(BoltDevice(bus, params[0]))
+        elif signal == 'DeviceRemoved':
+            self.device_removed.emit(params[0])
 
     def list_devices(self):
         devices = self.ListDevices()
@@ -97,10 +165,14 @@ class BoltClient(ProxyWrapper):
 
 
 # Mock Device Tree
+@Signal.enable
 class Device(object):
     subsystem = "unknown"
     udev_attrs = []
     udev_props = []
+
+    signals = ['device_connected',
+               'device_disconnected']
 
     def __init__(self, name, children):
         self._parent = None
@@ -139,6 +211,10 @@ class Device(object):
     def parent(self, value):
         self._parent = value
 
+    @property
+    def root(self):
+        return self if self.parent is None else self.parent.root
+
     def connect_tree(self, bed):
         self.connect(bed)
         for c in self.children:
@@ -155,6 +231,7 @@ class Device(object):
                                       sysparent,
                                       attributes,
                                       properties)
+        self.root.device_connected(self)
 
     def disconnect(self, bed):
         print('disconnecting ' + self.name)
@@ -162,6 +239,7 @@ class Device(object):
             c.disconnect(bed)
         bed.uevent(self.syspath, "remove")
         bed.remove_device(self.syspath)
+        self.root.device_disconnected(self)
         self.syspath = None
 
 
@@ -240,6 +318,86 @@ class TbDomain(Device):
             return all([self.checkattr(d, k, v) for k, v in kwargs.items()])
 
         return self.first(finder)
+
+
+class TreeChecker(object):
+
+    def __init__(self, client, tree):
+        self.client = client
+        self.tree = tree
+        self.remote_devices = {}
+        devices = client.list_devices()
+        [self._register_device(d) for d in devices]
+        client.device_added += self._on_device_added
+        client.device_removed += self._on_device_removed
+        tree.device_connected += self._on_udev_connected
+        tree.device_disconnected += self._on_udev_disconnected
+        self.actions = {}
+        self.loop = None
+
+    # signal handler for local (udev) devices
+    def _on_udev_connected(self, dev):
+        if not isinstance(dev, TbDevice):
+            return
+
+        uid = dev.unique_id
+        self.actions[uid] = 'connected'
+
+    def _on_udev_disconnected(self, dev):
+        if not isinstance(dev, TbDevice):
+            return
+        uid = dev.unique_id
+        if uid in self.actions:
+            del self.actions[uid]
+        else:
+            self.actions[uid] = 'disconnected'
+
+    # signal handler for remote devices
+    def _on_device_added(self, dev):
+        self._register_device(dev)
+        self._check_action(dev.uid, 'connected')
+
+    def _on_device_removed(self, object_path):
+        dev = self.remote_devices.get(object_path, None)
+        if dev is None:
+            return
+        self._check_action(dev.uid, 'disconnected')
+        self._unregister_device(dev)
+
+    # book keeping of remote devices
+    def _register_device(self, dev):
+        self.remote_devices[dev.object_path] = dev
+        local = self.tree.find(unique_id=dev.uid)
+        print('register device local -> remote', local, dev)
+        return dev
+
+    def _unregister_device(self, dev):
+        del self.remote_devices[dev.object_path]
+
+    def _check_action(self, uid, action):
+        if self.actions.get(uid, None) != action:
+            return False
+        del self.actions[uid]
+        self._check_sync()
+        return True
+
+    def _check_sync(self):
+        keep_going = len(self.actions) > 0
+        if not keep_going and self.loop is not None:
+            self._stop_loop()
+        return keep_going
+
+    def _stop_loop(self):
+        self.loop.quit()
+        self.loop = None
+
+    def _on_timeout(self):
+        self._stop_loop()
+
+    def sync(self, timeout=3):
+        GLib.timeout_add(timeout*1000, self._on_timeout)
+        self.loop = GLib.MainLoop()
+        self.loop.run()
 
 
 # Test Suite
@@ -384,7 +542,10 @@ class BoltTest(dbusmock.DBusTestCase):
 
         # connect all device
         tree = self.default_mock_tree()
+        chk = TreeChecker(self.client, tree)
         tree.connect_tree(self.testbed)
+        chk.sync()  # check for the signals
+
         devices = self.client.list_devices()
         self.assertEqual(len(devices), len(tree.devices))
         for remote in devices:
@@ -393,6 +554,8 @@ class BoltTest(dbusmock.DBusTestCase):
 
         # disconnect all devices again
         tree.disconnect(self.testbed)
+        chk.sync()  # check for the signals
+
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 0)
         self.daemon_stop()
