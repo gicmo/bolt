@@ -60,28 +60,74 @@ class Signal(object):
     def __init__(self, name):
         self.name = name
         self.callbacks = set()
+        self.notify = None
+        self._bridge = None
 
     def connect(self, callback):
         self.callbacks.add(callback)
+        if self.notify is not None:
+            self.notify(self, 'connect', len(self.callbacks))
+        if len(self.callbacks) == 1:
+            self._bridge_build()
 
     def disconnect(self, callback):
         self.callbacks.remove(callback)
+        if self.notify is not None:
+            self.notify(self, 'disconnect', len(self.callbacks))
+        if len(self.callbacks) == 0:
+            self._bridge_destory()
 
     def disconnect_all(self):
         self.callbacks = set()
+        if self.notify is not None:
+            self.notify(self, 'disconnect', 0)
+        self._bridge_destory()
 
     def emit(self, *args, **kwargs):
-        for cb in self.callbacks:
-            cb(*args, **kwargs)
+        res = [cb(*args, **kwargs) for cb in self.callbacks]
+        return any(res)
+
+    def bridge(self, obj, name, callback):
+        if self._bridge is not None:
+            raise ValueError('already bridged')
+        self._bridge = {'object': obj,
+                        'name': name,
+                        'filter': callback}
+
+    def birdge_destroy(self):
+        self._bridge = None
+
+    def _bridge_build(self):
+        if self._bridge is None:
+            return
+        b = self._bridge
+        signal_id = b['object'].connect(b['name'], self._bridge_signal)
+        b['signal_id'] = signal_id
+
+    def _bridge_destory(self):
+        if self._bridge is None:
+            return
+        b = self._bridge
+        b['object'].disconnect(b['signal_id'])
+        del b['signal_id']
+
+    def _bridge_signal(self, *args, **kwargs):
+        if 'filter' in self._bridge:
+            res, args, kwargs = self._bridge['filter'](args, kwargs)
+            if not res:
+                return
+        return self.emit(*args, **kwargs)
 
     def __call__(self, *args, **kwargs):
-        self.emit(*args, **kwargs)
+        return self.emit(*args, **kwargs)
 
     def __iadd__(self, callback):
         self.connect(callback)
+        return self
 
-    def __idel__(self, callback):
+    def __isub__(self, callback):
         self.disconnect(callback)
+        return self
 
     @staticmethod
     def enable(klass):
@@ -92,23 +138,56 @@ class Signal(object):
             if l is None:
                 return
             if l in methods:
-                print('WARNING: signal "%s" will overwrite method' % l)
+                print('WARNING: signal "%s" will overwrite method' % l, file=sys.stderr)
+
+            def get_signals(self):
+                signals = getattr(self, '__signals', None)
+                if signals is None:
+                    signals = {}
+                    setattr(self, '__signals', signals)
+                return signals
+
+            def get_signal(self):
+                signals = get_signals(self)
+                if l not in signals:
+                    signals[l] = Signal(l)
+                return signals[l]
 
             def getter(self):
-                return self.signals[l]
+                return get_signal(self)
 
             def setter(self, value):
-                return self.signals[l]
+                return get_signal(self)
 
             p = property(getter, setter)
             setattr(klass, l, p)
-            return Signal(l)
+            return l
 
-        klass.signals = {l: install(l) for l in lst}
+        bases = klass.__bases__
+        ps = {s for b in bases for s in getattr(b, 'signals', [])}
+        klass.signals = list(ps.union({install(l) for l in lst}))
         return klass
 
 
+class FileMonitor(object):
+    def __init__(self, path, callback):
+        self.path = Gio.file_new_for_path(path)
+        self.monitor = self.path.monitor(Gio.FileMonitorFlags.NONE, None)
+        self.signal = self.monitor.connect('changed', self._changed)
+        self.callback = callback
+
+    def _changed(self, m, f, o, e):
+        self.callback(e)
+
+    def stop(self):
+        self.monitor.disconnect(self.signal)
+        self.signal = None
+
+
+@Signal.enable
 class ProxyWrapper(object):
+    signals = ['g_properties_changed']
+
     def __init__(self, bus, iname, path):
         self._proxy = Gio.DBusProxy.new_sync(bus,
                                              Gio.DBusProxyFlags.DO_NOT_AUTO_START,
@@ -118,7 +197,16 @@ class ProxyWrapper(object):
                                              iname,
                                              None)
 
+        def props_changed(args, kwargs):
+            return True, [args[1].unpack()], {}
+
+        self.g_properties_changed.bridge(self._proxy,
+                                         'g-properties-changed',
+                                         props_changed)
+
     def __getattr__(self, name):
+        if name.startswith('_'):
+            raise AttributeError
         if '_' in name:
             c = name.split('_')
             name = "".join(x.title() for x in c)
@@ -132,6 +220,33 @@ class ProxyWrapper(object):
                 return value
 
         return getattr(self._proxy, name)
+
+    def wait_for_props(self, arg, timeout=3):
+        if isinstance(arg, str):
+            arg = [arg]
+        elif not (isinstance(arg, list) or isinstance(arg, dict)):
+            raise ValueError('invalid arg type' + str(arg))
+
+        loop = GLib.MainLoop()
+        changed = []
+
+        def props_changed(props):
+            changed.extend(k for k in props.keys())
+            if isinstance(arg, dict):
+                for k in props.keys():
+                    if k in arg and props[k] == arg[k]:
+                        del arg[k]
+            elif isinstance(arg, list):
+                [arg.remove(k) for k in props.keys() if k in arg]
+
+            if len(arg) == 0:
+                loop.quit()
+
+        self.g_properties_changed += props_changed
+        GLib.timeout_add(timeout*1000, lambda: loop.quit())
+        loop.run()
+        self.g_properties_changed -= props_changed
+        return len(arg) == 0, changed
 
     @property
     def object_path(self):
@@ -177,11 +292,13 @@ class BoltClient(ProxyWrapper):
 
     def _on_dbus_signal(self, proxy, sender, signal, params):
         bus = self._proxy.get_connection()
-        # print(self, sender, signal, params)
         if signal == 'DeviceAdded':
             self.device_added.emit(BoltDevice(bus, params[0]))
+            return True
         elif signal == 'DeviceRemoved':
             self.device_removed.emit(params[0])
+            return True
+        return False
 
     def list_devices(self):
         devices = self.ListDevices()
@@ -255,7 +372,7 @@ class Device(object):
             c.connect_tree(bed)
 
     def connect(self, bed):
-        print('connecting ' + self.name)
+        print('connecting ' + self.name, file=sys.stderr)
         assert self.syspath is None
         attributes = self._get_own(self.udev_attrs)
         properties = self._get_own(self.udev_props)
@@ -269,7 +386,7 @@ class Device(object):
         self.testbed = bed
 
     def disconnect(self, bed):
-        print('disconnecting ' + self.name)
+        print('disconnecting ' + self.name, file=sys.stderr)
         for c in self.children:
             c.disconnect(bed)
         bed.uevent(self.syspath, "remove")
@@ -336,13 +453,19 @@ class TbDevice(Device):
 
     def connect(self, bed):
         super(TbDevice, self).connect(bed)
-        f = Gio.file_new_for_path(self.authorized_file)
-        self._auth_monitor = f.monitor(Gio.FileMonitorFlags.NONE, None)
-        self._auth_monitor.connect('changed', self._auth_changed)
+        self._auth_monitor = FileMonitor(self.authorized_file,
+                                         self._auth_changed)
+
+    def disconnect(self, bed):
+        if self._auth_monitor is not None:
+            self._auth_monitor.stop()
+            self._auth_monitor = None
+        super(TbDevice, self).disconnect(bed)
 
     def reload_auth(self):
         authorized = self.authorized
         key = self.key
+        f = self.authorized_file
         with open(self.authorized_file, 'r') as f:
             data = f.read()
             self.authorized = int(data)
@@ -352,7 +475,7 @@ class TbDevice(Device):
             if self.syspath:
                 self.testbed.uevent(self.syspath, 'change')
 
-    def _auth_changed(self):
+    def _auth_changed(self, event):
         self.reload_auth()
 
 
@@ -448,8 +571,6 @@ class TreeChecker(object):
     # book keeping of remote devices
     def _register_device(self, dev):
         self.remote_devices[dev.object_path] = dev
-        local = self.tree.find(unique_id=dev.uid)
-        print('register device local -> remote', local, dev)
         return dev
 
     def _unregister_device(self, dev):
@@ -464,21 +585,30 @@ class TreeChecker(object):
 
     def _check_sync(self):
         keep_going = len(self.actions) > 0
-        if not keep_going and self.loop is not None:
+        if not keep_going:
             self._stop_loop()
         return keep_going
 
     def _stop_loop(self):
+        if self.loop is None:
+            return
         self.loop.quit()
         self.loop = None
 
     def _on_timeout(self):
+        print('WARNING, timeout reached')
         self._stop_loop()
 
     def sync(self, timeout=3):
         GLib.timeout_add(timeout*1000, self._on_timeout)
         self.loop = GLib.MainLoop()
         self.loop.run()
+
+    def close(self):
+        self.client.device_added.disconnect_all()
+        self.client.device_removed.disconnect_all()
+        self.tree.device_connected.disconnect_all()
+        self.tree.device_disconnected.disconnect_all()
 
 
 # Test Suite
@@ -652,6 +782,7 @@ class BoltTest(dbusmock.DBusTestCase):
         # disconnect all devices again
         tree.disconnect(self.testbed)
         chk.sync()  # check for the signals
+        chk.close()
 
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 0)
@@ -699,15 +830,8 @@ class BoltTest(dbusmock.DBusTestCase):
             remote = self.client.device_by_uid(d.unique_id)
             remote.authorize()
             d.reload_auth()  # will emit the uevent, so the daemon can update
-            # force a property reload by creating a new proxy
-            remote = self.client.device_by_uid(d.unique_id)
-            count = 0
-            while remote.status == BoltDevice.AUTHORIZING:
-                time.sleep(0.05)
-                count += 1
-                self.assertGreater(20, count)
-                remote = self.client.device_by_uid(d.unique_id)
-
+            res, _ = remote.wait_for_props({'Status': BoltDevice.AUTHORIZED})
+            self.assertTrue(res)
             self.assertDeviceEqual(d, remote)
 
         for d in to_authorize:
@@ -723,4 +847,4 @@ if __name__ == '__main__':
     if 'umockdev' not in os.environ.get('LD_PRELOAD', ''):
         os.execvp('umockdev-wrapper', ['umockdev-wrapper'] + sys.argv)
 
-    unittest.main()
+    unittest.main(verbosity=2)
