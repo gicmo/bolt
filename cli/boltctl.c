@@ -23,6 +23,7 @@
 #include "bolt-client.h"
 #include "bolt-enums.h"
 #include "bolt-error.h"
+#include "bolt-str.h"
 #include "bolt-term.h"
 
 #include <gio/gio.h>
@@ -323,17 +324,61 @@ info (BoltClient *client, int argc, char **argv)
 }
 
 static void
+handle_device_changed (GObject    *gobject,
+                       GParamSpec *pspec,
+                       gpointer    user_data)
+{
+  g_autofree char *uid = NULL;
+  g_autofree char *dev_name = NULL;
+  g_autofree char *val = NULL;
+
+  BoltDevice *dev = BOLT_DEVICE (gobject);
+  const char *prop_name;
+  GValue prop_val =  G_VALUE_INIT;
+  GValue str_val = G_VALUE_INIT;
+
+  g_object_get (dev,
+                "uid", &uid,
+                "name", &dev_name,
+                NULL);
+
+  prop_name = g_param_spec_get_name (pspec);
+
+  g_value_init (&prop_val, G_PARAM_SPEC_VALUE_TYPE (pspec));
+  g_value_init (&str_val, G_TYPE_STRING);
+
+  g_object_get_property (G_OBJECT (dev), prop_name, &prop_val);
+  g_print ("[%s] %30s | %10s -> ", uid, dev_name, prop_name);
+
+  if (g_value_transform (&prop_val, &str_val))
+    val = g_value_dup_string (&str_val);
+  else
+    val = g_strdup_value_contents (&prop_val);
+
+  g_print ("%s\n", val);
+
+  g_value_unset (&str_val);
+  g_value_unset (&prop_val);
+}
+
+static void
 handle_device_added (BoltClient *cli,
                      BoltDevice *dev,
                      gpointer    user_data)
 {
   g_autofree char *path = NULL;
+  GPtrArray *devices = user_data;
 
   g_object_get (dev,
                 "object-path", &path,
                 NULL);
 
   g_print (" DeviceAdded: %s\n", path);
+
+  g_ptr_array_add (devices, g_object_ref (dev));
+  g_signal_connect (dev, "notify",
+                    G_CALLBACK (handle_device_changed),
+                    NULL);
 }
 
 static void
@@ -341,7 +386,48 @@ handle_device_removed (BoltClient *cli,
                        const char *opath,
                        gpointer    user_data)
 {
+  GPtrArray *devices = user_data;
+  BoltDevice *device = NULL;
+
   g_print (" DeviceRemoved: %s\n", opath);
+
+  for (guint i = 0; i < devices->len; i++)
+    {
+      BoltDevice *dev = g_ptr_array_index (devices, i);
+      const char *dev_opath = bolt_proxy_get_object_path (BOLT_PROXY (dev));
+
+      if (bolt_streq (opath, dev_opath))
+        {
+          device = dev;
+          break;
+        }
+    }
+
+  if (device == NULL)
+    {
+      g_warning ("DeviceRemoved signal for unknown device: %s", opath);
+      return;
+    }
+
+  g_signal_handlers_block_by_func (device, handle_device_changed, devices);
+  g_ptr_array_remove_fast (devices, device);
+}
+
+static void
+handle_probing_changed (BoltClient *client,
+                        GParamSpec *pspec,
+                        gpointer    user_data)
+{
+  gboolean probing;
+
+  g_object_get (client,
+                "probing", &probing,
+                NULL);
+
+  if (probing)
+    g_print ("Probing started\n");
+  else
+    g_print ("Probing done\n");
 }
 
 static int
@@ -350,6 +436,7 @@ monitor (BoltClient *client, int argc, char **argv)
   g_autoptr(GOptionContext) optctx = NULL;
   g_autoptr(GError) error = NULL;
   g_autoptr(GMainLoop) main_loop = NULL;
+  g_autoptr(GPtrArray) devices = NULL;
   guint version = 0;
 
   optctx = g_option_context_new ("- Watch for changes");
@@ -361,15 +448,37 @@ monitor (BoltClient *client, int argc, char **argv)
   g_print ("Daemon Version: %d.%u\n", VERSION_MAJOR, version);
   g_print ("Ready\n");
 
-  main_loop = g_main_loop_new (NULL, FALSE);
+  devices = bolt_client_list_devices (client, &error);
+
+  if (devices == NULL)
+    {
+      g_warning ("Could not list devices: %s", error->message);
+      devices = g_ptr_array_new_with_free_func (g_object_unref);
+    }
+
+  for (guint i = 0; i < devices->len; i++)
+    {
+      BoltDevice *dev = g_ptr_array_index (devices, i);
+      g_signal_connect (dev, "notify",
+                        G_CALLBACK (handle_device_changed),
+                        NULL);
+    }
 
   g_signal_connect (client, "device-added",
-                    G_CALLBACK (handle_device_added), NULL);
+                    G_CALLBACK (handle_device_added), devices);
 
   g_signal_connect (client, "device-removed",
-                    G_CALLBACK (handle_device_removed), NULL);
+                    G_CALLBACK (handle_device_removed), devices);
 
+  g_signal_connect (client, "notify::probing",
+                    G_CALLBACK (handle_probing_changed), NULL);
+
+  main_loop = g_main_loop_new (NULL, FALSE);
   g_main_loop_run (main_loop);
+
+  g_signal_handlers_disconnect_by_func (client,
+                                        G_CALLBACK (handle_probing_changed),
+                                        NULL);
 
   return EXIT_SUCCESS;
 }
