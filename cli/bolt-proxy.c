@@ -221,7 +221,7 @@ bolt_proxy_handle_props_changed (GDBusProxy *proxy,
   g_variant_get (changed_properties, "a{sv}", &iter);
   while (g_variant_iter_next (iter, "{&sv}", &key, NULL))
     {
-      for (guint i = 0; handled && i < n; i++)
+      for (guint i = 0; !handled && i < n; i++)
         {
           const BoltProxyProp *prop = &pp[i];
           const char *name = prop->theirs;
