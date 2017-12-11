@@ -249,5 +249,8 @@ bolt_key_load_file (GFile   *file,
 BoltKeyState
 bolt_key_get_state (BoltKey *key)
 {
+  if (key == NULL)
+    return BOLT_KEY_MISSING;
+
   return key->fresh ? BOLT_KEY_NEW : BOLT_KEY_HAVE;
 }
