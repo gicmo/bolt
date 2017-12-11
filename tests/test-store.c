@@ -221,12 +221,14 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   ok = bolt_store_del_device (tt->store, "transmogrifier", &error);
   g_assert_nonnull (error);
   g_assert_true (bolt_err_notfound (error));
+  g_assert_false (ok);
   g_clear_error (&error);
   g_assert_no_error (error);
 
   ok = bolt_store_del_key (tt->store, "sesamoeffnedich", &error);
   g_assert_nonnull (error);
   g_assert_true (bolt_err_notfound (error));
+  g_assert_false (ok);
   g_clear_error (&error);
   g_assert_no_error (error);
 
@@ -246,6 +248,7 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   ok = bolt_store_del_device (tt->store, uid, &error);
   g_assert_nonnull (error);
   g_assert_true (bolt_err_notfound (error));
+  g_assert_false (ok);
   g_clear_error (&error);
   g_assert_no_error (error);
 
@@ -255,6 +258,7 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   ok = bolt_store_del_key (tt->store, uid, &error);
   g_assert_nonnull (error);
   g_assert_true (bolt_err_notfound (error));
+  g_assert_false (ok);
   g_clear_error (&error);
   g_assert_no_error (error);
 
