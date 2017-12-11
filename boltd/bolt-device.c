@@ -621,11 +621,10 @@ authorize_thread_done (GObject      *object,
   ok = g_task_propagate_boolean (task, &error);
 
   if (!ok)
-    {
-      status = BOLT_STATUS_AUTH_ERROR;
-      g_object_set (dev, "status", status, NULL);
-      bolt_auth_return_error (auth, &error);
-    }
+    bolt_auth_return_error (auth, &error);
+
+  status = bolt_auth_to_status (auth);
+  g_object_set (dev, "status", status, NULL);
 
   if (auth_data->callback)
     auth_data->callback (G_OBJECT (dev),
