@@ -303,3 +303,29 @@ bolt_auth_get_origin (BoltAuth *auth)
 {
   return auth->origin;
 }
+
+BoltStatus
+bolt_auth_to_status (BoltAuth *auth)
+{
+  g_return_val_if_fail (BOLT_IS_AUTH (auth), BOLT_STATUS_INVALID);
+
+  if (auth->error != NULL)
+    {
+      return BOLT_STATUS_AUTH_ERROR;
+    }
+  else if (auth->level == BOLT_SECURITY_SECURE)
+    {
+      return BOLT_STATUS_AUTHORIZED_SECURE;
+    }
+  else if (auth->level == BOLT_SECURITY_USER)
+    {
+      BoltKeyState ks = bolt_key_get_state (auth->key);
+
+      if (ks == BOLT_KEY_NEW)
+        return BOLT_STATUS_AUTHORIZED_NEWKEY;
+      else
+        return BOLT_STATUS_AUTHORIZED;
+    }
+
+  return BOLT_STATUS_INVALID;
+}

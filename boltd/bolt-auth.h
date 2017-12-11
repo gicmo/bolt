@@ -52,5 +52,7 @@ BoltKey *        bolt_auth_get_key (BoltAuth *auth);
 
 gpointer         bolt_auth_get_origin (BoltAuth *auth);
 
+BoltStatus       bolt_auth_to_status (BoltAuth *auth);
+
 
 G_END_DECLS
