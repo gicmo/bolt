@@ -30,6 +30,7 @@
 #include <libudev.h>
 #include <string.h>
 
+#define MSEC_PER_USEC 1000LL
 #define PROBING_SETTLE_TIME_MS 2000 /* in milli-seconds */
 
 typedef struct udev_monitor udev_monitor;
@@ -1004,7 +1005,7 @@ probing_timeout (gpointer user_data)
 
   /* dt is in microseconds, probing timeout in
    * milli seconds  */
-  timeout = mgr->probing_tsettle * 1000;
+  timeout = mgr->probing_tsettle * MSEC_PER_USEC;
   if (dt < timeout)
     return G_SOURCE_CONTINUE;
 
