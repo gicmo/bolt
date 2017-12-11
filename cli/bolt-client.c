@@ -42,6 +42,7 @@ enum {
 
   /* D-Bus Props */
   PROP_VERSION,
+  PROP_PROBING,
 
   PROP_LAST
 };
@@ -77,6 +78,7 @@ bolt_client_get_dbus_props (guint *n)
 {
   static BoltProxyProp dbus_props[] = {
     {"Version", "version", PROP_VERSION},
+    {"Probing", "probing", PROP_PROBING},
   };
 
   *n = G_N_ELEMENTS (dbus_props);
@@ -116,6 +118,13 @@ bolt_client_class_init (BoltClientClass *klass)
                          0, G_MAXUINT, 0,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NAME);
+
+    props[PROP_PROBING]
+    = g_param_spec_boolean ("probing",
+                            NULL, NULL,
+                            FALSE,
+                            G_PARAM_READABLE |
+                            G_PARAM_STATIC_NAME);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
