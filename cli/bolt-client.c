@@ -199,6 +199,7 @@ handle_dbus_device_added (GObject *self, GDBusProxy *bus_proxy, GVariant *params
     }
 
   g_signal_emit (cli, signals[SIGNAL_DEVICE_ADDED], 0, dev);
+  g_object_unref (dev);
 }
 
 static void
