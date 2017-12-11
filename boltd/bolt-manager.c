@@ -1367,11 +1367,14 @@ bolt_manager_export (BoltManager     *mgr,
       const char *opath;
 
       uid = bolt_device_get_uid (dev);
-      opath = bolt_device_export (dev, connection, error);
+      opath = bolt_device_export (dev, connection, &err);
       if (opath == NULL)
-        g_warning ("[%s] error exporting: %s", uid, err->message);
-      else
-        g_debug ("[%s] exporting device: %s", uid, opath);
+        {
+          g_warning ("[%s] error exporting: %s", uid, err->message);
+          continue;
+        }
+
+      g_debug ("[%s] exporting device: %s", uid, opath);
     }
 
   return TRUE;
