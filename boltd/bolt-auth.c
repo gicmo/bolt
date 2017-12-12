@@ -315,7 +315,12 @@ bolt_auth_to_status (BoltAuth *auth)
     }
   else if (auth->level == BOLT_SECURITY_SECURE)
     {
-      return BOLT_STATUS_AUTHORIZED_SECURE;
+      BoltKeyState ks = bolt_key_get_state (auth->key);
+
+      if (ks == BOLT_KEY_NEW)
+        return BOLT_STATUS_AUTHORIZED_NEWKEY;
+      else
+        return BOLT_STATUS_AUTHORIZED_SECURE;
     }
   else if (auth->level == BOLT_SECURITY_USER)
     {
