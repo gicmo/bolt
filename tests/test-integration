@@ -27,6 +27,7 @@ import uuid
 import tempfile
 import time
 
+from collections import namedtuple
 from itertools import chain
 
 try:
@@ -185,6 +186,82 @@ class FileMonitor(object):
 
 
 @Signal.enable
+class Recorder(object):
+    Event = namedtuple('Event', ['what', 'name', 'details', 'time'])
+
+    signals = ['event']
+
+    def __init__(self, target):
+        self.recording = True
+        self.events = []
+        self.target = target
+        self.target.g_properties_changed += self._on_props_changed
+
+    def close(self):
+        if not self.recording:
+            return
+        self.target.g_properties_changed -= self._on_props_changed
+        self.recording = False
+        return self.events
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def _on_props_changed(self, props):
+        now = time.time()
+        for k, v in props.items():
+            e = self.Event('property', k, v, now)
+            self._add_event(e)
+
+    def _add_event(self, event):
+        self.events.append(event)
+        self.event.emit(event)
+
+    @staticmethod
+    def event_match(e, target):
+        if e.what != target.what or e.name != target.name:
+            return False
+        if target.details is None:
+            return True
+        return e.details == target.details
+
+    def events(self, what, name, details=None):
+        t = self.Event(what, name, details, None)
+        return list(filter(self.event_match(t), self.events))
+
+    def have_event(self, what, name, details=None):
+        return len(self.events(what, name, details=details)) > 0
+
+    def wait_for_events(self, lst, timeout=3):
+        loop = GLib.MainLoop()
+
+        def got_event(event):
+            for idx, e in enumerate(lst):
+                if self.event_match(e, event):
+                    del lst[idx]
+                    break
+            if len(lst) == 0:
+                loop.quit()
+
+        def got_timeout():
+            print('WARNING: timeout reached! Waiting list: ', str(lst))
+            loop.quit()
+
+        self.event += got_event
+        GLib.timeout_add(timeout*1000, got_timeout)
+        loop.run()
+        self.event -= got_event
+        return len(lst) == 0
+
+    def wait_for_event(self, what, name, details=None):
+        t = self.Event(what, name, details, None)
+        return self.wait_for_events([t])
+
+
+@Signal.enable
 class ProxyWrapper(object):
     signals = ['g_properties_changed']
 
@@ -221,32 +298,8 @@ class ProxyWrapper(object):
 
         return getattr(self._proxy, name)
 
-    def wait_for_props(self, arg, timeout=3):
-        if isinstance(arg, str):
-            arg = [arg]
-        elif not (isinstance(arg, list) or isinstance(arg, dict)):
-            raise ValueError('invalid arg type' + str(arg))
-
-        loop = GLib.MainLoop()
-        changed = []
-
-        def props_changed(props):
-            changed.extend(k for k in props.keys())
-            if isinstance(arg, dict):
-                for k in props.keys():
-                    if k in arg and props[k] == arg[k]:
-                        del arg[k]
-            elif isinstance(arg, list):
-                [arg.remove(k) for k in props.keys() if k in arg]
-
-            if len(arg) == 0:
-                loop.quit()
-
-        self.g_properties_changed += props_changed
-        GLib.timeout_add(timeout*1000, lambda: loop.quit())
-        loop.run()
-        self.g_properties_changed -= props_changed
-        return len(arg) == 0, changed
+    def record(self):
+        return Recorder(self)
 
     @property
     def object_path(self):
@@ -828,11 +881,13 @@ class BoltTest(dbusmock.DBusTestCase):
         self.polkitd.SetAllowed(['org.freedesktop.bolt.authorize'])
         for d in to_authorize:
             remote = self.client.device_by_uid(d.unique_id)
+            tape = remote.record()
             remote.authorize()
             d.reload_auth()  # will emit the uevent, so the daemon can update
-            res, _ = remote.wait_for_props({'Status': BoltDevice.AUTHORIZED})
+            res = tape.wait_for_event('property', 'Status', BoltDevice.AUTHORIZED)
             self.assertTrue(res)
             self.assertDeviceEqual(d, remote)
+            tape.close()
 
         for d in to_authorize:
             remote = self.client.device_by_uid(d.unique_id)
