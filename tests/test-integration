@@ -444,6 +444,8 @@ class Device(object):
             c.disconnect(bed)
         bed.uevent(self.syspath, "remove")
         bed.remove_device(self.syspath)
+        self.authorized = 0
+        self.key = ""
         self.root.device_disconnected(self)
         self.syspath = None
         self.testbed = None
@@ -538,6 +540,10 @@ class TbHost(TbDevice):
                                      authorized=1,
                                      uid='3b7d4bad-4fdf-44ff-8730-ffffdeadbabe',
                                      children=children)
+
+    def connect(self, bed):
+        self.authorized = 1
+        super(TbHost, self).connect(bed)
 
 
 class TbDomain(Device):
