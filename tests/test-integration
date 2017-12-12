@@ -807,13 +807,14 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(local.device_name, remote.Name)
         self.assertEqual(local.vendor_name, remote.Vendor)
 
-        if local.parent is not None and isinstance(local.parent, TbDevice):
-            self.assertEqual(local.parent.unique_id, remote.parent)
-
         # if we are "connected"
         if local.syspath is not None:
             self.assertEqual(local.syspath, remote.sysfs_path)
             self.assertTrue(remote.is_connected)
+
+            # remote.parent is also only valid if we are connected
+            if local.parent is not None and isinstance(local.parent, TbDevice):
+                self.assertEqual(local.parent.unique_id, remote.parent)
 
         self.assertEqual(local.bolt_status, remote.status)
         return True
