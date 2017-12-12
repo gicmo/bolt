@@ -247,7 +247,8 @@ class Recorder(object):
                 loop.quit()
 
         def got_timeout():
-            print('WARNING: timeout reached! Waiting list: ', str(lst))
+            print('WARNING: timeout reached! Waiting list: ',
+                  str(lst), file=sys.stderr)
             loop.quit()
 
         self.event += got_event
@@ -315,6 +316,10 @@ class BoltDevice(ProxyWrapper):
     AUTHORIZED_SECURE = 5
     AUTHORIZED_NEWKEY = 6
 
+    KEY_MISSING = 0
+    KEY_HAVE = 1
+    KEY_NEW = 2
+
     def __init__(self, bus, path):
         super(BoltDevice, self).__init__(bus,
                                          DBUS_IFACE_DEVICE,
@@ -336,6 +341,10 @@ class BoltDevice(ProxyWrapper):
 @Signal.enable
 class BoltClient(ProxyWrapper):
     signals = ['device_added', 'device_removed']
+
+    POLICY_DEFAULT = 0
+    POLICY_MANUAL = 1
+    POLICY_AUTO = 2
 
     def __init__(self, bus):
         super(BoltClient, self).__init__(bus,
@@ -362,6 +371,13 @@ class BoltClient(ProxyWrapper):
 
     def device_by_uid(self, uid):
         object_path = self.DeviceByUid("(s)", uid)
+        if object_path is None:
+            return None
+        bus = self._proxy.get_connection()
+        return BoltDevice(bus, object_path)
+
+    def enroll(self, uid, policy=POLICY_DEFAULT, flags=0):
+        object_path = self.EnrollDevice("(suu)", uid, policy, flags)
         if object_path is None:
             return None
         bus = self._proxy.get_connection()
@@ -655,7 +671,7 @@ class TreeChecker(object):
         self.loop = None
 
     def _on_timeout(self):
-        print('WARNING, timeout reached')
+        print('WARNING, timeout reached', file=sys.stderr)
         self._stop_loop()
 
     def sync(self, timeout=3):
@@ -902,6 +918,79 @@ class BoltTest(dbusmock.DBusTestCase):
                 remote.authorize()
 
         self.daemon_stop()
+
+    def test_device_enroll(self):
+        self.daemon_start()
+        tree = self.default_mock_tree()
+        tree.connect_tree(self.testbed)
+        self.polkitd_start()
+
+        client = self.client
+
+        to_enroll = tree.collect(TbDevice.is_unauthorized)
+
+        # check that we are not allowed to enroll devices, i.e. the correct
+        # policykit action is called.
+
+        for d in to_enroll:
+            with self.assertRaises(GLib.GError) as cm:
+                client.enroll(d.unique_id)
+            err = cm.exception
+            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+            self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
+
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.enroll'])
+
+        # check we get a proper error for a unknown device
+        with self.assertRaises(GLib.GError) as cm:
+            # non-existent uuid
+            client.forget("884c6edd-7118-4b21-b186-b02d396ecca0")
+
+        policy = BoltClient.POLICY_AUTO
+        for d in to_enroll:
+            remote = client.enroll(d.unique_id, policy)
+            d.reload_auth()  # will emit the uevent, so the daemon can update
+            # the security level for the domain is SECURE, which means we should
+            # have authorized via a new key:
+            #  status should be AUTHORIZED_NEWKEY
+            #  stored should be True
+            #  key(state) should be KEY_NEW
+            self.assertDeviceEqual(d, remote)
+            self.assertTrue(remote.stored, True)
+            self.assertEqual(remote.key, BoltDevice.KEY_NEW)
+            self.assertEqual(remote.policy, policy)
+
+        # we disconnect the tree, but since the devices are connected
+        # the daemon should have them in its database now
+        tree.disconnect(self.testbed)
+
+        devices = self.client.list_devices()
+
+        # the host itself is not stored in the daemon
+        expected_number = len(tree.devices) - 1
+        self.assertEqual(len(devices), expected_number)
+
+        tree.connect(self.testbed)              # we connect the domain again
+        tree.children[0].connect(self.testbed)  # and the host too
+
+        for remote in devices:
+            local = tree.find(unique_id=remote.uid)
+            self.assertDeviceEqual(local, remote)
+            self.assertTrue(remote.stored, True)
+            # key status should have changed to HAVE from NEW
+            self.assertEqual(remote.key, BoltDevice.KEY_HAVE)
+            self.assertEqual(remote.policy, policy)
+
+            # now we connect that specific device and wait for
+            # the property changes
+            with remote.record() as tape:
+                local.connect(self.testbed)
+                res = tape.wait_for_event('property',
+                                          'Status',
+                                          BoltDevice.AUTHORIZED_SECURE)
+                local.reload_auth()  # will emit the uevent, so the daemon can update
+                self.assertTrue(res)
+                self.assertDeviceEqual(local, remote)
 
 
 if __name__ == '__main__':
