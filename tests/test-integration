@@ -368,6 +368,10 @@ class BoltClient(ProxyWrapper):
         bus = self._proxy.get_connection()
         return BoltDevice(bus, object_path)
 
+    def forget(self, uid):
+        self.ForgetDevice("(s)", uid)
+        return True
+
 
 # Mock Device Tree
 @Signal.enable
@@ -962,6 +966,50 @@ class BoltTest(dbusmock.DBusTestCase):
                 local.reload_auth()  # will emit the uevent, so the daemon can update
                 self.assertTrue(res)
                 self.assertDeviceEqual(local, remote)
+
+    def test_device_forget(self):
+        self.daemon_start()
+        tree = self.default_mock_tree()
+        self.polkitd_start()
+        tree.connect_tree(self.testbed)
+
+        client = self.client
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.enroll'])
+
+        to_enroll = tree.collect(TbDevice.is_unauthorized)
+        policy = BoltClient.POLICY_MANUAL
+        for d in to_enroll:
+            remote = client.enroll(d.unique_id, policy)
+            d.reload_auth()
+            self.assertDeviceEqual(d, remote)
+            self.assertTrue(remote.stored, True)
+            self.assertEqual(remote.key, BoltDevice.KEY_NEW)
+            self.assertEqual(remote.policy, policy)
+
+        tree.disconnect(self.testbed)
+        devices = self.client.list_devices()
+        expected_number = len(tree.devices) - 1  # host is not stored
+        self.assertEqual(len(devices), expected_number)
+
+        for remote in devices:
+            with self.assertRaises(GLib.GError) as cm:
+                client.forget(d.unique_id)
+            err = cm.exception
+            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+            self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
+
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.manage'])
+
+        # check we get a proper error for a unknown device
+        with self.assertRaises(GLib.GError) as cm:
+            # non-existent uuid
+            client.forget("884c6edd-7118-4b21-b186-b02d396ecca0")
+
+        for remote in devices:
+            client.forget(remote.uid)
+
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), 0)
 
 
 if __name__ == '__main__':
