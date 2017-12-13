@@ -10,6 +10,10 @@ RUN dnf --enablerepo=updates-testing -y install \
     libgudev-devel \
     meson \
     polkit-devel \
+    python3 \
+    python3-dbus \
+    python3-dbusmock \
+    python3-gobject \
     rpm-build \
     redhat-rpm-config \
     systemd-devel \
