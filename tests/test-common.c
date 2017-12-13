@@ -236,8 +236,8 @@ test_io_setup (TestIO *tt, gconstpointer user_data)
 static void
 test_io_tear_down (TestIO *tt, gconstpointer user_data)
 {
-  g_autoptr(DIR) d = NULL;
   g_autoptr(GError) error = NULL;
+  DIR *d = NULL;
 
   d = bolt_opendir (tt->path, &error);
 
@@ -245,11 +245,14 @@ test_io_tear_down (TestIO *tt, gconstpointer user_data)
     {
       g_debug ("Cleaning up: %s", tt->path);
       cleanup_dir (d);
+      bolt_closedir (d, NULL);
+      bolt_rmdir (tt->path, &error);
     }
   else if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
     {
       g_warning ("Could not clean up dir: %s", error->message);
     }
+
 }
 
 
