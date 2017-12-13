@@ -170,21 +170,6 @@ class Signal(object):
         return klass
 
 
-class FileMonitor(object):
-    def __init__(self, path, callback):
-        self.path = Gio.file_new_for_path(path)
-        self.monitor = self.path.monitor(Gio.FileMonitorFlags.NONE, None)
-        self.signal = self.monitor.connect('changed', self._changed)
-        self.callback = callback
-
-    def _changed(self, m, f, o, e):
-        self.callback(e)
-
-    def stop(self):
-        self.monitor.disconnect(self.signal)
-        self.signal = None
-
-
 @Signal.enable
 class Recorder(object):
     Event = namedtuple('Event', ['what', 'name', 'details', 'time'])
@@ -522,17 +507,6 @@ class TbDevice(Device):
     def is_unauthorized(d):
         return isinstance(d, TbDevice) and d.authorized == 0
 
-    def connect(self, bed):
-        super(TbDevice, self).connect(bed)
-        self._auth_monitor = FileMonitor(self.authorized_file,
-                                         self._auth_changed)
-
-    def disconnect(self, bed):
-        if self._auth_monitor is not None:
-            self._auth_monitor.stop()
-            self._auth_monitor = None
-        super(TbDevice, self).disconnect(bed)
-
     def reload_auth(self):
         authorized = self.authorized
         key = self.key
@@ -545,9 +519,6 @@ class TbDevice(Device):
         if self.authorized != authorized or self.key != key:
             if self.syspath:
                 self.testbed.uevent(self.syspath, 'change')
-
-    def _auth_changed(self, event):
-        self.reload_auth()
 
 
 class TbHost(TbDevice):
