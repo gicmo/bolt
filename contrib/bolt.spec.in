@@ -46,6 +46,7 @@ devices.
 
 %files
 %defattr(-,root,root,-)
+%license COPYING
 %doc README.md
 %{_bindir}/boltctl
 %{_libexecdir}/boltd
