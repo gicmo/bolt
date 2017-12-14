@@ -246,7 +246,7 @@ bolt_client_list_devices (BoltClient *client,
 {
   g_autoptr(GVariant) val = NULL;
   g_autoptr(GPtrArray) devices = NULL;
-  GVariantIter *iter = NULL;
+  g_autoptr(GVariantIter) iter = NULL;
   GDBusConnection *bus = NULL;
   const char *d;
   GDBusProxy *proxy;
