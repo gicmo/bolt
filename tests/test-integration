@@ -57,6 +57,25 @@ DBUS_IFACE_DEVICE = DBUS_IFACE_PREFIX + 'Device'
 SERVICE_FILE = '/usr/share/dbus-1/system-services/org.freedesktop.bolt.service'
 
 
+def get_timeout(topic='default'):
+    vals = {
+        'valgrind': {
+            'default': 20,
+            'daemon_start': 60
+        },
+        'default': {
+            'default': 3,
+            'daemon_start': 5
+        }
+    }
+
+    valgrind = os.getenv('VALGRIND')
+    lut = vals['valgrind' if valgrind is not None else 'default']
+    if topic not in lut:
+        raise ValueError('invalid topic')
+    return lut[topic]
+
+
 class Signal(object):
     def __init__(self, name):
         self.name = name
@@ -220,7 +239,7 @@ class Recorder(object):
     def have_event(self, what, name, details=None):
         return len(self.events(what, name, details=details)) > 0
 
-    def wait_for_events(self, lst, timeout=3):
+    def wait_for_events(self, lst, timeout=None):
         loop = GLib.MainLoop()
 
         def got_event(event):
@@ -237,6 +256,7 @@ class Recorder(object):
             loop.quit()
 
         self.event += got_event
+        timeout = timeout or get_timeout()
         GLib.timeout_add(timeout*1000, got_timeout)
         loop.run()
         self.event -= got_event
@@ -649,7 +669,8 @@ class TreeChecker(object):
         print('WARNING, timeout reached', file=sys.stderr)
         self._stop_loop()
 
-    def sync(self, timeout=3):
+    def sync(self, timeout=None):
+        timeout = timeout or get_timeout()
         GLib.timeout_add(timeout*1000, self._on_timeout)
         self.loop = GLib.MainLoop()
         self.loop.run()
@@ -712,6 +733,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.log = None
         self.daemon = None
         self.polkitd = None
+        self.valgrind = False
 
     def tearDown(self):
         shutil.rmtree(self.dbpath)
@@ -732,16 +754,25 @@ class BoltTest(dbusmock.DBusTestCase):
 
     # daemon helper
     def daemon_start(self):
+        timeout = get_timeout('daemon_start')  # seconds
         env = os.environ.copy()
         env['G_DEBUG'] = 'fatal-criticals'
         env['UMOCKDEV_DIR'] = self.testbed.get_root_dir()
         env['BOLT_DBPATH'] = self.dbpath
-        self.daemon = subprocess.Popen([self.paths['daemon'], '-v'],
+        argv = [self.paths['daemon'], '-v']
+        valgrind = os.getenv('VALGRIND')
+        if valgrind is not None:
+            argv.insert(0, 'valgrind')
+            argv.insert(1, '--leak-check=full')
+            if os.path.exists(valgrind):
+                argv.insert(2, '--suppressions=%s' % valgrind)
+            self.valgrind = True
+        self.daemon = subprocess.Popen(argv,
                                        env=env,
                                        stdout=self.log,
                                        stderr=subprocess.STDOUT)
 
-        timeout_count = 5
+        timeout_count = timeout * 10
         timeout_sleep = 0.1
         while timeout_count > 0:
             time.sleep(timeout_sleep)
@@ -762,7 +793,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         if self.daemon:
             try:
-                self.daemon.kill()
+                self.daemon.terminate()
             except OSError:
                 pass
             self.daemon.wait()
@@ -943,7 +974,13 @@ class BoltTest(dbusmock.DBusTestCase):
 
         # the host itself is not stored in the daemon
         expected_number = len(tree.devices) - 1
-        self.assertEqual(len(devices), expected_number)
+        devices = self.client.list_devices()
+        tries = 0
+        while expected_number != len(devices) and tries < 3:
+            time.sleep(.2)
+            tries += 1
+            devices = self.client.list_devices()
+            self.assertEqual(len(devices), expected_number)
 
         tree.connect(self.testbed)              # we connect the domain again
         tree.children[0].connect(self.testbed)  # and the host too
@@ -987,8 +1024,13 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertEqual(remote.policy, policy)
 
         tree.disconnect(self.testbed)
-        devices = self.client.list_devices()
         expected_number = len(tree.devices) - 1  # host is not stored
+        devices = self.client.list_devices()
+        tries = 0
+        while expected_number != len(devices) and tries < 3:
+            time.sleep(.2)
+            tries += 1
+            devices = self.client.list_devices()
         self.assertEqual(len(devices), expected_number)
 
         for remote in devices:
