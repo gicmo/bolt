@@ -164,7 +164,8 @@ device_sort (gconstpointer ap,
 {
   BoltDevice *a = BOLT_DEVICE (*((BoltDevice **) ap));
   BoltDevice *b = BOLT_DEVICE (*((BoltDevice **) bp));
-  char *pa, *pb;
+  g_autofree char *pa = NULL;
+  g_autofree char *pb = NULL;
 
   g_object_get (a,
                 "syspath", &pa,
