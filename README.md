@@ -48,3 +48,23 @@ boltctl - command line client
 The `boltctl` command line can be used to manage thunderbolt devices
 via `boltd`.  It can list devices, monitor changes and initiate
 auhtorization of devices.
+
+
+Installation
+============
+
+The [meson][meson] build system is used to configure and compile bolt.
+
+
+    meson build           # configure bolt, use build as buildir
+    ninja -C build        # compile it
+    ninja -C build test   # run the tests
+
+See [INSTALL][install] for more infromation, [BUGS][bugs] for how to
+file issues and [HACKING][hacking] how to contribute.
+
+
+[meson]: http://mesonbuild.com/
+[install]: INSTALL.md
+[bugs]: BUGS.md
+[hacking]: HACKING.md
