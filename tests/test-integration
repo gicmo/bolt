@@ -814,7 +814,7 @@ class BoltTest(dbusmock.DBusTestCase):
     def test_basic(self):
         self.daemon_start()
         version = self.client.version
-        assert version
+        assert version is not None
         d = self.client.list_devices()
         self.assertEqual(len(d), 0)
 
