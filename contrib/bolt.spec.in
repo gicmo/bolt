@@ -2,13 +2,12 @@ Name: bolt
 Version: @version@
 Release: @reltag@%{?dist}
 Summary: Thunderbolt device manager
-License: GPLv2+
+License: LGPLv2+
 URL: https://github.com/gicmo/bolt
 Source0: %{url}/releases/download/%{version}/%{name}-%{version}.tar.xz
 
 BuildRequires: asciidoc
 BuildRequires: meson
-BuildRequires: gtk-doc
 BuildRequires: libudev-devel
 BuildRequires: pkgconfig(gio-2.0)
 BuildRequires: pkgconfig(libudev)
@@ -19,8 +18,16 @@ BuildRequires: systemd
 %{?systemd_requires}
 
 %description
-bolt is a daemon that enables the authorization of Thunderbolt 3
-devices.
+bolt is a system daemon to manage thunderbolt 3 devices via a D-BUS
+API.  Thunderbolt 3 features different security modes that require
+devices to be authorized before they can be used. The D-Bus API can be
+used to list devices, enroll them (authorize and store them in the
+local database) and forget them again (remove previously enrolled
+devices). It also emits signals if new devices are connected (or
+removed). During enrollment devices can be set to be automatically
+authorized as soon as they are connected.  A command line tool, called
+boltctl, can be used to control the daemon and perform all the above
+mentioned tasks.
 
 %prep
 %setup -q
@@ -45,9 +52,8 @@ devices.
 %systemd_postun_with_restart %{name}.service
 
 %files
-%defattr(-,root,root,-)
 %license COPYING
-%doc README.md
+%doc README.md BUGS.md INSTALL.md HACKING.md
 %{_bindir}/boltctl
 %{_libexecdir}/boltd
 %{_unitdir}/%{name}.service
@@ -57,7 +63,6 @@ devices.
 %{_datadir}/polkit-1/actions/org.freedesktop.bolt.policy
 %{_datadir}/polkit-1/rules.d/org.freedesktop.bolt.rules
 %{_datadir}/dbus-1/system-services/org.freedesktop.bolt.service
-%{_unitdir}/bolt.service
 %{_mandir}/man1/boltctl.1*
 
 %changelog
