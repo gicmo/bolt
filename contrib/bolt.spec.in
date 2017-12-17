@@ -33,7 +33,7 @@ mentioned tasks.
 %setup -q
 
 %build
-%meson
+%meson -Ddb-path=@dbdir@
 %meson_build
 
 %check
@@ -64,6 +64,7 @@ mentioned tasks.
 %{_datadir}/polkit-1/rules.d/org.freedesktop.bolt.rules
 %{_datadir}/dbus-1/system-services/org.freedesktop.bolt.service
 %{_mandir}/man1/boltctl.1*
+%dir @dbdir@
 
 %changelog
 * @longdate@ Christian Kellner <ckellner@redhat.com> - @version@-@reltag@
