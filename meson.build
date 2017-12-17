@@ -376,6 +376,8 @@ if build_man
 
 endif
 
+meson.add_install_script('scripts/meson-install.sh', dbdir)
+
 # all done, phew
 
 msg = ['',
