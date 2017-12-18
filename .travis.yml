@@ -6,8 +6,9 @@ services:
   - docker
 
 env:
-  - OS=fedora
+  - OS=debian
   - OS=arch
+  - OS=fedora
 
 install:
 - docker build -t bolt-$OS -f ./contrib/Dockerfile-$OS .
