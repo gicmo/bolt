@@ -1,6 +1,12 @@
 
 # files
 *~
+*.log
+*.xz
 
 # directories
 build/
+
+# coverity
+cov-int/
+coverity/
