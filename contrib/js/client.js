@@ -93,6 +93,10 @@ var Policy = {
     AUTO:2
 };
 
+var AuthFlags = {
+    NONE: 0,
+};
+
 const BOLT_DBUS_NAME = 'org.freedesktop.bolt';
 const BOLT_DBUS_PATH = '/org/freedesktop/bolt';
 
@@ -102,7 +106,7 @@ var Client = new Lang.Class({
     _init: function(readyCallback) {
 	this._readyCallback = readyCallback;
 
-	this._cli = new BoltClientProxy(
+	this._proxy = new BoltClientProxy(
 	    Gio.DBus.system,
 	    BOLT_DBUS_NAME,
 	    BOLT_DBUS_PATH,
@@ -118,12 +122,11 @@ var Client = new Lang.Class({
 	    log(error.message);
 	    return;
 	}
-	this._cli = proxy;
-	this._cli.connect('g-properties-changed', Lang.bind(this, this._onPropertiesChanged));
-	let s = this._cli.connectSignal('DeviceAdded', Lang.bind(this, this._onDeviceAdded));
-	this._signals.push(s);
+	this._proxy = proxy;
+	this._proxyConnect('g-properties-changed', Lang.bind(this, this._onPropertiesChanged));
+	this._proxyConnect('DeviceAdded', Lang.bind(this, this._onDeviceAdded), true);
 
-	this.probing = this._cli.Probing;
+	this.probing = this._proxy.Probing;
 	if (this.probing)
 	    this.emit('probing-changed', this.probing);
 
@@ -135,7 +138,7 @@ var Client = new Lang.Class({
         if (!('Probing' in unpacked))
 	    return;
 
-	this.probing = this._cli.Probing;
+	this.probing = this._proxy.Probing;
 	this.emit('probing-changed', this.probing);
     },
 
@@ -147,18 +150,35 @@ var Client = new Lang.Class({
 	this.emit('device-added', device);
     },
 
+    _proxyConnect: function(name, callback, dbus) {
+	var signal_id;
+
+	if (dbus === true)
+	    signal_id = this._proxy.connectSignal(name, Lang.bind(this, callback));
+	else
+	    signal_id = this._proxy.connect(name, Lang.bind(this, callback));
+
+	this._signals.push([dbus, signal_id]);
+    },
+
+    _proxyDisconnectAll: function() {
+	while (this._signals.length) {
+	    let [dbus, sid] = this._signals.shift();
+	    if (dbus === true)
+		this._proxy.disconnectSignal(sid);
+	    else
+		this._proxy.disconnect(sid);
+	}
+    },
+
     /* public methods */
     close: function() {
-	while (this._signals.length) {
-	    let sid = this._signals.shift();
-	    this._cli.disconnectSignal(sid);
-	}
-	this._cli.disconnectAll();
-	this._cli = null;
+	this._proxyDisconnectAll();
+	this._proxy = null;
     },
 
     listDevices: function(callback) {
-	this._cli.ListDevicesRemote(Lang.bind(this, function (res, error) {
+	this._proxy.ListDevicesRemote(Lang.bind(this, function (res, error) {
 	    if (error) {
 		callback(null, error);
 		return;
@@ -174,13 +194,14 @@ var Client = new Lang.Class({
 						 path);
 		devices.push(device);
 	    }
-	    callback (devices, null);
+	    callback(devices, null);
 	}));
 
     },
 
     enrollDevice: function(id, policy, callback) {
-	this._cli.EnrollDeviceRemote(id, policy, Lang.bind(this, function (res, error) {
+	this._proxy.EnrollDeviceRemote(id, policy, AuthFlags.NONE,
+				       Lang.bind(this, function (res, error) {
 	    if (error) {
 		callback(null, error);
 		return;
@@ -202,7 +223,7 @@ var Client = new Lang.Class({
 	    return;
 	}
 
-	this._cli.DeviceByUidRemote(dev.Parent, Lang.bind(this, function (res, error) {
+	this._proxy.DeviceByUidRemote(dev.Parent, Lang.bind(this, function (res, error) {
 	    if (error) {
 		callback(null, dev, error);
 		return;
@@ -227,8 +248,6 @@ var AuthRobot = new Lang.Class({
 
 	this._client = client;
 
-	this._signals = [];
-
 	this._devicesToEnroll = [];
 	this._enrolling = false;
 
@@ -240,21 +259,12 @@ var AuthRobot = new Lang.Class({
 	this._client = null;
     },
 
-    _connectSignal: function(obj, name, callback) {
-	let signal_id = obj.connect(name, Lang.bind(this, callback));
-	this._signals.push([obj, signal_id]);
-	log('connecting sid: ' + signal_id + 'obj: ' + obj);
-    },
-
     /* the "device-added" signal will be emitted by boltd for every
      * device that is not currently stored in the database. We are
      * only interested in those devices, because all known devices
      * will be handled by the user himself */
     _onDeviceAdded: function(cli, dev) {
-	log('[%s] device added: %s '.format(dev.Uid, dev.Name));
-
 	if (dev.Status !== Status.CONNECTED) {
-	    log('[%s] invalid state: %d'.format(dev.Uid, dev.Status));
 	    return;
 	}
 
@@ -267,7 +277,6 @@ var AuthRobot = new Lang.Class({
 
 	/* ok, we should authorize the device, add it to the back
 	 * of the list  */
-	log('[%s] scheduled for authorization'.format(dev.Uid));
 	this._devicesToEnroll.push(dev);
 	this._enrollDevices();
     },
@@ -289,9 +298,6 @@ var AuthRobot = new Lang.Class({
     },
 
     _onEnrollDone: function(device, error) {
-
-	log('[%s] enrolling done'.format(device.Uid));
-
 	if (error) {
 	    this.emit('enroll-failed', error, device);
 	}
@@ -301,7 +307,6 @@ var AuthRobot = new Lang.Class({
 	 *  their children and ....) from the device queue
 	 */
 	this._enrolling = this._devicesToEnroll.length > 0;
-	log('enrolling; keep going: ' + this._enrolling);
 
 	if (this._enrolling) {
 	    GLib.idle_add(GLib.PRIORITY_DEFAULT,
@@ -317,7 +322,6 @@ var AuthRobot = new Lang.Class({
 	    return GLib.SOURCE_REMOVE;
 	}
 
-	log('[%s] enrolling device: %s'.format(dev.Uid, dev.Name));
 	this._client.enrollDevice(dev.Uid,
 				  Policy.DEFAULT,
 				  Lang.bind(this, this._onEnrollDone));
