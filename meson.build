@@ -355,24 +355,33 @@ spec_file = configure_file(
 build_man = build_man != false and a2x.found()
 if build_man
 
-  man = custom_target(
-    'boltctl-man',
-    build_by_default: true,
-    input: 'docs/boltctl.1.txt',
-    output: 'boltctl.1',
-    command: [
-      a2x,
-      '-d', 'manpage',
-      '-f', 'manpage',
-      '-D', '@OUTDIR@',
-      '-a', 'manmanual=bolt Manual',
-      '-a', 'mansource=bolt',
-      '-a', 'revnumber=@0@'.format(meson.project_version()),
-      '@INPUT@'
-    ],
-    install: true,
-    install_dir: join_paths(mandir, 'man1'),
-  )
+  foreach page : [
+    ['boltctl', '1'],
+    ['boltd',   '8']
+  ]
+
+    name = page[0]
+    section = page[1]
+
+    custom_target(
+      '@0@-man'.format(page[0]),
+      build_by_default: true,
+      input: 'docs/@0@.@1@.txt'.format(name, section),
+      output: '@0@.@1@'.format(name, section),
+      command: [
+        a2x,
+        '-d', 'manpage',
+        '-f', 'manpage',
+        '-D', '@OUTDIR@',
+        '-a', 'manmanual=bolt Manual',
+        '-a', 'mansource=bolt',
+        '-a', 'revnumber=@0@'.format(meson.project_version()),
+        '@INPUT@'
+      ],
+      install: true,
+      install_dir: join_paths(mandir, 'man@0@'.format(section)),
+    )
+  endforeach
 
 endif
 

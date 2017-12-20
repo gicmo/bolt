@@ -1,0 +1,83 @@
+boltd(8)
+========
+
+NAME
+----
+boltd - thunderbolt device managing system daemon
+
+SYNOPSIS
+--------
+*boltd* ['OPTIONS']
+
+DESCRIPTION
+-----------
+boltd is the thunderbolt device manager daemon. Its goal is to enable
+the secure and convenient use of thunderbolt devices by using the
+security features of modern thunderbolt controllers. It provides the
+`org.freedesktop.bolt` name on the system bus. boltd is autostarted
+via systemd/udev if a thunderbolt devices is connected.
+
+The thunderbolt I/O technology works by bridging PCIe between the
+controllers on each end of the connection, which in turn means that
+devices connected via Thunderbolt are ultimately connected via
+PCIe. Therefore thunderbolt can achieve very high connection speeds,
+fast enough to even drive external graphics cards. The downside is
+that it also makes certain attacks possible. To mitigate these
+security problems, the latest version -- known as Thunderbolt 3 --
+supports different *security levels*: 'none': No security. The
+behavior is identical to previous Thunderbolt versions.  'dponly': No
+PCIe tunnels are created at all, but DisplayPort tunnels are allowed
+and will work.  'user': Connected devices must be authorized by the
+user. Only then will the PCIe tunnels be activated.  'secure':
+Basically the same as user mode, but additionally a key will be
+written to the device the first time the device is connected. This key
+will then be used to verify the identity of the connected device.
+
+The primary task of *boltd* is to authorize thunderbolt peripherals if
+the security level is either `user` or `secure`.  It provides a D-Bus
+API to list devices, enroll them (authorize and store them in the
+local database) and forget them again (remove previously enrolled
+devices). It also emits signals if new devices are connected (or
+removed). During enrollment devices can be set to be automatically
+authorized as soon as they are connected. A command line tool, called
+boltctl(1), can be used to control the daemon and perform all the
+above mentioned tasks.
+
+
+OPTIONS
+-------
+
+*-h, --help*::
+  Prints a short help text and exits.
+
+*--version*::
+  Shows the version number and exits.
+
+*-r, --replace*::
+  Replace the currently running boltd instance.
+
+*-v, --verbosee*::
+  Print debug output.
+
+
+ENVIRONMENT
+-----------
+
+*`BOLT_DBPATH`*::
+  Specifies the path where the daemon stores device information,
+  including the keys used for authorization. Overwrites the path
+  that was set at compile time.
+
+
+EXIT STATUS
+-----------
+On success 0 is returned, a non-zero failure code otherwise.
+
+
+Author
+------
+Written by Christian Kellner <ckellner@redhat.com>.
+
+SEE ALSO
+--------
+boltctl(1)
