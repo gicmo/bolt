@@ -35,9 +35,9 @@ authorize 'DEVICE'
 ~~~~~~~~~~~~~~~~~~
 
 Authorize a currently unauthorized device identified via its unique id
-(uuid) 'DEVICE'. If a key is stored in the database itwill be used,
+(uuid) 'DEVICE'. If a key is stored in the database it will be used,
 given the security level of the domain supports secure device
-connection. Use 'boltcl list' to find out the uuid of a device.
+connection. Use 'boltctl list' to find out the uuid of a device.
 
 enroll 'DEVICE'
 ~~~~~~~~~~~~~~~
