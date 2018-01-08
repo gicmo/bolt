@@ -11,6 +11,19 @@ Coding style
 Run `contrib/uncrustify.sh` to format the source code before submitting
 pull requests.
 
+Testing
+=======
+
+To run the test suite in verbose mode:
+
+	meson test -C build --verbose
+
+To run `boltd` from within valgrind for the integration tests set the
+environment variable `VALGRIND`. A [suppression file][valgrind] can be
+specified via that variable as well (n.b. for meson the path must be
+relative to the build directory):
+
+	VALGRIND=../bolt.supp meson test -C build --verbose
 
 Static analysis
 ===============
@@ -35,3 +48,4 @@ Upload the `bolt.xz` file to coverity for analysis. Fix defects. Profit.
 [github]: https://github.com/gicmo/bolt
 [coverity]: https://scan.coverity.com/projects/bolt
 [cov-build]: https://scan.coverity.com/download
+[valgrind]: https://gist.github.com/gicmo/327dad149fcb386ac7f59e279b8ba322
