@@ -46,7 +46,7 @@ BoltStatus        bolt_device_connected (BoltDevice         *dev,
 
 BoltStatus        bolt_device_disconnected (BoltDevice *dev);
 
-gboolean          bolt_device_is_connected (BoltDevice *device);
+gboolean          bolt_device_is_connected (const BoltDevice *device);
 
 BoltStatus        bolt_device_update_from_udev (BoltDevice         *dev,
                                                 struct udev_device *udev);
@@ -56,24 +56,24 @@ void              bolt_device_authorize (BoltDevice         *dev,
                                          GAsyncReadyCallback callback,
                                          gpointer            user_data);
 
-BoltKeyState      bolt_device_get_keystate (BoltDevice *dev);
+BoltKeyState      bolt_device_get_keystate (const BoltDevice *dev);
 
-const char *      bolt_device_get_name (BoltDevice *dev);
+const char *      bolt_device_get_name (const BoltDevice *dev);
 
 const char *      bolt_device_get_object_path (BoltDevice *device);
 
-BoltPolicy        bolt_device_get_policy (BoltDevice *dev);
+BoltPolicy        bolt_device_get_policy (const BoltDevice *dev);
 
-const char *      bolt_device_get_uid (BoltDevice *dev);
+const char *      bolt_device_get_uid (const BoltDevice *dev);
 
-BoltSecurity      bolt_device_get_security (BoltDevice *dev);
+BoltSecurity      bolt_device_get_security (const BoltDevice *dev);
 
-gboolean          bolt_device_get_stored (BoltDevice *dev);
+gboolean          bolt_device_get_stored (const BoltDevice *dev);
 
-BoltStatus        bolt_device_get_status (BoltDevice *dev);
+BoltStatus        bolt_device_get_status (const BoltDevice *dev);
 
-const char *      bolt_device_get_syspath (BoltDevice *dev);
+const char *      bolt_device_get_syspath (const BoltDevice *dev);
 
-const char *      bolt_device_get_vendor (BoltDevice *dev);
+const char *      bolt_device_get_vendor (const BoltDevice *dev);
 
 G_END_DECLS

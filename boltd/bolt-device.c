@@ -851,7 +851,7 @@ bolt_device_disconnected (BoltDevice *dev)
 }
 
 gboolean
-bolt_device_is_connected (BoltDevice *device)
+bolt_device_is_connected (const BoltDevice *device)
 {
   return bolt_status_is_connected (device->status);
 }
@@ -870,13 +870,13 @@ bolt_device_update_from_udev (BoltDevice         *dev,
 }
 
 BoltKeyState
-bolt_device_get_keystate (BoltDevice *dev)
+bolt_device_get_keystate (const BoltDevice *dev)
 {
   return dev->key;
 }
 
 const char *
-bolt_device_get_name (BoltDevice *dev)
+bolt_device_get_name (const BoltDevice *dev)
 {
   return dev->name;
 }
@@ -900,43 +900,43 @@ bolt_device_get_object_path (BoltDevice *device)
 }
 
 BoltPolicy
-bolt_device_get_policy (BoltDevice *dev)
+bolt_device_get_policy (const BoltDevice *dev)
 {
   return dev->policy;
 }
 
 const char *
-bolt_device_get_uid (BoltDevice *dev)
+bolt_device_get_uid (const BoltDevice *dev)
 {
   return dev->uid;
 }
 
 BoltSecurity
-bolt_device_get_security (BoltDevice *dev)
+bolt_device_get_security (const BoltDevice *dev)
 {
   return dev->security;
 }
 
 BoltStatus
-bolt_device_get_status (BoltDevice *dev)
+bolt_device_get_status (const BoltDevice *dev)
 {
   return dev->status;
 }
 
 gboolean
-bolt_device_get_stored (BoltDevice *dev)
+bolt_device_get_stored (const BoltDevice *dev)
 {
   return dev->store != NULL;
 }
 
 const char *
-bolt_device_get_syspath (BoltDevice *dev)
+bolt_device_get_syspath (const BoltDevice *dev)
 {
   return dev->syspath;
 }
 
 const char *
-bolt_device_get_vendor (BoltDevice *dev)
+bolt_device_get_vendor (const BoltDevice *dev)
 {
   return dev->vendor;
 }
