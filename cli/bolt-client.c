@@ -119,7 +119,7 @@ bolt_client_class_init (BoltClientClass *klass)
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NAME);
 
-    props[PROP_PROBING]
+  props[PROP_PROBING]
     = g_param_spec_boolean ("probing",
                             NULL, NULL,
                             FALSE,
