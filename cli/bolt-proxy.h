@@ -49,13 +49,11 @@ typedef struct BoltProxySignal
 } BoltProxySignal;
 
 #define BOLT_TYPE_PROXY (bolt_proxy_get_type ())
-G_DECLARE_DERIVABLE_TYPE (BoltProxy, bolt_proxy, BOLT, PROXY, GObject)
-
-typedef struct _BoltProxyPrivate BoltProxyPrivate;
+G_DECLARE_DERIVABLE_TYPE (BoltProxy, bolt_proxy, BOLT, PROXY, GDBusProxy)
 
 struct _BoltProxyClass
 {
-  GObjectClass parent;
+  GDBusProxyClass parent;
 
   /* virtuals */
   const BoltProxyProp   * (*get_dbus_props) (guint *n);
@@ -66,7 +64,6 @@ gboolean          bolt_proxy_get_dbus_property (GObject *proxy,
                                                 guint    prop_id,
                                                 GValue  *value);
 
-GDBusProxy *      bolt_proxy_get_proxy (BoltProxy *proxy);
 const char *      bolt_proxy_get_object_path (BoltProxy *proxy);
 
 G_END_DECLS

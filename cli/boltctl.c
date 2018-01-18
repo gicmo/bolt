@@ -82,7 +82,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   gboolean stored;
 
   g_object_get (dev,
-                "object-path", &path,
+                "g-object-path", &path,
                 "name", &name,
                 "vendor", &vendor,
                 "status", &status,
@@ -370,7 +370,7 @@ handle_device_added (BoltClient *cli,
   GPtrArray *devices = user_data;
 
   g_object_get (dev,
-                "object-path", &path,
+                "g-object-path", &path,
                 NULL);
 
   g_print (" DeviceAdded: %s\n", path);

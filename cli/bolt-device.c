@@ -194,9 +194,11 @@ bolt_device_new_for_object_path (GDBusConnection *bus,
 
   dev = g_initable_new (BOLT_TYPE_DEVICE,
                         NULL, error,
-                        "bus", bus,
-                        "object-path", path,
-                        "interface-name", BOLT_DBUS_DEVICE_INTERFACE,
+                        "g-flags", G_DBUS_PROXY_FLAGS_NONE,
+                        "g-connection", bus,
+                        "g-name", BOLT_DBUS_NAME,
+                        "g-object-path", path,
+                        "g-interface-name", BOLT_DBUS_DEVICE_INTERFACE,
                         NULL);
 
   return dev;
@@ -208,12 +210,10 @@ bolt_device_authorize (BoltDevice   *dev,
                        GError      **error)
 {
   g_autoptr(GError) err = NULL;
-  GDBusProxy *proxy;
 
   g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
 
-  proxy = bolt_proxy_get_proxy (BOLT_PROXY (dev));
-  g_dbus_proxy_call_sync (proxy,
+  g_dbus_proxy_call_sync (G_DBUS_PROXY (dev),
                           "Authorize",
                           g_variant_new ("(u)", (guint32) flags),
                           G_DBUS_CALL_FLAGS_NONE,

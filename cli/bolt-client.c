@@ -230,9 +230,11 @@ bolt_client_new (GError **error)
 
   cli = g_initable_new (BOLT_TYPE_CLIENT,
                         NULL, error,
-                        "bus", bus,
-                        "object-path", BOLT_DBUS_PATH,
-                        "interface-name", BOLT_DBUS_INTERFACE,
+                        "g-flags", G_DBUS_PROXY_FLAGS_NONE,
+                        "g-connection", bus,
+                        "g-name", BOLT_DBUS_NAME,
+                        "g-object-path", BOLT_DBUS_PATH,
+                        "g-interface-name", BOLT_DBUS_INTERFACE,
                         NULL);
 
   g_object_unref (bus);
@@ -249,12 +251,10 @@ bolt_client_list_devices (BoltClient *client,
   g_autoptr(GVariantIter) iter = NULL;
   GDBusConnection *bus = NULL;
   const char *d;
-  GDBusProxy *proxy;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
 
-  proxy = bolt_proxy_get_proxy (BOLT_PROXY (client));
-  val = g_dbus_proxy_call_sync (proxy,
+  val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
                                 "ListDevices",
                                 NULL,
                                 G_DBUS_CALL_FLAGS_NONE,
@@ -264,7 +264,7 @@ bolt_client_list_devices (BoltClient *client,
   if (val == NULL)
     return NULL;
 
-  bus = g_dbus_proxy_get_connection (proxy);
+  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
 
   devices = g_ptr_array_new_with_free_func (g_object_unref);
 
@@ -294,12 +294,10 @@ bolt_client_get_device (BoltClient *client,
   BoltDevice *dev = NULL;
   GDBusConnection *bus = NULL;
   const char *opath = NULL;
-  GDBusProxy *proxy;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
 
-  proxy = bolt_proxy_get_proxy (BOLT_PROXY (client));
-  val = g_dbus_proxy_call_sync (proxy,
+  val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
                                 "DeviceByUid",
                                 g_variant_new ("(s)", uid),
                                 G_DBUS_CALL_FLAGS_NONE,
@@ -316,7 +314,7 @@ bolt_client_get_device (BoltClient *client,
       return NULL;
     }
 
-  bus = g_dbus_proxy_get_connection (proxy);
+  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
   g_variant_get (val, "(&o)", &opath);
 
   if (opath == NULL)
@@ -339,13 +337,11 @@ bolt_client_enroll_device (BoltClient   *client,
   GDBusConnection *bus = NULL;
   GVariant *params = NULL;
   const char *opath = NULL;
-  GDBusProxy *proxy;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
 
-  proxy = bolt_proxy_get_proxy (BOLT_PROXY (client));
   params = g_variant_new ("(suu)", uid, (guint32) policy, (guint32) flags);
-  val = g_dbus_proxy_call_sync (proxy,
+  val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
                                 "EnrollDevice",
                                 params,
                                 G_DBUS_CALL_FLAGS_NONE,
@@ -362,7 +358,7 @@ bolt_client_enroll_device (BoltClient   *client,
       return NULL;
     }
 
-  bus = g_dbus_proxy_get_connection (proxy);
+  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
   g_variant_get (val, "(&o)", &opath);
 
   if (opath == NULL)
@@ -379,12 +375,10 @@ bolt_client_forget_device (BoltClient *client,
 {
   g_autoptr(GVariant) val = NULL;
   g_autoptr(GError) err = NULL;
-  GDBusProxy *proxy;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
 
-  proxy = bolt_proxy_get_proxy (BOLT_PROXY (client));
-  val = g_dbus_proxy_call_sync (proxy,
+  val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
                                 "ForgetDevice",
                                 g_variant_new ("(s)", uid),
                                 G_DBUS_CALL_FLAGS_NONE,
@@ -411,13 +405,9 @@ bolt_client_forget_device_async (BoltClient         *client,
                                  GAsyncReadyCallback callback,
                                  gpointer            user_data)
 {
-  GDBusProxy *proxy;
-
   g_return_if_fail (BOLT_IS_CLIENT (client));
 
-  proxy = bolt_proxy_get_proxy (BOLT_PROXY (client));
-
-  g_dbus_proxy_call (proxy,
+  g_dbus_proxy_call (G_DBUS_PROXY (client),
                      "ForgetDevice",
                      g_variant_new ("(s)", uid),
                      G_DBUS_CALL_FLAGS_NONE,
@@ -434,13 +424,10 @@ bolt_client_forget_device_finish (BoltClient   *client,
 {
   g_autoptr(GVariant) val = NULL;
   g_autoptr(GError) err = NULL;
-  GDBusProxy *proxy;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
 
-  proxy = bolt_proxy_get_proxy (BOLT_PROXY (client));
-
-  val = g_dbus_proxy_call_finish (proxy, res, &err);
+  val = g_dbus_proxy_call_finish (G_DBUS_PROXY (client), res, &err);
   if (err != NULL)
     {
       if (g_dbus_error_is_remote_error (err))
