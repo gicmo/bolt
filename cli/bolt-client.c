@@ -378,20 +378,15 @@ bolt_client_forget_device (BoltClient *client,
                            GError    **error)
 {
 
+  g_autoptr(GVariant) val = NULL;
   g_autoptr(GError) err = NULL;
   GDBusProxy *proxy;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
 
   proxy = bolt_proxy_get_proxy (BOLT_PROXY (client));
-  g_dbus_proxy_call_sync (proxy,
-                          "ForgetDevice",
-                          g_variant_new ("(s)", uid),
-                          G_DBUS_CALL_FLAGS_NONE,
-                          -1,
-                          NULL,
-                          &err);
 
+  val = g_dbus_proxy_call_finish (proxy, res, &err);
   if (err != NULL)
     {
       if (g_dbus_error_is_remote_error (err))
