@@ -77,8 +77,8 @@ static const BoltProxyProp *
 bolt_client_get_dbus_props (guint *n)
 {
   static BoltProxyProp dbus_props[] = {
-    {"Version", "version", PROP_VERSION},
-    {"Probing", "probing", PROP_PROBING},
+    {"Version", "version", PROP_VERSION, NULL},
+    {"Probing", "probing", PROP_PROBING, NULL},
   };
 
   *n = G_N_ELEMENTS (dbus_props);
