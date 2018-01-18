@@ -43,4 +43,14 @@ BoltDevice *    bolt_client_enroll_device (BoltClient   *client,
 gboolean        bolt_client_forget_device (BoltClient *client,
                                            const char *uid,
                                            GError    **error);
+
+void            bolt_client_forget_device_async (BoltClient         *client,
+                                                 const char         *uid,
+                                                 GCancellable       *cancellable,
+                                                 GAsyncReadyCallback callback,
+                                                 gpointer            user_data);
+
+gboolean        bolt_client_forget_device_finish (BoltClient   *client,
+                                                  GAsyncResult *res,
+                                                  GError      **error);
 G_END_DECLS
