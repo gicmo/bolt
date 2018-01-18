@@ -196,7 +196,7 @@ bolt_device_set_property (GObject      *object,
     {
     case PROP_STORE:
       dev->store = g_value_dup_object (value);
-      g_object_notify (object, "stored");
+      g_object_set (object, "stored", dev->store != NULL, NULL);
       break;
 
     case PROP_UID:
@@ -241,6 +241,10 @@ bolt_device_set_property (GObject      *object,
 
     case PROP_SECURITY:
       dev->security = g_value_get_uint (value);
+      break;
+
+    case PROP_STORED:
+      /* this is just here for the hack below :( */
       break;
 
     case PROP_POLICY:
