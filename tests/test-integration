@@ -841,6 +841,25 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(local.bolt_status, remote.status)
         return True
 
+    def add_device(self, parent, devid, name, vendor, domain=0, authorized=1):
+        uid = str(uuid.uuid4())
+        d = self.testbed.add_device('thunderbolt',
+                                    "%d-%d" % (domain, devid), parent,
+                                    ['device_name', name,
+                                     'device', '0x23',
+                                     'vendor_name', vendor,
+                                     'vendor', '0x23',
+                                     'authorized', '%d' % authorized,
+                                     'key', '',
+                                     'unique_id', uid],
+                                    ['DEVTYPE', 'thunderbolt_device'])
+        return d, uid
+
+    def find_device_by_uid(self, lst, uid):
+        x = [x for x in lst if x.uid == uid]
+        self.assertEqual(len(x), 1)
+        return x[0]
+
     # the actual tests
     def test_basic(self):
         self.daemon_start()
@@ -868,6 +887,45 @@ class BoltTest(dbusmock.DBusTestCase):
 
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 0)
+        self.daemon_stop()
+
+    def test_basic_device_name(self):
+        domain = 0
+        security = 'secure'
+
+        dc = self.testbed.add_device('thunderbolt', 'domain%d' % domain, None,
+                                     ['security', security],
+                                     ['DEVTYPE', 'thunderbolt_domain'])
+
+        host = self.testbed.add_device('thunderbolt', "%d-0" % domain, dc,
+                                       ['device_name', 'Host',
+                                        'device', '0x23',
+                                        'vendor_name', 'GNOME.org',
+                                        'vendor', '0x23',
+                                        'authorized', '1',
+                                        'unique_id', str(uuid.uuid4())],
+                                       ['DEVTYPE', 'thunderbolt_device'])
+        print(host)
+        # duplicated vendor in name
+        d1_vendor = "GNOME.org"
+        d1_name = "Cable"
+        d2_name = '⍾ Laptop'
+        d2_vendor = 'Evil Corp. ☢'
+        _, d1_uid = self.add_device(host, 1, d1_vendor + d1_name, d1_vendor)
+        _, d2_uid = self.add_device(host, 2, d2_name, d2_vendor)
+
+        self.daemon_start()
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), 3)
+
+        device = self.find_device_by_uid(devices, d1_uid)
+        self.assertEqual(device.Name, d1_name)
+        self.assertEqual(device.Vendor, d1_vendor)
+
+        device = self.find_device_by_uid(devices, d2_uid)
+        self.assertEqual(device.Name, d2_name)
+        self.assertEqual(device.Vendor, d2_vendor)
+
         self.daemon_stop()
 
     def test_device_by_uid(self):
