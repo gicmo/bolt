@@ -70,11 +70,13 @@ print_device (BoltDevice *dev, gboolean verbose)
   g_autofree char *syspath = NULL;
   g_autofree char *parent = NULL;
   BoltSecurity security = BOLT_SECURITY_NONE;
+  BoltDeviceType type;
   BoltStatus status;
   BoltKeyState keystate;
   BoltPolicy policy;
   const char *status_color;
   const char *status_symbol;
+  const char *type_text;
   const char *status_text;
   const char *tree_branch;
   const char *tree_right;
@@ -85,6 +87,7 @@ print_device (BoltDevice *dev, gboolean verbose)
                 "g-object-path", &path,
                 "name", &name,
                 "vendor", &vendor,
+                "type", &type,
                 "status", &status,
                 "uid", &uid,
                 "security", &security,
@@ -137,8 +140,11 @@ print_device (BoltDevice *dev, gboolean verbose)
            bolt_color (ANSI_NORMAL),
            name);
 
-  g_print ("   %s uuid:        %s\n", tree_branch, uid);
+  type_text = bolt_device_type_to_string (type);
+
+  g_print ("   %s type:        %s\n", tree_branch, type_text);
   g_print ("   %s vendor:      %s\n", tree_branch, vendor);
+  g_print ("   %s uuid:        %s\n", tree_branch, uid);
   if (verbose)
     g_print ("   %s dbus path:   %s\n", tree_branch, path);
   g_print ("   %s status:      %s\n", tree_branch, status_text);
