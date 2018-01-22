@@ -140,3 +140,25 @@ typedef enum {
   BOLT_AUTH_FLAGS_INVALID = BOLT_AUTH_FLAGS_LAST
 
 } BoltAuthFlags;
+
+/**
+ * BoltDeviceType:
+ * @BOLT_DEVICE_HOST: The device representing the host
+ * @BOLT_DEVICE_PERIPHERAL: A generic thunderbolt peripheral
+ *
+ * The type of the device.
+ */
+typedef enum {
+
+  BOLT_DEVICE_HOST,
+  BOLT_DEVICE_PERIPHERAL,
+
+  BOLT_DEVICE_TYPE_LAST,
+  BOLT_DEVICE_TYPE_INVALID = BOLT_DEVICE_TYPE_LAST
+
+} BoltDeviceType;
+
+BoltDeviceType   bolt_device_type_from_string (const char *str);
+const char *     bolt_device_type_to_string (BoltDeviceType type);
+gboolean         bolt_device_type_validate (BoltDeviceType type);
+gboolean         bolt_device_type_is_host (BoltDeviceType type);

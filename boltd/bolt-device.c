@@ -43,13 +43,14 @@ struct _BoltDevice
   BoltDBusDeviceSkeleton object;
 
   /* device props */
-  char      *dbus_path;
+  char          *dbus_path;
 
-  char      *uid;
-  char      *name;
-  char      *vendor;
+  char          *uid;
+  char          *name;
+  char          *vendor;
 
-  BoltStatus status;
+  BoltDeviceType type;
+  BoltStatus     status;
 
   /* when device is attached */
   char        *syspath;
@@ -74,6 +75,7 @@ enum {
   PROP_UID,
   PROP_NAME,
   PROP_VENDOR,
+  PROP_TYPE,
   PROP_STATUS,
 
   PROP_PARENT,
@@ -146,6 +148,10 @@ bolt_device_get_property (GObject    *object,
       g_value_set_string (value, dev->name);
       break;
 
+    case PROP_TYPE:
+      g_value_set_uint (value, dev->type);
+      break;
+
     case PROP_VENDOR:
       g_value_set_string (value, dev->vendor);
       break;
@@ -212,6 +218,10 @@ bolt_device_set_property (GObject      *object,
     case PROP_VENDOR:
       g_clear_pointer (&dev->vendor, g_free);
       dev->vendor = g_value_dup_string (value);
+      break;
+
+    case PROP_TYPE:
+      dev->type = g_value_get_uint (value);
       break;
 
     case PROP_STATUS:
@@ -329,6 +339,10 @@ bolt_device_class_init (BoltDeviceClass *klass)
                                     "vendor");
 
   g_object_class_override_property (gobject_class,
+                                    PROP_TYPE,
+                                    "type");
+
+  g_object_class_override_property (gobject_class,
                                     PROP_STATUS,
                                     "status");
 
@@ -425,6 +439,19 @@ string_nonzero (const char *str)
   return str != NULL && str[0] != '\0';
 }
 
+static struct udev_device *
+bolt_sysfs_get_parent (struct udev_device *udev,
+                       GError            **error)
+{
+  struct udev_device * parent = udev_device_get_parent (udev);
+
+  if (parent == NULL)
+    g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                 "could not get parent udev device");
+
+  return parent;
+}
+
 static const char *
 bolt_sysfs_get_parent_uid (struct udev_device *udev)
 {
@@ -467,6 +494,13 @@ bolt_status_from_udev (struct udev_device *udev)
   return BOLT_STATUS_CONNECTED;
 }
 
+static gboolean
+bolt_sysfs_device_is_domain (struct udev_device *udev)
+{
+  const char *devtype = udev_device_get_devtype (udev);
+
+  return bolt_streq (devtype, "thunderbolt_domain");
+}
 
 static struct udev_device *
 bolt_sysfs_domain_for_device (struct udev_device *udev)
@@ -478,14 +512,11 @@ bolt_sysfs_domain_for_device (struct udev_device *udev)
   parent = udev;
   do
     {
-      const char *devtype;
       parent = udev_device_get_parent (parent);
       if (!parent)
         break;
 
-      devtype = udev_device_get_devtype (parent);
-      found = bolt_streq (devtype, "thunderbolt_domain");
-
+      found = bolt_sysfs_device_is_domain (parent);
     }
   while (!found);
 
@@ -765,11 +796,13 @@ BoltDevice *
 bolt_device_new_for_udev (struct udev_device *udev,
                           GError            **error)
 {
+  struct udev_device *parent_dev;
   const char *uid;
   const char *name;
   const char *vendor;
   const char *syspath;
   const char *parent;
+  BoltDeviceType type;
   BoltDevice *dev;
 
   uid = udev_device_get_sysattr_value (udev, "unique_id");
@@ -795,11 +828,27 @@ bolt_device_new_for_udev (struct udev_device *udev,
   if (name == NULL)
     return NULL;
 
+  parent_dev = bolt_sysfs_get_parent (udev, error);
+  if (parent_dev == NULL)
+    return NULL;
+
+  if (bolt_sysfs_device_is_domain (parent_dev))
+    {
+      parent = NULL;
+      type = BOLT_DEVICE_HOST;
+    }
+  else
+    {
+      parent = udev_device_get_sysattr_value (parent_dev, "unique_id");
+      type = BOLT_DEVICE_PERIPHERAL;
+    }
+
   parent = bolt_sysfs_get_parent_uid (udev);
   dev = g_object_new (BOLT_TYPE_DEVICE,
                       "uid", uid,
                       "name", name,
                       "vendor", vendor,
+                      "type", type,
                       "sysfs-path", syspath,
                       "parent", parent,
                       NULL);
@@ -971,4 +1020,10 @@ const char *
 bolt_device_get_vendor (const BoltDevice *dev)
 {
   return dev->vendor;
+}
+
+BoltDeviceType
+bolt_device_get_device_type (const BoltDevice *dev)
+{
+  return dev->type;
 }

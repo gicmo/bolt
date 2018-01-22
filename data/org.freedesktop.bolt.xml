@@ -160,6 +160,12 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="Type" type="u" access="read">
+      <doc:doc><doc:description><doc:para>
+        The type of the device: 0 = Host, 1 = Peripheral
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <property name="Status" type="u" access="read">
       <doc:doc><doc:description><doc:para>
         The current status of the device.

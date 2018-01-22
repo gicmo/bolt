@@ -246,6 +246,7 @@ bolt_store_put_device (BoltStore  *store,
   g_autoptr(GFile) entry = NULL;
   g_autoptr(GKeyFile) kf = NULL;
   g_autofree char *data  = NULL;
+  BoltDeviceType type;
   const char *uid;
   gboolean ok;
   gsize len;
@@ -267,6 +268,9 @@ bolt_store_put_device (BoltStore  *store,
 
   g_key_file_set_string (kf, DEVICE_GROUP, "name", bolt_device_get_name (device));
   g_key_file_set_string (kf, DEVICE_GROUP, "vendor", bolt_device_get_vendor (device));
+
+  type = bolt_device_get_device_type (device);
+  g_key_file_set_string (kf, DEVICE_GROUP, "type", bolt_device_type_to_string (type));
 
   if (policy != BOLT_POLICY_INVALID)
     {
@@ -323,7 +327,9 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
   g_autofree char *name = NULL;
   g_autofree char *vendor = NULL;
   g_autofree char *data  = NULL;
+  g_autofree char *typestr = NULL;
   g_autofree char *polstr = NULL;
+  BoltDeviceType type;
   BoltPolicy policy;
   BoltKeyState key;
   gboolean ok;
@@ -349,8 +355,16 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
 
   name = g_key_file_get_string (kf, DEVICE_GROUP, "name", NULL);
   vendor = g_key_file_get_string (kf, DEVICE_GROUP, "vendor", NULL);
+  typestr = g_key_file_get_string (kf, DEVICE_GROUP, "type", NULL);
+  type = bolt_device_type_from_string (typestr);
   polstr = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
   policy = bolt_policy_from_string (polstr);
+
+  if (!bolt_device_type_validate (type))
+    {
+      g_warning ("[%s] invalid type in store: %s", uid, typestr);
+      type = BOLT_DEVICE_PERIPHERAL;
+    }
 
   if (!bolt_policy_validate (policy))
     {
@@ -367,6 +381,7 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
                        "uid", uid,
                        "name", name,
                        "vendor", vendor,
+                       "type", type,
                        "status", BOLT_STATUS_DISCONNECTED,
                        "store", store,
                        "policy", policy,
