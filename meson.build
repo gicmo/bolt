@@ -201,6 +201,7 @@ common = declare_dependency(
 daemon_sources = files([
   'boltd/bolt-auth.c',
   'boltd/bolt-bouncer.c',
+  'boltd/bolt-config.c',
   'boltd/bolt-manager.c',
   'boltd/bolt-device.c',
   'boltd/bolt-key.c',
