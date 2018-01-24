@@ -813,6 +813,22 @@ class BoltTest(dbusmock.DBusTestCase):
         self._polkitd.wait()
         self.polkitd = None
 
+    def user_config(self, **kwargs):
+        import configparser
+        cfg = configparser.ConfigParser()
+        cfg.optionxform = lambda option: option
+
+        cfg['config'] = {}
+        for k, v in kwargs.items():
+            cfg['config'][k] = v
+
+        path = os.path.join(self.dbpath, 'boltd.conf')
+        with open(path, 'w') as f:
+            cfg.write(f)
+
+        with open(path, 'r') as f:
+            print(f.read())
+
     # mock tree stuff
     def default_mock_tree(self):
         # default mock tree
@@ -928,6 +944,14 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(device.Name, d2_name)
         self.assertEqual(device.Vendor, d2_vendor)
 
+        self.daemon_stop()
+
+    def test_basic_user_config(self):
+        self.user_config(DefaultPolicy='manual')
+
+        self.daemon_start()
+        policy = self.client.default_policy
+        self.assertEqual(policy, self.client.POLICY_MANUAL)
         self.daemon_stop()
 
     def test_device_by_uid(self):

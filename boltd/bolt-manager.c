@@ -21,11 +21,13 @@
 #include "config.h"
 
 #include "bolt-bouncer.h"
+#include "bolt-config.h"
 #include "bolt-device.h"
 #include "bolt-error.h"
-#include "bolt-manager.h"
 #include "bolt-store.h"
 #include "bolt-str.h"
+
+#include "bolt-manager.h"
 
 #include <libudev.h>
 #include <string.h>
@@ -46,7 +48,6 @@ static void     bolt_manager_initable_iface_init (GInitableIface *iface);
 static gboolean bolt_manager_initialize (GInitable    *initable,
                                          GCancellable *cancellable,
                                          GError      **error);
-
 /*  */
 
 static void          manager_register_device (BoltManager *mgr,
@@ -105,6 +106,8 @@ static void          manager_probing_activity (BoltManager *mgr,
 static void          manager_add_domain (BoltManager        *mgr,
                                          struct udev_device *domain);
 
+/* config */
+static void          manager_load_user_config (BoltManager *mgr);
 
 /* dbus method calls */
 static gboolean handle_list_devices (BoltDBusManager       *object,
@@ -141,6 +144,7 @@ struct _BoltManager
   BoltBouncer *bouncer;
 
   /* config */
+  GKeyFile  *config;
   BoltPolicy policy;          /* default enrollment policy, unless specified */
 
   /* probing indicator  */
@@ -497,6 +501,9 @@ bolt_manager_initialize (GInitable    *initable,
   gboolean ok;
 
   mgr = BOLT_MANAGER (initable);
+
+  /* load dynamic user configuration */
+  manager_load_user_config (mgr);
 
   /* polkit setup */
   mgr->bouncer = bolt_bouncer_new (cancellable, error);
@@ -1172,6 +1179,39 @@ manager_add_domain (BoltManager        *mgr,
     return;
 
   probing_add_root (mgr, p);
+}
+
+/* config */
+static void
+manager_load_user_config (BoltManager *mgr)
+{
+  g_autoptr(GError) err = NULL;
+  BoltPolicy policy;
+  BoltTri res;
+
+  g_info ("Loading user config");
+  mgr->config = bolt_store_config_load (mgr->store, &err);
+  if (mgr->config == NULL)
+    {
+      if (!bolt_err_notfound (err))
+        g_warning ("failed to load user config: %s", err->message);
+
+      return;
+    }
+
+  g_info ("User config loaded successfully");
+  res = bolt_config_load_default_policy (mgr->config, &policy, &err);
+  if (res == TRI_ERROR)
+    {
+      g_warning ("failed to load default policy: %s", err->message);
+      g_clear_error (&err);
+    }
+  else if (res == TRI_YES)
+    {
+      mgr->policy = policy;
+      /* for the dbus-codegen hack/workaround */
+      g_object_set (mgr, "default-policy", policy, NULL);
+    }
 }
 
 /* dbus methods */
