@@ -54,7 +54,9 @@ gboolean
 bolt_err_notfound (const GError *error)
 {
   return g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND) ||
-         g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT);
+         g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT) ||
+         g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND) ||
+         g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_GROUP_NOT_FOUND);
 }
 
 gboolean
