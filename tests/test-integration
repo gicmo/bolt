@@ -867,7 +867,9 @@ class BoltTest(dbusmock.DBusTestCase):
         assert version is not None
         d = self.client.list_devices()
         self.assertEqual(len(d), 0)
-
+        policy = self.client.default_policy
+        self.assertIn(policy, [self.client.POLICY_AUTO,
+                               self.client.POLICY_MANUAL])
         # connect all device
         tree = self.default_mock_tree()
         chk = TreeChecker(self.client, tree)

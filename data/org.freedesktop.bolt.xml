@@ -28,6 +28,13 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="DefaultPolicy" type="u" access="read">
+      <doc:doc><doc:description><doc:para>
+	The policy to use during enrollment when "default" was
+	sepcified.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <!-- methods -->
 
     <method name="ListDevices">

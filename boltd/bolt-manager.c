@@ -140,6 +140,9 @@ struct _BoltManager
   /* policy enforcer */
   BoltBouncer *bouncer;
 
+  /* config */
+  BoltPolicy policy;          /* default enrollment policy, unless specified */
+
   /* probing indicator  */
   guint      authorizing;     /* number of devices currently authorizing */
   GPtrArray *probing_roots;   /* pci device tree root */
@@ -153,6 +156,7 @@ enum {
 
   PROP_VERSION,
   PROP_PROBING,
+  PROP_POLICY,
 
   PROP_LAST
 };
@@ -220,6 +224,10 @@ bolt_manager_get_property (GObject    *object,
       g_value_set_boolean (value, mgr->probing_timeout > 0);
       break;
 
+    case PROP_POLICY:
+      g_value_set_uint (value, mgr->policy);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -251,10 +259,13 @@ static void
 bolt_manager_init (BoltManager *mgr)
 {
   mgr->devices = g_ptr_array_new_with_free_func (g_object_unref);
-  mgr->store = bolt_store_new (g_getenv ("BOLT_DBPATH") ?: BOLT_DBDIR);
+  mgr->store = bolt_store_new (g_getenv ("BOLT_DBPATH") ? : BOLT_DBDIR);
 
   mgr->probing_roots = g_ptr_array_new_with_free_func (g_free);
   mgr->probing_tsettle = PROBING_SETTLE_TIME_MS; /* milliseconds */
+
+  /* default configuration */
+  mgr->policy = BOLT_POLICY_AUTO;
 
   g_signal_connect (mgr, "handle-list-devices", G_CALLBACK (handle_list_devices), NULL);
   g_signal_connect (mgr, "handle-device-by-uid", G_CALLBACK (handle_device_by_uid), NULL);
@@ -280,6 +291,10 @@ bolt_manager_class_init (BoltManagerClass *klass)
   g_object_class_override_property (gobject_class,
                                     PROP_PROBING,
                                     "probing");
+
+  g_object_class_override_property (gobject_class,
+                                    PROP_POLICY,
+                                    "default-policy");
 }
 
 static void
@@ -1241,7 +1256,7 @@ enroll_device_done (GObject      *device,
 
       policy = p;
       if (policy == BOLT_POLICY_DEFAULT)
-        policy = BOLT_POLICY_AUTO;
+        policy = mgr->policy;
 
       ok = bolt_store_put_device (mgr->store,
                                   dev,
