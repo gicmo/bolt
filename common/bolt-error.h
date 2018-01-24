@@ -36,6 +36,7 @@ enum {
   BOLT_ERROR_UDEV,
   BOLT_ERROR_NOKEY,
   BOLT_ERROR_BADKEY,
+  BOLT_ERROR_CFG,
 } BoltError;
 
 
