@@ -8,7 +8,7 @@ Patches should be submitted in the form of pull requests at
 Coding style
 ============
 
-Run `contrib/uncrustify.sh` to format the source code before submitting
+Run `scripts/uncrustify.sh` to format the source code before submitting
 pull requests.
 
 Testing
