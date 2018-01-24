@@ -35,6 +35,13 @@ G_DECLARE_FINAL_TYPE (BoltStore, bolt_store, BOLT, STORE, GObject);
 
 BoltStore *       bolt_store_new (const char *path);
 
+GKeyFile *        bolt_store_config_load (BoltStore *store,
+                                          GError   **error);
+
+gboolean          bolt_store_config_save (BoltStore *store,
+                                          GKeyFile  *config,
+                                          GError   **error);
+
 GStrv             bolt_store_list_uids (BoltStore *store,
                                         GError   **error);
 

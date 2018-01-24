@@ -185,6 +185,7 @@ bolt_store_class_init (BoltStoreClass *klass)
 #define DEVICE_GROUP "device"
 #define USER_GROUP "user"
 
+#define CFG_FILE "boltd.conf"
 
 /* public methods */
 
@@ -200,6 +201,62 @@ bolt_store_new (const char *path)
                         NULL);
 
   return store;
+}
+
+GKeyFile *
+bolt_store_config_load (BoltStore *store,
+                        GError   **error)
+{
+  g_autoptr(GKeyFile) kf = NULL;
+  g_autoptr(GFile) sf = NULL;
+  g_autofree char *data  = NULL;
+  gboolean ok;
+  gsize len;
+
+  g_return_val_if_fail (store != NULL, FALSE);
+
+  sf = g_file_get_child (store->root, CFG_FILE);
+  ok = g_file_load_contents (sf, NULL,
+                             &data, &len,
+                             NULL,
+                             error);
+
+  if (!ok)
+    return NULL;
+
+  kf = g_key_file_new ();
+  ok = g_key_file_load_from_data (kf, data, len, G_KEY_FILE_NONE, error);
+
+  if (!ok)
+    return NULL;
+
+  return g_steal_pointer (&kf);
+}
+
+gboolean
+bolt_store_config_save (BoltStore *store,
+                        GKeyFile  *config,
+                        GError   **error)
+{
+  g_autoptr(GFile) sf = NULL;
+  g_autofree char *data  = NULL;
+  gboolean ok;
+  gsize len;
+
+  sf = g_file_get_child (store->root, CFG_FILE);
+  data = g_key_file_to_data (config, &len, error);
+
+  if (!data)
+    return FALSE;
+
+  ok = g_file_replace_contents (sf,
+                                data, len,
+                                NULL, FALSE,
+                                0,
+                                NULL,
+                                NULL, error);
+
+  return ok;
 }
 
 GStrv
