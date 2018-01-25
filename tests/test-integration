@@ -1144,6 +1144,25 @@ class BoltTest(dbusmock.DBusTestCase):
                 self.assertTrue(res)
                 self.assertDeviceEqual(local, remote)
 
+    def test_device_enroll_fortify(self):
+        self.user_config(Fortify='true')
+        self.daemon_start()
+        tree = self.default_mock_tree()
+        tree.connect_tree(self.testbed)
+
+        self.polkitd_start()
+
+        to_enroll = tree.collect(TbDevice.is_unauthorized)
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.enroll'])
+        for d in to_enroll:
+            with self.assertRaises(GLib.GError) as cm:
+                self.client.enroll(d.unique_id)
+            err = cm.exception
+            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+            self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
+
+        self.daemon_stop()
+
     def test_device_forget(self):
         self.daemon_start()
         tree = self.default_mock_tree()
