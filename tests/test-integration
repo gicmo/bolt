@@ -902,6 +902,8 @@ class BoltTest(dbusmock.DBusTestCase):
         policy = self.client.default_policy
         self.assertIn(policy, [self.client.POLICY_AUTO,
                                self.client.POLICY_MANUAL])
+        fortify = self.client.fortify
+        self.assertFalse(fortify)
         # connect all device
         tree = self.default_mock_tree()
         chk = TreeChecker(self.client, tree)
