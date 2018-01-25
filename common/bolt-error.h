@@ -46,5 +46,5 @@ GQuark bolt_error_quark (void);
 /* helper function to check for certain error types */
 gboolean bolt_err_notfound (const GError *error);
 gboolean bolt_err_exists (const GError *error);
-
+gboolean bolt_err_inval (const GError *error);
 G_END_DECLS
