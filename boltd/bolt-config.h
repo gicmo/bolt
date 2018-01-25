@@ -26,6 +26,7 @@
 
 G_BEGIN_DECLS
 
+/* tri state return value */
 typedef enum BoltTri {
 
   TRI_ERROR = -1,
@@ -34,11 +35,21 @@ typedef enum BoltTri {
 
 } BoltTri;
 
+const char * bolt_tri_to_string (BoltTri tri);
+
+/* config related  */
 GKeyFile * bolt_config_user_init (void);
 
 
-BoltTri    bolt_config_load_default_policy (GKeyFile *cfg,
+BoltTri    bolt_config_load_default_policy (GKeyFile   *cfg,
                                             BoltPolicy *policy,
-                                            GError **error);
+                                            GError    **error);
+
+void       bolt_config_save_fortify_mode (GKeyFile *cfg,
+                                          gboolean  value);
+
+BoltTri    bolt_config_load_fortify_mode (GKeyFile *cfg,
+                                          gboolean *fortify,
+                                          GError  **error);
 
 G_END_DECLS

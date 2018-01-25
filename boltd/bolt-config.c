@@ -29,6 +29,22 @@
 #define CFG_VERSION 1
 
 #define DEFAULT_POLICY_KEY "DefaultPolicy"
+#define FORTIFY_MODE_KEY "Fortify"
+
+const char *
+bolt_tri_to_string (BoltTri tri)
+{
+  switch (tri)
+    {
+    case TRI_ERROR: return "error";
+
+    case TRI_NO:    return "no";
+
+    case TRI_YES:   return "yes";
+
+    default:        return "unknown";
+    }
+}
 
 GKeyFile *
 bolt_config_user_init (void)
@@ -47,9 +63,9 @@ bolt_config_user_init (void)
 }
 
 BoltTri
-bolt_config_load_default_policy (GKeyFile *cfg,
+bolt_config_load_default_policy (GKeyFile   *cfg,
                                  BoltPolicy *policy,
-                                 GError **error)
+                                 GError    **error)
 {
   g_autoptr(GError) err = NULL;
   g_autofree char *str = NULL;
@@ -79,4 +95,41 @@ bolt_config_load_default_policy (GKeyFile *cfg,
 
   *policy = p;
   return TRI_YES;
+}
+
+void
+bolt_config_save_fortify_mode (GKeyFile *cfg,
+                               gboolean  value)
+{
+  g_return_if_fail (cfg != NULL);
+
+  g_key_file_set_boolean (cfg, DAEMON_GROUP, FORTIFY_MODE_KEY, value);
+}
+
+int
+bolt_config_load_fortify_mode (GKeyFile *cfg,
+                               gboolean *fortify,
+                               GError  **error)
+{
+  g_autoptr(GError) err = NULL;
+  gboolean p;
+
+  if (cfg == NULL)
+    return TRI_NO;
+
+  p = g_key_file_get_boolean (cfg, DAEMON_GROUP, FORTIFY_MODE_KEY, &err);
+  if (err == NULL)
+    {
+      *fortify = p;
+      return TRI_YES;
+    }
+
+  if (bolt_err_notfound (err))
+    return TRI_NO;
+  else if (bolt_err_inval (err))
+    g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_CFG, err->message);
+  else
+    g_propagate_error (error, g_steal_pointer (&err));
+
+  return TRI_ERROR;
 }
