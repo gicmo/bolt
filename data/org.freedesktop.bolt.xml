@@ -35,6 +35,15 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="Fortify" type="b" access="readwrite">
+      <doc:doc><doc:description><doc:para>
+	If set the daemon will use stricter policies to
+	authorize D-Bus method calls and also require
+	devices to be identified via a key when auto-
+	authorzing them.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <!-- methods -->
 
     <method name="ListDevices">

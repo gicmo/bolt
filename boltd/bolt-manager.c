@@ -146,6 +146,7 @@ struct _BoltManager
   /* config */
   GKeyFile  *config;
   BoltPolicy policy;          /* default enrollment policy, unless specified */
+  gboolean   fortify;         /* heightened security mode */
 
   /* probing indicator  */
   guint      authorizing;     /* number of devices currently authorizing */
@@ -161,6 +162,7 @@ enum {
   PROP_VERSION,
   PROP_PROBING,
   PROP_POLICY,
+  PROP_FORTIFY,
 
   PROP_LAST
 };
@@ -232,6 +234,10 @@ bolt_manager_get_property (GObject    *object,
       g_value_set_uint (value, mgr->policy);
       break;
 
+    case PROP_FORTIFY:
+      g_value_set_boolean (value, mgr->fortify);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -270,6 +276,7 @@ bolt_manager_init (BoltManager *mgr)
 
   /* default configuration */
   mgr->policy = BOLT_POLICY_AUTO;
+  mgr->fortify = FALSE;
 
   g_signal_connect (mgr, "handle-list-devices", G_CALLBACK (handle_list_devices), NULL);
   g_signal_connect (mgr, "handle-device-by-uid", G_CALLBACK (handle_device_by_uid), NULL);
@@ -299,6 +306,10 @@ bolt_manager_class_init (BoltManagerClass *klass)
   g_object_class_override_property (gobject_class,
                                     PROP_POLICY,
                                     "default-policy");
+
+  g_object_class_override_property (gobject_class,
+                                    PROP_FORTIFY,
+                                    "fortify");
 }
 
 static void

@@ -29,7 +29,6 @@
 #define CFG_VERSION 1
 
 #define DEFAULT_POLICY_KEY "DefaultPolicy"
-#define PARANOID_MODE_KEY  "ParanoidMode"
 
 GKeyFile *
 bolt_config_user_init (void)
