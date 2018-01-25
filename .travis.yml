@@ -7,7 +7,7 @@ services:
 
 env:
   - OS=debian
-  - OS=arch
+#  - OS=arch
   - OS=fedora
 
 install:
