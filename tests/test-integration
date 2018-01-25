@@ -972,6 +972,24 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(policy, self.client.POLICY_MANUAL)
         self.daemon_stop()
 
+        self.user_config(Fortify='true')
+        self.daemon_start()
+        fortify = self.client.fortify
+        self.assertTrue(fortify)
+        self.daemon_stop()
+
+        self.user_config(Fortify='false')
+        self.daemon_start()
+        self.client.fortify = True
+        with self.client.record() as tape:
+            res = tape.wait_for_event('property',
+                                      'Fortify',
+                                      True)
+        self.assertTrue(res)
+        fortify = self.client.fortify
+        self.assertTrue(fortify)
+        self.daemon_stop()
+
     def test_device_by_uid(self):
         self.daemon_start()
 
