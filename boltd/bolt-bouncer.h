@@ -28,6 +28,7 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (BoltBouncer, bolt_bouncer, BOLT, BOUNCER, GObject);
 
 BoltBouncer * bolt_bouncer_new (GCancellable *cancellable,
+                                gboolean      fortify,
                                 GError      **error);
 
 void          bolt_bouncer_add_client (BoltBouncer *bnc,

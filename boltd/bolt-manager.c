@@ -517,11 +517,14 @@ bolt_manager_initialize (GInitable    *initable,
   manager_load_user_config (mgr);
 
   /* polkit setup */
-  mgr->bouncer = bolt_bouncer_new (cancellable, error);
+  mgr->bouncer = bolt_bouncer_new (cancellable,
+                                   mgr->fortify,
+                                   error);
   if (mgr->bouncer == NULL)
     return FALSE;
 
   bolt_bouncer_add_client (mgr->bouncer, mgr);
+  g_object_bind_property (mgr, "fortify", mgr->bouncer, "fortify", 0);
 
   /* udev setup*/
   mgr->udev = udev_new ();

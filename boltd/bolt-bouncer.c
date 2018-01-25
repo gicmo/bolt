@@ -51,7 +51,20 @@ struct _BoltBouncer
 
   /* */
   PolkitAuthority *authority;
+
+  /*  */
+  gboolean fortify;
 };
+
+enum {
+  PROP_0,
+
+  PROP_FORTIFY,
+
+  PROP_LAST
+};
+
+static GParamSpec *props[PROP_LAST] = {NULL, };
 
 G_DEFINE_TYPE_WITH_CODE (BoltBouncer, bolt_bouncer, G_TYPE_OBJECT,
                          G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
@@ -74,12 +87,63 @@ bolt_bouncer_init (BoltBouncer *bouncer)
 }
 
 static void
+bolt_bouncer_get_property (GObject    *object,
+                           guint       prop_id,
+                           GValue     *value,
+                           GParamSpec *pspec)
+{
+  BoltBouncer *bouncer = BOLT_BOUNCER (object);
+
+  switch (prop_id)
+    {
+    case PROP_FORTIFY:
+      g_value_set_boolean (value, bouncer->fortify);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
+bolt_bouncer_set_property (GObject      *object,
+                           guint         prop_id,
+                           const GValue *value,
+                           GParamSpec   *pspec)
+{
+  BoltBouncer *bouncer = BOLT_BOUNCER (object);
+
+  switch (prop_id)
+    {
+    case PROP_FORTIFY:
+      bouncer->fortify = g_value_get_boolean (value);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
 bolt_bouncer_class_init (BoltBouncerClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
   gobject_class->finalize = bolt_bouncer_finalize;
+  gobject_class->get_property = bolt_bouncer_get_property;
+  gobject_class->set_property = bolt_bouncer_set_property;
 
+  props[PROP_FORTIFY] =
+    g_param_spec_boolean ("fortify",
+                          NULL, NULL,
+                          FALSE,
+                          G_PARAM_READWRITE  |
+                          G_PARAM_CONSTRUCT  |
+                          G_PARAM_STATIC_NICK);
+
+  g_object_class_install_properties (gobject_class,
+                                     PROP_LAST,
+                                     props);
 }
 
 static void
@@ -100,6 +164,9 @@ bouncer_initialize (GInitable    *initable,
 }
 
 /* internal methods */
+
+#define ACTION(bnc, name) bnc->fortify ? name "-fortified" : name
+
 static gboolean
 handle_authorize_method (GDBusInterfaceSkeleton *iface,
                          GDBusMethodInvocation  *inv,
@@ -123,9 +190,9 @@ handle_authorize_method (GDBusInterfaceSkeleton *iface,
   action = NULL;
 
   if (bolt_streq (method_name, "EnrollDevice"))
-    action = "org.freedesktop.bolt.enroll";
+    action = ACTION (bnc, "org.freedesktop.bolt.enroll");
   else if (bolt_streq (method_name, "Authorize"))
-    action = "org.freedesktop.bolt.authorize";
+    action = ACTION (bnc, "org.freedesktop.bolt.authorize");
   else if (bolt_streq (method_name, "ForgetDevice"))
     action = "org.freedesktop.bolt.manage";
   else if (bolt_streq (method_name, "ListDevices"))
@@ -167,10 +234,12 @@ handle_authorize_method (GDBusInterfaceSkeleton *iface,
 /* public methods */
 BoltBouncer *
 bolt_bouncer_new (GCancellable *cancellable,
+                  gboolean      fortify,
                   GError      **error)
 {
   return g_initable_new (BOLT_TYPE_BOUNCER,
                          cancellable, error,
+                         "fortify", fortify,
                          NULL);
 }
 
