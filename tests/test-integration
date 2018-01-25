@@ -392,6 +392,22 @@ class BoltClient(ProxyWrapper):
         self.ForgetDevice("(s)", uid)
         return True
 
+    @property
+    def fortify(self):
+        return self._proxy.get_cached_property("Fortify").unpack()
+
+    @fortify.setter
+    def fortify(self, value):
+        dbus = self._proxy.get_connection()
+        proxy = Gio.DBusProxy.new_sync(dbus,
+                                       Gio.DBusProxyFlags.DO_NOT_AUTO_START,
+                                       None,
+                                       DBUS_NAME,
+                                       DBUS_PATH,
+                                       'org.freedesktop.DBus.Properties',
+                                       None)
+        proxy.Set('(ssv)', DBUS_IFACE_MANAGER, 'Fortify',
+                  GLib.Variant('b', value))
 
 # Mock Device Tree
 @Signal.enable
