@@ -1157,8 +1157,10 @@ class BoltTest(dbusmock.DBusTestCase):
 
 
 if __name__ == '__main__':
-    # run ourselves under umockdev
-    if 'umockdev' not in os.environ.get('LD_PRELOAD', ''):
-        os.execvp('umockdev-wrapper', ['umockdev-wrapper'] + sys.argv)
-
+    if len(sys.argv) == 2 and sys.argv[1] == "list-tests":
+        suit = unittest.defaultTestLoader.loadTestsFromTestCase(BoltTest)
+        for t in suit:
+            name = t.id()
+            print(name[9:], end=" ")
+        sys.exit(0)
     unittest.main(verbosity=2)
