@@ -340,10 +340,18 @@ foreach t: tests
 endforeach
 
 test_it = find_program(join_paths(srcdir, 'tests', 'test-integration'))
-test_env = environment()
-test_env.prepend('LD_PRELOAD', 'libumockdev-preload.so.0')
-test_env.prepend('BOLT_BUILD_DIR', meson.current_build_dir())
-test('test-integration', test_it, env: test_env, timeout: 120)
+res = run_command(test_it, 'list-tests')
+if res.returncode() == 0
+  test_env = environment()
+  test_env.prepend('LD_PRELOAD', 'libumockdev-preload.so.0')
+  test_env.prepend('BOLT_BUILD_DIR', meson.current_build_dir())
+
+  tests = res.stdout().strip().split(' ')
+  foreach t: tests
+    name = 'integration @0@'.format(t.split('.')[1])
+    test(name, test_it, args: [t], env: test_env, timeout: 120)
+  endforeach
+endif
 
 # contrib
 
