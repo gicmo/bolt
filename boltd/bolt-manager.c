@@ -109,6 +109,9 @@ static void          manager_add_domain (BoltManager        *mgr,
 /* config */
 static void          manager_load_user_config (BoltManager *mgr);
 
+static gboolean      manager_config_save_fortify (BoltManager *mgr,
+                                                  gboolean     value);
+
 /* dbus method calls */
 static gboolean handle_list_devices (BoltDBusManager       *object,
                                      GDBusMethodInvocation *invocation,
@@ -249,7 +252,36 @@ bolt_manager_set_property (GObject      *object,
                            const GValue *value,
                            GParamSpec   *pspec)
 {
+  BoltManager *mgr = BOLT_MANAGER (object);
   GParamSpec *parent;
+
+  switch (prop_id)
+    {
+
+    case PROP_FORTIFY:
+      {
+        gboolean ok;
+        gboolean p;
+        /* called from dbus, or locally during initialization */
+
+        p = g_value_get_boolean (value);
+
+        /* if values are equal don't write, but make sure the
+         * cache is up-to-date (see the hack below) */
+        if (p == mgr->fortify)
+          break;
+
+        ok = manager_config_save_fortify (mgr, p);
+        if (!ok)
+          return;
+
+        mgr->fortify = p;
+        g_info ("config: fortify: %s", p ? "yes" : "no");
+      }
+
+    default:
+      break;
+    }
 
   /* This is one gross hack, see bolt_device_set_property() for details */
   parent = g_object_class_find_property (bolt_manager_parent_class,
@@ -1201,17 +1233,13 @@ manager_load_user_config (BoltManager *mgr)
 {
   g_autoptr(GError) err = NULL;
   BoltPolicy policy;
+  gboolean fortify;
   BoltTri res;
 
   g_info ("Loading user config");
   mgr->config = bolt_store_config_load (mgr->store, &err);
-  if (mgr->config == NULL)
-    {
-      if (!bolt_err_notfound (err))
-        g_warning ("failed to load user config: %s", err->message);
-
-      return;
-    }
+  if (mgr->config == NULL && !bolt_err_notfound (err))
+    g_warning ("failed to load user config: %s", err->message);
 
   g_info ("User config loaded successfully");
   res = bolt_config_load_default_policy (mgr->config, &policy, &err);
@@ -1226,6 +1254,54 @@ manager_load_user_config (BoltManager *mgr)
       /* for the dbus-codegen hack/workaround */
       g_object_set (mgr, "default-policy", policy, NULL);
     }
+
+  g_info ("config: policy: %s [loaded: %s]",
+          bolt_policy_to_string (mgr->policy),
+          bolt_tri_to_string (res));
+
+  res = bolt_config_load_fortify_mode (mgr->config, &fortify, &err);
+  if (res == TRI_ERROR)
+    {
+      g_warning ("failed to load fortify mode: %s", err->message);
+      g_clear_error (&err);
+    }
+  else if (res == TRI_YES)
+    {
+      mgr->fortify = fortify;
+      /* for the dbus-codegen hack/workaround */
+      g_object_set (mgr, "fortify", fortify, NULL);
+    }
+
+  g_info ("config: fortify: %s [loaded: %s]",
+          mgr->fortify ? "yes" : "no",
+          bolt_tri_to_string (res));
+}
+
+static GKeyFile *
+manager_user_config_ensure (BoltManager *mgr)
+{
+  if (mgr->config == NULL)
+    mgr->config = bolt_config_user_init ();
+
+  return mgr->config;
+}
+
+static gboolean
+manager_config_save_fortify (BoltManager *mgr,
+                             gboolean     value)
+{
+  g_autoptr(GError) err = NULL;
+  GKeyFile *cfg;
+  gboolean ok;
+
+  cfg = manager_user_config_ensure (mgr);
+  bolt_config_save_fortify_mode (cfg, value);
+
+  ok = bolt_store_config_save (mgr->store, cfg, &err);
+  if (!ok)
+    g_warning ("failed to write user config: %s", err->message);
+
+  return ok;
 }
 
 /* dbus methods */
