@@ -33,17 +33,6 @@ static void bolt_proxy_handle_dbus_signal (GDBusProxy  *proxy,
                                            const gchar *signal_name,
                                            GVariant    *params,
                                            gpointer     user_data);
-enum {
-  PROP_0,
-
-  PROP_BUS,
-
-  /* d-bus names */
-  PROP_OBJECT_PATH,
-  PROP_IFACE_NAME,
-
-  PROP_LAST
-};
 
 G_DEFINE_TYPE (BoltProxy, bolt_proxy, G_TYPE_DBUS_PROXY);
 
