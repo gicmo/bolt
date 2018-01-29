@@ -200,6 +200,7 @@ handle_authorize_method (GDBusInterfaceSkeleton *iface,
   else if (bolt_streq (method_name, "DeviceByUid"))
     authorized = TRUE;
 
+  g_debug ("bouncer: method=%s, authorized=%s", method_name, authorized ? "yes" : "no");
   if (!authorized && action)
     {
       PolkitCheckAuthorizationFlags flags;
@@ -214,6 +215,7 @@ handle_authorize_method (GDBusInterfaceSkeleton *iface,
                                                        NULL, &error);
       if (res == NULL)
         {
+          g_debug ("bouncer: action=%s, error=%s", action, error->message);
           g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_FAILED,
                                                  "Authorization error: %s",
                                                  error->message);
@@ -221,6 +223,7 @@ handle_authorize_method (GDBusInterfaceSkeleton *iface,
         }
 
       authorized = polkit_authorization_result_get_is_authorized (res);
+      g_debug ("bouncer: action=%s, authorized=%s", action, authorized ? "yes" : "no");
     }
 
   if (authorized == FALSE)
