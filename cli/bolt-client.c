@@ -43,6 +43,7 @@ enum {
   /* D-Bus Props */
   PROP_VERSION,
   PROP_PROBING,
+  PROP_FORTIFY,
 
   PROP_LAST
 };
@@ -79,6 +80,7 @@ bolt_client_get_dbus_props (guint *n)
   static BoltProxyProp dbus_props[] = {
     {"Version", "version", PROP_VERSION, NULL},
     {"Probing", "probing", PROP_PROBING, NULL},
+    {"Fortify", "fortify", PROP_FORTIFY, NULL},
   };
 
   *n = G_N_ELEMENTS (dbus_props);
@@ -125,6 +127,14 @@ bolt_client_class_init (BoltClientClass *klass)
                             FALSE,
                             G_PARAM_READABLE |
                             G_PARAM_STATIC_NAME);
+
+  props[PROP_FORTIFY]
+    = g_param_spec_boolean ("fortify",
+                            NULL, NULL,
+                            FALSE,
+                            G_PARAM_READABLE |
+                            G_PARAM_STATIC_NAME);
+
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
@@ -439,3 +449,29 @@ bolt_client_forget_device_finish (BoltClient   *client,
 
   return TRUE;
 }
+
+void
+bolt_client_set_fortify_async (BoltClient         *client,
+                               gboolean            value,
+                               GCancellable       *cancellable,
+                               GAsyncReadyCallback callback,
+                               gpointer            user_data)
+{
+  g_return_if_fail (BOLT_IS_CLIENT (client));
+
+  bolt_proxy_set_property_async (BOLT_PROXY (client),
+                                 "fortify",
+                                 g_variant_new ("b", value),
+                                 cancellable,
+                                 callback,
+                                 user_data);
+}
+
+gboolean
+bolt_client_set_fortify_finish (GAsyncResult *res,
+                                GError      **error)
+{
+  return bolt_proxy_set_property_finish (res, error);
+}
+
+G_END_DECLS

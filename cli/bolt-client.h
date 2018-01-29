@@ -53,4 +53,13 @@ void            bolt_client_forget_device_async (BoltClient         *client,
 gboolean        bolt_client_forget_device_finish (BoltClient   *client,
                                                   GAsyncResult *res,
                                                   GError      **error);
+
+void            bolt_client_set_fortify_async (BoltClient         *client,
+                                               gboolean            value,
+                                               GCancellable       *cancellable,
+                                               GAsyncReadyCallback callback,
+                                               gpointer            user_data);
+
+gboolean        bolt_client_set_fortify_finish (GAsyncResult *res,
+                                                GError      **error);
 G_END_DECLS
