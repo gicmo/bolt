@@ -66,4 +66,14 @@ gboolean          bolt_proxy_get_dbus_property (GObject *proxy,
 
 const char *      bolt_proxy_get_object_path (BoltProxy *proxy);
 
+void              bolt_proxy_set_property_async (BoltProxy          *proxy,
+                                                 const char         *name,
+                                                 GVariant           *value,
+                                                 GCancellable       *cancellable,
+                                                 GAsyncReadyCallback callback,
+                                                 gpointer            user_data);
+
+gboolean         bolt_proxy_set_property_finish (GAsyncResult *res,
+                                                 GError      **error);
+
 G_END_DECLS

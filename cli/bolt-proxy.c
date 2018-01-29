@@ -183,3 +183,60 @@ bolt_proxy_get_object_path (BoltProxy *proxy)
 {
   return g_dbus_proxy_get_object_path (G_DBUS_PROXY (proxy));
 }
+
+void
+bolt_proxy_set_property_async (BoltProxy          *proxy,
+                               const char         *name,
+                               GVariant           *value,
+                               GCancellable       *cancellable,
+                               GAsyncReadyCallback callback,
+                               gpointer            user_data)
+{
+  const BoltProxyProp *pp;
+  guint n;
+
+  pp = BOLT_PROXY_GET_CLASS (proxy)->get_dbus_props (&n);
+
+  for (guint i = 0; i < n; i++)
+    {
+      const BoltProxyProp *prop = &pp[i];
+      const char *ours = prop->ours;
+
+      if (g_strcmp0 (ours, name) == 0)
+        {
+          name = prop->theirs;
+          break;
+        }
+    }
+
+  g_dbus_proxy_call (G_DBUS_PROXY (proxy),
+                     "org.freedesktop.DBus.Properties.Set",
+                     g_variant_new ("(ssv)", "org.freedesktop.bolt1.Manager", name, value),
+                     G_DBUS_CALL_FLAGS_NONE,
+                     -1,
+                     cancellable,
+                     callback,
+                     user_data);
+}
+
+gboolean
+bolt_proxy_set_property_finish (GAsyncResult *res,
+                                GError      **error)
+{
+  g_autoptr(GError) err = NULL;
+  BoltProxy *proxy;
+  GVariant *val = NULL;
+
+  proxy = (BoltProxy *) g_async_result_get_source_object (res);
+  val = g_dbus_proxy_call_finish (G_DBUS_PROXY (proxy), res, &err);
+
+  if (val == NULL)
+    {
+      g_warning ("Error setting property: %s", err->message);
+      g_propagate_error (error, g_steal_pointer (&err));
+      return FALSE;
+    }
+
+  g_variant_unref (val);
+  return TRUE;
+}
