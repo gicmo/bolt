@@ -30,6 +30,13 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (BoltClient, bolt_client, BOLT, CLIENT, BoltProxy);
 
 BoltClient *    bolt_client_new (GError **error);
+
+void            bolt_client_new_async (GCancellable       *cancellable,
+                                       GAsyncReadyCallback callback,
+                                       gpointer            user_data);
+BoltClient *    bolt_client_new_finish (GAsyncResult *res,
+                                        GError      **error);
+
 GPtrArray *     bolt_client_list_devices (BoltClient *client,
                                           GError    **error);
 BoltDevice *    bolt_client_get_device (BoltClient *client,

@@ -252,6 +252,79 @@ bolt_client_new (GError **error)
   return cli;
 }
 
+static void
+got_the_client (GObject      *source,
+                GAsyncResult *res,
+                gpointer      user_data)
+{
+  g_autoptr(GError) error = NULL;
+  GTask *task = user_data;
+  GObject *obj;
+
+  obj = g_async_initable_new_finish (G_ASYNC_INITABLE (source), res, &error);
+
+  if (obj == NULL)
+    {
+      g_task_return_error (task, error);
+      return;
+    }
+
+  g_task_return_pointer (task, obj, g_object_unref);
+  g_object_unref (task);
+}
+
+static void
+got_the_bus (GObject      *source,
+             GAsyncResult *res,
+             gpointer      user_data)
+{
+  g_autoptr(GError) error = NULL;
+  GTask *task = user_data;
+  GCancellable *cancellable;
+  GDBusConnection *bus;
+
+  bus = g_bus_get_finish (res, &error);
+  if (bus == NULL)
+    {
+      g_prefix_error (&error, "could not connect to D-Bus: ");
+      g_task_return_error (task, error);
+      return;
+    }
+
+  cancellable = g_task_get_cancellable (task);
+  g_async_initable_new_async (BOLT_TYPE_CLIENT,
+                              G_PRIORITY_DEFAULT,
+                              cancellable,
+                              got_the_client, task,
+                              "g-flags", G_DBUS_PROXY_FLAGS_NONE,
+                              "g-connection", bus,
+                              "g-name", BOLT_DBUS_NAME,
+                              "g-object-path", BOLT_DBUS_PATH,
+                              "g-interface-name", BOLT_DBUS_INTERFACE,
+                              NULL);
+  g_object_unref (bus);
+}
+
+void
+bolt_client_new_async (GCancellable       *cancellable,
+                       GAsyncReadyCallback callback,
+                       gpointer            user_data)
+{
+  GTask *task;
+
+  task = g_task_new (NULL, cancellable, callback, user_data);
+  g_bus_get (G_BUS_TYPE_SYSTEM, cancellable, got_the_bus, task);
+}
+
+BoltClient *
+bolt_client_new_finish (GAsyncResult *res,
+                        GError      **error)
+{
+  g_return_val_if_fail (G_IS_TASK (res), NULL);
+
+  return g_task_propagate_pointer (G_TASK (res), error);
+}
+
 GPtrArray *
 bolt_client_list_devices (BoltClient *client,
                           GError    **error)
