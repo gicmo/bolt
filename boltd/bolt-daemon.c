@@ -21,51 +21,64 @@
 #include "config.h"
 
 #include "bolt-dbus.h"
+#include "bolt-log.h"
 #include "bolt-manager.h"
+#include "bolt-str.h"
 #include "bolt-term.h"
 
 #include <gio/gio.h>
 
 #include <locale.h>
+#include <stdio.h>
 #include <stdlib.h>
-
 
 /* globals */
 static BoltManager *manager = NULL;
 static GMainLoop *main_loop = NULL;
 static guint name_owner_id = 0;
 
-#define TIME_MAXFMT 255
-static void
-log_handler (const gchar   *log_domain,
-             GLogLevelFlags log_level,
-             const gchar   *message,
-             gpointer       user_data)
+typedef struct _LogCfg
 {
-  const char *normal = bolt_color (ANSI_NORMAL);
-  const char *fg = normal;
-  gchar the_time[TIME_MAXFMT];
-  time_t now;
-  struct tm *tm;
+  gboolean debug;
+} LogCfg;
 
-  time (&now);
-  tm = localtime (&now);
+static GLogWriterOutput
+daemon_logger (GLogLevelFlags   level,
+               const GLogField *fields,
+               gsize            n_fields,
+               gpointer         user_data)
+{
+  g_autoptr(BoltLogCtx) ctx = NULL;
+  GLogWriterOutput res = G_LOG_WRITER_UNHANDLED;
+  LogCfg *log = user_data;
 
-  if (tm && strftime (the_time, sizeof (the_time), "%T", tm) > 0)
+  g_return_val_if_fail (fields != NULL, G_LOG_WRITER_UNHANDLED);
+  g_return_val_if_fail (n_fields > 0, G_LOG_WRITER_UNHANDLED);
+
+  ctx = bolt_log_ctx_acquire (fields, n_fields);
+
+  if (ctx == NULL)
+    return G_LOG_WRITER_UNHANDLED;
+
+  if (level & G_LOG_LEVEL_DEBUG && log->debug == FALSE)
     {
-      const char *gray = bolt_color (ANSI_HIGHLIGHT_BLACK);
-      g_printerr ("%s%s%s ", gray, the_time, normal);
+      const char *domain = blot_log_ctx_get_domain (ctx);
+      const char *env = g_getenv ("G_MESSAGES_DEBUG");
+
+      if (!env || !domain || !strstr (env, domain))
+        return G_LOG_WRITER_UNHANDLED;
     }
 
-  if (log_level == G_LOG_LEVEL_CRITICAL ||
-      log_level == G_LOG_LEVEL_ERROR)
-    fg = bolt_color (ANSI_RED);
-  else if (log_level == G_LOG_LEVEL_WARNING)
-    fg = bolt_color (ANSI_YELLOW);
-  else if (log_level == G_LOG_LEVEL_INFO)
-    fg = bolt_color (ANSI_BLUE);
+  if (fileno (stderr) < 0)
+    return G_LOG_WRITER_UNHANDLED;
 
-  g_printerr ("%s%s%s\n", fg, message, normal);
+  if (g_log_writer_is_journald (fileno (stderr)))
+    res = bolt_log_journal (ctx, level, 0);
+
+  if (res == G_LOG_WRITER_UNHANDLED)
+    res = bolt_log_stdstream (ctx, level, 0);
+
+  return res;
 }
 
 static void
@@ -116,17 +129,17 @@ main (int argc, char **argv)
 {
   GOptionContext *context;
   gboolean replace = FALSE;
-  gboolean verbose = FALSE;
   gboolean show_version = FALSE;
   gboolean session_bus = FALSE;
   GBusType bus_type = G_BUS_TYPE_SYSTEM;
   GBusNameOwnerFlags flags;
+  LogCfg log = { FALSE, };
 
   g_autoptr(GError) error = NULL;
   const GOptionEntry options[] = {
     { "replace", 'r', 0, G_OPTION_ARG_NONE, &replace,  "Replace old daemon.", NULL },
     { "session-bus", 0, 0, G_OPTION_ARG_NONE, &session_bus, "Use the session bus.", NULL},
-    { "verbose", 'v', 0, G_OPTION_ARG_NONE, &verbose,  "Enable debug output.", NULL },
+    { "verbose", 'v', 0, G_OPTION_ARG_NONE, &log.debug,  "Enable debug output.", NULL },
     { "version", 0, 0, G_OPTION_ARG_NONE, &show_version, "Print daemon version.", NULL},
     { NULL }
   };
@@ -135,11 +148,7 @@ main (int argc, char **argv)
   g_setenv ("GIO_USE_VFS", "local", TRUE);
   g_set_prgname (argv[0]);
 
-  /* print all but debug messages */
-  g_log_set_handler (G_LOG_DOMAIN,
-                     G_LOG_LEVEL_MASK & ~G_LOG_LEVEL_DEBUG,
-                     log_handler,
-                     NULL);
+  g_log_set_writer_func (daemon_logger, &log, NULL);
 
   context = g_option_context_new ("");
 
@@ -157,14 +166,17 @@ main (int argc, char **argv)
       return EXIT_FAILURE;
     }
 
+  if (log.debug == FALSE && g_getenv ("G_MESSAGES_DEBUG"))
+    {
+      const char *domains = g_getenv ("G_MESSAGES_DEBUG");
+      log.debug = bolt_streq (domains, "all");
+    }
+
   if (show_version)
     {
       g_print (PACKAGE_NAME " " PACKAGE_VERSION "\n");
       return EXIT_SUCCESS;
     }
-
-  if (verbose)
-    g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, log_handler, NULL);
 
   g_debug (PACKAGE_NAME " " PACKAGE_VERSION " starting up.");
 

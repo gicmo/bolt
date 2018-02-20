@@ -92,7 +92,6 @@ void               bolt_log (const char    *domain,
                              GLogLevelFlags level,
                              ...);
 
-
 /* consumer functions */
 
 typedef struct _BoltLogCtx BoltLogCtx;
