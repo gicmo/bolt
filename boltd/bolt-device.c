@@ -25,6 +25,7 @@
 #include "bolt-enums.h"
 #include "bolt-error.h"
 #include "bolt-io.h"
+#include "bolt-log.h"
 #include "bolt-manager.h"
 #include "bolt-store.h"
 #include "bolt-str.h"
@@ -426,7 +427,7 @@ read_sysfs_attr_int (struct udev_device *device, const char *attr)
 
   if (val > G_MAXINT || val < G_MININT)
     {
-      g_warning ("value read from sysfs outside of gint's range.");
+      bolt_warn ("value read from sysfs outside of gint's range.");
       val = 0;
     }
 
@@ -533,7 +534,7 @@ bolt_sysfs_security_for_device (struct udev_device *udev)
   parent = bolt_sysfs_domain_for_device (udev);
   if (parent == NULL)
     {
-      g_warning ("Failed to determine domain device");
+      bolt_warn ("failed to determine domain device");
       return BOLT_SECURITY_NONE;
     }
 
@@ -542,7 +543,7 @@ bolt_sysfs_security_for_device (struct udev_device *udev)
 
   if (!bolt_security_validate (s))
     {
-      g_warning ("invalid security: %s", v);
+      bolt_warn ("invalid security: %s", v);
       s = BOLT_SECURITY_NONE;
     }
 
@@ -594,7 +595,6 @@ auth_data_free (gpointer data)
 {
   AuthData *auth = data;
 
-  g_debug ("freeing auth data");
   g_clear_object (&auth->auth);
   g_slice_free (AuthData, auth);
 }
@@ -624,7 +624,7 @@ authorize_device_internal (BoltDevice *dev,
     {
       int keyfd;
 
-      g_debug ("[%s] writing key", dev->uid);
+      bolt_debug (LOG_DEV (dev), "writing key");
       keyfd = bolt_openat (dirfd (devdir), "key", O_WRONLY | O_CLOEXEC, error);
       if (keyfd < 0)
         return FALSE;
@@ -635,7 +635,7 @@ authorize_device_internal (BoltDevice *dev,
         return FALSE;
     }
 
-  g_debug ("[%s] writing authorization", dev->uid);
+  bolt_debug (LOG_DEV (dev), "writing authorization");
   ok = bolt_write_char_at (dirfd (devdir),
                            "authorized",
                            level,
@@ -906,7 +906,7 @@ bolt_device_connected (BoltDevice         *dev,
                 "status", status,
                 NULL);
 
-  g_debug ("[%s] parent is %s", dev->uid, dev->parent);
+  bolt_info (LOG_DEV (dev), "parent is %s", dev->parent);
 
   return status;
 }
