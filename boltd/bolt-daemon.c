@@ -88,7 +88,7 @@ on_bus_acquired (GDBusConnection *connection,
 {
   g_autoptr(GError) error = NULL;
 
-  g_debug ("Got the bus [%s]", name);
+  bolt_debug (LOG_TOPIC ("dbus"), "got the bus [%s]", name);
   /*  */
   manager = g_initable_new (BOLT_TYPE_MANAGER,
                             NULL, &error,
@@ -96,12 +96,12 @@ on_bus_acquired (GDBusConnection *connection,
 
   if (manager == NULL)
     {
-      g_printerr ("Could not create manager: %s", error->message);
+      bolt_error (LOG_ERR (error), "could not create manager");
       exit (EXIT_FAILURE);
     }
 
   if (!bolt_manager_export (manager, connection, &error))
-    g_warning ("error: %s", error->message);
+    bolt_warn_err (error, LOG_TOPIC ("dbus"), "error exporting the manager");
 
 }
 
@@ -110,7 +110,7 @@ on_name_acquired (GDBusConnection *connection,
                   const gchar     *name,
                   gpointer         user_data)
 {
-  g_debug ("Got the name");
+  bolt_debug (LOG_TOPIC ("dbus"), "got the name");
 }
 
 static void
@@ -118,7 +118,8 @@ on_name_lost (GDBusConnection *connection,
               const gchar     *name,
               gpointer         user_data)
 {
-  g_debug ("Lost the name. Shutting down...");
+  bolt_debug (LOG_TOPIC ("dbus"), "name lost; shutting down...");
+
   g_clear_object (&manager);
   g_bus_unown_name (name_owner_id);
   g_main_loop_quit (main_loop);
@@ -178,7 +179,7 @@ main (int argc, char **argv)
       return EXIT_SUCCESS;
     }
 
-  g_debug (PACKAGE_NAME " " PACKAGE_VERSION " starting up.");
+  bolt_msg (PACKAGE_NAME " " PACKAGE_VERSION " starting up.");
 
   flags = G_BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT;
   if (replace)
