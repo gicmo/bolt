@@ -205,6 +205,7 @@ daemon_sources = files([
   'boltd/bolt-manager.c',
   'boltd/bolt-device.c',
   'boltd/bolt-key.c',
+  'boltd/bolt-log.c',
   'boltd/bolt-store.c'
 ])
 
@@ -322,6 +323,7 @@ executable('boltctl',
 
 tests = [
   ['test-common'],
+  ['test-logging', [libdaemon]],
   ['test-store', [libdaemon]]
 ]
 

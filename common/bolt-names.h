@@ -1,0 +1,35 @@
+/*
+ * Copyright © 2018 Red Hat, Inc
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Authors:
+ *       Christian J. Kellner <christian@kellner.me>
+ */
+
+#pragma once
+
+
+/* logging */
+
+#define BOLT_LOG_DEVICE_UID "BOLT_DEVICE_UID"
+#define BOLT_LOG_DEVICE_NAME "BOLT_DEVICE_NAME"
+#define BOLT_LOG_DEVICE_STATE "BOLT_DEVICE_STATE"
+#define BOLT_LOG_DEVICE_SYSPATH "BOLT_DEVICE_SYSPATH"
+
+#define BOLT_LOG_ERROR_DOMAIN "ERROR_DOMAIN"
+#define BOLT_LOG_ERROR_CODE "ERROR_CODE"
+#define BOLT_LOG_ERROR_MESSAGE "ERROR_MESSAGE"
+
+#define BOLT_LOG_TOPIC "BOLT_TOPIC"
