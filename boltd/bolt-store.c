@@ -25,6 +25,7 @@
 #include "bolt-error.h"
 #include "bolt-fs.h"
 #include "bolt-io.h"
+#include "bolt-log.h"
 #include "bolt-str.h"
 
 #include <string.h>
@@ -350,7 +351,7 @@ bolt_store_put_device (BoltStore  *store,
         ok = bolt_key_save_file (key, keypath, &err);
 
       if (!ok)
-        g_warning ("failed to store key: %s", err->message);
+        bolt_warn_err (err, "failed to store key");
       else
         keystate = bolt_key_get_state (key);
     }
@@ -419,13 +420,15 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
 
   if (!bolt_device_type_validate (type))
     {
-      g_warning ("[%s] invalid type in store: %s", uid, typestr);
+      bolt_warn (LOG_TOPIC ("store"), LOG_DEV_UID (uid),
+                 "invalid device type: %s", typestr);
       type = BOLT_DEVICE_PERIPHERAL;
     }
 
   if (!bolt_policy_validate (policy))
     {
-      g_warning ("[%s] invalid policy in store: %s", uid, polstr);
+      bolt_warn (LOG_TOPIC ("store"), LOG_DEV_UID (uid),
+                 "invalid policy: %s", polstr);
       policy = BOLT_POLICY_MANUAL;
     }
 
@@ -478,7 +481,7 @@ bolt_store_have_key (BoltStore  *store,
   if (keyinfo != NULL)
     key = BOLT_KEY_HAVE; /* todo: check size */
   else if (!bolt_err_notfound (err))
-    g_warning ("error querying key info for %s: %s", uid, err->message);
+    bolt_warn_err (err, LOG_DEV_UID (uid), "error querying key info");
 
   return key;
 }
