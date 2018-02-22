@@ -183,63 +183,28 @@ handle_device_field (BoltLogCtx *ctx,
                      va_list     args)
 {
   g_auto(GStrv) suffixes = NULL;
-  guint n;
+  BoltDevice *dev = va_arg (args, BoltDevice *);
+  BoltStatus status;
+  GLogField *field;
 
-  suffixes = g_strsplit (key, "+", 32);
+  g_return_if_fail (BOLT_IS_DEVICE (dev));
+  ctx->device = dev;
 
-  if (suffixes == NULL || *suffixes == NULL)
-    {
-      internal_error ("invalid special devices key: %s", key);
-      return;
-    }
+  bolt_log_ctx_next_field (ctx, &field);
+  field->key = "BOLT_DEVICE_UID";
+  field->value = bolt_device_get_uid (dev);
+  field->length = -1;
 
-  if (ctx->device == NULL)
-    {
-      BoltDevice *dev = va_arg (args, BoltDevice *);
-      BoltStatus status;
-      GLogField *field;
+  bolt_log_ctx_next_field (ctx, &field);
+  field->key = "BOLT_DEVICE_NAME";
+  field->value = bolt_device_get_name (dev);
+  field->length = -1;
 
-      g_return_if_fail (BOLT_IS_DEVICE (dev));
-      ctx->device = dev;
-
-      bolt_log_ctx_next_field (ctx, &field);
-      field->key = "BOLT_DEVICE_UID";
-      field->value = bolt_device_get_uid (dev);
-      field->length = -1;
-
-      bolt_log_ctx_next_field (ctx, &field);
-      field->key = "BOLT_DEVICE_NAME";
-      field->value = bolt_device_get_name (dev);
-      field->length = -1;
-
-      bolt_log_ctx_next_field (ctx, &field);
-      status = bolt_device_get_status (dev);
-      field->key = "BOLT_DEVICE_STATE";
-      field->value = bolt_status_to_string (status);
-      field->length = -1;
-    }
-
-  n = g_strv_length (suffixes);
-  for (guint i = 1; i < n; i++)
-    {
-      const char *fid = suffixes[i];
-
-      if (g_str_has_suffix (fid, "syspath"))
-        {
-          const char *syspath;
-          GLogField *field;
-
-          syspath = bolt_device_get_syspath (ctx->device);
-          bolt_log_ctx_next_field (ctx, &field);
-          field->key = "BOLT_DEVICE_SYSPATH";
-          field->value = syspath ? : "(not connected)";
-          field->length = -1;
-        }
-      else
-        {
-          internal_error ("Unknown device fied: %s\n", key);
-        }
-    }
+  bolt_log_ctx_next_field (ctx, &field);
+  status = bolt_device_get_status (dev);
+  field->key = "BOLT_DEVICE_STATE";
+  field->value = bolt_status_to_string (status);
+  field->length = -1;
 }
 
 static void
