@@ -102,6 +102,9 @@ typedef struct _BoltLogCtx BoltLogCtx;
 BoltLogCtx *       bolt_log_ctx_acquire (const GLogField *fields,
                                          gsize            n);
 
+gboolean           bolt_log_ctx_set_id (BoltLogCtx *ctx,
+                                        const char *id);
+
 void               bolt_log_ctx_free (BoltLogCtx *ctx);
 
 const char *       blot_log_ctx_get_domain (BoltLogCtx *ctx);

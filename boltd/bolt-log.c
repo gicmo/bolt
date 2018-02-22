@@ -567,6 +567,21 @@ bolt_log_ctx_acquire (const GLogField *fields,
   return ctx;
 }
 
+gboolean
+bolt_log_ctx_set_id (BoltLogCtx *ctx,
+                     const char *id)
+{
+  if (ctx->self == NULL)
+    return FALSE;
+  else if (ctx->self->length != 0)
+    return FALSE;
+
+  ctx->self->value = id;
+  ctx->self->length = -1;
+
+  return TRUE;
+}
+
 void
 bolt_log_ctx_free (BoltLogCtx *ctx)
 {
