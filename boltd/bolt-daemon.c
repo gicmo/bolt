@@ -39,7 +39,8 @@ static guint name_owner_id = 0;
 
 typedef struct _LogCfg
 {
-  gboolean debug;
+  gboolean    debug;
+  const char *session_id;
 } LogCfg;
 
 static GLogWriterOutput
@@ -59,6 +60,9 @@ daemon_logger (GLogLevelFlags   level,
 
   if (ctx == NULL)
     return G_LOG_WRITER_UNHANDLED;
+
+  /* replace the log context field with the session id */
+  bolt_log_ctx_set_id (ctx, log->session_id);
 
   if (level & G_LOG_LEVEL_DEBUG && log->debug == FALSE)
     {
@@ -128,6 +132,9 @@ on_name_lost (GDBusConnection *connection,
 int
 main (int argc, char **argv)
 {
+  g_autofree char *session_id = NULL;
+
+  g_autoptr(GError) error = NULL;
   GOptionContext *context;
   gboolean replace = FALSE;
   gboolean show_version = FALSE;
@@ -135,8 +142,6 @@ main (int argc, char **argv)
   GBusType bus_type = G_BUS_TYPE_SYSTEM;
   GBusNameOwnerFlags flags;
   LogCfg log = { FALSE, };
-
-  g_autoptr(GError) error = NULL;
   const GOptionEntry options[] = {
     { "replace", 'r', 0, G_OPTION_ARG_NONE, &replace,  "Replace old daemon.", NULL },
     { "session-bus", 0, 0, G_OPTION_ARG_NONE, &session_bus, "Use the session bus.", NULL},
@@ -167,20 +172,27 @@ main (int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  if (log.debug == FALSE && g_getenv ("G_MESSAGES_DEBUG"))
-    {
-      const char *domains = g_getenv ("G_MESSAGES_DEBUG");
-      log.debug = bolt_streq (domains, "all");
-    }
-
   if (show_version)
     {
       g_print (PACKAGE_NAME " " PACKAGE_VERSION "\n");
       return EXIT_SUCCESS;
     }
 
-  bolt_msg (PACKAGE_NAME " " PACKAGE_VERSION " starting up.");
+  /* setup logging  */
+  if (log.debug == FALSE && g_getenv ("G_MESSAGES_DEBUG"))
+    {
+      const char *domains = g_getenv ("G_MESSAGES_DEBUG");
+      log.debug = bolt_streq (domains, "all");
+    }
 
+  session_id = g_uuid_string_random ();
+  log.session_id = session_id;
+
+  bolt_msg (LOG_DIRECT (BOLT_LOG_VERSION, PACKAGE_VERSION),
+            LOG_ID (STARTUP),
+            PACKAGE_NAME " " PACKAGE_VERSION " starting up.");
+
+  /* hop on the bus, Gus */
   flags = G_BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT;
   if (replace)
     flags |= G_BUS_NAME_OWNER_FLAGS_REPLACE;
