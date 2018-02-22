@@ -191,18 +191,18 @@ handle_device_field (BoltLogCtx *ctx,
   ctx->device = dev;
 
   bolt_log_ctx_next_field (ctx, &field);
-  field->key = "BOLT_DEVICE_UID";
+  field->key = BOLT_LOG_DEVICE_UID;
   field->value = bolt_device_get_uid (dev);
   field->length = -1;
 
   bolt_log_ctx_next_field (ctx, &field);
-  field->key = "BOLT_DEVICE_NAME";
+  field->key = BOLT_LOG_DEVICE_NAME;
   field->value = bolt_device_get_name (dev);
   field->length = -1;
 
   bolt_log_ctx_next_field (ctx, &field);
   status = bolt_device_get_status (dev);
-  field->key = "BOLT_DEVICE_STATE";
+  field->key = BOLT_LOG_DEVICE_STATE;
   field->value = bolt_status_to_string (status);
   field->length = -1;
 }
@@ -219,17 +219,17 @@ handle_gerror_field (BoltLogCtx *ctx,
   ctx->error = error;
 
   bolt_log_ctx_next_field (ctx, &field);
-  field->key = "ERROR_DOMAIN";
+  field->key =  BOLT_LOG_ERROR_DOMAIN;
   field->value = g_quark_to_string (error->domain);
   field->length = -1;
 
   bolt_log_ctx_next_field (ctx, &field);
-  field->key = "ERROR_CODE";
+  field->key = BOLT_LOG_ERROR_CODE;
   field->value = &error->code;
   field->length = sizeof (gint);
 
   bolt_log_ctx_next_field (ctx, &field);
-  field->key = "ERROR_MESSAGE";
+  field->key = BOLT_LOG_ERROR_MESSAGE;
   field->value = error->message;
   field->length = -1;
 }
@@ -244,7 +244,7 @@ handle_topic_field (BoltLogCtx *ctx,
 
   bolt_log_ctx_next_field (ctx, &field);
 
-  field->key = "BOLT_TOPIC";
+  field->key =  BOLT_LOG_TOPIC;
   field->value = value;
   field->length = -1;
 
