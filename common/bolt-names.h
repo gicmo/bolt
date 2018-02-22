@@ -35,3 +35,5 @@
 #define BOLT_LOG_VERSION "BOLT_VERSION"
 #define BOLT_LOG_CONTEXT "BOLT_LOG_CONTEXT"
 
+/* logging - message ids */
+#define BOLT_LOG_MSG_ID_STARTUP "dd11929c788e48bdbb6276fb5f26b08a"
