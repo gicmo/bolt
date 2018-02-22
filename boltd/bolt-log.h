@@ -37,6 +37,9 @@ G_BEGIN_DECLS
 #define LOG_ERR(error) "@error", error
 #define LOG_TOPIC(topic) "@topic", topic
 #define LOG_DEV_UID(uid) LOG_DIRECT (BOLT_LOG_DEVICE_UID, uid)
+#define LOG_MSG_ID(msg_id) LOG_DIRECT ("MESSAGE_ID", msg_id)
+#define LOG_ID(id) LOG_MSG_ID (BOLT_LOG_MSG_ID_ ## id)
+
 
 #define bolt_debug(...) bolt_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,                 \
                                   LOG_DIRECT ("CODE_FILE", __FILE__),               \
