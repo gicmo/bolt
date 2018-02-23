@@ -22,7 +22,7 @@
 
 #include "bolt-error.h"
 
-#include "bolt-dbus.h"
+#include "bolt-names.h"
 
 #include <gio/gio.h>
 

@@ -20,10 +20,11 @@
 
 #include "config.h"
 
-#include "bolt-dbus.h"
 #include "bolt-device.h"
+
 #include "bolt-enums.h"
 #include "bolt-error.h"
+#include "bolt-names.h"
 
 #include <gio/gio.h>
 

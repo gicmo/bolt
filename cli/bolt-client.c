@@ -19,9 +19,10 @@
  */
 
 #include "bolt-client.h"
-#include "bolt-dbus.h"
+
 #include "bolt-device.h"
 #include "bolt-error.h"
+#include "bolt-names.h"
 
 #include <gio/gio.h>
 

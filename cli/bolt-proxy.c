@@ -20,8 +20,8 @@
 
 #include "bolt-proxy.h"
 
-#include "bolt-dbus.h"
 #include "bolt-error.h"
+#include "bolt-names.h"
 
 static void bolt_proxy_handle_props_changed (GDBusProxy *proxy,
                                              GVariant   *changed_properties,

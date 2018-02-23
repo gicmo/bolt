@@ -37,3 +37,12 @@
 
 /* logging - message ids */
 #define BOLT_LOG_MSG_ID_STARTUP "dd11929c788e48bdbb6276fb5f26b08a"
+
+
+/* dbus */
+
+#define BOLT_DBUS_NAME "org.freedesktop.bolt"
+#define BOLT_DBUS_PATH "/org/freedesktop/bolt"
+#define BOLT_DBUS_INTERFACE "org.freedesktop.bolt1.Manager"
+
+#define BOLT_DBUS_DEVICE_INTERFACE "org.freedesktop.bolt1.Device"

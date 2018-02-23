@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "bolt-dbus.h"
+#include "bolt-names.h"
 #include "bolt-enum-types.h"
 
 /**

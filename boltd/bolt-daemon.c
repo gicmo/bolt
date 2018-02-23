@@ -20,9 +20,9 @@
 
 #include "config.h"
 
-#include "bolt-dbus.h"
 #include "bolt-log.h"
 #include "bolt-manager.h"
+#include "bolt-names.h"
 #include "bolt-str.h"
 #include "bolt-term.h"
 
