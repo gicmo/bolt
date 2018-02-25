@@ -202,6 +202,7 @@ daemon_sources = files([
   'boltd/bolt-auth.c',
   'boltd/bolt-bouncer.c',
   'boltd/bolt-config.c',
+  'boltd/bolt-exported.c',
   'boltd/bolt-manager.c',
   'boltd/bolt-device.c',
   'boltd/bolt-key.c',
@@ -320,12 +321,22 @@ executable('boltctl',
 
 
 # testing
+test_resources = gnome.compile_resources(
+  'bolt-test-resources',
+  'tests/tests.gresource.xml',
+  source_dir: 'tests',
+  c_name: 'bolt_test')
 
 tests = [
   ['test-common'],
+  ['test-exported', [libdaemon], [test_resources]],
   ['test-logging', [libdaemon]],
   ['test-store', [libdaemon]]
 ]
+
+test_resources =  files(
+  'tests/tests.gresource.xml'
+)
 
 foreach t: tests
   test_name = t.get(0)

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/bolt/tests/exported">
+    <file preprocess="xml-stripblanks">example.bolt.xml</file>
+  </gresource>
+</gresources>
