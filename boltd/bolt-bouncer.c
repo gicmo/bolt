@@ -22,7 +22,10 @@
 
 #include "bolt-bouncer.h"
 
+#include "bolt-log.h"
 #include "bolt-str.h"
+
+#include "bolt-exported.h"
 
 #include <gio/gio.h>
 #include <polkit/polkit.h>
@@ -178,9 +181,14 @@ void
 bolt_bouncer_add_client (BoltBouncer *bnc,
                          gpointer     client)
 {
-  g_return_if_fail (G_IS_DBUS_INTERFACE_SKELETON (client));
-
-  g_signal_connect (client, "g-authorize-method",
-                    G_CALLBACK (handle_authorize_method),
-                    bnc);
+  if (G_IS_DBUS_INTERFACE_SKELETON (client))
+    g_signal_connect (client, "g-authorize-method",
+                      G_CALLBACK (handle_authorize_method),
+                      bnc);
+  else if (BOLT_IS_EXPORTED (client))
+    g_signal_connect (client, "authorize-method",
+                      G_CALLBACK (handle_authorize_method),
+                      bnc);
+  else
+    bolt_critical (LOG_TOPIC ("bouncer"), "unknown client class");
 }
