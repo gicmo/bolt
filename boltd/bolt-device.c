@@ -35,14 +35,14 @@
 #include <libudev.h>
 
 /* dbus method calls */
-static gboolean    handle_authorize (BoltDBusDevice        *object,
-                                     GDBusMethodInvocation *invocation,
-                                     gpointer               user_data);
+static gboolean    handle_authorize (BoltExported          *object,
+                                     GVariant              *params,
+                                     GDBusMethodInvocation *invocation);
 
 
 struct _BoltDevice
 {
-  BoltDBusDeviceSkeleton object;
+  BoltExported object;
 
   /* device props */
   char          *dbus_path;
@@ -71,9 +71,7 @@ enum {
 
   PROP_STORE,
 
-  PROP_LAST,
-
-  /* overridden */
+  /* exported properties start here, */
   PROP_UID,
   PROP_NAME,
   PROP_VENDOR,
@@ -87,6 +85,9 @@ enum {
   PROP_STORED,
   PROP_POLICY,
   PROP_HAVE_KEY,
+
+  PROP_LAST,
+  PROP_EXPORTED = PROP_UID
 };
 
 static GParamSpec *props[PROP_LAST] = {NULL, };
@@ -100,7 +101,7 @@ static guint signals[SIGNAL_LAST] = {0};
 
 G_DEFINE_TYPE (BoltDevice,
                bolt_device,
-               BOLT_DBUS_TYPE_DEVICE_SKELETON)
+               BOLT_TYPE_EXPORTED)
 
 static void
 bolt_device_finalize (GObject *object)
@@ -124,8 +125,6 @@ bolt_device_finalize (GObject *object)
 static void
 bolt_device_init (BoltDevice *dev)
 {
-  g_signal_connect (dev, "handle-authorize",
-                    G_CALLBACK (handle_authorize), NULL);
 }
 
 static void
@@ -198,13 +197,12 @@ bolt_device_set_property (GObject      *object,
                           GParamSpec   *pspec)
 {
   BoltDevice *dev = BOLT_DEVICE (object);
-  GParamSpec *parent;
 
   switch (prop_id)
     {
     case PROP_STORE:
       dev->store = g_value_dup_object (value);
-      g_object_set (object, "stored", dev->store != NULL, NULL);
+      g_object_notify_by_pspec (object, props[PROP_STORED]);
       break;
 
     case PROP_UID:
@@ -255,10 +253,6 @@ bolt_device_set_property (GObject      *object,
       dev->security = g_value_get_uint (value);
       break;
 
-    case PROP_STORED:
-      /* this is just here for the hack below :( */
-      break;
-
     case PROP_POLICY:
       dev->policy = g_value_get_uint (value);
       break;
@@ -270,40 +264,6 @@ bolt_device_set_property (GObject      *object,
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
-
-  /* This is one gross hack to make the DBus property change
-   * signal emission work.
-   *   The heart "problem" is a combination of two things:
-   *   1) the dbus object properties are override here,
-   *      which means the property setter from the parent
-   *      (the dbus skeleton) will not be called.
-   *   2) The dbus skeleton will only emit the signal on the
-   *      bus if it finds that the value has changed, which
-   *      it can only detect if its property setter was called
-   *   => We need to call the skeleton's set_property function
-   *      from here, so it can detect property changes itself.
-   */
-
-  /* all properties below PROP_LAST are our own, non-dbus props */
-  if (prop_id < PROP_LAST)
-    return;
-
-  /* we need to original GParamSpec, since the one we got is
-   * the new, overridden one */
-  parent = g_object_class_find_property (bolt_device_parent_class,
-                                         pspec->name);
-  if (parent == NULL)
-    return;
-
-  /* the prop_id is *our* prop_id, not the parent's prop_id, which
-   * we need. For this to work our property list *after* PROP_LAST
-   * need to be in sync with the parent */
-  prop_id -= PROP_LAST;
-
-  G_OBJECT_CLASS (bolt_device_parent_class)->set_property (object,
-                                                           prop_id,
-                                                           value,
-                                                           parent);
 }
 
 
@@ -311,6 +271,7 @@ static void
 bolt_device_class_init (BoltDeviceClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  BoltExportedClass *exported_class = BOLT_EXPORTED_CLASS (klass);
 
   gobject_class->finalize = bolt_device_finalize;
 
@@ -322,56 +283,102 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          NULL, NULL,
                          BOLT_TYPE_STORE,
                          G_PARAM_READWRITE |
-                         G_PARAM_STATIC_NICK);
+                         G_PARAM_STATIC_STRINGS);
+
+  props[PROP_UID] =
+    g_param_spec_string ("uid",
+                         "Uid", NULL,
+                         NULL,
+                         G_PARAM_READWRITE |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_STRINGS);
+
+  props[PROP_NAME] =
+    g_param_spec_string ("name",
+                         "Name", NULL,
+                         NULL,
+                         G_PARAM_READWRITE |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_STRINGS);
+
+  props[PROP_VENDOR] =
+    g_param_spec_string ("vendor",
+                         "Vendor", NULL,
+                         NULL,
+                         G_PARAM_READWRITE |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_STRINGS);
+
+  props[PROP_TYPE] =
+    g_param_spec_uint ("type",
+                       "Type", NULL,
+                       BOLT_DEVICE_HOST,
+                       BOLT_DEVICE_PERIPHERAL,
+                       BOLT_DEVICE_PERIPHERAL,
+                       G_PARAM_READWRITE |
+                       G_PARAM_CONSTRUCT_ONLY |
+                       G_PARAM_STATIC_STRINGS);
+
+  props[PROP_STATUS] =
+    g_param_spec_uint ("status",
+                       "Status", NULL,
+                       0,
+                       BOLT_STATUS_LAST,
+                       BOLT_STATUS_DISCONNECTED,
+                       G_PARAM_READWRITE |
+                       G_PARAM_STATIC_STRINGS);
+
+  props[PROP_PARENT] =
+    g_param_spec_string ("parent",
+                         "Parent", NULL,
+                         NULL,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS);
+
+  props[PROP_SYSFS] =
+    g_param_spec_string ("sysfs-path",
+                         "SysfsPath", NULL,
+                         NULL,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS);
+
+  props[PROP_SECURITY] =
+    g_param_spec_uint ("security",
+                       "Security", NULL,
+                       0,
+                       BOLT_SECURITY_LAST,
+                       BOLT_SECURITY_NONE,
+                       G_PARAM_READWRITE |
+                       G_PARAM_STATIC_STRINGS);
+
+  props[PROP_STORED] =
+    g_param_spec_boolean ("stored",
+                          "Stored", NULL,
+                          FALSE,
+                          G_PARAM_READWRITE |
+                          G_PARAM_STATIC_STRINGS);
+
+  props[PROP_POLICY] =
+    g_param_spec_uint ("policy",
+                       "Policy", NULL,
+                       0,
+                       BOLT_POLICY_LAST,
+                       BOLT_POLICY_DEFAULT,
+                       G_PARAM_READWRITE |
+                       G_PARAM_STATIC_STRINGS);
+
+  props[PROP_HAVE_KEY] =
+    g_param_spec_uint ("key",
+                       "Key", NULL,
+                       0,
+                       BOLT_KEY_NEW,
+                       BOLT_KEY_MISSING,
+                       G_PARAM_READWRITE |
+                       G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
                                      props);
-
-  g_object_class_override_property (gobject_class,
-                                    PROP_UID,
-                                    "uid");
-
-  g_object_class_override_property (gobject_class,
-                                    PROP_NAME,
-                                    "name");
-
-  g_object_class_override_property (gobject_class,
-                                    PROP_VENDOR,
-                                    "vendor");
-
-  g_object_class_override_property (gobject_class,
-                                    PROP_TYPE,
-                                    "type");
-
-  g_object_class_override_property (gobject_class,
-                                    PROP_STATUS,
-                                    "status");
-
-  g_object_class_override_property (gobject_class,
-                                    PROP_PARENT,
-                                    "parent");
-
-  g_object_class_override_property (gobject_class,
-                                    PROP_SYSFS,
-                                    "sysfs-path");
-
-  g_object_class_override_property (gobject_class,
-                                    PROP_SECURITY,
-                                    "security");
-
-  g_object_class_override_property (gobject_class,
-                                    PROP_STORED,
-                                    "stored");
-
-  g_object_class_override_property (gobject_class,
-                                    PROP_POLICY,
-                                    "policy");
-
-  g_object_class_override_property (gobject_class,
-                                    PROP_HAVE_KEY,
-                                    "key");
-
 
   signals[SIGNAL_STATUS_CHANGED] =
     g_signal_new ("status-changed",
@@ -382,6 +389,19 @@ bolt_device_class_init (BoltDeviceClass *klass)
                   NULL,
                   G_TYPE_NONE,
                   1, BOLT_TYPE_STATUS);
+
+  bolt_exported_class_set_interface_info (exported_class,
+                                          BOLT_DBUS_DEVICE_INTERFACE,
+                                          "/boltd/org.freedesktop.bolt.xml");
+
+  bolt_exported_class_export_properties (exported_class,
+                                         PROP_EXPORTED,
+                                         PROP_LAST,
+                                         props);
+
+  bolt_exported_class_export_method (exported_class,
+                                     "Authorize",
+                                     handle_authorize);
 
 }
 
@@ -743,24 +763,22 @@ handle_authorize_done (GObject      *device,
   GDBusMethodInvocation *inv;
   GError *error = NULL;
   BoltAuth *auth;
-  BoltDevice *dev;
   gboolean ok;
 
-  dev = BOLT_DEVICE (device);
   inv  = user_data;
   auth = BOLT_AUTH (res);
 
   ok = bolt_auth_check (auth, &error);
   if (ok)
-    bolt_dbus_device_complete_authorize (BOLT_DBUS_DEVICE (dev), inv);
+    g_dbus_method_invocation_return_value (inv, g_variant_new ("()"));
   else
     g_dbus_method_invocation_take_error (inv, error);
 }
 
 static gboolean
-handle_authorize (BoltDBusDevice        *object,
-                  GDBusMethodInvocation *inv,
-                  gpointer               user_data)
+handle_authorize (BoltExported          *object,
+                  GVariant              *params,
+                  GDBusMethodInvocation *inv)
 {
   BoltDevice *dev = BOLT_DEVICE (object);
   GError *error = NULL;
@@ -872,17 +890,18 @@ bolt_device_export (BoltDevice      *device,
 
   path = bolt_device_get_object_path (device);
 
-  ok = g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (device),
-                                         connection,
-                                         path,
-                                         error);
+  ok = bolt_exported_export (BOLT_EXPORTED (device),
+                             connection,
+                             path,
+                             error);
+
   return ok ? path : NULL;
 }
 
 void
 bolt_device_unexport (BoltDevice *device)
 {
-  g_dbus_interface_skeleton_unexport (G_DBUS_INTERFACE_SKELETON (device));
+  bolt_exported_unexport (BOLT_EXPORTED (device));
 }
 
 

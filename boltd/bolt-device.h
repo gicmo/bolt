@@ -22,7 +22,7 @@
 
 #include "bolt-auth.h"
 #include "bolt-enums.h"
-#include "bolt-gdbus.h"
+#include "bolt-exported.h"
 
 /* forward declaration */
 struct udev_device;
@@ -30,7 +30,7 @@ struct udev_device;
 G_BEGIN_DECLS
 
 #define BOLT_TYPE_DEVICE bolt_device_get_type ()
-G_DECLARE_FINAL_TYPE (BoltDevice, bolt_device, BOLT, DEVICE, BoltDBusDeviceSkeleton);
+G_DECLARE_FINAL_TYPE (BoltDevice, bolt_device, BOLT, DEVICE, BoltExported);
 
 BoltDevice *      bolt_device_new_for_udev (struct udev_device *udev,
                                             GError            **error);
