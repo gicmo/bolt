@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/boltd">
+    <file preprocess="xml-stripblanks">org.freedesktop.bolt.xml</file>
+  </gresource>
+</gresources>
