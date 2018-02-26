@@ -27,6 +27,8 @@
 
 #include "bolt-log.h"
 
+#include "bolt-daemon-resource.h"
+
 #include <glib.h>
 #include <gio/gio.h>
 #include <glib/gprintf.h>
@@ -251,6 +253,8 @@ main (int argc, char **argv)
   setlocale (LC_ALL, "");
 
   g_test_init (&argc, &argv, NULL);
+
+  g_resources_register (bolt_daemon_get_resource ());
 
   g_test_add ("/logging/basic",
               TestLog,
