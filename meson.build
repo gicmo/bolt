@@ -210,11 +210,6 @@ daemon_sources = files([
   'boltd/bolt-store.c'
 ])
 
-daemon_sources += gnome.gdbus_codegen('bolt-gdbus',
-  'data/org.freedesktop.bolt.xml',
-  interface_prefix: 'org.freedesktop.bolt1.',
-  namespace: 'BoltDBus')
-
 daemon_sources += gnome.compile_resources(
   'bolt-daemon-resource',
   'data/boltd.gresource.xml',
