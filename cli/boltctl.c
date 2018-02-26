@@ -54,12 +54,6 @@ usage_error_need_arg (const char *arg)
   return usage_error (error);
 }
 
-static const char *
-yes_no (gboolean b)
-{
-  return b ? "yes" : "no ";
-}
-
 static void
 print_device (BoltDevice *dev, gboolean verbose)
 {
@@ -168,7 +162,7 @@ print_device (BoltDevice *dev, gboolean verbose)
                bolt_security_to_string (security));
     }
 
-  g_print ("   %s stored:      %s\n", tree_right, yes_no (stored));
+  g_print ("   %s stored:      %s\n", tree_right, bolt_yesno (stored));
 
   if (stored)
     {
