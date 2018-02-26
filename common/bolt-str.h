@@ -34,4 +34,7 @@ void bolt_str_erase_clear (char **str);
 
 GStrv   bolt_strv_from_ptr_array (GPtrArray **array);
 
+#define bolt_yesno(val) val ? "yes" : "no"
+
+
 G_END_DECLS
