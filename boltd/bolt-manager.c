@@ -111,26 +111,26 @@ static void          manager_add_domain (BoltManager        *mgr,
 static void          manager_load_user_config (BoltManager *mgr);
 
 /* dbus method calls */
-static gboolean handle_list_devices (BoltDBusManager       *object,
-                                     GDBusMethodInvocation *invocation,
-                                     gpointer               user_data);
+static gboolean handle_list_devices (BoltExported          *object,
+                                     GVariant              *params,
+                                     GDBusMethodInvocation *invocation);
 
-static gboolean handle_device_by_uid (BoltDBusManager       *object,
-                                      GDBusMethodInvocation *invocation,
-                                      gpointer               user_data);
+static gboolean handle_device_by_uid (BoltExported          *object,
+                                      GVariant              *params,
+                                      GDBusMethodInvocation *invocation);
 
-static gboolean handle_enroll_device (BoltDBusManager       *object,
-                                      GDBusMethodInvocation *invocation,
-                                      gpointer               user_data);
+static gboolean handle_enroll_device (BoltExported          *object,
+                                      GVariant              *params,
+                                      GDBusMethodInvocation *invocation);
 
-static gboolean handle_forget_device (BoltDBusManager       *object,
-                                      GDBusMethodInvocation *invocation,
-                                      gpointer               user_data);
+static gboolean handle_forget_device (BoltExported          *object,
+                                      GVariant              *params,
+                                      GDBusMethodInvocation *invocation);
 
 /*  */
 struct _BoltManager
 {
-  BoltDBusManagerSkeleton object;
+  BoltExported object;
 
   /* udev */
   struct udev         *udev;
@@ -163,12 +163,15 @@ enum {
   PROP_PROBING,
   PROP_POLICY,
 
-  PROP_LAST
+  PROP_LAST,
+  PROP_EXPORTED = PROP_VERSION
 };
+
+static GParamSpec *props[PROP_LAST] = {NULL, };
 
 G_DEFINE_TYPE_WITH_CODE (BoltManager,
                          bolt_manager,
-                         BOLT_DBUS_TYPE_MANAGER_SKELETON,
+                         BOLT_TYPE_EXPORTED,
                          G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
                                                 bolt_manager_initable_iface_init));
 
@@ -239,28 +242,6 @@ bolt_manager_get_property (GObject    *object,
 }
 
 static void
-bolt_manager_set_property (GObject      *object,
-                           guint         prop_id,
-                           const GValue *value,
-                           GParamSpec   *pspec)
-{
-  GParamSpec *parent;
-
-  /* This is one gross hack, see bolt_device_set_property() for details */
-  parent = g_object_class_find_property (bolt_manager_parent_class,
-                                         pspec->name);
-
-  if (parent == NULL)
-    return;
-
-  G_OBJECT_CLASS (bolt_manager_parent_class)->set_property (object,
-                                                            prop_id,
-                                                            value,
-                                                            parent);
-}
-
-
-static void
 bolt_manager_init (BoltManager *mgr)
 {
   mgr->devices = g_ptr_array_new_with_free_func (g_object_unref);
@@ -272,11 +253,6 @@ bolt_manager_init (BoltManager *mgr)
   /* default configuration */
   mgr->policy = BOLT_POLICY_AUTO;
 
-  g_signal_connect (mgr, "handle-list-devices", G_CALLBACK (handle_list_devices), NULL);
-  g_signal_connect (mgr, "handle-device-by-uid", G_CALLBACK (handle_device_by_uid), NULL);
-  g_signal_connect (mgr, "handle-enroll-device", G_CALLBACK (handle_enroll_device), NULL);
-  g_signal_connect (mgr, "handle-forget-device", G_CALLBACK (handle_forget_device), NULL);
-
   g_signal_connect (mgr->store, "device-removed", G_CALLBACK (handle_store_device_removed), mgr);
 }
 
@@ -284,22 +260,57 @@ static void
 bolt_manager_class_init (BoltManagerClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  BoltExportedClass *exported_class = BOLT_EXPORTED_CLASS (klass);
 
   gobject_class->finalize = bolt_manager_finalize;
   gobject_class->get_property = bolt_manager_get_property;
-  gobject_class->set_property = bolt_manager_set_property;
 
-  g_object_class_override_property (gobject_class,
-                                    PROP_VERSION,
-                                    "version");
+  props[PROP_VERSION] =
+    g_param_spec_uint ("version", "Version", "Version",
+                       0, G_MAXUINT32, 0,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_STRINGS);
 
-  g_object_class_override_property (gobject_class,
-                                    PROP_PROBING,
-                                    "probing");
+  props[PROP_PROBING] =
+    g_param_spec_boolean ("probing", "Probing", "Probing",
+                          FALSE,
+                          G_PARAM_READABLE |
+                          G_PARAM_STATIC_STRINGS);
 
-  g_object_class_override_property (gobject_class,
-                                    PROP_POLICY,
-                                    "default-policy");
+  props[PROP_POLICY] =
+    g_param_spec_uint ("default-policy", "DefaultPolicy", "DefaultPolicy",
+                       0, G_MAXUINT32, 0,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_STRINGS);
+
+  g_object_class_install_properties (gobject_class, PROP_LAST, props);
+
+
+  bolt_exported_class_set_interface_info (exported_class,
+                                          BOLT_DBUS_INTERFACE,
+                                          "/boltd/org.freedesktop.bolt.xml");
+
+  bolt_exported_class_export_properties (exported_class,
+                                         PROP_EXPORTED,
+                                         PROP_LAST,
+                                         props);
+
+  bolt_exported_class_export_method (exported_class,
+                                     "ListDevices",
+                                     handle_list_devices);
+
+  bolt_exported_class_export_method (exported_class,
+                                     "DeviceByUid",
+                                     handle_device_by_uid);
+
+  bolt_exported_class_export_method (exported_class,
+                                     "EnrollDevice",
+                                     handle_enroll_device);
+
+  bolt_exported_class_export_method (exported_class,
+                                     "ForgetDevice",
+                                     handle_forget_device);
+
 }
 
 static void
@@ -831,7 +842,7 @@ handle_udev_device_added (BoltManager        *mgr,
   bolt_msg (LOG_DEV (dev), "device added (%s)", syspath);
 
   /* if we have a valid dbus connection */
-  bus = g_dbus_interface_skeleton_get_connection (G_DBUS_INTERFACE_SKELETON (mgr));
+  bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
   if (bus == NULL)
     return;
 
@@ -841,7 +852,10 @@ handle_udev_device_added (BoltManager        *mgr,
   else
     bolt_info (LOG_DEV (dev), LOG_TOPIC ("dbus"), "exporting device at %s", opath);
 
-  bolt_dbus_manager_emit_device_added (BOLT_DBUS_MANAGER (mgr), opath);
+  bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
+                             "DeviceAdded",
+                             g_variant_new ("(o)", opath),
+                             NULL);
 }
 
 static void
@@ -886,7 +900,11 @@ hanlde_udev_device_removed (BoltManager *mgr,
   if (opath == NULL)
     return;
 
-  bolt_dbus_manager_emit_device_removed (BOLT_DBUS_MANAGER (mgr), opath);
+  bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
+                             "DeviceRemoved",
+                             g_variant_new ("(o)", opath),
+                             NULL);
+
   bolt_device_unexport (dev);
   bolt_info (LOG_DEV (dev), LOG_TOPIC ("dbus"), "unexported");
 }
@@ -973,7 +991,11 @@ handle_store_device_removed (BoltStore   *store,
   if (opath == NULL)
     return;
 
-  bolt_dbus_manager_emit_device_removed (BOLT_DBUS_MANAGER (mgr), opath);
+  bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
+                             "DeviceRemoved",
+                             g_variant_new ("(o)", opath),
+                             NULL);
+
   bolt_device_unexport (dev);
   bolt_info (LOG_DEV (dev), "unexported");
 }
@@ -1025,9 +1047,9 @@ probing_timeout (gpointer user_data)
 
   /* we are done, remove us */
   mgr->probing_timeout = 0;
-  g_object_set (mgr, "probing",  mgr->probing_timeout > 0, NULL);
+  g_object_notify_by_pspec (G_OBJECT (mgr), props[PROP_PROBING]);
   bolt_info (LOG_TOPIC ("probing"), "timeout, done: [%ld] (%ld)", dt, timeout);
-  g_dbus_interface_skeleton_flush (G_DBUS_INTERFACE_SKELETON (mgr));
+  bolt_exported_flush (BOLT_EXPORTED (mgr));
   return G_SOURCE_REMOVE;
 }
 
@@ -1044,8 +1066,8 @@ manager_probing_activity (BoltManager *mgr,
   dt = mgr->probing_tsettle / 2;
   bolt_info (LOG_TOPIC ("probing"), "started [%u]", dt);
   mgr->probing_timeout = g_timeout_add (dt, probing_timeout, mgr);
-  g_object_set (mgr, "probing",  mgr->probing_timeout > 0, NULL);
-  g_dbus_interface_skeleton_flush (G_DBUS_INTERFACE_SKELETON (mgr));
+  g_object_notify_by_pspec (G_OBJECT (mgr), props[PROP_PROBING]);
+  bolt_exported_flush (BOLT_EXPORTED (mgr));
 }
 
 static gboolean
@@ -1198,16 +1220,15 @@ manager_load_user_config (BoltManager *mgr)
   else if (res == TRI_YES)
     {
       mgr->policy = policy;
-      /* for the dbus-codegen hack/workaround */
-      g_object_set (mgr, "default-policy", policy, NULL);
+      g_object_notify_by_pspec (G_OBJECT (mgr), props[PROP_POLICY]);
     }
 }
 
 /* dbus methods */
 static gboolean
-handle_list_devices (BoltDBusManager       *obj,
-                     GDBusMethodInvocation *inv,
-                     gpointer               user_data)
+handle_list_devices (BoltExported          *obj,
+                     GVariant              *params,
+                     GDBusMethodInvocation *inv)
 {
   BoltManager *mgr = BOLT_MANAGER (obj);
   const char **devs;
@@ -1222,25 +1243,23 @@ handle_list_devices (BoltDBusManager       *obj,
 
   devs[mgr->devices->len] = NULL;
 
-  bolt_dbus_manager_complete_list_devices (obj, inv, devs);
+  g_dbus_method_invocation_return_value (inv, g_variant_new ("(^ao)", devs));
   return TRUE;
 }
 
 static gboolean
-handle_device_by_uid (BoltDBusManager       *obj,
-                      GDBusMethodInvocation *inv,
-                      gpointer               user_data)
+handle_device_by_uid (BoltExported          *obj,
+                      GVariant              *params,
+                      GDBusMethodInvocation *inv)
 {
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(GError) error = NULL;
   BoltManager *mgr;
-  GVariant *params;
   const char *uid;
   const char *opath;
 
   mgr = BOLT_MANAGER (obj);
 
-  params = g_dbus_method_invocation_get_parameters (inv);
   g_variant_get (params, "(&s)", &uid);
   dev = manager_find_device_by_uid (mgr, uid, &error);
 
@@ -1251,7 +1270,7 @@ handle_device_by_uid (BoltDBusManager       *obj,
     }
 
   opath = bolt_device_get_object_path (dev);
-  bolt_dbus_manager_complete_device_by_uid (obj, inv, opath);
+  g_dbus_method_invocation_return_value (inv, g_variant_new ("(o)", opath));
   return TRUE;
 }
 
@@ -1301,28 +1320,25 @@ enroll_device_done (GObject      *device,
     }
 
   opath = bolt_device_get_object_path (dev);
-  bolt_dbus_manager_complete_enroll_device (BOLT_DBUS_MANAGER (mgr), inv, opath);
-
+  g_dbus_method_invocation_return_value (inv, g_variant_new ("(o)", opath));
 }
 
 static gboolean
-handle_enroll_device (BoltDBusManager       *obj,
-                      GDBusMethodInvocation *inv,
-                      gpointer               user_data)
+handle_enroll_device (BoltExported          *obj,
+                      GVariant              *params,
+                      GDBusMethodInvocation *inv)
 {
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(BoltAuth) auth = NULL;
   g_autoptr(BoltKey) key = NULL;
   g_autoptr(GError) error = NULL;
   BoltManager *mgr;
-  GVariant *params;
   const char *uid;
   BoltSecurity level;
   guint32 policy;
 
   mgr = BOLT_MANAGER (obj);
 
-  params = g_dbus_method_invocation_get_parameters (inv);
   g_variant_get_child (params, 0, "&s", &uid);
   g_variant_get_child (params, 1, "u", &policy);
   dev = manager_find_device_by_uid (mgr, uid, &error);
@@ -1362,20 +1378,18 @@ handle_enroll_device (BoltDBusManager       *obj,
 }
 
 static gboolean
-handle_forget_device (BoltDBusManager       *obj,
-                      GDBusMethodInvocation *inv,
-                      gpointer               user_data)
+handle_forget_device (BoltExported          *obj,
+                      GVariant              *params,
+                      GDBusMethodInvocation *inv)
 {
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(GError) error = NULL;
   BoltManager *mgr;
   gboolean ok;
-  GVariant *params;
   const char *uid;
 
   mgr = BOLT_MANAGER (obj);
 
-  params = g_dbus_method_invocation_get_parameters (inv);
   g_variant_get (params, "(&s)", &uid);
   dev = manager_find_device_by_uid (mgr, uid, &error);
 
@@ -1390,7 +1404,7 @@ handle_forget_device (BoltDBusManager       *obj,
   if (!ok)
     g_dbus_method_invocation_take_error (inv, g_steal_pointer (&error));
   else
-    bolt_dbus_manager_complete_forget_device (BOLT_DBUS_MANAGER (mgr), inv);
+    g_dbus_method_invocation_return_value (inv, g_variant_new ("()"));
 
   return TRUE;
 }
@@ -1402,10 +1416,10 @@ bolt_manager_export (BoltManager     *mgr,
                      GDBusConnection *connection,
                      GError         **error)
 {
-  if (!g_dbus_interface_skeleton_export (G_DBUS_INTERFACE_SKELETON (mgr),
-                                         connection,
-                                         BOLT_DBUS_PATH,
-                                         error))
+  if (!bolt_exported_export (BOLT_EXPORTED (mgr),
+                             connection,
+                             BOLT_DBUS_PATH,
+                             error))
     return FALSE;
 
   for (guint i = 0; i < mgr->devices->len; i++)
