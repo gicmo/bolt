@@ -26,6 +26,8 @@
 #include "bolt-str.h"
 #include "bolt-term.h"
 
+#include "bolt-daemon-resource.h"
+
 #include <gio/gio.h>
 
 #include <locale.h>
@@ -187,6 +189,8 @@ main (int argc, char **argv)
 
   session_id = g_uuid_string_random ();
   log.session_id = session_id;
+
+  g_resources_register (bolt_daemon_get_resource ());
 
   bolt_msg (LOG_DIRECT (BOLT_LOG_VERSION, PACKAGE_VERSION),
             LOG_ID (STARTUP),
