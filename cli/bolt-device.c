@@ -48,6 +48,7 @@ enum {
   PROP_STORED,
   PROP_POLICY,
   PROP_KEY,
+  PROP_LABEL,
 
   PROP_LAST
 };
@@ -82,7 +83,8 @@ bolt_device_get_dbus_props (guint *n)
     {"Security",  "security",  PROP_SECURITY,   NULL},
     {"Stored",    "stored",    PROP_STORED,     NULL},
     {"Policy",    "policy",    PROP_POLICY,     NULL},
-    {"Key",       "key",       PROP_KEY,        NULL}
+    {"Key",       "key",       PROP_KEY,        NULL},
+    {"Label",     "label",     PROP_LABEL,      NULL}
   };
 
   *n = G_N_ELEMENTS (dbus_props);
@@ -182,6 +184,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        BOLT_KEY_MISSING,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_NICK);
+
+  props[PROP_LABEL] =
+    g_param_spec_string ("label",
+                         "Label", NULL,
+                         NULL,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
