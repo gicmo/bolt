@@ -34,6 +34,12 @@
 #include <dirent.h>
 #include <libudev.h>
 
+/* dbus property setter */
+static gboolean handle_set_label (BoltExported *obj,
+                                  const char   *name,
+                                  const GValue *value,
+                                  GError      **error);
+
 /* dbus method calls */
 static gboolean    handle_authorize (BoltExported          *object,
                                      GVariant              *params,
@@ -63,6 +69,8 @@ struct _BoltDevice
   BoltStore   *store;
   BoltPolicy   policy;
   BoltKeyState key;
+
+  char        *label;
 };
 
 
@@ -85,6 +93,7 @@ enum {
   PROP_STORED,
   PROP_POLICY,
   PROP_HAVE_KEY,
+  PROP_LABEL,
 
   PROP_LAST,
   PROP_EXPORTED = PROP_UID
@@ -118,6 +127,7 @@ bolt_device_finalize (GObject *object)
 
   g_free (dev->parent);
   g_free (dev->syspath);
+  g_free (dev->label);
 
   G_OBJECT_CLASS (bolt_device_parent_class)->finalize (object);
 }
@@ -183,6 +193,10 @@ bolt_device_get_property (GObject    *object,
 
     case PROP_HAVE_KEY:
       g_value_set_uint (value, dev->key);
+      break;
+
+    case PROP_LABEL:
+      g_value_set_string (value, dev->label);
       break;
 
     default:
@@ -259,6 +273,11 @@ bolt_device_set_property (GObject      *object,
 
     case PROP_HAVE_KEY:
       dev->key = g_value_get_uint (value);
+      break;
+
+    case PROP_LABEL:
+      g_clear_pointer (&dev->label, g_free);
+      dev->label = g_value_dup_string (value);
       break;
 
     default:
@@ -376,6 +395,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        G_PARAM_READWRITE |
                        G_PARAM_STATIC_STRINGS);
 
+  props[PROP_LABEL] =
+    g_param_spec_string ("label",
+                         "Label", NULL,
+                         NULL,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS);
+
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
                                      props);
@@ -398,6 +424,10 @@ bolt_device_class_init (BoltDeviceClass *klass)
                                          PROP_EXPORTED,
                                          PROP_LAST,
                                          props);
+
+  bolt_exported_class_property_setter (exported_class,
+                                       props[PROP_LABEL],
+                                       handle_set_label);
 
   bolt_exported_class_export_method (exported_class,
                                      "Authorize",
@@ -752,6 +782,57 @@ bolt_device_authorize (BoltDevice         *dev,
   g_object_unref (task);
 }
 
+/* dbus property setter */
+
+static gboolean
+handle_set_label (BoltExported *obj,
+                  const char   *name,
+                  const GValue *value,
+                  GError      **error)
+{
+  g_autofree char *nick = NULL;
+  g_autofree char *old = NULL;
+  BoltDevice *dev = BOLT_DEVICE (obj);
+  const char *str = g_value_get_string (value);
+  gboolean ok;
+
+  nick = bolt_strdup_validate (str);
+
+  if (nick == NULL)
+    {
+      g_set_error_literal (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                           "string is invalid");
+      return FALSE;
+    }
+  else if (strlen (nick) > 255)
+    {
+      g_set_error_literal (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                           "string is too long");
+      return FALSE;
+    }
+
+  if (dev->store == NULL)
+    {
+      g_set_error_literal (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                           "device is not stored");
+      return FALSE;
+    }
+
+  old = dev->label;
+  dev->label = g_steal_pointer (&nick);
+
+  ok = bolt_store_put_device (dev->store, dev, dev->policy, NULL, error);
+
+  if (!ok)
+    {
+      bolt_warn_err (*error, LOG_DEV (dev), "failed to store device");
+
+      nick = dev->label;
+      dev->label = g_steal_pointer (&old);
+    }
+
+  return ok;
+}
 
 /* dbus methods */
 
@@ -1046,4 +1127,10 @@ BoltDeviceType
 bolt_device_get_device_type (const BoltDevice *dev)
 {
   return dev->type;
+}
+
+const char *
+bolt_device_get_label (const BoltDevice *dev)
+{
+  return dev->label;
 }
