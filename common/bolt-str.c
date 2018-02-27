@@ -99,3 +99,19 @@ bolt_strdup_validate (const char *string)
 
   return g_steal_pointer (&str);
 }
+
+char *
+bolt_strstrip (char *string)
+{
+  char *str;
+
+  if (string == NULL)
+    return NULL;
+
+  str = g_strstrip (string);
+
+  if (strlen (str) == 0)
+    g_clear_pointer (&str, g_free);
+
+  return str;
+}

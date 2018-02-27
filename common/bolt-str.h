@@ -38,4 +38,6 @@ GStrv   bolt_strv_from_ptr_array (GPtrArray **array);
 
 char *bolt_strdup_validate (const char *string);
 
+char *bolt_strstrip (char *string);
+
 G_END_DECLS
