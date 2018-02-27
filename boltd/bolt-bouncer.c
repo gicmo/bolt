@@ -167,6 +167,31 @@ handle_authorize_method (GDBusInterfaceSkeleton *iface,
   return authorized;
 }
 
+static gboolean
+handle_authorize_property (BoltExported          *exported,
+                           const char            *name,
+                           gboolean               setting,
+                           GDBusMethodInvocation *inv)
+{
+  const char *type_name = G_OBJECT_TYPE_NAME (exported);
+  gboolean res = FALSE;
+
+  if (bolt_streq (type_name, "BoltDevice"))
+    if (bolt_streq (name, "label"))
+      res = TRUE;
+
+  bolt_debug (LOG_TOPIC ("auth"),
+              "property authorization for %s.%s: %s",
+              type_name, name, bolt_yesno (res));
+
+  if (res == FALSE)
+    g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+                                           "Setting property of '%s.%s' not allowed for user",
+                                           type_name, name);
+
+  return res;
+}
+
 /* public methods */
 BoltBouncer *
 bolt_bouncer_new (GCancellable *cancellable,
@@ -181,14 +206,17 @@ void
 bolt_bouncer_add_client (BoltBouncer *bnc,
                          gpointer     client)
 {
-  if (G_IS_DBUS_INTERFACE_SKELETON (client))
-    g_signal_connect (client, "g-authorize-method",
-                      G_CALLBACK (handle_authorize_method),
-                      bnc);
-  else if (BOLT_IS_EXPORTED (client))
-    g_signal_connect (client, "authorize-method",
-                      G_CALLBACK (handle_authorize_method),
-                      bnc);
+  if (BOLT_IS_EXPORTED (client))
+    {
+      g_signal_connect (client, "authorize-method",
+                        G_CALLBACK (handle_authorize_method),
+                        bnc);
+      g_signal_connect (client, "authorize-property",
+                        G_CALLBACK (handle_authorize_property),
+                        bnc);
+    }
   else
-    bolt_critical (LOG_TOPIC ("bouncer"), "unknown client class");
+    {
+      bolt_critical (LOG_TOPIC ("bouncer"), "unknown client class");
+    }
 }
