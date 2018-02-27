@@ -63,6 +63,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   g_autofree char *vendor = NULL;
   g_autofree char *syspath = NULL;
   g_autofree char *parent = NULL;
+  g_autofree char *label = NULL;
   BoltSecurity security = BOLT_SECURITY_NONE;
   BoltDeviceType type;
   BoltStatus status;
@@ -90,6 +91,7 @@ print_device (BoltDevice *dev, gboolean verbose)
                 "stored", &stored,
                 "policy", &policy,
                 "key", &keystate,
+                "label", &label,
                 NULL);
 
   status_symbol = bolt_glyph (BLACK_CIRCLE);
@@ -128,13 +130,18 @@ print_device (BoltDevice *dev, gboolean verbose)
       break;
     }
 
+  label = bolt_strstrip (label);
+
   g_print (" %s%s%s %s\n",
            status_color,
            status_symbol,
            bolt_color (ANSI_NORMAL),
-           name);
+           label ? : name);
 
   type_text = bolt_device_type_to_string (type);
+
+  if (label)
+    g_print ("   %s name:        %s\n", tree_branch, name);
 
   g_print ("   %s type:        %s\n", tree_branch, type_text);
   g_print ("   %s vendor:      %s\n", tree_branch, vendor);
