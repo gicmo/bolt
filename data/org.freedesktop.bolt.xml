@@ -218,6 +218,13 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="Label" type="s" access="readwrite">
+      <doc:doc><doc:description><doc:para>
+        If set, a name that was given to the device by
+	the user. Can only be set when device is stored.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <!-- methods -->
 
     <method name="Authorize">
