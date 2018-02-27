@@ -36,5 +36,6 @@ GStrv   bolt_strv_from_ptr_array (GPtrArray **array);
 
 #define bolt_yesno(val) val ? "yes" : "no"
 
+char *bolt_strdup_validate (const char *string);
 
 G_END_DECLS

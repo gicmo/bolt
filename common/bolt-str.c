@@ -74,3 +74,28 @@ bolt_strv_from_ptr_array (GPtrArray **array)
   *array = NULL;
   return (GStrv) g_ptr_array_free (a, FALSE);
 }
+
+char *
+bolt_strdup_validate (const char *string)
+{
+  g_autofree char *str = NULL;
+  gboolean ok;
+  gsize l;
+
+  if (string == NULL)
+    return NULL;
+
+  str = g_strdup (string);
+  str = g_strstrip (str);
+
+  l = strlen (str);
+  if (l == 0)
+    return NULL;
+
+  ok = g_utf8_validate (str, l, NULL);
+
+  if (!ok)
+    return NULL;
+
+  return g_steal_pointer (&str);
+}
