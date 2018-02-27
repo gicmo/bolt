@@ -306,6 +306,7 @@ bolt_store_put_device (BoltStore  *store,
   g_autofree char *data  = NULL;
   BoltDeviceType type;
   const char *uid;
+  const char *label;
   gboolean ok;
   gsize len;
   guint keystate = 0;
@@ -335,6 +336,11 @@ bolt_store_put_device (BoltStore  *store,
       const char *str = bolt_policy_to_string (policy);
       g_key_file_set_string (kf, USER_GROUP, "policy", str);
     }
+
+  label = bolt_device_get_label (device);
+
+  if (label != NULL)
+    g_key_file_set_string (kf, USER_GROUP, "label", label);
 
   data = g_key_file_to_data (kf, &len, error);
 
@@ -387,6 +393,7 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
   g_autofree char *data  = NULL;
   g_autofree char *typestr = NULL;
   g_autofree char *polstr = NULL;
+  g_autofree char *label = NULL;
   BoltDeviceType type;
   BoltPolicy policy;
   BoltKeyState key;
@@ -417,6 +424,7 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
   type = bolt_device_type_from_string (typestr);
   polstr = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
   policy = bolt_policy_from_string (polstr);
+  label = g_key_file_get_string (kf, USER_GROUP, "label", NULL);
 
   if (!bolt_device_type_validate (type))
     {
@@ -430,6 +438,15 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
       bolt_warn (LOG_TOPIC ("store"), LOG_DEV_UID (uid),
                  "invalid policy: %s", polstr);
       policy = BOLT_POLICY_MANUAL;
+    }
+
+  if (label != NULL)
+    {
+      g_autofree char *tmp = g_steal_pointer (&label);
+      label = bolt_strdup_validate (tmp);
+      if (label == NULL)
+        bolt_warn (LOG_TOPIC ("store"), LOG_DEV_UID (uid),
+                   "invalid device label: %s", label);
     }
 
   key = bolt_store_have_key (store, uid);
@@ -446,6 +463,7 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
                        "store", store,
                        "policy", policy,
                        "key", key,
+                       "label", label,
                        NULL);
 }
 
