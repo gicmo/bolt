@@ -34,12 +34,14 @@ static void     bolt_exported_notify (GObject    *object,
                                       GParamSpec *pspec);
 
 static gboolean handle_authorize_method_default (BoltExported          *exported,
-                                                 GDBusMethodInvocation *inv);
+                                                 GDBusMethodInvocation *inv,
+                                                 GError               **error);
 
 static gboolean handle_authorize_property_default (BoltExported          *exported,
                                                    const char            *name,
                                                    gboolean               setting,
-                                                   GDBusMethodInvocation *invocation);
+                                                   GDBusMethodInvocation *invocation,
+                                                   GError               **error);
 
 static void     bolt_exported_method_free (gpointer data);
 
@@ -239,8 +241,9 @@ bolt_exported_class_init (BoltExportedClass *klass)
                   NULL,
                   NULL,
                   G_TYPE_BOOLEAN,
-                  1,
-                  G_TYPE_DBUS_METHOD_INVOCATION);
+                  2,
+                  G_TYPE_DBUS_METHOD_INVOCATION,
+                  G_TYPE_POINTER);
 
   signals[SIGNAL_AUTHORIZE_PROPERTY] =
     g_signal_new ("authorize-property",
@@ -251,10 +254,11 @@ bolt_exported_class_init (BoltExportedClass *klass)
                   NULL,
                   NULL,
                   G_TYPE_BOOLEAN,
-                  3,
+                  4,
                   G_TYPE_STRING,
                   G_TYPE_BOOLEAN,
-                  G_TYPE_DBUS_METHOD_INVOCATION);
+                  G_TYPE_DBUS_METHOD_INVOCATION,
+                  G_TYPE_POINTER);
 
 }
 
@@ -387,8 +391,15 @@ query_authorization_done (GObject      *source_object,
 
   if (!ok)
     {
-      if (err != NULL)
-        g_dbus_method_invocation_return_gerror (inv, err);
+      if (err == NULL)
+        {
+          bolt_critical (LOG_TOPIC ("dbus"),
+                         "negative auth result, but no GError set");
+          g_set_error_literal (&err, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+                               "access denied");
+        }
+
+      g_dbus_method_invocation_return_gerror (inv, err);
       return;
     }
 
@@ -439,6 +450,7 @@ query_authorization (GTask        *task,
                      gpointer      task_data,
                      GCancellable *cancellable)
 {
+  GError *error = NULL;
   BoltExported *exported = source_object;
   AuthData *data = task_data;
   gboolean authorized = FALSE;
@@ -454,6 +466,7 @@ query_authorization (GTask        *task,
                      data->prop->name_obj,
                      is_setter,
                      data->inv,
+                     &error,
                      &authorized);
     }
   else
@@ -462,25 +475,30 @@ query_authorization (GTask        *task,
                      signals[SIGNAL_AUTHORIZE_METHOD],
                      0,
                      data->inv,
+                     &error,
                      &authorized);
     }
 
   bolt_debug (LOG_TOPIC ("dbus"), "query_authorization returned: %s",
               bolt_yesno (authorized));
 
-  g_task_return_boolean (task, authorized);
+  if (!authorized)
+    g_task_return_error (task, error);
+  else
+    g_task_return_boolean (task, authorized);
 }
 
 static gboolean
 handle_authorize_method_default (BoltExported          *exported,
-                                 GDBusMethodInvocation *inv)
+                                 GDBusMethodInvocation *inv,
+                                 GError               **error)
 {
   const char *method_name;
 
   method_name = g_dbus_method_invocation_get_method_name (inv);
-  g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
-                                         "bolt operation '%s' denied by default policy",
-                                         method_name);
+  g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+               "bolt operation '%s' denied by default policy",
+               method_name);
 
   return FALSE;
 }
@@ -489,11 +507,13 @@ static gboolean
 handle_authorize_property_default (BoltExported          *exported,
                                    const char            *name,
                                    gboolean               setting,
-                                   GDBusMethodInvocation *inv)
+                                   GDBusMethodInvocation *inv,
+                                   GError               **error)
 {
-  g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
-                                         "setting property '%s' denied by default policy",
-                                         name);
+  g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+               "setting property '%s' denied by default policy",
+               name);
+
   return FALSE;
 }
 /* DBus virtual table */

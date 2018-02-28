@@ -41,12 +41,14 @@ struct _BoltExportedClass
 
   /* Signals */
   gboolean (*authorize_method) (BoltExported          *exported,
-                                GDBusMethodInvocation *invocation);
+                                GDBusMethodInvocation *invocation,
+                                GError               **error);
 
   gboolean (*authorize_property) (BoltExported          *exported,
                                   const char            *name,
                                   gboolean               setting,
-                                  GDBusMethodInvocation *invocation);
+                                  GDBusMethodInvocation *invocation,
+                                  GError               **error);
   /* for the future */
   gpointer padding[10];
 };

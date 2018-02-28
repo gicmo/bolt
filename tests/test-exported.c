@@ -44,14 +44,16 @@ static gboolean  handle_ping (BoltExported          *obj,
                               GVariant              *params,
                               GDBusMethodInvocation *inv);
 
-static gboolean handle_authorize_method (BoltExported           *exported,
-                                         GDBusMethodInvocation  *inv,
-                                         gpointer                user_data);
+static gboolean handle_authorize_method (BoltExported          *exported,
+                                         GDBusMethodInvocation *inv,
+                                         GError               **error,
+                                         gpointer               user_data);
 
 static gboolean handle_authorize_property (BoltExported          *exported,
                                            const char            *name,
                                            gboolean               setting,
                                            GDBusMethodInvocation *invocation,
+                                           GError               **error,
                                            gpointer               user_data);
 
 static gboolean handle_set_str_rw (BoltExported *obj,
@@ -211,9 +213,10 @@ bt_exported_class_init (BtExportedClass *klass)
 }
 
 static gboolean
-handle_authorize_method (BoltExported           *exported,
-                         GDBusMethodInvocation  *inv,
-                         gpointer                user_data)
+handle_authorize_method (BoltExported          *exported,
+                         GDBusMethodInvocation *inv,
+                         GError               **error,
+                         gpointer               user_data)
 {
   BtExported *be = BT_EXPORTED (user_data);
   gboolean authorize = be->authorize_methods;
@@ -222,8 +225,8 @@ handle_authorize_method (BoltExported           *exported,
   g_debug ("authorizing method %s (%s)", name, authorize ? "y" : "n" );
 
   if (!authorize)
-    g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
-                                           "denying property write access for %s", name);
+    g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+                 "denying property write access for %s", name);
   return authorize;
 
 }
@@ -233,6 +236,7 @@ handle_authorize_property (BoltExported          *exported,
                            const char            *name,
                            gboolean               setting,
                            GDBusMethodInvocation *inv,
+                           GError               **error,
                            gpointer               user_data)
 {
   BtExported *be = BT_EXPORTED (user_data);
@@ -241,8 +245,8 @@ handle_authorize_property (BoltExported          *exported,
   g_debug ("authorizing property %s (%s)", name, authorize ? "y" : "n" );
 
   if (!authorize)
-    g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
-                                           "denying property write access for %s", name);
+    g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+                 "denying property write access for %s", name);
   return authorize;
 }
 

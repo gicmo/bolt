@@ -37,11 +37,6 @@ static gboolean bouncer_initialize (GInitable    *initable,
                                     GCancellable *cancellable,
                                     GError      **error);
 
-static gboolean handle_authorize_method (GDBusInterfaceSkeleton *interface,
-                                         GDBusMethodInvocation  *invocation,
-                                         gpointer                user_data);
-
-
 #ifndef HAVE_POLKIT_AUTOPTR
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (PolkitAuthorizationResult, g_object_unref)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (PolkitDetails, g_object_unref)
@@ -104,9 +99,10 @@ bouncer_initialize (GInitable    *initable,
 
 /* internal methods */
 static gboolean
-handle_authorize_method (GDBusInterfaceSkeleton *iface,
-                         GDBusMethodInvocation  *inv,
-                         gpointer                user_data)
+handle_authorize_method (BoltExported          *exported,
+                         GDBusMethodInvocation *inv,
+                         GError               **error,
+                         gpointer               user_data)
 {
   g_autoptr(PolkitSubject) subject = NULL;
   g_autoptr(PolkitDetails) details = NULL;
@@ -140,29 +136,23 @@ handle_authorize_method (GDBusInterfaceSkeleton *iface,
     {
       PolkitCheckAuthorizationFlags flags;
       g_autoptr(PolkitAuthorizationResult) res = NULL;
-      g_autoptr(GError) error = NULL;
 
       flags = POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION;
       res = polkit_authority_check_authorization_sync (bnc->authority,
                                                        subject,
                                                        action, details,
                                                        flags,
-                                                       NULL, &error);
+                                                       NULL, error);
       if (res == NULL)
-        {
-          g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_FAILED,
-                                                 "Authorization error: %s",
-                                                 error->message);
-          return FALSE;
-        }
+        return FALSE;
 
       authorized = polkit_authorization_result_get_is_authorized (res);
     }
 
   if (authorized == FALSE)
-    g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
-                                           "Bolt operation '%s' not allowed for user",
-                                           method_name);
+    g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+                 "Bolt operation '%s' not allowed for user",
+                 method_name);
 
   return authorized;
 }
@@ -171,7 +161,9 @@ static gboolean
 handle_authorize_property (BoltExported          *exported,
                            const char            *name,
                            gboolean               setting,
-                           GDBusMethodInvocation *inv)
+                           GDBusMethodInvocation *inv,
+                           GError               **error,
+                           gpointer               user_data)
 {
   const char *type_name = G_OBJECT_TYPE_NAME (exported);
   gboolean res = FALSE;
@@ -185,9 +177,9 @@ handle_authorize_property (BoltExported          *exported,
               type_name, name, bolt_yesno (res));
 
   if (res == FALSE)
-    g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
-                                           "Setting property of '%s.%s' not allowed for user",
-                                           type_name, name);
+    g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+                 "Setting property of '%s.%s' not allowed for user",
+                 type_name, name);
 
   return res;
 }
