@@ -344,6 +344,27 @@ class BoltDevice(ProxyWrapper):
         self.Authorize('(u)', flags)
         return True
 
+    @property
+    def label(self):
+        res = getattr(self, 'Label')
+        if res is not None and len(res) < 1:
+            return None
+        return res
+
+    @label.setter
+    def label(self, value):
+        if isinstance(value, str):
+            value = GLib.Variant("s", value)
+
+        res = self._proxy.call_sync('org.freedesktop.DBus.Properties.Set',
+                                    GLib.Variant("(ssv)",
+                                                 (DBUS_IFACE_DEVICE,
+                                                  "Label",
+                                                  value)),
+                                    0,
+                                    -1,
+                                    None)
+        return res is not None
 
 @Signal.enable
 class BoltClient(ProxyWrapper):
@@ -841,6 +862,12 @@ class BoltTest(dbusmock.DBusTestCase):
         ]))
         return mt
 
+    def simple_mock_tree(self):
+        mt = TbDomain(host=TbHost([
+            TbDevice('Dock')
+        ]))
+        return mt
+
     def assertDeviceEqual(self, local, remote):
         self.assertTrue(local and remote)
         self.assertEqual(local.unique_id, remote.uid)
@@ -945,6 +972,9 @@ class BoltTest(dbusmock.DBusTestCase):
         device = self.find_device_by_uid(devices, d2_uid)
         self.assertEqual(device.Name, d2_name)
         self.assertEqual(device.Vendor, d2_vendor)
+
+        label = device.label
+        self.assertIsNone(label)
 
         self.daemon_stop()
 
@@ -1138,6 +1168,58 @@ class BoltTest(dbusmock.DBusTestCase):
 
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 0)
+
+    def test_device_label(self):
+        self.daemon_start()
+        tree = self.simple_mock_tree()
+        self.polkitd_start()
+        tree.connect_tree(self.testbed)
+
+        client = self.client
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.enroll'])
+
+        local = tree.collect(TbDevice.is_unauthorized)[0]
+        policy = BoltClient.POLICY_AUTO
+
+        remote = client.enroll(local.unique_id, policy)
+        local.reload_auth()
+
+        label = remote.label
+        self.assertIsNone(label)
+
+        self.assertDeviceEqual(local, remote)
+        self.assertTrue(remote.stored, True)
+        self.assertEqual(remote.key, BoltDevice.KEY_NEW)
+        self.assertEqual(remote.policy, policy)
+
+        with self.assertRaises(GLib.GError) as cm:
+            remote.label = 'not authorized'
+        err = cm.exception
+        self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+        self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
+
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.manage'])
+        for val in ['', ' ', '     ']:
+            with self.assertRaises(GLib.GError) as cm:
+                remote.label = val
+            err = cm.exception
+            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+            self.assertEqual(err.code, int(Gio.DBusError.INVALID_ARGS))
+
+        label = remote.label
+        self.assertIsNone(label)
+
+        val = 'A valid label'
+
+        with remote.record() as tape:
+            remote.label = val
+            res = tape.wait_for_event('property',
+                                      'Label',
+                                      val)
+            self.assertTrue(res)
+        self.assertEqual(remote.label, val)
+
+        self.daemon_stop()
 
 
 if __name__ == '__main__':
