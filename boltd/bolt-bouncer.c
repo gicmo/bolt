@@ -98,6 +98,38 @@ bouncer_initialize (GInitable    *initable,
 }
 
 /* internal methods */
+
+static gboolean
+bolt_bouncer_check_action (BoltBouncer           *bnc,
+                           GDBusMethodInvocation *inv,
+                           const char            *action,
+                           gboolean              *authorized,
+                           GError               **error)
+{
+  g_autoptr(PolkitSubject) subject = NULL;
+  g_autoptr(PolkitDetails) details = NULL;
+  g_autoptr(PolkitAuthorizationResult) res = NULL;
+  PolkitCheckAuthorizationFlags flags;
+  const char *sender;
+
+  sender = g_dbus_method_invocation_get_sender (inv);
+
+  subject = polkit_system_bus_name_new (sender);
+  details = polkit_details_new ();
+
+  flags = POLKIT_CHECK_AUTHORIZATION_FLAGS_ALLOW_USER_INTERACTION;
+  res = polkit_authority_check_authorization_sync (bnc->authority,
+                                                   subject,
+                                                   action, details,
+                                                   flags,
+                                                   NULL, error);
+  if (res == NULL)
+    return FALSE;
+
+  *authorized = polkit_authorization_result_get_is_authorized (res);
+  return TRUE;
+}
+
 static gboolean
 handle_authorize_method (BoltExported          *exported,
                          GDBusMethodInvocation *inv,
@@ -166,22 +198,36 @@ handle_authorize_property (BoltExported          *exported,
                            gpointer               user_data)
 {
   const char *type_name = G_OBJECT_TYPE_NAME (exported);
-  gboolean res = FALSE;
+  const char *action = NULL;
+  gboolean authorized = FALSE;
+  BoltBouncer *bnc;
+
+  bnc = BOLT_BOUNCER (user_data);
 
   if (bolt_streq (type_name, "BoltDevice"))
     if (bolt_streq (name, "label"))
-      res = TRUE;
+      action = "org.freedesktop.bolt.manage";
 
-  bolt_debug (LOG_TOPIC ("auth"),
-              "property authorization for %s.%s: %s",
-              type_name, name, bolt_yesno (res));
 
-  if (res == FALSE)
+  if (!authorized && action)
+    {
+      gboolean ok;
+      ok = bolt_bouncer_check_action (bnc,
+                                      inv,
+                                      action,
+                                      &authorized,
+                                      error);
+      if (!ok)
+        return FALSE;
+    }
+
+
+  if (authorized == FALSE)
     g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
                  "Setting property of '%s.%s' not allowed for user",
                  type_name, name);
 
-  return res;
+  return authorized;
 }
 
 /* public methods */
