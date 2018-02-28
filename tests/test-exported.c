@@ -657,6 +657,7 @@ test_exported_props (TestExported *tt, gconstpointer data)
 
   /* property setter - allow it, should work now */
   tt->obj->authorize_properties = TRUE;
+  str = "new property value";
   g_dbus_connection_call (tt->bus,
                           tt->bus_name,
                           tt->obj_path,
@@ -665,7 +666,7 @@ test_exported_props (TestExported *tt, gconstpointer data)
                           g_variant_new ("(ssv)",
                                          DBUS_IFACE,
                                          "StrRW",
-                                         g_variant_new ("s", "se")),
+                                         g_variant_new ("s", str)),
                           NULL,
                           G_DBUS_CALL_FLAGS_NONE,
                           2000,
@@ -676,6 +677,7 @@ test_exported_props (TestExported *tt, gconstpointer data)
   call_ctx_run (ctx);
   g_assert_no_error (ctx->error);
 
+  g_assert_cmpstr (str, ==, tt->obj->str);
 }
 
 static void
