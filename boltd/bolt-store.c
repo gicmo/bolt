@@ -462,6 +462,19 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
   if (err != NULL && !bolt_err_notfound (err))
     bolt_warn_err (err, LOG_TOPIC ("store"), "invalid enroll-time");
 
+  if (stime == 0)
+    {
+      g_autoptr(GFileInfo) info = NULL;
+
+      info = g_file_query_info (db,
+                                "time::changed",
+                                G_FILE_QUERY_INFO_NONE,
+                                NULL, NULL);
+      if (info != NULL)
+        stime = g_file_info_get_attribute_uint64 (info, "time::changed");
+    }
+
+
   key = bolt_store_have_key (store, uid);
 
   g_return_val_if_fail (name != NULL, NULL);
