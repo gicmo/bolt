@@ -225,6 +225,13 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="ConnectTime" type="t" access="read">
+      <doc:doc><doc:description><doc:para>
+        Point in time (since Epoch, in seconds) when the
+	device was connected (0 if it is not connected).
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <!-- methods -->
 
     <method name="Authorize">

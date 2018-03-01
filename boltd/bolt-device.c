@@ -65,6 +65,8 @@ struct _BoltDevice
   BoltSecurity security;
   char        *parent;
 
+  guint64      conntime;
+
   /* when device is stored */
   BoltStore   *store;
   BoltPolicy   policy;
@@ -89,6 +91,7 @@ enum {
   PROP_PARENT,
   PROP_SYSFS,
   PROP_SECURITY,
+  PROP_CONNTIME,
 
   PROP_STORED,
   PROP_POLICY,
@@ -183,6 +186,10 @@ bolt_device_get_property (GObject    *object,
       g_value_set_uint (value, dev->security);
       break;
 
+    case PROP_CONNTIME:
+      g_value_set_uint64 (value, dev->conntime);
+      break;
+
     case PROP_STORED:
       g_value_set_boolean (value, dev->store != NULL);
       break;
@@ -265,6 +272,10 @@ bolt_device_set_property (GObject      *object,
 
     case PROP_SECURITY:
       dev->security = g_value_get_uint (value);
+      break;
+
+    case PROP_CONNTIME:
+      dev->conntime = g_value_get_uint64 (value);
       break;
 
     case PROP_POLICY:
@@ -369,6 +380,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        BOLT_SECURITY_NONE,
                        G_PARAM_READWRITE |
                        G_PARAM_STATIC_STRINGS);
+
+  props[PROP_CONNTIME] =
+    g_param_spec_uint64 ("conntime",
+                         "ConnectTime", NULL,
+                         0, G_MAXUINT64, 0,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_STORED] =
     g_param_spec_boolean ("stored",
@@ -514,6 +532,56 @@ bolt_sysfs_get_parent_uid (struct udev_device *udev)
   if (parent)
     uid = udev_device_get_sysattr_value (parent, "unique_id");
   return uid;
+}
+
+typedef enum BoltStatTime {
+  BOLT_ST_ATIME,
+  BOLT_ST_CTIME,
+  BOLT_ST_MTIME
+} BoltStatTime;
+
+static gint64
+bolt_sysfs_device_get_time (struct udev_device *udev,
+                            BoltStatTime        st)
+{
+  const char *path;
+  struct stat sb;
+  gint64 ms;
+  int r;
+
+  path = udev_device_get_syspath (udev);
+
+  if (path == NULL)
+    return 0;
+
+  r = lstat (path, &sb);
+
+  if (r == -1)
+    return 0;
+
+  switch (st)
+    {
+    case BOLT_ST_CTIME:
+      ms = (gint64) sb.st_ctim.tv_sec;
+      break;
+
+    case BOLT_ST_ATIME:
+      ms = (gint64) sb.st_atim.tv_sec;
+      break;
+
+    case BOLT_ST_MTIME:
+      ms = (gint64) sb.st_mtim.tv_sec;
+      break;
+
+    default:
+      bolt_warn_enum_unhandled (BoltStatTime, st);
+      return 0;
+    }
+
+  if (ms < 0)
+    ms = 0;
+
+  return ms;
 }
 
 static BoltStatus
@@ -904,6 +972,7 @@ bolt_device_new_for_udev (struct udev_device *udev,
   const char *parent;
   BoltDeviceType type;
   BoltDevice *dev;
+  guint64 ct;
 
   uid = udev_device_get_sysattr_value (udev, "unique_id");
   if (udev == NULL)
@@ -943,6 +1012,8 @@ bolt_device_new_for_udev (struct udev_device *udev,
       type = BOLT_DEVICE_PERIPHERAL;
     }
 
+  ct = (guint64) bolt_sysfs_device_get_time (udev, BOLT_ST_CTIME);
+
   parent = bolt_sysfs_get_parent_uid (udev);
   dev = g_object_new (BOLT_TYPE_DEVICE,
                       "uid", uid,
@@ -951,6 +1022,7 @@ bolt_device_new_for_udev (struct udev_device *udev,
                       "type", type,
                       "sysfs-path", syspath,
                       "parent", parent,
+                      "conntime", ct,
                       NULL);
 
   dev->status = bolt_status_from_udev (udev);
@@ -994,17 +1066,21 @@ bolt_device_connected (BoltDevice         *dev,
   const char *parent;
   BoltSecurity security;
   BoltStatus status;
+  guint64 ct;
 
   syspath = udev_device_get_syspath (udev);
   status = bolt_status_from_udev (udev);
   security = bolt_sysfs_security_for_device (udev);
   parent = bolt_sysfs_get_parent_uid (udev);
 
+  ct = (guint64) bolt_sysfs_device_get_time (udev, BOLT_ST_CTIME);
+
   g_object_set (G_OBJECT (dev),
                 "parent", parent,
                 "sysfs-path", syspath,
                 "security", security,
                 "status", status,
+                "conntime", ct,
                 NULL);
 
   bolt_info (LOG_DEV (dev), "parent is %s", dev->parent);
@@ -1020,6 +1096,7 @@ bolt_device_disconnected (BoltDevice *dev)
                 "sysfs-path", NULL,
                 "security", BOLT_SECURITY_NONE,
                 "status", BOLT_STATUS_DISCONNECTED,
+                "conntime", 0,
                 NULL);
 
   /* check if we have a new key for the device, and
