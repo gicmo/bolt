@@ -1298,6 +1298,7 @@ enroll_device_done (GObject      *device,
       GVariant *params;
       guint32 p;
       BoltPolicy policy;
+      guint64 now;
 
       params = g_dbus_method_invocation_get_parameters (inv);
       g_variant_get_child (params, 1, "u", &p);
@@ -1305,6 +1306,9 @@ enroll_device_done (GObject      *device,
       policy = p;
       if (policy == BOLT_POLICY_DEFAULT)
         policy = mgr->policy;
+
+      now = (guint64) g_get_real_time () / G_USEC_PER_SEC;
+      g_object_set (dev, "storetime", now, NULL);
 
       ok = bolt_store_put_device (mgr->store,
                                   dev,
