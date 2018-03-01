@@ -71,6 +71,7 @@ struct _BoltDevice
   BoltStore   *store;
   BoltPolicy   policy;
   BoltKeyState key;
+  guint64      storetime;
 
   char        *label;
 };
@@ -96,6 +97,7 @@ enum {
   PROP_STORED,
   PROP_POLICY,
   PROP_HAVE_KEY,
+  PROP_STORETIME,
   PROP_LABEL,
 
   PROP_LAST,
@@ -202,6 +204,10 @@ bolt_device_get_property (GObject    *object,
       g_value_set_uint (value, dev->key);
       break;
 
+    case PROP_STORETIME:
+      g_value_set_uint64 (value, dev->storetime);
+      break;
+
     case PROP_LABEL:
       g_value_set_string (value, dev->label);
       break;
@@ -284,6 +290,10 @@ bolt_device_set_property (GObject      *object,
 
     case PROP_HAVE_KEY:
       dev->key = g_value_get_uint (value);
+      break;
+
+    case PROP_STORETIME:
+      dev->storetime = g_value_get_uint64 (value);
       break;
 
     case PROP_LABEL:
@@ -412,6 +422,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        BOLT_KEY_MISSING,
                        G_PARAM_READWRITE |
                        G_PARAM_STATIC_STRINGS);
+
+  props[PROP_STORETIME] =
+    g_param_spec_uint64 ("storetime",
+                         "StoreTime", NULL,
+                         0, G_MAXUINT64, 0,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_LABEL] =
     g_param_spec_string ("label",
@@ -1210,4 +1227,10 @@ const char *
 bolt_device_get_label (const BoltDevice *dev)
 {
   return dev->label;
+}
+
+gint64
+bolt_device_get_storetime (const BoltDevice *dev)
+{
+  return dev->storetime;
 }
