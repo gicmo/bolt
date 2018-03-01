@@ -308,6 +308,7 @@ bolt_store_put_device (BoltStore  *store,
   const char *uid;
   const char *label;
   gboolean ok;
+  gint64 stime;
   gsize len;
   guint keystate = 0;
 
@@ -341,6 +342,12 @@ bolt_store_put_device (BoltStore  *store,
 
   if (label != NULL)
     g_key_file_set_string (kf, USER_GROUP, "label", label);
+
+  stime = bolt_device_get_storetime (device);
+
+  if (stime > 0)
+    g_key_file_set_uint64 (kf, USER_GROUP, "storetime", stime);
+
 
   data = g_key_file_to_data (kf, &len, error);
 
@@ -388,6 +395,7 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
 {
   g_autoptr(GKeyFile) kf = NULL;
   g_autoptr(GFile) db = NULL;
+  g_autoptr(GError) err = NULL;
   g_autofree char *name = NULL;
   g_autofree char *vendor = NULL;
   g_autofree char *data  = NULL;
@@ -398,6 +406,7 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
   BoltPolicy policy;
   BoltKeyState key;
   gboolean ok;
+  guint64 stime;
   gsize len;
 
   g_return_val_if_fail (store != NULL, FALSE);
@@ -449,6 +458,10 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
                    "invalid device label: %s", label);
     }
 
+  stime = g_key_file_get_uint64 (kf, USER_GROUP, "storetime", &err);
+  if (err != NULL && !bolt_err_notfound (err))
+    bolt_warn_err (err, LOG_TOPIC ("store"), "invalid enroll-time");
+
   key = bolt_store_have_key (store, uid);
 
   g_return_val_if_fail (name != NULL, NULL);
@@ -463,6 +476,7 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
                        "store", store,
                        "policy", policy,
                        "key", key,
+                       "storetime", stime,
                        "label", label,
                        NULL);
 }
