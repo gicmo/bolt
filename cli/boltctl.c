@@ -54,6 +54,19 @@ usage_error_need_arg (const char *arg)
   return usage_error (error);
 }
 
+static char *
+bolt_epoch_format (guint64 seconds, const char *format)
+{
+  g_autoptr(GDateTime)  dt = NULL;
+
+  dt = g_date_time_new_from_unix_utc ((gint64) seconds);
+
+  if (dt == NULL)
+    return NULL;
+
+  return g_date_time_format (dt, format);
+}
+
 static void
 print_device (BoltDevice *dev, gboolean verbose)
 {
@@ -77,6 +90,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   const char *tree_right;
   const char *tree_space;
   gboolean stored;
+  guint64 ct, at, st;
 
   g_object_get (dev,
                 "g-object-path", &path,
@@ -88,9 +102,12 @@ print_device (BoltDevice *dev, gboolean verbose)
                 "security", &security,
                 "parent", &parent,
                 "syspath", &syspath,
+                "conntime", &ct,
+                "authtime", &at,
                 "stored", &stored,
                 "policy", &policy,
                 "key", &keystate,
+                "storetime", &st,
                 "label", &label,
                 NULL);
 
@@ -141,38 +158,61 @@ print_device (BoltDevice *dev, gboolean verbose)
   type_text = bolt_device_type_to_string (type);
 
   if (label)
-    g_print ("   %s name:        %s\n", tree_branch, name);
+    g_print ("   %s name:          %s\n", tree_branch, name);
 
-  g_print ("   %s type:        %s\n", tree_branch, type_text);
-  g_print ("   %s vendor:      %s\n", tree_branch, vendor);
-  g_print ("   %s uuid:        %s\n", tree_branch, uid);
+  g_print ("   %s type:          %s\n", tree_branch, type_text);
+  g_print ("   %s vendor:        %s\n", tree_branch, vendor);
+  g_print ("   %s uuid:          %s\n", tree_branch, uid);
   if (verbose)
-    g_print ("   %s dbus path:   %s\n", tree_branch, path);
-  g_print ("   %s status:      %s\n", tree_branch, status_text);
+    g_print ("   %s dbus path:     %s\n", tree_branch, path);
+  g_print ("   %s status:        %s\n", tree_branch, status_text);
 
   if (bolt_status_is_connected (status))
     {
+      g_autofree char *ctstr = NULL;
+
+      ctstr = bolt_epoch_format (ct, "%c");
+
       if (verbose)
         {
-          g_print ("   %s %s parent:   %s\n",
+          g_print ("   %s %s parent:     %s\n",
                    bolt_glyph (TREE_VERTICAL),
                    tree_branch,
                    parent);
-          g_print ("   %s %s syspath:  %s\n",
+          g_print ("   %s %s syspath:    %s\n",
                    bolt_glyph (TREE_VERTICAL),
                    tree_branch,
                    syspath);
         }
-      g_print ("   %s %s security: %s\n",
+
+      g_print ("   %s %s security:   %s\n",
+               bolt_glyph (TREE_VERTICAL),
+               tree_branch,
+               bolt_security_to_string (security));
+
+      if (bolt_status_is_authorized (status))
+        {
+          g_autofree char *atstr = NULL;
+
+          atstr = bolt_epoch_format (at, "%c");
+          g_print ("   %s %s authorized: %s\n",
+                   bolt_glyph (TREE_VERTICAL),
+                   tree_branch,
+                   atstr);
+        }
+
+      g_print ("   %s %s connected:  %s\n",
                bolt_glyph (TREE_VERTICAL),
                tree_right,
-               bolt_security_to_string (security));
+               ctstr);
+
     }
 
-  g_print ("   %s stored:      %s\n", tree_right, bolt_yesno (stored));
+  g_print ("   %s stored:        %s\n", tree_right, bolt_yesno (stored));
 
   if (stored)
     {
+      g_autofree char *etstr = NULL;
       const char *pstr = bolt_policy_to_string (policy);
       const char *kstr;
 
@@ -185,11 +225,13 @@ print_device (BoltDevice *dev, gboolean verbose)
       else
         kstr = "unknown";
 
-      g_print ("   %s %s policy:   %s\n", tree_space, tree_branch, pstr);
-      g_print ("   %s %s key:      %s\n", tree_space, tree_right, kstr);
+      etstr = bolt_epoch_format (st, "%c");
+
+      g_print ("   %s %s when:       %s\n", tree_space, tree_branch, etstr);
+      g_print ("   %s %s policy:     %s\n", tree_space, tree_branch, pstr);
+      g_print ("   %s %s key:        %s\n", tree_space, tree_right, kstr);
 
     }
-
 
   g_print ("\n");
 }
