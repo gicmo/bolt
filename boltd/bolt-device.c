@@ -66,6 +66,7 @@ struct _BoltDevice
   char        *parent;
 
   guint64      conntime;
+  guint64      authtime;
 
   /* when device is stored */
   BoltStore   *store;
@@ -93,6 +94,7 @@ enum {
   PROP_SYSFS,
   PROP_SECURITY,
   PROP_CONNTIME,
+  PROP_AUTHTIME,
 
   PROP_STORED,
   PROP_POLICY,
@@ -192,6 +194,10 @@ bolt_device_get_property (GObject    *object,
       g_value_set_uint64 (value, dev->conntime);
       break;
 
+    case PROP_AUTHTIME:
+      g_value_set_uint64 (value, dev->authtime);
+      break;
+
     case PROP_STORED:
       g_value_set_boolean (value, dev->store != NULL);
       break;
@@ -282,6 +288,10 @@ bolt_device_set_property (GObject      *object,
 
     case PROP_CONNTIME:
       dev->conntime = g_value_get_uint64 (value);
+      break;
+
+    case PROP_AUTHTIME:
+      dev->authtime = g_value_get_uint64 (value);
       break;
 
     case PROP_POLICY:
@@ -398,6 +408,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          G_PARAM_READWRITE |
                          G_PARAM_STATIC_STRINGS);
 
+  props[PROP_AUTHTIME] =
+    g_param_spec_uint64 ("authtime",
+                         "AuthorizeTime", NULL,
+                         0, G_MAXUINT64, 0,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS);
+
   props[PROP_STORED] =
     g_param_spec_boolean ("stored",
                           "Stored", NULL,
@@ -471,6 +488,14 @@ bolt_device_class_init (BoltDeviceClass *klass)
 }
 
 /* internal methods */
+
+static guint64
+bolt_now_in_seconds (void)
+{
+  gint64 now = g_get_real_time ();
+
+  return (guint64) now / G_USEC_PER_SEC;
+}
 
 static const char *
 read_sysattr_name (struct udev_device *udev, const char *attr, GError **error)
@@ -813,6 +838,7 @@ authorize_thread_done (GObject      *object,
   AuthData *auth_data;
   BoltAuth *auth;
   gboolean ok;
+  guint64 now;
 
   auth_data = g_task_get_task_data (task);
   auth = auth_data->auth;
@@ -822,8 +848,12 @@ authorize_thread_done (GObject      *object,
   if (!ok)
     bolt_auth_return_error (auth, &error);
 
+  now = bolt_now_in_seconds ();
   status = bolt_auth_to_status (auth);
-  g_object_set (dev, "status", status, NULL);
+  g_object_set (dev,
+                "status", status,
+                "authtime", now,
+                NULL);
 
   if (auth_data->callback)
     auth_data->callback (G_OBJECT (dev),
@@ -987,9 +1017,11 @@ bolt_device_new_for_udev (struct udev_device *udev,
   const char *vendor;
   const char *syspath;
   const char *parent;
+  BoltSecurity security;
+  BoltStatus status;
   BoltDeviceType type;
   BoltDevice *dev;
-  guint64 ct;
+  guint64 ct, at;
 
   uid = udev_device_get_sysattr_value (udev, "unique_id");
   if (udev == NULL)
@@ -1032,18 +1064,23 @@ bolt_device_new_for_udev (struct udev_device *udev,
   ct = (guint64) bolt_sysfs_device_get_time (udev, BOLT_ST_CTIME);
 
   parent = bolt_sysfs_get_parent_uid (udev);
+  security = bolt_sysfs_security_for_device (udev);
+  status = bolt_status_from_udev (udev);
+  at = bolt_status_is_authorized (status) ? ct : 0;
+
   dev = g_object_new (BOLT_TYPE_DEVICE,
                       "uid", uid,
                       "name", name,
                       "vendor", vendor,
                       "type", type,
+                      "status", status,
                       "sysfs-path", syspath,
                       "parent", parent,
                       "conntime", ct,
+                      "authtime", at,
+                      "security", security,
                       NULL);
 
-  dev->status = bolt_status_from_udev (udev);
-  dev->security = bolt_sysfs_security_for_device (udev);
 
   return dev;
 }
@@ -1083,7 +1120,7 @@ bolt_device_connected (BoltDevice         *dev,
   const char *parent;
   BoltSecurity security;
   BoltStatus status;
-  guint64 ct;
+  guint64 ct, at;
 
   syspath = udev_device_get_syspath (udev);
   status = bolt_status_from_udev (udev);
@@ -1091,6 +1128,8 @@ bolt_device_connected (BoltDevice         *dev,
   parent = bolt_sysfs_get_parent_uid (udev);
 
   ct = (guint64) bolt_sysfs_device_get_time (udev, BOLT_ST_CTIME);
+  at = bolt_status_is_authorized (status) ? ct : 0;
+
 
   g_object_set (G_OBJECT (dev),
                 "parent", parent,
@@ -1098,6 +1137,7 @@ bolt_device_connected (BoltDevice         *dev,
                 "security", security,
                 "status", status,
                 "conntime", ct,
+                "authtime", at,
                 NULL);
 
   bolt_info (LOG_DEV (dev), "parent is %s", dev->parent);
@@ -1114,6 +1154,7 @@ bolt_device_disconnected (BoltDevice *dev)
                 "security", BOLT_SECURITY_NONE,
                 "status", BOLT_STATUS_DISCONNECTED,
                 "conntime", 0,
+                "authtime", 0,
                 NULL);
 
   /* check if we have a new key for the device, and
@@ -1138,9 +1179,19 @@ bolt_device_update_from_udev (BoltDevice         *dev,
 {
   BoltStatus status = bolt_status_from_udev (udev);
 
+  if (status == dev->status)
+    return status;
+
   g_object_set (G_OBJECT (dev),
                 "status", status,
                 NULL);
+
+  if (bolt_status_is_authorized (status) &&
+      dev->status != BOLT_STATUS_AUTHORIZING)
+    {
+      dev->authtime = bolt_now_in_seconds ();
+      g_object_notify_by_pspec (G_OBJECT (dev), props[PROP_AUTHTIME]);
+    }
 
   return status;
 }
