@@ -45,9 +45,13 @@ enum {
   PROP_PARENT,
   PROP_SYSPATH,
   PROP_SECURITY,
+  PROP_CONNTIME,
+  PROP_AUTHTIME,
+
   PROP_STORED,
   PROP_POLICY,
   PROP_KEY,
+  PROP_STORETIME,
   PROP_LABEL,
 
   PROP_LAST
@@ -73,18 +77,21 @@ static const BoltProxyProp *
 bolt_device_get_dbus_props (guint *n)
 {
   static BoltProxyProp dbus_props[] = {
-    {"Uid",       "uid",       PROP_UID,        NULL},
-    {"Name",      "name",      PROP_NAME,       NULL},
-    {"Vendor",    "vendor",    PROP_VENDOR,     NULL},
-    {"Type",      "type",      PROP_TYPE,       NULL},
-    {"Status",    "status",    PROP_STATUS,     NULL},
-    {"Parent",    "parent",    PROP_PARENT,     NULL},
-    {"SysfsPath", "syspath",   PROP_SYSPATH,    NULL},
-    {"Security",  "security",  PROP_SECURITY,   NULL},
-    {"Stored",    "stored",    PROP_STORED,     NULL},
-    {"Policy",    "policy",    PROP_POLICY,     NULL},
-    {"Key",       "key",       PROP_KEY,        NULL},
-    {"Label",     "label",     PROP_LABEL,      NULL}
+    {"Uid",           "uid",        PROP_UID,           NULL},
+    {"Name",          "name",       PROP_NAME,          NULL},
+    {"Vendor",        "vendor",     PROP_VENDOR,        NULL},
+    {"Type",          "type",       PROP_TYPE,          NULL},
+    {"Status",        "status",     PROP_STATUS,        NULL},
+    {"Parent",        "parent",     PROP_PARENT,        NULL},
+    {"SysfsPath",     "syspath",    PROP_SYSPATH,       NULL},
+    {"Security",      "security",   PROP_SECURITY,      NULL},
+    {"ConnectTime",   "conntime",   PROP_CONNTIME,      NULL},
+    {"AuthorizeTime", "authtime",   PROP_AUTHTIME,      NULL},
+    {"Stored",        "stored",     PROP_STORED,        NULL},
+    {"Policy",        "policy",     PROP_POLICY,        NULL},
+    {"Key",           "key",        PROP_KEY,           NULL},
+    {"StoreTime",    "storetime",  PROP_STORETIME,     NULL},
+    {"Label",         "label",      PROP_LABEL,         NULL}
   };
 
   *n = G_N_ELEMENTS (dbus_props);
@@ -162,6 +169,20 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_NICK);
 
+  props[PROP_CONNTIME] =
+    g_param_spec_uint64 ("conntime",
+                         "ConnectTime", NULL,
+                         0, G_MAXUINT64, 0,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_STRINGS);
+
+  props[PROP_AUTHTIME] =
+    g_param_spec_uint64 ("authtime",
+                         "AuthorizeTime", NULL,
+                         0, G_MAXUINT64, 0,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_STRINGS);
+
   props[PROP_STORED] =
     g_param_spec_boolean ("stored",
                           NULL, NULL,
@@ -184,6 +205,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        BOLT_KEY_MISSING,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_NICK);
+
+  props[PROP_STORETIME] =
+    g_param_spec_uint64 ("storetime",
+                         "StoreTime", NULL,
+                         0, G_MAXUINT64, 0,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_LABEL] =
     g_param_spec_string ("label",
