@@ -232,6 +232,14 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+
+    <property name="StoreTime" type="t" access="read">
+      <doc:doc><doc:description><doc:para>
+        Point in time (since Epoch, in seconds) when the
+	device was stored (0 if it is not stored).
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <!-- methods -->
 
     <method name="Authorize">

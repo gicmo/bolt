@@ -80,4 +80,6 @@ BoltDeviceType    bolt_device_get_device_type (const BoltDevice *dev);
 
 const char *      bolt_device_get_label (const BoltDevice *dev);
 
+gint64            bolt_device_get_storetime (const BoltDevice *dev);
+
 G_END_DECLS
