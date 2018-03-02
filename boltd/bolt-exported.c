@@ -654,9 +654,20 @@ emit_prop_changes (gpointer user_data)
   g_variant_builder_init (&changed, G_VARIANT_TYPE ("a{sv}"));
   g_variant_builder_init (&invalidated, G_VARIANT_TYPE ("as"));
 
-  /* sanity check */
-  if (props_changed->len == 0 || priv->dbus == NULL)
-    return FALSE;
+  /* no bus, no changed signal */
+  if (priv->dbus == NULL || priv->object_path == NULL)
+    {
+      g_ptr_array_remove_range (props_changed, 0, props_changed->len);
+      priv->props_changed_id = 0;
+      return FALSE;
+    }
+
+  /* no changes, no changed signal */
+  if (props_changed->len == 0)
+    {
+      priv->props_changed_id = 0;
+      return FALSE;
+    }
 
   for (guint i = 0; i < props_changed->len; i++)
     {
@@ -682,7 +693,7 @@ emit_prop_changes (gpointer user_data)
                                       "org.freedesktop.DBus.Properties",
                                       "PropertiesChanged",
                                       changes,
-                                      NULL);
+                                      &err);
 
   if (!ok)
     bolt_warn_err (err, LOG_TOPIC ("dbus"),
@@ -1035,6 +1046,10 @@ bolt_exported_emit_signal (BoltExported *exported,
 
   priv = GET_PRIV (exported);
 
+  /* if we are not exported, we just ignore this */
+  if (priv->dbus == NULL || priv->object_path == NULL)
+    return TRUE;
+
   iface_name = bolt_exported_get_iface_name (exported);
 
   ok = g_dbus_connection_emit_signal (priv->dbus,
@@ -1050,6 +1065,10 @@ bolt_exported_emit_signal (BoltExported *exported,
       bolt_warn_err (err, LOG_TOPIC ("dbus"),
                      "error emitting signal");
       g_propagate_error (error, g_steal_pointer (&err));
+    }
+  else
+    {
+      bolt_debug (LOG_TOPIC ("dbus"), "emitted signal: %s", name);
     }
 
   return ok;
