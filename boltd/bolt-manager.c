@@ -27,6 +27,7 @@
 #include "bolt-log.h"
 #include "bolt-store.h"
 #include "bolt-str.h"
+#include "bolt-time.h"
 
 #include "bolt-manager.h"
 
@@ -1307,7 +1308,7 @@ enroll_device_done (GObject      *device,
       if (policy == BOLT_POLICY_DEFAULT)
         policy = mgr->policy;
 
-      now = (guint64) g_get_real_time () / G_USEC_PER_SEC;
+      now = bolt_now_in_seconds ();
       g_object_set (dev, "storetime", now, NULL);
 
       ok = bolt_store_put_device (mgr->store,
