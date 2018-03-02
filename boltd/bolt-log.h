@@ -87,6 +87,16 @@ G_BEGIN_DECLS
                                         LOG_ERR (e),                                       \
                                         __VA_ARGS__)
 
+#define bolt_warn_enum_unhandled(the_enum, the_value) G_STMT_START {  \
+    bolt_log (G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL,                   \
+              LOG_DIRECT ("CODE_FILE", __FILE__),                   \
+              LOG_DIRECT ("CODE_LINE", G_STRINGIFY (__LINE__)),     \
+              LOG_DIRECT ("CODE_FUNC", G_STRFUNC),                  \
+              LOG_TOPIC ("code")                                    \
+              "unhandled value of enum " #the_enum "%d",            \
+              (int) the_value);                                     \
+} G_STMT_END
+
 void               bolt_logv (const char    *domain,
                               GLogLevelFlags level,
                               va_list        args);
