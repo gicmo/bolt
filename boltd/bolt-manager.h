@@ -31,4 +31,6 @@ gboolean         bolt_manager_export (BoltManager     *mgr,
                                       GDBusConnection *connection,
                                       GError         **error);
 
+void             bolt_manager_got_the_name (BoltManager *mgr);
+
 G_END_DECLS
