@@ -27,4 +27,6 @@ G_BEGIN_DECLS
 char *       bolt_epoch_format (guint64     seconds,
                                 const char *format);
 
+guint64      bolt_now_in_seconds (void);
+
 G_END_DECLS
