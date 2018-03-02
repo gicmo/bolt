@@ -947,6 +947,22 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(len(devices), 0)
         self.daemon_stop()
 
+    def test_signals_on_start(self):
+        # Check that we get DeviceAdded signals for un-authorized
+        # devices that are not in the database
+
+        client = BoltClient(self.dbus)
+        tree = self.default_mock_tree()
+        tree.connect_tree(self.testbed)
+
+        with client.record() as tape:
+            self.daemon_start()
+            res = tape.wait_for_event('signal',
+                                      'DeviceAdded',
+                                      None)
+            self.assertTrue(res)
+        self.daemon_stop()
+
     def test_basic_device_name(self):
         domain = 0
         security = 'secure'
