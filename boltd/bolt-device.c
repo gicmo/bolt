@@ -30,6 +30,7 @@
 #include "bolt-names.h"
 #include "bolt-store.h"
 #include "bolt-str.h"
+#include "bolt-time.h"
 
 #include <dirent.h>
 #include <libudev.h>
@@ -488,14 +489,6 @@ bolt_device_class_init (BoltDeviceClass *klass)
 }
 
 /* internal methods */
-
-static guint64
-bolt_now_in_seconds (void)
-{
-  gint64 now = g_get_real_time ();
-
-  return (guint64) now / G_USEC_PER_SEC;
-}
 
 static const char *
 read_sysattr_name (struct udev_device *udev, const char *attr, GError **error)

@@ -34,3 +34,11 @@ bolt_epoch_format (guint64 seconds, const char *format)
 
   return g_date_time_format (dt, format);
 }
+
+guint64
+bolt_now_in_seconds (void)
+{
+  gint64 now = g_get_real_time ();
+
+  return (guint64) now / G_USEC_PER_SEC;
+}
