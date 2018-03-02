@@ -1447,3 +1447,36 @@ bolt_manager_export (BoltManager     *mgr,
 
   return TRUE;
 }
+
+void
+bolt_manager_got_the_name (BoltManager *mgr)
+{
+
+  /* emit DeviceAdded signals now that we have the name
+   * for all devices that are not stored and connected
+   */
+  for (guint i = 0; i < mgr->devices->len; i++)
+    {
+      BoltDevice *dev = g_ptr_array_index (mgr->devices, i);
+      BoltStatus status;
+      gboolean stored;
+      const char *opath;
+
+      stored = bolt_device_get_stored (dev);
+      if (stored)
+        continue;
+
+      status = bolt_device_get_status (dev);
+      if (status != BOLT_STATUS_CONNECTED)
+        continue;
+
+      opath = bolt_exported_get_object_path (BOLT_EXPORTED (dev));
+      if (opath == NULL)
+        continue;
+
+      bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
+                                 "DeviceAdded",
+                                 g_variant_new ("(o)", opath),
+                                 NULL);
+    }
+}
