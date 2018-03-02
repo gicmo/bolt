@@ -117,6 +117,7 @@ on_name_acquired (GDBusConnection *connection,
                   gpointer         user_data)
 {
   bolt_debug (LOG_TOPIC ("dbus"), "got the name");
+  bolt_manager_got_the_name (manager);
 }
 
 static void
