@@ -171,7 +171,8 @@ common_sources = [
   'common/bolt-io.c',
   'common/bolt-rnd.c',
   'common/bolt-str.c',
-  'common/bolt-term.c'
+  'common/bolt-term.c',
+  'common/bolt-time.c'
 ]
 
 common_enums = gnome.mkenums_simple('bolt-enum-types',

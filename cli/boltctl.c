@@ -25,6 +25,7 @@
 #include "bolt-error.h"
 #include "bolt-str.h"
 #include "bolt-term.h"
+#include "bolt-time.h"
 
 #include <gio/gio.h>
 
@@ -52,19 +53,6 @@ usage_error_need_arg (const char *arg)
   g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
                "missing argument '%s'", arg);
   return usage_error (error);
-}
-
-static char *
-bolt_epoch_format (guint64 seconds, const char *format)
-{
-  g_autoptr(GDateTime)  dt = NULL;
-
-  dt = g_date_time_new_from_unix_utc ((gint64) seconds);
-
-  if (dt == NULL)
-    return NULL;
-
-  return g_date_time_format (dt, format);
 }
 
 static void
