@@ -113,8 +113,9 @@ class Signal(object):
         if self._bridge is not None:
             raise ValueError('already bridged')
         self._bridge = {'object': obj,
-                        'name': name,
-                        'filter': callback}
+                        'name': name}
+        if callback is not None:
+            self._bridge['filter'] = callback
 
     def birdge_destroy(self):
         self._bridge = None
@@ -202,11 +203,13 @@ class Recorder(object):
         self.events = []
         self.target = target
         self.target.g_properties_changed += self._on_props_changed
+        self.target.g_signal += self._on_signal
 
     def close(self):
         if not self.recording:
             return
         self.target.g_properties_changed -= self._on_props_changed
+        self.target.g_signal -= self._on_signal
         self.recording = False
         return self.events
 
@@ -221,6 +224,11 @@ class Recorder(object):
         for k, v in props.items():
             e = self.Event('property', k, v, now)
             self._add_event(e)
+
+    def _on_signal(self, proxy, sender, signal, params):
+        now = time.time()
+        e = self.Event('signal', signal, None, now)
+        self._add_event(e)
 
     def _add_event(self, event):
         self.events.append(event)
@@ -271,7 +279,7 @@ class Recorder(object):
 
 @Signal.enable
 class ProxyWrapper(object):
-    signals = ['g_properties_changed']
+    signals = ['g_properties_changed', 'g_signal']
 
     def __init__(self, bus, iname, path):
         self._proxy = Gio.DBusProxy.new_sync(bus,
@@ -288,6 +296,8 @@ class ProxyWrapper(object):
         self.g_properties_changed.bridge(self._proxy,
                                          'g-properties-changed',
                                          props_changed)
+
+        self.g_signal.bridge(self._proxy, 'g-signal', None)
 
     def __getattr__(self, name):
         if name.startswith('_'):
@@ -365,6 +375,7 @@ class BoltDevice(ProxyWrapper):
                                     -1,
                                     None)
         return res is not None
+
 
 @Signal.enable
 class BoltClient(ProxyWrapper):
