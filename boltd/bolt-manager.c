@@ -851,7 +851,8 @@ handle_udev_device_added (BoltManager        *mgr,
   if (opath == NULL)
     bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("dbus"), "error exporting");
   else
-    bolt_info (LOG_DEV (dev), LOG_TOPIC ("dbus"), "exporting device at %s", opath);
+    bolt_info (LOG_DEV (dev), LOG_TOPIC ("dbus"),
+               "exported device at %.43s...", opath);
 
   bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
                              "DeviceAdded",
@@ -1442,7 +1443,7 @@ bolt_manager_export (BoltManager     *mgr,
         }
 
       bolt_info (LOG_DEV (dev), LOG_TOPIC ("dbus"),
-                 "exporting device at %s", opath);
+                 "exported deviceat %.43s...", opath);
     }
 
   return TRUE;
