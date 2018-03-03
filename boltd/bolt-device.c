@@ -30,6 +30,7 @@
 #include "bolt-names.h"
 #include "bolt-store.h"
 #include "bolt-str.h"
+#include "bolt-sysfs.h"
 #include "bolt-time.h"
 
 #include <dirent.h>
@@ -647,61 +648,6 @@ bolt_status_from_udev (struct udev_device *udev)
     }
 
   return BOLT_STATUS_CONNECTED;
-}
-
-static gboolean
-bolt_sysfs_device_is_domain (struct udev_device *udev)
-{
-  const char *devtype = udev_device_get_devtype (udev);
-
-  return bolt_streq (devtype, "thunderbolt_domain");
-}
-
-static struct udev_device *
-bolt_sysfs_domain_for_device (struct udev_device *udev)
-{
-  struct udev_device *parent;
-  gboolean found;
-
-  found = FALSE;
-  parent = udev;
-  do
-    {
-      parent = udev_device_get_parent (parent);
-      if (!parent)
-        break;
-
-      found = bolt_sysfs_device_is_domain (parent);
-    }
-  while (!found);
-
-  return found ? parent : NULL;
-}
-
-static BoltSecurity
-bolt_sysfs_security_for_device (struct udev_device *udev)
-{
-  struct udev_device *parent = NULL;
-  const char *v;
-  BoltSecurity s;
-
-  parent = bolt_sysfs_domain_for_device (udev);
-  if (parent == NULL)
-    {
-      bolt_warn ("failed to determine domain device");
-      return BOLT_SECURITY_NONE;
-    }
-
-  v = udev_device_get_sysattr_value (parent, "security");
-  s = bolt_security_from_string (v);
-
-  if (!bolt_security_validate (s))
-    {
-      bolt_warn ("invalid security: %s", v);
-      s = BOLT_SECURITY_NONE;
-    }
-
-  return s;
 }
 
 static const char *
