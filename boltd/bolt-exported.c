@@ -30,22 +30,30 @@ typedef struct _BoltExportedMethod BoltExportedMethod;
 typedef struct _BoltExportedProp   BoltExportedProp;
 
 
-static void     bolt_exported_notify (GObject    *object,
-                                      GParamSpec *pspec);
+static void       bolt_exported_notify (GObject    *object,
+                                        GParamSpec *pspec);
 
-static gboolean handle_authorize_method_default (BoltExported          *exported,
-                                                 GDBusMethodInvocation *inv,
-                                                 GError               **error);
-
-static gboolean handle_authorize_property_default (BoltExported          *exported,
-                                                   const char            *name,
-                                                   gboolean               setting,
-                                                   GDBusMethodInvocation *invocation,
+static gboolean   handle_authorize_method_default (BoltExported          *exported,
+                                                   GDBusMethodInvocation *inv,
                                                    GError               **error);
 
-static void     bolt_exported_method_free (gpointer data);
+static gboolean   handle_authorize_property_default (BoltExported          *exported,
+                                                     const char            *name,
+                                                     gboolean               setting,
+                                                     GDBusMethodInvocation *invocation,
+                                                     GError               **error);
 
-static void     bolt_exported_prop_free (gpointer data);
+static void       bolt_exported_method_free (gpointer data);
+
+static void       bolt_exported_prop_free (gpointer data);
+
+static GVariant * bolt_exported_prop_gvalue_to_gvariant (BoltExportedProp *prop,
+                                                         const GValue     *value);
+
+static gboolean   bolt_exported_prop_gvariant_to_gvalue (BoltExportedProp *prop,
+                                                         GVariant         *variant,
+                                                         GValue           *value,
+                                                         GError          **error);
 
 struct _BoltExportedMethod
 {
@@ -64,6 +72,8 @@ struct _BoltExportedProp
   /* optional */
   BoltExportedSetter setter;
 
+  /* enum <-> string conversion */
+  GEnumClass *enum_class; /* shortcut for spec->enum_class */
 };
 
 struct _BoltExportedClassPrivate
@@ -80,7 +90,7 @@ struct _BoltExportedClassPrivate
 typedef struct _BoltExportedPrivate
 {
   GDBusConnection *dbus;
- char             *object_path;
+  char            *object_path;
 
   /* if exported */
   guint registration;
@@ -416,9 +426,11 @@ query_authorization_done (GObject      *source_object,
 
       g_variant_get_child (params, 2, "v", &vin);
       g_value_init (&val, prop->spec->value_type);
-      g_dbus_gvariant_to_gvalue (vin, &val);
 
-      ok = prop->setter (exported, prop->name_obj, &val, &err);
+      ok = bolt_exported_prop_gvariant_to_gvalue (prop, vin, &val, &err);
+
+      if (ok)
+        ok = prop->setter (exported, prop->name_obj, &val, &err);
 
       if (!ok && err != NULL)
         {
@@ -601,9 +613,9 @@ handle_dbus_get_property (GDBusConnection *connection,
                           gpointer         user_data)
 {
   g_autoptr(GError) err = NULL;
+  g_auto(GValue) res = G_VALUE_INIT;
   BoltExported *exported;
   BoltExportedProp *prop;
-  GValue res = G_VALUE_INIT;
   GVariant *ret;
   const char *name;
   const GParamSpec *spec;
@@ -627,8 +639,7 @@ handle_dbus_get_property (GDBusConnection *connection,
   g_value_init (&res, spec->value_type);
   g_object_get_property (G_OBJECT (exported), name, &res);
 
-  ret = g_dbus_gvalue_to_gvariant (&res, prop->signature);
-  g_value_unset (&res);
+  ret = bolt_exported_prop_gvalue_to_gvariant (prop, &res);
 
   return ret;
 }
@@ -677,7 +688,7 @@ emit_prop_changes (gpointer user_data)
 
       g_value_init (&val, prop->spec->value_type);
       g_object_get_property (G_OBJECT (exported), prop->name_obj, &val);
-      var = g_dbus_gvalue_to_gvariant (&val, prop->signature);
+      var = bolt_exported_prop_gvalue_to_gvariant (prop, &val);
       g_variant_builder_add (&changed, "{sv}", prop->name_bus, var);
     }
 
@@ -874,8 +885,17 @@ bolt_exported_class_export_property (BoltExportedClass *klass,
 
   prop->signature = g_variant_type_new (info->signature);
 
-  bolt_debug (LOG_TOPIC ("dbus"), "installed prop: %s -> %s",
-              prop->name_bus, prop->name_obj);
+  if (g_variant_type_equal (prop->signature, G_VARIANT_TYPE_STRING) &&
+      G_IS_PARAM_SPEC_ENUM (prop->spec))
+    {
+      GParamSpecEnum *enum_spec = G_PARAM_SPEC_ENUM (prop->spec);
+      prop->enum_class = enum_spec->enum_class;
+    }
+
+  bolt_debug (LOG_TOPIC ("dbus"), "installed prop: %s -> %s%s",
+              prop->name_bus, prop->name_obj,
+              prop->enum_class ? " [enum-auto-convert]" : "");
+
   g_hash_table_insert (priv->properties, (gpointer) prop->name_bus, prop);
 }
 
@@ -1111,5 +1131,76 @@ bolt_exported_prop_free (gpointer data)
   g_param_spec_unref (prop->spec);
   g_variant_type_free (prop->signature);
 
+
+
   g_free (prop);
+}
+
+static GVariant *
+bolt_exported_prop_gvalue_to_gvariant (BoltExportedProp *prop,
+                                       const GValue     *value)
+{
+  g_autofree char *str = NULL;
+  const char *name;
+  GEnumValue *ev;
+  GVariant *res;
+  gint iv;
+
+  if (prop->enum_class == NULL)
+    return g_dbus_gvalue_to_gvariant (value, prop->signature);
+
+  /* converts enums to gstrings */
+  iv = g_value_get_enum (value);
+  ev = g_enum_get_value (prop->enum_class, iv);
+
+  if (ev != NULL)
+    {
+      res = g_variant_new_string (ev->value_nick);
+      return g_variant_ref_sink (res);
+    }
+
+  /* we got an invalid value for that enum */
+  str = g_strdup_printf ("%d", iv);
+  res = g_variant_new_string (str);
+  name = g_type_name_from_class ((GTypeClass *) prop->enum_class);
+  bolt_bug ("invalid enum value %d for enum '%s'", iv, name);
+
+  return g_variant_ref_sink (res);
+}
+
+static gboolean
+bolt_exported_prop_gvariant_to_gvalue (BoltExportedProp *prop,
+                                       GVariant         *variant,
+                                       GValue           *value,
+                                       GError          **error)
+{
+  GEnumValue *ev = NULL;
+  const char *str;
+
+  if (prop->enum_class == NULL)
+    {
+      g_dbus_gvariant_to_gvalue (variant, value);
+      return TRUE;
+    }
+
+  str = g_variant_get_string (variant, NULL);
+
+  if (str == NULL)
+    str = "invalid";
+
+  ev = g_enum_get_value_by_nick (prop->enum_class, str);
+
+  if (ev == NULL)
+    {
+      const char *name;
+
+      name = g_type_name_from_class ((GTypeClass *) prop->enum_class);
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "invalid enum value '%s' for '%s'", str, name);
+
+      return FALSE;
+    }
+
+  g_value_set_enum (value, ev->value);
+  return TRUE;
 }
