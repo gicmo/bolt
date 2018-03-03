@@ -80,7 +80,7 @@ struct _BoltExportedClassPrivate
 typedef struct _BoltExportedPrivate
 {
   GDBusConnection *dbus;
-  const char      *object_path;
+ char             *object_path;
 
   /* if exported */
   guint registration;
@@ -983,6 +983,7 @@ bolt_exported_export (BoltExported    *exported,
 gboolean
 bolt_exported_unexport (BoltExported *exported)
 {
+  g_autofree char *opath = NULL;
   BoltExportedPrivate *priv;
   gboolean ok;
 
@@ -999,12 +1000,14 @@ bolt_exported_unexport (BoltExported *exported)
     {
       g_clear_object (&priv->dbus);
       priv->registration = 0;
-      g_clear_pointer (&priv->object_path, g_free);
+      opath = g_steal_pointer (&priv->object_path);
       g_object_notify_by_pspec (G_OBJECT (exported), props[PROP_OBJECT_PATH]);
       g_object_notify_by_pspec (G_OBJECT (exported), props[PROP_EXPORTED]);
     }
 
-  bolt_debug (LOG_TOPIC ("dbus"), "unregistered object: %s", bolt_yesno (ok));
+  bolt_debug (LOG_TOPIC ("dbus"), "unregistered object at %s: %s",
+              opath, bolt_yesno (ok));
+
   return ok;
 }
 
