@@ -22,6 +22,7 @@
 
 #include "bolt-sysfs.h"
 
+#include "bolt-error.h"
 #include "bolt-str.h"
 #include "bolt-log.h"
 
@@ -57,17 +58,23 @@ bolt_sysfs_domain_for_device (struct udev_device *udev)
 }
 
 BoltSecurity
-bolt_sysfs_security_for_device (struct udev_device *udev)
+bolt_sysfs_security_for_device (struct udev_device *udev,
+                                GError            **error)
 {
   struct udev_device *parent = NULL;
   const char *v;
   BoltSecurity s;
 
-  parent = bolt_sysfs_domain_for_device (udev);
+  if (bolt_sysfs_device_is_domain (udev))
+    parent = udev;
+  else
+    parent = bolt_sysfs_domain_for_device (udev);
+
   if (parent == NULL)
     {
-      bolt_warn ("failed to determine domain device");
-      return BOLT_SECURITY_NONE;
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                           "failed to determine domain device");
+      return BOLT_SECURITY_INVALID;
     }
 
   v = udev_device_get_sysattr_value (parent, "security");
@@ -75,8 +82,9 @@ bolt_sysfs_security_for_device (struct udev_device *udev)
 
   if (!bolt_security_validate (s))
     {
-      bolt_warn ("invalid security: %s", v);
-      s = BOLT_SECURITY_NONE;
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                   "unknown security level '%s'", v);
+      s = BOLT_SECURITY_INVALID;
     }
 
   return s;
