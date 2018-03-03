@@ -92,7 +92,7 @@ G_BEGIN_DECLS
               LOG_DIRECT ("CODE_FILE", __FILE__),                   \
               LOG_DIRECT ("CODE_LINE", G_STRINGIFY (__LINE__)),     \
               LOG_DIRECT ("CODE_FUNC", G_STRFUNC),                  \
-              LOG_TOPIC ("code")                                    \
+              LOG_TOPIC ("code"),                                   \
               "unhandled value of enum " #the_enum "%d",            \
               (int) the_value);                                     \
 } G_STMT_END
