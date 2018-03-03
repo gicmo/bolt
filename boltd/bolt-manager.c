@@ -25,6 +25,7 @@
 #include "bolt-device.h"
 #include "bolt-error.h"
 #include "bolt-log.h"
+#include "bolt-power.h"
 #include "bolt-store.h"
 #include "bolt-str.h"
 #include "bolt-sysfs.h"
@@ -110,6 +111,10 @@ static void          manager_probing_activity (BoltManager *mgr,
 static void          manager_add_domain (BoltManager        *mgr,
                                          struct udev_device *domain);
 
+static int           manager_count_domains (BoltManager *mgr);
+
+static gboolean      manager_maybe_power_controller (BoltManager *mgr);
+
 /* config */
 static void          manager_load_user_config (BoltManager *mgr);
 
@@ -141,8 +146,9 @@ struct _BoltManager
   GSource             *udev_source;
 
   /* state */
-  BoltStore *store;
-  GPtrArray *devices;
+  BoltStore   *store;
+  GPtrArray   *devices;
+  BoltPower   *power;
   BoltSecurity security;
 
   /* policy enforcer */
@@ -210,6 +216,8 @@ bolt_manager_finalize (GObject *object)
 
   g_clear_object (&mgr->store);
   g_ptr_array_free (mgr->devices, TRUE);
+
+  g_clear_object (&mgr->power);
 
   G_OBJECT_CLASS (bolt_manager_parent_class)->finalize (object);
 }
@@ -527,6 +535,7 @@ bolt_manager_initialize (GInitable    *initable,
   BoltManager *mgr;
   struct udev_enumerate *enumerate;
   struct udev_list_entry *l, *devices;
+  gboolean forced_power;
   gboolean ok;
 
   mgr = BOLT_MANAGER (initable);
@@ -587,6 +596,9 @@ bolt_manager_initialize (GInitable    *initable,
       manager_register_device (mgr, dev);
     }
 
+  mgr->power = bolt_power_new (mgr->udev);
+  forced_power = manager_maybe_power_controller (mgr);
+
   /* TODO: error checking */
   enumerate = udev_enumerate_new (mgr->udev);
   udev_enumerate_add_match_subsystem (enumerate, "thunderbolt");
@@ -633,6 +645,19 @@ bolt_manager_initialize (GInitable    *initable,
     }
 
   udev_enumerate_unref (enumerate);
+
+  if (forced_power)
+    {
+      g_autoptr(GError) err = NULL;
+
+      ok = bolt_power_force_switch (mgr->power, FALSE, &err);
+
+      if (!ok)
+        bolt_warn_err (err, LOG_TOPIC ("power"), "failed undo force power");
+      else
+        bolt_info (LOG_TOPIC ("power"), "setting force_power to OFF");
+    }
+
   return TRUE;
 }
 
@@ -883,8 +908,13 @@ handle_udev_device_changed (BoltManager        *mgr,
 {
   g_autoptr(GPtrArray) children = NULL;
   BoltStatus after;
+  BoltStatus before;
 
+  before = bolt_device_get_status (dev);
   after = bolt_device_update_from_udev (dev, udev);
+
+  if (before == after)
+    return;
 
   bolt_info (LOG_DEV (dev), "device changed: %s",
              bolt_status_to_string (after));
@@ -1223,15 +1253,15 @@ manager_add_domain (BoltManager        *mgr,
   name = udev_device_get_sysname (domain);
   sl = bolt_sysfs_security_for_device (domain, &err);
 
-  if (! bolt_security_validate (sl))
+  if (!bolt_security_validate (sl))
     {
-      bolt_warn_err (err, LOG_TOPIC ("udev"),"domain '%s'");
+      bolt_warn_err (err, LOG_TOPIC ("udev"), "domain '%s'", name);
       return;
     }
 
   if (mgr->security == BOLT_SECURITY_INVALID)
     {
-      bolt_info ("security level set to %s",
+      bolt_info ("security level set to '%s'",
                  bolt_security_to_string (sl));
       mgr->security = sl;
     }
@@ -1242,6 +1272,74 @@ manager_add_domain (BoltManager        *mgr,
                  bolt_security_to_string (sl));
     }
 }
+
+static int
+manager_count_domains (BoltManager *mgr)
+{
+  struct udev_enumerate *e;
+  struct udev_list_entry *l, *devices;
+  int res, count = 0;
+
+  e = udev_enumerate_new (mgr->udev);
+  udev_enumerate_add_match_subsystem (e, "thunderbolt");
+
+  udev_enumerate_add_match_property (e, "DEVTYPE", "thunderbolt_domain");
+  res = udev_enumerate_scan_devices (e);
+
+  if (res < 0)
+    return res;
+
+  devices = udev_enumerate_get_list_entry (e);
+  udev_list_entry_foreach (l, devices)
+    count++;
+
+  udev_enumerate_unref (e);
+
+  return count;
+}
+
+static gboolean
+manager_maybe_power_controller (BoltManager *mgr)
+{
+  g_autoptr(GError) err = NULL;
+  gboolean can_force_power;
+  gboolean ok;
+  int n;
+
+  can_force_power = bolt_power_can_force (mgr->power);
+  bolt_info (LOG_TOPIC ("power"), "force_power support: %s",
+             bolt_yesno (can_force_power));
+
+  if (can_force_power == FALSE)
+    return FALSE;
+
+  n = manager_count_domains (mgr);
+  if (n > 0)
+    return FALSE;
+
+  bolt_info (LOG_TOPIC ("power"), "setting force_power to ON");
+  ok = bolt_power_force_switch (mgr->power, TRUE, &err);
+
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("power"),
+                     "could not force power");
+      return ok;
+    }
+
+  /* we wait for a total of 5.0 seconds, should hopefully
+   * be enough for at least the domain to show up. */
+  for (int i = 0; i < 25 && n < 1; i++)
+    {
+      g_usleep (200000); /* 200 000 us = 0.2s */
+      n = manager_count_domains (mgr);
+    }
+
+  bolt_info (LOG_TOPIC ("power"), "found %d domains", n);
+  return ok;
+}
+
+
 /* config */
 static void
 manager_load_user_config (BoltManager *mgr)
