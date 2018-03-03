@@ -97,6 +97,13 @@ G_BEGIN_DECLS
               (int) the_value);                                     \
 } G_STMT_END
 
+#define bolt_bug(...) bolt_log (G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL,               \
+                                LOG_DIRECT ("CODE_FILE", __FILE__),               \
+                                LOG_DIRECT ("CODE_LINE", G_STRINGIFY (__LINE__)), \
+                                LOG_DIRECT ("CODE_FUNC", G_STRFUNC),              \
+                                LOG_TOPIC ("code"),                               \
+                                __VA_ARGS__)
+
 void               bolt_logv (const char    *domain,
                               GLogLevelFlags level,
                               va_list        args);
