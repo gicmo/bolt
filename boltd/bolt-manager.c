@@ -27,6 +27,7 @@
 #include "bolt-log.h"
 #include "bolt-store.h"
 #include "bolt-str.h"
+#include "bolt-sysfs.h"
 #include "bolt-time.h"
 
 #include "bolt-manager.h"
@@ -105,6 +106,7 @@ static void          manager_probing_device_removed (BoltManager        *mgr,
 static void          manager_probing_activity (BoltManager *mgr,
                                                gboolean     weak);
 
+/* domain related functions */
 static void          manager_add_domain (BoltManager        *mgr,
                                          struct udev_device *domain);
 
@@ -141,6 +143,7 @@ struct _BoltManager
   /* state */
   BoltStore *store;
   GPtrArray *devices;
+  BoltSecurity security;
 
   /* policy enforcer */
   BoltBouncer *bouncer;
@@ -163,6 +166,7 @@ enum {
   PROP_VERSION,
   PROP_PROBING,
   PROP_POLICY,
+  PROP_SECURITY,
 
   PROP_LAST,
   PROP_EXPORTED = PROP_VERSION
@@ -237,6 +241,10 @@ bolt_manager_get_property (GObject    *object,
       g_value_set_uint (value, mgr->policy);
       break;
 
+    case PROP_SECURITY:
+      g_value_set_uint (value, mgr->security);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -250,6 +258,8 @@ bolt_manager_init (BoltManager *mgr)
 
   mgr->probing_roots = g_ptr_array_new_with_free_func (g_free);
   mgr->probing_tsettle = PROBING_SETTLE_TIME_MS; /* milliseconds */
+
+  mgr->security = BOLT_SECURITY_INVALID;
 
   /* default configuration */
   mgr->policy = BOLT_POLICY_AUTO;
@@ -280,6 +290,12 @@ bolt_manager_class_init (BoltManagerClass *klass)
 
   props[PROP_POLICY] =
     g_param_spec_uint ("default-policy", "DefaultPolicy", "DefaultPolicy",
+                       0, G_MAXUINT32, 0,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_STRINGS);
+
+  props[PROP_SECURITY] =
+    g_param_spec_uint ("security-level", "SecurityLevel", NULL,
                        0, G_MAXUINT32, 0,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
@@ -1178,8 +1194,8 @@ manager_probing_device_removed (BoltManager        *mgr,
 }
 
 static void
-manager_add_domain (BoltManager        *mgr,
-                    struct udev_device *domain)
+manager_probing_domain_added (BoltManager        *mgr,
+                              struct udev_device *domain)
 {
   struct udev_device *p = domain;
 
@@ -1193,6 +1209,39 @@ manager_add_domain (BoltManager        *mgr,
   probing_add_root (mgr, p);
 }
 
+/* domain related function */
+static void
+manager_add_domain (BoltManager        *mgr,
+                    struct udev_device *domain)
+{
+  g_autoptr(GError) err = NULL;
+  const char *name;
+  BoltSecurity sl;
+
+  manager_probing_domain_added (mgr, domain);
+
+  name = udev_device_get_sysname (domain);
+  sl = bolt_sysfs_security_for_device (domain, &err);
+
+  if (! bolt_security_validate (sl))
+    {
+      bolt_warn_err (err, LOG_TOPIC ("udev"),"domain '%s'");
+      return;
+    }
+
+  if (mgr->security == BOLT_SECURITY_INVALID)
+    {
+      bolt_info ("security level set to %s",
+                 bolt_security_to_string (sl));
+      mgr->security = sl;
+    }
+  else if (mgr->security != sl)
+    {
+      bolt_warn ("multiple security levels (%s vs %s)",
+                 bolt_security_to_string (mgr->security),
+                 bolt_security_to_string (sl));
+    }
+}
 /* config */
 static void
 manager_load_user_config (BoltManager *mgr)
