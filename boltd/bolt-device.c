@@ -1133,7 +1133,7 @@ bolt_device_connected (BoltDevice         *dev,
                 "authtime", at,
                 NULL);
 
-  bolt_info (LOG_DEV (dev), "parent is %s", dev->parent);
+  bolt_info (LOG_DEV (dev), "parent is %.13s...", dev->parent);
 
   return status;
 }
