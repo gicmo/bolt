@@ -30,7 +30,10 @@ struct udev_device;
 G_BEGIN_DECLS
 
 gboolean             bolt_sysfs_device_is_domain (struct udev_device *udev);
+
 struct udev_device * bolt_sysfs_domain_for_device (struct udev_device *udev);
-BoltSecurity         bolt_sysfs_security_for_device (struct udev_device *udev);
+
+BoltSecurity         bolt_sysfs_security_for_device (struct udev_device *udev,
+                                                     GError            **error);
 
 G_END_DECLS

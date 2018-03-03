@@ -1003,7 +1003,7 @@ bolt_device_new_for_udev (struct udev_device *udev,
   ct = (guint64) bolt_sysfs_device_get_time (udev, BOLT_ST_CTIME);
 
   parent = bolt_sysfs_get_parent_uid (udev);
-  security = bolt_sysfs_security_for_device (udev);
+  security = bolt_sysfs_security_for_device (udev, NULL);
   status = bolt_status_from_udev (udev);
   at = bolt_status_is_authorized (status) ? ct : 0;
 
@@ -1063,7 +1063,7 @@ bolt_device_connected (BoltDevice         *dev,
 
   syspath = udev_device_get_syspath (udev);
   status = bolt_status_from_udev (udev);
-  security = bolt_sysfs_security_for_device (udev);
+  security = bolt_sysfs_security_for_device (udev, NULL);
   parent = bolt_sysfs_get_parent_uid (udev);
 
   ct = (guint64) bolt_sysfs_device_get_time (udev, BOLT_ST_CTIME);
