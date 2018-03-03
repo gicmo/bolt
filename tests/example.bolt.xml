@@ -8,6 +8,7 @@
     <property name='StrRW' type='s' access='readwrite' />
     <property name='StrRWNoSetter' type='s' access='readwrite' />
     <property name='Bool' type='b' access='readwrite' />
+    <property name='Security' type='s' access='readwrite' />
     <method name='Ping'>
       <arg type='s' name='result' direction='out' />
     </method>
