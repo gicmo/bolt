@@ -409,6 +409,58 @@ auth_data_free (AuthData *data)
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (AuthData, auth_data_free);
 
+static GVariant *
+dispach_property_setter (BoltExported          *exported,
+                         GDBusMethodInvocation *inv,
+                         BoltExportedProp      *prop,
+                         GError               **error)
+{
+  g_autoptr(GError) err = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  g_autoptr(GVariant) vin = NULL;
+  GVariant *params;
+  gboolean ok;
+
+  params = g_dbus_method_invocation_get_parameters (inv);
+
+  g_variant_get_child (params, 2, "v", &vin);
+  g_value_init (&val, prop->spec->value_type);
+
+  ok = bolt_exported_prop_gvariant_to_gvalue (prop, vin, &val, &err);
+
+  if (ok)
+    ok = prop->setter (exported, prop->name_obj, &val, &err);
+
+  if (!ok && err != NULL)
+    {
+      g_propagate_error (error, g_steal_pointer (&err));
+      return NULL;
+    }
+  else if (!ok)
+    {
+      bolt_critical (LOG_TOPIC ("dbus"),
+                     "property setter signaled error, but no error is set");
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "%s", "could not set property");
+      return NULL;
+    }
+
+  g_object_notify_by_pspec (G_OBJECT (exported), prop->spec);
+  return g_variant_new ("()");
+}
+
+static GVariant *
+dispatch_method_call (BoltExported          *exported,
+                      GDBusMethodInvocation *inv,
+                      BoltExportedMethod    *method,
+                      GError               **error)
+{
+  GVariant *params = g_dbus_method_invocation_get_parameters (inv);
+
+  method->handler (exported, params, inv);
+  return NULL;
+}
+
 static void
 query_authorization_done (GObject      *source_object,
                           GAsyncResult *res,
@@ -418,65 +470,36 @@ query_authorization_done (GObject      *source_object,
   g_autoptr(AuthData) data = user_data;
   GDBusMethodInvocation *inv = data->inv;
   BoltExported *exported = BOLT_EXPORTED (source_object);
+  GVariant *ret;
   gboolean ok;
 
   ok = g_task_propagate_boolean (G_TASK (res), &err);
 
+  bolt_debug (LOG_TOPIC ("dbus"), "authorization done: %s", bolt_yesno (ok));
+
+  if (!ok && err == NULL)
+    {
+      bolt_bug ("negative auth result, but no GError set");
+      g_set_error_literal (&err, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+                           "access denied");
+    }
+
   if (!ok)
     {
-      if (err == NULL)
-        {
-          bolt_critical (LOG_TOPIC ("dbus"),
-                         "negative auth result, but no GError set");
-          g_set_error_literal (&err, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
-                               "access denied");
-        }
-
       g_dbus_method_invocation_return_gerror (inv, err);
       return;
     }
 
-  bolt_debug (LOG_TOPIC ("dbus"), "authorization done: %s", bolt_yesno (ok));
-
   if (data->is_property)
-    {
-      g_auto(GValue) val = G_VALUE_INIT;
-      g_autoptr(GVariant) vin = NULL;
-      BoltExportedProp *prop = data->prop;
-      GVariant *params;
-
-      params = g_dbus_method_invocation_get_parameters (inv);
-
-      g_variant_get_child (params, 2, "v", &vin);
-      g_value_init (&val, prop->spec->value_type);
-
-      ok = bolt_exported_prop_gvariant_to_gvalue (prop, vin, &val, &err);
-
-      if (ok)
-        ok = prop->setter (exported, prop->name_obj, &val, &err);
-
-      if (!ok && err != NULL)
-        {
-          g_dbus_method_invocation_return_gerror (inv, err);
-          return;
-        }
-      else if (!ok)
-        {
-          bolt_critical (LOG_TOPIC ("dbus"),
-                         "property setter signaled error, but no error is set");
-          g_dbus_method_invocation_return_error (inv, BOLT_ERROR, BOLT_ERROR_FAILED,
-                                                 "%s", "could not set property");
-          return;
-        }
-
-      g_object_notify_by_pspec (G_OBJECT (exported), prop->spec);
-      g_dbus_method_invocation_return_value (inv, g_variant_new ("()"));
-    }
+    ret = dispach_property_setter (exported, inv, data->prop, &err);
   else
-    {
-      GVariant *params = g_dbus_method_invocation_get_parameters (inv);
-      data->method->handler (exported, params, inv);
-    }
+    ret = dispatch_method_call (exported, inv, data->method, &err);
+
+  if (ret == NULL && err != NULL)
+    g_dbus_method_invocation_return_gerror (inv, err);
+  else if (ret != NULL)
+    g_dbus_method_invocation_return_value (inv, ret);
+  /* else: must have been handled by the method call directly */
 }
 
 static void
