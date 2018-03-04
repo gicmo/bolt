@@ -69,71 +69,43 @@ bolt_device_get_property (GObject    *object,
                           GValue     *value,
                           GParamSpec *pspec)
 {
-  if (bolt_proxy_get_dbus_property (object, prop_id, value))
+  if (bolt_proxy_get_dbus_property (object, pspec, value))
     return;
 }
 
-static const BoltProxyProp *
-bolt_device_get_dbus_props (guint *n)
-{
-  static BoltProxyProp dbus_props[] = {
-    {"Uid",           "uid",        PROP_UID,           NULL},
-    {"Name",          "name",       PROP_NAME,          NULL},
-    {"Vendor",        "vendor",     PROP_VENDOR,        NULL},
-    {"Type",          "type",       PROP_TYPE,          NULL},
-    {"Status",        "status",     PROP_STATUS,        NULL},
-    {"Parent",        "parent",     PROP_PARENT,        NULL},
-    {"SysfsPath",     "syspath",    PROP_SYSPATH,       NULL},
-    {"Security",      "security",   PROP_SECURITY,      NULL},
-    {"ConnectTime",   "conntime",   PROP_CONNTIME,      NULL},
-    {"AuthorizeTime", "authtime",   PROP_AUTHTIME,      NULL},
-    {"Stored",        "stored",     PROP_STORED,        NULL},
-    {"Policy",        "policy",     PROP_POLICY,        NULL},
-    {"Key",           "key",        PROP_KEY,           NULL},
-    {"StoreTime",    "storetime",  PROP_STORETIME,     NULL},
-    {"Label",         "label",      PROP_LABEL,         NULL}
-  };
-
-  *n = G_N_ELEMENTS (dbus_props);
-
-  return dbus_props;
-}
 
 
 static void
 bolt_device_class_init (BoltDeviceClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
-  BoltProxyClass *proxy_class = BOLT_PROXY_CLASS (klass);
 
   gobject_class->get_property = bolt_device_get_property;
 
-  proxy_class->get_dbus_props = bolt_device_get_dbus_props;
-
   props[PROP_UID] =
     g_param_spec_string ("uid",
-                         NULL, NULL,
+                         "Uid", NULL,
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NICK);
 
   props[PROP_NAME] =
     g_param_spec_string ("name",
-                         NULL, NULL,
+                         "Name", NULL,
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NICK);
 
   props[PROP_VENDOR] =
     g_param_spec_string ("vendor",
-                         NULL, NULL,
+                         "Vendor", NULL,
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NICK);
 
   props[PROP_TYPE] =
     g_param_spec_enum ("type",
-                       NULL, NULL,
+                       "Type", NULL,
                        BOLT_TYPE_DEVICE_TYPE,
                        BOLT_DEVICE_PERIPHERAL,
                        G_PARAM_READABLE |
@@ -141,7 +113,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
 
   props[PROP_STATUS] =
     g_param_spec_enum ("status",
-                       NULL, NULL,
+                       "Status", NULL,
                        BOLT_TYPE_STATUS,
                        BOLT_STATUS_DISCONNECTED,
                        G_PARAM_READABLE |
@@ -149,21 +121,21 @@ bolt_device_class_init (BoltDeviceClass *klass)
 
   props[PROP_PARENT] =
     g_param_spec_string ("parent",
-                         NULL, NULL,
+                         "Parent", NULL,
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NICK);
 
   props[PROP_SYSPATH] =
     g_param_spec_string ("syspath",
-                         NULL, NULL,
+                         "SysfsPath", NULL,
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NICK);
 
   props[PROP_SECURITY] =
     g_param_spec_enum ("security",
-                       NULL, NULL,
+                       "Security", NULL,
                        BOLT_TYPE_SECURITY,
                        BOLT_SECURITY_NONE,
                        G_PARAM_READABLE |
@@ -185,14 +157,14 @@ bolt_device_class_init (BoltDeviceClass *klass)
 
   props[PROP_STORED] =
     g_param_spec_boolean ("stored",
-                          NULL, NULL,
+                          "Stored", NULL,
                           FALSE,
                           G_PARAM_READABLE |
                           G_PARAM_STATIC_NICK);
 
   props[PROP_POLICY] =
     g_param_spec_enum ("policy",
-                       NULL, NULL,
+                       "Policy", NULL,
                        BOLT_TYPE_POLICY,
                        BOLT_POLICY_DEFAULT,
                        G_PARAM_READABLE |
@@ -200,7 +172,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
 
   props[PROP_KEY] =
     g_param_spec_enum ("key",
-                       NULL, NULL,
+                       "Key", NULL,
                        BOLT_TYPE_KEY_STATE,
                        BOLT_KEY_MISSING,
                        G_PARAM_READABLE |
