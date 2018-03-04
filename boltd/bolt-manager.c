@@ -250,7 +250,7 @@ bolt_manager_get_property (GObject    *object,
       break;
 
     case PROP_SECURITY:
-      g_value_set_uint (value, mgr->security);
+      g_value_set_enum (value, mgr->security);
       break;
 
     default:
@@ -303,8 +303,9 @@ bolt_manager_class_init (BoltManagerClass *klass)
                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_SECURITY] =
-    g_param_spec_uint ("security-level", "SecurityLevel", NULL,
-                       0, G_MAXUINT32, 0,
+    g_param_spec_enum ("security-level", "SecurityLevel", NULL,
+                       BOLT_TYPE_SECURITY,
+                       BOLT_SECURITY_INVALID,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
 
