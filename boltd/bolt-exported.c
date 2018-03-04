@@ -30,6 +30,9 @@ typedef struct _BoltExportedMethod BoltExportedMethod;
 typedef struct _BoltExportedProp   BoltExportedProp;
 
 
+static GVariant * bolt_exported_get_prop (BoltExported     *exported,
+                                          BoltExportedProp *prop);
+
 static void       bolt_exported_notify (GObject    *object,
                                         GParamSpec *pspec);
 
@@ -361,6 +364,26 @@ bolt_exported_lookup_method (BoltExported *exported,
   return method;
 }
 
+static GVariant *
+bolt_exported_get_prop (BoltExported     *exported,
+                        BoltExportedProp *prop)
+{
+  g_auto(GValue) res = G_VALUE_INIT;
+  const char *name;
+  const GParamSpec *spec;
+  GVariant *ret;
+
+  name = prop->name_obj;
+  spec = prop->spec;
+
+  g_value_init (&res, spec->value_type);
+  g_object_get_property (G_OBJECT (exported), name, &res);
+
+  ret = bolt_exported_prop_gvalue_to_gvariant (prop, &res);
+
+  return ret;
+}
+
 /* dispatch helper function */
 
 typedef struct AuthData
@@ -528,6 +551,7 @@ handle_authorize_property_default (BoltExported          *exported,
 
   return FALSE;
 }
+
 /* DBus virtual table */
 
 static void
@@ -613,12 +637,9 @@ handle_dbus_get_property (GDBusConnection *connection,
                           gpointer         user_data)
 {
   g_autoptr(GError) err = NULL;
-  g_auto(GValue) res = G_VALUE_INIT;
   BoltExported *exported;
   BoltExportedProp *prop;
   GVariant *ret;
-  const char *name;
-  const GParamSpec *spec;
 
   exported = BOLT_EXPORTED (user_data);
 
@@ -633,13 +654,7 @@ handle_dbus_get_property (GDBusConnection *connection,
       return NULL;
     }
 
-  name = prop->name_obj;
-  spec = prop->spec;
-
-  g_value_init (&res, spec->value_type);
-  g_object_get_property (G_OBJECT (exported), name, &res);
-
-  ret = bolt_exported_prop_gvalue_to_gvariant (prop, &res);
+  ret = bolt_exported_get_prop (exported, prop);
 
   return ret;
 }
@@ -683,12 +698,9 @@ emit_prop_changes (gpointer user_data)
   for (guint i = 0; i < props_changed->len; i++)
     {
       g_autoptr(GVariant) var = NULL;
-      g_auto(GValue) val = G_VALUE_INIT;
       BoltExportedProp *prop = g_ptr_array_index (props_changed, i);
 
-      g_value_init (&val, prop->spec->value_type);
-      g_object_get_property (G_OBJECT (exported), prop->name_obj, &val);
-      var = bolt_exported_prop_gvalue_to_gvariant (prop, &val);
+      var = bolt_exported_get_prop (exported, prop);
       g_variant_builder_add (&changed, "{sv}", prop->name_bus, var);
     }
 
