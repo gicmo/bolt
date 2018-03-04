@@ -474,6 +474,7 @@ monitor (BoltClient *client, int argc, char **argv)
   g_autoptr(GError) error = NULL;
   g_autoptr(GMainLoop) main_loop = NULL;
   g_autoptr(GPtrArray) devices = NULL;
+  BoltSecurity security;
   guint version = 0;
 
   optctx = g_option_context_new ("- Watch for changes");
@@ -481,8 +482,13 @@ monitor (BoltClient *client, int argc, char **argv)
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
     return usage_error (error);
 
-  g_object_get (client, "version", &version, NULL);
+  g_object_get (client,
+                "version", &version,
+                "security-level", &security,
+                NULL);
+
   g_print ("Daemon Version: %d.%u\n", VERSION_MAJOR, version);
+  g_print ("Security Level: %s\n", bolt_security_to_string (security));
   g_print ("Ready\n");
 
   devices = bolt_client_list_devices (client, &error);
