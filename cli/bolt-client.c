@@ -70,23 +70,9 @@ bolt_client_get_property (GObject    *object,
                           GValue     *value,
                           GParamSpec *pspec)
 {
-  if (bolt_proxy_get_dbus_property (object, prop_id, value))
+  if (bolt_proxy_get_dbus_property (object, pspec, value))
     return;
 }
-
-static const BoltProxyProp *
-bolt_client_get_dbus_props (guint *n)
-{
-  static BoltProxyProp dbus_props[] = {
-    {"Version", "version", PROP_VERSION, NULL},
-    {"Probing", "probing", PROP_PROBING, NULL},
-  };
-
-  *n = G_N_ELEMENTS (dbus_props);
-
-  return dbus_props;
-}
-
 
 static const BoltProxySignal *
 bolt_client_get_dbus_signals (guint *n)
@@ -110,19 +96,18 @@ bolt_client_class_init (BoltClientClass *klass)
 
   gobject_class->get_property = bolt_client_get_property;
 
-  proxy_class->get_dbus_props   = bolt_client_get_dbus_props;
   proxy_class->get_dbus_signals = bolt_client_get_dbus_signals;
 
   props[PROP_VERSION]
     = g_param_spec_uint ("version",
-                         NULL, NULL,
+                         "Version", NULL,
                          0, G_MAXUINT, 0,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NAME);
 
   props[PROP_PROBING]
     = g_param_spec_boolean ("probing",
-                            NULL, NULL,
+                            "Probing", NULL,
                             FALSE,
                             G_PARAM_READABLE |
                             G_PARAM_STATIC_NAME);

@@ -24,20 +24,6 @@
 
 G_BEGIN_DECLS
 
-typedef struct BoltProxyProp
-{
-
-  const char *theirs;
-  const char *ours;
-  guint       prop_id;
-
-  /* GVariant to GValue, if any */
-  void (*convert)(GVariant *input,
-                  GValue   *output);
-
-} BoltProxyProp;
-
-
 typedef struct BoltProxySignal
 {
 
@@ -56,13 +42,12 @@ struct _BoltProxyClass
   GDBusProxyClass parent;
 
   /* virtuals */
-  const BoltProxyProp   * (*get_dbus_props) (guint *n);
   const BoltProxySignal * (*get_dbus_signals) (guint *n);
 };
 
-gboolean          bolt_proxy_get_dbus_property (GObject *proxy,
-                                                guint    prop_id,
-                                                GValue  *value);
+gboolean          bolt_proxy_get_dbus_property (GObject    *proxy,
+                                                GParamSpec *spec,
+                                                GValue     *value);
 
 const char *      bolt_proxy_get_object_path (BoltProxy *proxy);
 
