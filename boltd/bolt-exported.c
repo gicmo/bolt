@@ -386,7 +386,7 @@ bolt_exported_get_prop (BoltExported     *exported,
 
 /* dispatch helper function */
 
-typedef struct AuthData
+typedef struct _DispatchData
 {
 
   GDBusMethodInvocation *inv;
@@ -399,15 +399,15 @@ typedef struct AuthData
     BoltExportedProp   *prop;
   };
 
-} AuthData;
+} DispatchData;
 
 static void
-auth_data_free (AuthData *data)
+dispatch_data_free (DispatchData *data)
 {
-  g_slice_free (AuthData, data);
+  g_slice_free (DispatchData, data);
 }
 
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (AuthData, auth_data_free);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (DispatchData, dispatch_data_free);
 
 static GVariant *
 dispach_property_setter (BoltExported          *exported,
@@ -467,7 +467,7 @@ query_authorization_done (GObject      *source_object,
                           gpointer      user_data)
 {
   g_autoptr(GError) err = NULL;
-  g_autoptr(AuthData) data = user_data;
+  g_autoptr(DispatchData) data = user_data;
   GDBusMethodInvocation *inv = data->inv;
   BoltExported *exported = BOLT_EXPORTED (source_object);
   GVariant *ret;
@@ -510,7 +510,7 @@ query_authorization (GTask        *task,
 {
   GError *error = NULL;
   BoltExported *exported = source_object;
-  AuthData *data = task_data;
+  DispatchData *data = task_data;
   gboolean authorized = FALSE;
 
   if (data->is_property)
@@ -591,7 +591,7 @@ handle_dbus_method_call (GDBusConnection       *connection,
   g_autoptr(GError) err = NULL;
   BoltExported *exported;
   gboolean is_property;
-  AuthData *data;
+  DispatchData *data;
 
   exported = BOLT_EXPORTED (user_data);
 
@@ -601,7 +601,7 @@ handle_dbus_method_call (GDBusConnection       *connection,
   /* we also handle property setting here */
   is_property = bolt_streq (interface_name, "org.freedesktop.DBus.Properties");
 
-  data = g_slice_new0 (AuthData);
+  data = g_slice_new0 (DispatchData);
   data->inv = invocation;
   data->is_property = is_property;
 
