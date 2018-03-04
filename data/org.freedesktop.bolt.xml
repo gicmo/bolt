@@ -35,7 +35,7 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
-    <property name="SecurityLevel" type="u" access="read">
+    <property name="SecurityLevel" type="s" access="read">
       <doc:doc><doc:description><doc:para>
         The security level of the system.
       </doc:para></doc:description></doc:doc>
