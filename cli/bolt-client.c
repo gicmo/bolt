@@ -44,6 +44,7 @@ enum {
   /* D-Bus Props */
   PROP_VERSION,
   PROP_PROBING,
+  PROP_SECURITY,
 
   PROP_LAST
 };
@@ -111,6 +112,15 @@ bolt_client_class_init (BoltClientClass *klass)
                             FALSE,
                             G_PARAM_READABLE |
                             G_PARAM_STATIC_NAME);
+
+  props[PROP_SECURITY]
+    = g_param_spec_enum ("security-level",
+                         "SecurityLevel", NULL,
+                         BOLT_TYPE_SECURITY,
+                         BOLT_SECURITY_INVALID,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_NAME);
+
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
