@@ -69,6 +69,7 @@ gboolean          bolt_flags_from_string (GType       flags_type,
  * @BOLT_STATUS_AUTHORIZED: Device connected and authorized.
  * @BOLT_STATUS_AUTHORIZED_SECURE: Device connected and securely authorized via a key.
  * @BOLT_STATUS_AUTHORIZED_NEWKEY: Device connected and authorized via a new key.
+ * @BOLT_STATUS_AUTHORIZED_DPONLY: Device authorized but with thunderbolt disabled.
  *
  * The current status of the device.
  */
@@ -82,6 +83,7 @@ typedef enum {
   BOLT_STATUS_AUTHORIZED,
   BOLT_STATUS_AUTHORIZED_SECURE,
   BOLT_STATUS_AUTHORIZED_NEWKEY,
+  BOLT_STATUS_AUTHORIZED_DPONLY
 
 } BoltStatus;
 
