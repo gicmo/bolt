@@ -531,8 +531,14 @@ list_devices (BoltClient *client, int argc, char **argv)
   g_autoptr(GOptionContext) optctx = NULL;
   g_autoptr(GError) error = NULL;
   g_autoptr(GPtrArray) devices = NULL;
+  gboolean show_all = FALSE;
+  GOptionEntry options[] = {
+    { "all", 'a', 0, G_OPTION_ARG_NONE, &show_all, "Show all devices", NULL },
+    { NULL }
+  };
 
   optctx = g_option_context_new ("- List thunderbolt devices");
+  g_option_context_add_main_entries (optctx, options, NULL);
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
     return usage_error (error);
@@ -548,6 +554,15 @@ list_devices (BoltClient *client, int argc, char **argv)
   for (guint i = 0; i < devices->len; i++)
     {
       BoltDevice *dev = g_ptr_array_index (devices, i);
+      BoltDeviceType type;
+
+      if (!show_all)
+        {
+          g_object_get (dev, "type", &type, NULL);
+          if (type != BOLT_DEVICE_PERIPHERAL)
+            continue;
+        }
+
       print_device (dev, FALSE);
     }
 
