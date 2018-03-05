@@ -40,6 +40,24 @@ gint              bolt_enum_from_string (GType       enum_type,
                                          const char *string,
                                          GError    **error);
 
+char *            bolt_flags_class_to_string (GFlagsClass *flags_class,
+                                              guint        value,
+                                              GError     **error);
+
+gboolean          bolt_flags_class_from_string (GFlagsClass *flags_class,
+                                                const char  *string,
+                                                guint       *flags_out,
+                                                GError     **error);
+
+char *            bolt_flags_to_string (GType    flags_type,
+                                        guint    value,
+                                        GError **error);
+
+gboolean          bolt_flags_from_string (GType       flags_type,
+                                          const char *string,
+                                          guint      *flags_out,
+                                          GError    **error);
+
 /**
  * BoltStatus
  * @BOLT_STATUS_UNKNOWN: Device is in an unknown state (should normally not happen).
