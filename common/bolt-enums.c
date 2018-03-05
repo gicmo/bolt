@@ -21,8 +21,94 @@
 #include "config.h"
 
 #include "bolt-enums.h"
+#include "bolt-error.h"
+
+#include <gio/gio.h>
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
+
+
+gboolean
+bolt_enum_class_validate (GEnumClass *enum_class,
+                          gint        value,
+                          GError    **error)
+{
+  const char *name;
+  gboolean oob;
+
+  if (enum_class == NULL)
+    {
+      name = g_type_name_from_class ((GTypeClass *) enum_class);
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "could not determine enum class for '%s'",
+                   name);
+
+      return FALSE;
+    }
+
+  oob = value < enum_class->minimum || value > enum_class->maximum;
+
+  if (oob)
+    {
+      name = g_type_name_from_class ((GTypeClass *) enum_class);
+      g_set_error (error,  G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "enum value '%d' is out of bounds for '%s'",
+                   value, name);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+gboolean
+bolt_enum_validate (GType    enum_type,
+                    gint     value,
+                    GError **error)
+{
+  g_autoptr(GEnumClass) klass = g_type_class_ref (enum_type);
+  return bolt_enum_class_validate (klass, value, error);
+}
+
+const char *
+bolt_enum_to_string (GType    enum_type,
+                     gint     value,
+                     GError **error)
+{
+  g_autoptr(GEnumClass) klass = NULL;
+  GEnumValue *ev;
+
+  klass = g_type_class_ref (enum_type);
+
+  if (!bolt_enum_class_validate (klass, value, error))
+    return NULL;
+
+  ev = g_enum_get_value (klass, value);
+  return ev->value_nick;
+}
+
+gint
+bolt_enum_from_string (GType       enum_type,
+                       const char *string,
+                       GError    **error)
+{
+  g_autoptr(GEnumClass) klass = NULL;
+  GEnumValue *ev;
+
+  klass = g_type_class_ref (enum_type);
+
+  ev = g_enum_get_value_by_nick (klass, string);
+
+  if (ev == NULL)
+    {
+      const char *name = g_type_name (enum_type);
+
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "invalid str '%s' for enum '%s'", string, name);
+      return -1;
+    }
+
+  return ev->value;
+}
 
 const char *
 bolt_status_to_string (BoltStatus status)
