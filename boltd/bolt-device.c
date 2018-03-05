@@ -177,7 +177,7 @@ bolt_device_get_property (GObject    *object,
       break;
 
     case PROP_STATUS:
-      g_value_set_uint (value, dev->status);
+      g_value_set_enum (value, dev->status);
       break;
 
     case PROP_PARENT:
@@ -262,7 +262,7 @@ bolt_device_set_property (GObject      *object,
     case PROP_STATUS:
       {
         BoltStatus old = dev->status;
-        BoltStatus now = g_value_get_uint (value);
+        BoltStatus now = g_value_get_enum (value);
         if (old == now)
           break;
 
@@ -372,10 +372,9 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_STATUS] =
-    g_param_spec_uint ("status",
+    g_param_spec_enum ("status",
                        "Status", NULL,
-                       0,
-                       BOLT_STATUS_LAST,
+                       BOLT_TYPE_STATUS,
                        BOLT_STATUS_DISCONNECTED,
                        G_PARAM_READWRITE |
                        G_PARAM_STATIC_STRINGS);
@@ -815,7 +814,7 @@ bolt_device_authorize (BoltDevice         *dev,
       dev->status != BOLT_STATUS_AUTH_ERROR)
     {
       bolt_auth_return_new_error (auth, BOLT_ERROR, BOLT_ERROR_FAILED,
-                                  "wrong device state: %u", dev->status);
+                                  "wrong device state: %d", dev->status);
 
       if (callback)
         callback (G_OBJECT (dev), G_ASYNC_RESULT (auth), user_data);

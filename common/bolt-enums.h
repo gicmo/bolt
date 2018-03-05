@@ -42,6 +42,7 @@ gint              bolt_enum_from_string (GType       enum_type,
 
 /**
  * BoltStatus
+ * @BOLT_STATUS_UNKNOWN: Device is in an unknown state (should normally not happen).
  * @BOLT_STATUS_DISCONNECTED: Device is not connected.
  * @BOLT_STATUS_CONNECTED: Device is connected, but not authorized.
  * @BOLT_STATUS_AUTHORIZING: Device is currently authorizing.
@@ -54,6 +55,7 @@ gint              bolt_enum_from_string (GType       enum_type,
  */
 typedef enum {
 
+  BOLT_STATUS_UNKNOWN = -1,
   BOLT_STATUS_DISCONNECTED = 0,
   BOLT_STATUS_CONNECTED,
   BOLT_STATUS_AUTHORIZING,
@@ -61,9 +63,6 @@ typedef enum {
   BOLT_STATUS_AUTHORIZED,
   BOLT_STATUS_AUTHORIZED_SECURE,
   BOLT_STATUS_AUTHORIZED_NEWKEY,
-
-  BOLT_STATUS_LAST,
-  BOLT_STATUS_INVALID = BOLT_STATUS_LAST
 
 } BoltStatus;
 

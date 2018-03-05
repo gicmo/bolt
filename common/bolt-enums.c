@@ -113,16 +113,7 @@ bolt_enum_from_string (GType       enum_type,
 const char *
 bolt_status_to_string (BoltStatus status)
 {
-  g_autoptr(GEnumClass) klass = NULL;
-  GEnumValue *value;
-
-  if (!bolt_status_validate (status))
-    return NULL;
-
-  klass = g_type_class_ref (BOLT_TYPE_STATUS);
-  value = g_enum_get_value (klass, status);
-
-  return value->value_nick;
+  return bolt_enum_to_string (BOLT_TYPE_STATUS, status, NULL);
 }
 
 gboolean
@@ -136,7 +127,7 @@ bolt_status_is_authorized (BoltStatus status)
 gboolean
 bolt_status_validate (BoltStatus status)
 {
-  return status < BOLT_STATUS_INVALID && status >= 0;
+  return bolt_enum_validate (BOLT_TYPE_STATUS, status, NULL);
 }
 
 gboolean
