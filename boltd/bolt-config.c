@@ -29,7 +29,7 @@
 #define CFG_VERSION 1
 
 #define DEFAULT_POLICY_KEY "DefaultPolicy"
-#define PARANOID_MODE_KEY  "ParanoidMode"
+#define AUTH_MODE_KEY "AuthMode"
 
 GKeyFile *
 bolt_config_user_init (void)
@@ -48,9 +48,9 @@ bolt_config_user_init (void)
 }
 
 BoltTri
-bolt_config_load_default_policy (GKeyFile *cfg,
+bolt_config_load_default_policy (GKeyFile   *cfg,
                                  BoltPolicy *policy,
-                                 GError **error)
+                                 GError    **error)
 {
   g_autoptr(GError) err = NULL;
   g_autofree char *str = NULL;
@@ -80,4 +80,46 @@ bolt_config_load_default_policy (GKeyFile *cfg,
 
   *policy = p;
   return TRI_YES;
+}
+
+BoltTri
+bolt_config_load_auth_mode (GKeyFile     *cfg,
+                            BoltAuthMode *authmode,
+                            GError      **error)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *str = NULL;
+  guint flags = 0;
+  gboolean ok;
+
+  if (cfg == NULL)
+    return TRI_NO;
+
+  str = g_key_file_get_string (cfg, DAEMON_GROUP, AUTH_MODE_KEY, &err);
+  if (str == NULL)
+    {
+      int res = bolt_err_notfound (err) ? TRI_NO : TRI_ERROR;
+
+      if (res == TRI_ERROR)
+        g_propagate_error (error, g_steal_pointer (&err));
+
+      return res;
+    }
+
+  ok = bolt_flags_from_string (BOLT_TYPE_AUTH_MODE, str, &flags, error);
+  if (!ok)
+    return TRI_ERROR;
+
+  if (authmode)
+    *authmode = flags;
+
+  return TRI_YES;
+}
+
+void
+bolt_config_set_auth_mode (GKeyFile   *cfg,
+                           const char *authmode)
+{
+  g_return_if_fail (cfg != NULL);
+  g_key_file_set_string (cfg, DAEMON_GROUP, AUTH_MODE_KEY, authmode);
 }

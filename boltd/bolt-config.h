@@ -37,8 +37,15 @@ typedef enum BoltTri {
 GKeyFile * bolt_config_user_init (void);
 
 
-BoltTri    bolt_config_load_default_policy (GKeyFile *cfg,
+BoltTri    bolt_config_load_default_policy (GKeyFile   *cfg,
                                             BoltPolicy *policy,
-                                            GError **error);
+                                            GError    **error);
+
+BoltTri   bolt_config_load_auth_mode (GKeyFile     *cfg,
+                                      BoltAuthMode *authmode,
+                                      GError      **error);
+
+void      bolt_config_set_auth_mode (GKeyFile   *cfg,
+                                     const char *authmode);
 
 G_END_DECLS

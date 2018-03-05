@@ -41,6 +41,14 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="AuthMode" type="s" access="readwrite">
+      <doc:doc><doc:description><doc:para>
+	The authorization mode of the daemon. Currently supported
+	values are "enabled" if it is authorizing devices or
+	"disabled" if authorization is disabled.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <!-- methods -->
 
     <method name="ListDevices">
