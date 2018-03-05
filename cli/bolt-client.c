@@ -406,10 +406,15 @@ bolt_client_enroll_device (BoltClient   *client,
   GDBusConnection *bus = NULL;
   GVariant *params = NULL;
   const char *opath = NULL;
+  const char *pstr;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
 
-  params = g_variant_new ("(suu)", uid, (guint32) policy, (guint32) flags);
+  pstr = bolt_enum_to_string (BOLT_TYPE_POLICY, policy, error);
+  if (pstr == NULL)
+    return NULL;
+
+  params = g_variant_new ("(ssu)", uid, pstr, (guint32) flags);
   val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
                                 "EnrollDevice",
                                 params,

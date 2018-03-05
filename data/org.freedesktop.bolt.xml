@@ -28,7 +28,7 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
-    <property name="DefaultPolicy" type="u" access="read">
+    <property name="DefaultPolicy" type="s" access="read">
       <doc:doc><doc:description><doc:para>
 	The policy to use during enrollment when "default" was
 	sepcified.
@@ -80,7 +80,7 @@
         <doc:doc><doc:summary>The unique id of the device.</doc:summary>
         </doc:doc>
       </arg>
-      <arg type='u' name='policy' direction='in'>
+      <arg type='s' name='policy' direction='in'>
         <doc:doc><doc:summary>Policy to use for the device.</doc:summary>
         </doc:doc>
       </arg>
@@ -212,7 +212,7 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
-    <property name="Policy" type="u" access="read">
+    <property name="Policy" type="s" access="read">
       <doc:doc><doc:description><doc:para>
         The authorization policy of the device.
       </doc:para></doc:description></doc:doc>

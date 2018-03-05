@@ -205,7 +205,7 @@ bolt_device_get_property (GObject    *object,
       break;
 
     case PROP_POLICY:
-      g_value_set_uint (value, dev->policy);
+      g_value_set_enum (value, dev->policy);
       break;
 
     case PROP_HAVE_KEY:
@@ -297,7 +297,7 @@ bolt_device_set_property (GObject      *object,
       break;
 
     case PROP_POLICY:
-      dev->policy = g_value_get_uint (value);
+      dev->policy = g_value_get_enum (value);
       break;
 
     case PROP_HAVE_KEY:
@@ -424,10 +424,9 @@ bolt_device_class_init (BoltDeviceClass *klass)
                           G_PARAM_STATIC_STRINGS);
 
   props[PROP_POLICY] =
-    g_param_spec_uint ("policy",
+    g_param_spec_enum ("policy",
                        "Policy", NULL,
-                       0,
-                       BOLT_POLICY_LAST,
+                       BOLT_TYPE_POLICY,
                        BOLT_POLICY_DEFAULT,
                        G_PARAM_READWRITE |
                        G_PARAM_STATIC_STRINGS);

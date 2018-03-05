@@ -178,40 +178,19 @@ bolt_security_validate (BoltSecurity security)
 BoltPolicy
 bolt_policy_from_string (const char *str)
 {
-  g_autoptr(GEnumClass) klass = NULL;
-  GEnumValue *value;
-
-  if (str == NULL)
-    return BOLT_POLICY_AUTO;
-
-  klass = g_type_class_ref (BOLT_TYPE_POLICY);
-  value = g_enum_get_value_by_nick (klass, str);
-
-  if (value == NULL)
-    return BOLT_POLICY_INVALID;
-
-  return value->value;
+  return bolt_enum_from_string (BOLT_TYPE_POLICY, str, NULL);
 }
 
 const char *
 bolt_policy_to_string (BoltPolicy policy)
 {
-  g_autoptr(GEnumClass) klass = NULL;
-  GEnumValue *value;
-
-  if (!bolt_policy_validate (policy))
-    return NULL;
-
-  klass = g_type_class_ref (BOLT_TYPE_POLICY);
-  value = g_enum_get_value (klass, policy);
-
-  return value->value_nick;
+  return bolt_enum_to_string (BOLT_TYPE_POLICY, policy, NULL);
 }
 
 gboolean
 bolt_policy_validate (BoltPolicy policy)
 {
-  return policy < BOLT_POLICY_INVALID && policy >= 0;
+  return bolt_enum_validate (BOLT_TYPE_POLICY, policy, NULL);
 }
 
 BoltDeviceType

@@ -332,7 +332,7 @@ bolt_store_put_device (BoltStore  *store,
   type = bolt_device_get_device_type (device);
   g_key_file_set_string (kf, DEVICE_GROUP, "type", bolt_device_type_to_string (type));
 
-  if (policy != BOLT_POLICY_INVALID)
+  if (policy != BOLT_POLICY_DEFAULT)
     {
       const char *str = bolt_policy_to_string (policy);
       g_key_file_set_string (kf, USER_GROUP, "policy", str);
