@@ -129,7 +129,7 @@ endif
 
 config_h = configure_file(output: 'config.h', configuration: conf)
 
-cargs = ['-DG_LOG_DOMAIN="Bolt"']
+cargs = ['-DG_LOG_DOMAIN="bolt"']
 
 privileged_group = get_option('privileged-group')
 subs = configuration_data()
