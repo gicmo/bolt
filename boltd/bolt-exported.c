@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "bolt-enums.h"
 #include "bolt-error.h"
 #include "bolt-log.h"
 #include "bolt-str.h"
@@ -75,8 +76,9 @@ struct _BoltExportedProp
   /* optional */
   BoltExportedSetter setter;
 
-  /* enum <-> string conversion */
-  GEnumClass *enum_class; /* shortcut for spec->enum_class */
+  /* auto string conversion */
+  GEnumClass  *enum_class; /* shortcut for spec->enum_class */
+  GFlagsClass *flags_class; /* shortcut for spec->enum_class */
 };
 
 struct _BoltExportedClassPrivate
@@ -882,6 +884,8 @@ bolt_exported_class_export_property (BoltExportedClass *klass,
   GDBusPropertyInfo **iter;
   BoltExportedProp *prop;
   const char *name_bus, *name_obj;
+  gboolean is_str_prop;
+  const char *conv = NULL;
 
   if (!klass || !BOLT_IS_EXPORTED_CLASS (klass))
     {
@@ -920,16 +924,24 @@ bolt_exported_class_export_property (BoltExportedClass *klass,
 
   prop->signature = g_variant_type_new (info->signature);
 
-  if (g_variant_type_equal (prop->signature, G_VARIANT_TYPE_STRING) &&
-      G_IS_PARAM_SPEC_ENUM (prop->spec))
+  is_str_prop = g_variant_type_equal (prop->signature, G_VARIANT_TYPE_STRING);
+
+  if (is_str_prop && G_IS_PARAM_SPEC_ENUM (prop->spec))
     {
       GParamSpecEnum *enum_spec = G_PARAM_SPEC_ENUM (prop->spec);
       prop->enum_class = enum_spec->enum_class;
+      conv = " [enum-auto-convert]";
+    }
+  else if (is_str_prop && G_IS_PARAM_SPEC_FLAGS (prop->spec))
+    {
+      GParamSpecFlags *flags_spec = G_PARAM_SPEC_FLAGS (prop->spec);
+      prop->flags_class = flags_spec->flags_class;
+      conv = " [flags-auto-convert]";
     }
 
   bolt_debug (LOG_TOPIC ("dbus"), "installed prop: %s -> %s%s",
               prop->name_bus, prop->name_obj,
-              prop->enum_class ? " [enum-auto-convert]" : "");
+              conv ? : "");
 
   g_hash_table_insert (priv->properties, (gpointer) prop->name_bus, prop);
 }
@@ -1172,8 +1184,8 @@ bolt_exported_prop_free (gpointer data)
 }
 
 static GVariant *
-bolt_exported_prop_gvalue_to_gvariant (BoltExportedProp *prop,
-                                       const GValue     *value)
+enum_gvalue_to_gvariant (GEnumClass   *enum_class,
+                         const GValue *value)
 {
   g_autofree char *str = NULL;
   const char *name;
@@ -1181,12 +1193,8 @@ bolt_exported_prop_gvalue_to_gvariant (BoltExportedProp *prop,
   GVariant *res;
   gint iv;
 
-  if (prop->enum_class == NULL)
-    return g_dbus_gvalue_to_gvariant (value, prop->signature);
-
-  /* converts enums to gstrings */
   iv = g_value_get_enum (value);
-  ev = g_enum_get_value (prop->enum_class, iv);
+  ev = g_enum_get_value (enum_class, iv);
 
   if (ev != NULL)
     {
@@ -1197,10 +1205,107 @@ bolt_exported_prop_gvalue_to_gvariant (BoltExportedProp *prop,
   /* we got an invalid value for that enum */
   str = g_strdup_printf ("%d", iv);
   res = g_variant_new_string (str);
-  name = g_type_name_from_class ((GTypeClass *) prop->enum_class);
+  name = g_type_name_from_class ((GTypeClass *) enum_class);
   bolt_bug ("invalid enum value %d for enum '%s'", iv, name);
 
   return g_variant_ref_sink (res);
+}
+
+static gboolean
+enum_gvariant_to_gvalue (GEnumClass *enum_class,
+                         GVariant   *variant,
+                         GValue     *value,
+                         GError    **error)
+{
+  GEnumValue *ev = NULL;
+  const char *str;
+
+  str = g_variant_get_string (variant, NULL);
+
+  if (str == NULL)
+    str = "invalid";
+
+  ev = g_enum_get_value_by_nick (enum_class, str);
+
+  if (ev == NULL)
+    {
+      const char *name;
+
+      name = g_type_name_from_class ((GTypeClass *) enum_class);
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "invalid enum value '%s' for '%s'", str, name);
+
+      return FALSE;
+    }
+
+  g_value_set_enum (value, ev->value);
+  return TRUE;
+}
+
+static GVariant *
+flags_gvalue_to_gvariant (GFlagsClass  *flags_class,
+                          const GValue *value)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *str = NULL;
+  GVariant *res;
+  guint iv;
+
+  iv = g_value_get_flags (value);
+
+  str = bolt_flags_class_to_string (flags_class, iv, &err);
+  if (str == NULL)
+    {
+      const char *name;
+
+      name = g_type_name_from_class ((GTypeClass *) flags_class);
+      str = g_strdup_printf ("%u", iv);
+      bolt_bug ("invalid enum flags '%u' for enum '%s'", iv, name);
+    }
+
+  res = g_variant_new_string (str);
+  return g_variant_ref_sink (res);
+}
+
+static gboolean
+flags_gvariant_to_gvalue (GFlagsClass *flags_class,
+                          GVariant    *variant,
+                          GValue      *value,
+                          GError     **error)
+{
+  gboolean ok;
+  const char *str;
+  guint flags;
+
+  str = g_variant_get_string (variant, NULL);
+
+  if (str == NULL)
+    {
+      const char *name;
+
+      name = g_type_name_from_class ((GTypeClass *) flags_class);
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "invalid flags value (null) for '%s'", name);
+    }
+
+  ok = bolt_flags_class_from_string (flags_class, str, &flags, error);
+
+  if (ok)
+    g_value_set_flags (value, flags);
+
+  return ok;
+}
+
+static GVariant *
+bolt_exported_prop_gvalue_to_gvariant (BoltExportedProp *prop,
+                                       const GValue     *value)
+{
+  if (prop->enum_class != NULL)
+    return enum_gvalue_to_gvariant (prop->enum_class, value);
+  else if (prop->flags_class != NULL)
+    return flags_gvalue_to_gvariant (prop->flags_class, value);
+  else
+    return g_dbus_gvalue_to_gvariant (value, prop->signature);
 }
 
 static gboolean
@@ -1209,33 +1314,11 @@ bolt_exported_prop_gvariant_to_gvalue (BoltExportedProp *prop,
                                        GValue           *value,
                                        GError          **error)
 {
-  GEnumValue *ev = NULL;
-  const char *str;
+  if (prop->enum_class != NULL)
+    return enum_gvariant_to_gvalue (prop->enum_class, variant, value, error);
+  else if (prop->flags_class != NULL)
+    return flags_gvariant_to_gvalue (prop->flags_class, variant, value, error);
 
-  if (prop->enum_class == NULL)
-    {
-      g_dbus_gvariant_to_gvalue (variant, value);
-      return TRUE;
-    }
-
-  str = g_variant_get_string (variant, NULL);
-
-  if (str == NULL)
-    str = "invalid";
-
-  ev = g_enum_get_value_by_nick (prop->enum_class, str);
-
-  if (ev == NULL)
-    {
-      const char *name;
-
-      name = g_type_name_from_class ((GTypeClass *) prop->enum_class);
-      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "invalid enum value '%s' for '%s'", str, name);
-
-      return FALSE;
-    }
-
-  g_value_set_enum (value, ev->value);
+  g_dbus_gvariant_to_gvalue (variant, value);
   return TRUE;
 }
