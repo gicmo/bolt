@@ -127,6 +127,11 @@ print_device (BoltDevice *dev, gboolean verbose)
       status_text = "authorization error";
       break;
 
+    case BOLT_STATUS_AUTHORIZED_DPONLY:
+      status_color = bolt_color (ANSI_BLUE);
+      status_text = "connected (no thunderbolt)";
+      break;
+
     default:
       status_color = bolt_color (ANSI_NORMAL);
       status_text = "unknown";
