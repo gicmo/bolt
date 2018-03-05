@@ -1626,9 +1626,12 @@ handle_enroll_device (BoltExported          *obj,
       return TRUE;
     }
 
-  level = bolt_device_get_security (dev);
-  key = NULL;
+  if (bolt_device_supports_secure_mode (dev))
+    level = bolt_device_get_security (dev);
+  else
+    level = BOLT_SECURITY_USER;
 
+  key = NULL;
   if (level == BOLT_SECURITY_SECURE)
     key = bolt_key_new ();
 
