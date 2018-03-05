@@ -84,6 +84,7 @@ enum {
   PROP_0,
 
   PROP_STORE,
+  PROP_SECURITY,
 
   /* exported properties start here, */
   PROP_UID,
@@ -94,7 +95,6 @@ enum {
 
   PROP_PARENT,
   PROP_SYSFS,
-  PROP_SECURITY,
   PROP_CONNTIME,
   PROP_AUTHTIME,
 
@@ -160,6 +160,10 @@ bolt_device_get_property (GObject    *object,
       g_value_set_object (value, dev->store);
       break;
 
+    case PROP_SECURITY:
+      g_value_set_enum (value, dev->security);
+      break;
+
     case PROP_UID:
       g_value_set_string (value, dev->uid);
       break;
@@ -186,10 +190,6 @@ bolt_device_get_property (GObject    *object,
 
     case PROP_SYSFS:
       g_value_set_string (value, dev->syspath);
-      break;
-
-    case PROP_SECURITY:
-      g_value_set_uint (value, dev->security);
       break;
 
     case PROP_CONNTIME:
@@ -240,6 +240,10 @@ bolt_device_set_property (GObject      *object,
       g_object_notify_by_pspec (object, props[PROP_STORED]);
       break;
 
+    case PROP_SECURITY:
+      dev->security = g_value_get_enum (value);
+      break;
+
     case PROP_UID:
       g_return_if_fail (dev->uid == NULL);
       dev->uid = g_value_dup_string (value);
@@ -282,10 +286,6 @@ bolt_device_set_property (GObject      *object,
     case PROP_SYSFS:
       g_clear_pointer (&dev->syspath, g_free);
       dev->syspath = g_value_dup_string (value);
-      break;
-
-    case PROP_SECURITY:
-      dev->security = g_value_get_uint (value);
       break;
 
     case PROP_CONNTIME:
@@ -336,6 +336,14 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          BOLT_TYPE_STORE,
                          G_PARAM_READWRITE |
                          G_PARAM_STATIC_STRINGS);
+
+  props[PROP_SECURITY] =
+    g_param_spec_enum ("security",
+                       "Security", NULL,
+                       BOLT_TYPE_SECURITY,
+                       BOLT_SECURITY_NONE,
+                       G_PARAM_READWRITE |
+                       G_PARAM_STATIC_STRINGS);
 
   props[PROP_UID] =
     g_param_spec_string ("uid",
@@ -391,15 +399,6 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          NULL,
                          G_PARAM_READWRITE |
                          G_PARAM_STATIC_STRINGS);
-
-  props[PROP_SECURITY] =
-    g_param_spec_uint ("security",
-                       "Security", NULL,
-                       0,
-                       BOLT_SECURITY_LAST,
-                       BOLT_SECURITY_NONE,
-                       G_PARAM_READWRITE |
-                       G_PARAM_STATIC_STRINGS);
 
   props[PROP_CONNTIME] =
     g_param_spec_uint64 ("conntime",
