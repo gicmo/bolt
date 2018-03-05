@@ -324,40 +324,19 @@ bolt_policy_validate (BoltPolicy policy)
 BoltDeviceType
 bolt_device_type_from_string (const char *str)
 {
-  g_autoptr(GEnumClass) klass = NULL;
-  GEnumValue *value;
-
-  if (str == NULL)
-    return BOLT_DEVICE_PERIPHERAL;
-
-  klass = g_type_class_ref (BOLT_TYPE_DEVICE_TYPE);
-  value = g_enum_get_value_by_nick (klass, str);
-
-  if (value == NULL)
-    return BOLT_DEVICE_TYPE_INVALID;
-
-  return value->value;
+  return bolt_enum_from_string (BOLT_TYPE_DEVICE_TYPE, str, NULL);
 }
 
 const char *
 bolt_device_type_to_string (BoltDeviceType type)
 {
-  g_autoptr(GEnumClass) klass = NULL;
-  GEnumValue *value;
-
-  if (!bolt_device_type_validate (type))
-    return NULL;
-
-  klass = g_type_class_ref (BOLT_TYPE_DEVICE_TYPE);
-  value = g_enum_get_value (klass, type);
-
-  return value->value_nick;
+  return bolt_enum_to_string (BOLT_TYPE_DEVICE_TYPE, type, NULL);
 }
 
 gboolean
 bolt_device_type_validate (BoltDeviceType type)
 {
-  return type < BOLT_DEVICE_TYPE_INVALID && type >= 0;
+  return bolt_enum_validate (BOLT_TYPE_DEVICE_TYPE, type, NULL);
 }
 
 gboolean

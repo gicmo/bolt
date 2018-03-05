@@ -173,9 +173,9 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
-    <property name="Type" type="u" access="read">
+    <property name="Type" type="s" access="read">
       <doc:doc><doc:description><doc:para>
-        The type of the device: 0 = Host, 1 = Peripheral
+        The type of the device, i.e. 'host' or 'peripheral'
       </doc:para></doc:description></doc:doc>
     </property>
 
