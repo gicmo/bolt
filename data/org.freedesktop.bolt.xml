@@ -179,7 +179,7 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
-    <property name="Status" type="u" access="read">
+    <property name="Status" type="s" access="read">
       <doc:doc><doc:description><doc:para>
         The current status of the device.
       </doc:para></doc:description></doc:doc>

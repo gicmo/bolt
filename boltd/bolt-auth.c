@@ -307,7 +307,7 @@ bolt_auth_get_origin (BoltAuth *auth)
 BoltStatus
 bolt_auth_to_status (BoltAuth *auth)
 {
-  g_return_val_if_fail (BOLT_IS_AUTH (auth), BOLT_STATUS_INVALID);
+  g_return_val_if_fail (BOLT_IS_AUTH (auth), BOLT_STATUS_UNKNOWN);
 
   if (auth->error != NULL)
     {
@@ -332,5 +332,5 @@ bolt_auth_to_status (BoltAuth *auth)
         return BOLT_STATUS_AUTHORIZED;
     }
 
-  return BOLT_STATUS_INVALID;
+  return BOLT_STATUS_UNKNOWN;
 }

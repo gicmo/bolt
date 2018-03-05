@@ -325,6 +325,7 @@ class ProxyWrapper(object):
 
 
 class BoltDevice(ProxyWrapper):
+    UNKNOWN = -1
     DISCONNECTED = 0
     CONNECTED = 1
     AUTHORIZING = 2
@@ -353,6 +354,20 @@ class BoltDevice(ProxyWrapper):
     def authorize(self, flags=0):
         self.Authorize('(u)', flags)
         return True
+
+    @property
+    def status(self):
+        res = getattr(self, 'Status')
+        mapping = {'unknown': self.UNKNOWN,
+                   'disconnected': self.DISCONNECTED,
+                   'connected': self.CONNECTED,
+                   'authorizing': self.AUTHORIZING,
+                   'auth-error': self.AUTH_ERROR,
+                   'authorized': self.AUTHORIZED,
+                   'authorized-secure': self.AUTHORIZED_SECURE,
+                   'authorized-newkey': self.AUTHORIZED_NEWKEY}
+
+        return mapping.get(res, self.UNKNOWN)
 
     @property
     def label(self):
@@ -1056,7 +1071,7 @@ class BoltTest(dbusmock.DBusTestCase):
             tape = remote.record()
             remote.authorize()
             d.reload_auth()  # will emit the uevent, so the daemon can update
-            res = tape.wait_for_event('property', 'Status', BoltDevice.AUTHORIZED)
+            res = tape.wait_for_event('property', 'Status', 'authorized')
             self.assertTrue(res)
             self.assertDeviceEqual(d, remote)
             tape.close()
@@ -1142,7 +1157,7 @@ class BoltTest(dbusmock.DBusTestCase):
                 local.connect(self.testbed)
                 res = tape.wait_for_event('property',
                                           'Status',
-                                          BoltDevice.AUTHORIZED_SECURE)
+                                          'authorized-secure')
                 local.reload_auth()  # will emit the uevent, so the daemon can update
                 self.assertTrue(res)
                 self.assertDeviceEqual(local, remote)
