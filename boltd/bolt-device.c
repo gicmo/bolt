@@ -932,6 +932,7 @@ handle_authorize (BoltExported          *object,
 
   if (level == BOLT_SECURITY_SECURE && key == NULL)
     {
+      /* only happens if the key could not be read */
       g_dbus_method_invocation_take_error (inv, error);
       return TRUE;
     }
