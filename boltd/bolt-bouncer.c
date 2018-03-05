@@ -205,9 +205,15 @@ handle_authorize_property (BoltExported          *exported,
   bnc = BOLT_BOUNCER (user_data);
 
   if (bolt_streq (type_name, "BoltDevice"))
-    if (bolt_streq (name, "label"))
-      action = "org.freedesktop.bolt.manage";
-
+    {
+      if (bolt_streq (name, "label"))
+        action = "org.freedesktop.bolt.manage";
+    }
+  else if (bolt_streq (type_name, "BoltManager"))
+    {
+      if (bolt_streq (name, "auth-mode"))
+        action = "org.freedesktop.bolt.manage";
+    }
 
   if (!authorized && action)
     {

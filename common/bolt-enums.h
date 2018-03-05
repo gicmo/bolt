@@ -40,6 +40,7 @@ gint              bolt_enum_from_string (GType       enum_type,
                                          const char *string,
                                          GError    **error);
 
+
 char *            bolt_flags_class_to_string (GFlagsClass *flags_class,
                                               guint        value,
                                               GError     **error);
@@ -185,3 +186,19 @@ BoltDeviceType   bolt_device_type_from_string (const char *str);
 const char *     bolt_device_type_to_string (BoltDeviceType type);
 gboolean         bolt_device_type_validate (BoltDeviceType type);
 gboolean         bolt_device_type_is_host (BoltDeviceType type);
+
+/**
+ * BoltAuthMode:
+ * @BOLT_AUTH_ENABLED: Authorization is enabled.
+ *
+ * Control authorization.
+ */
+typedef enum { /*< flags >*/
+
+  BOLT_AUTH_DISABLED = 0,
+  BOLT_AUTH_ENABLED  = 1
+
+} BoltAuthMode;
+
+#define bolt_auth_mode_is_enabled(auth) ((auth & BOLT_AUTH_ENABLED) != 0)
+#define bolt_auth_mode_is_disabled(auth) (!bolt_auth_mode_is_enabled (auth))

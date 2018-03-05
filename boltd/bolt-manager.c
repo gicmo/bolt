@@ -118,6 +118,12 @@ static gboolean      manager_maybe_power_controller (BoltManager *mgr);
 /* config */
 static void          manager_load_user_config (BoltManager *mgr);
 
+/* dbus property setter */
+static gboolean handle_set_authmode (BoltExported *obj,
+                                     const char   *name,
+                                     const GValue *value,
+                                     GError      **error);
+
 /* dbus method calls */
 static gboolean handle_list_devices (BoltExported          *object,
                                      GVariant              *params,
@@ -150,6 +156,7 @@ struct _BoltManager
   GPtrArray   *devices;
   BoltPower   *power;
   BoltSecurity security;
+  BoltAuthMode authmode;
 
   /* policy enforcer */
   BoltBouncer *bouncer;
@@ -173,6 +180,7 @@ enum {
   PROP_PROBING,
   PROP_POLICY,
   PROP_SECURITY,
+  PROP_AUTHMODE,
 
   PROP_LAST,
   PROP_EXPORTED = PROP_VERSION
@@ -253,6 +261,10 @@ bolt_manager_get_property (GObject    *object,
       g_value_set_enum (value, mgr->security);
       break;
 
+    case PROP_AUTHMODE:
+      g_value_set_flags (value, mgr->authmode);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -271,6 +283,7 @@ bolt_manager_init (BoltManager *mgr)
 
   /* default configuration */
   mgr->policy = BOLT_POLICY_AUTO;
+  mgr->authmode = BOLT_AUTH_ENABLED;
 
   g_signal_connect (mgr->store, "device-removed", G_CALLBACK (handle_store_device_removed), mgr);
 }
@@ -310,6 +323,13 @@ bolt_manager_class_init (BoltManagerClass *klass)
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
 
+  props[PROP_AUTHMODE] =
+    g_param_spec_flags ("auth-mode", "AuthMode", NULL,
+                        BOLT_TYPE_AUTH_MODE,
+                        BOLT_AUTH_ENABLED,
+                        G_PARAM_READABLE |
+                        G_PARAM_STATIC_STRINGS);
+
   g_object_class_install_properties (gobject_class, PROP_LAST, props);
 
 
@@ -321,6 +341,10 @@ bolt_manager_class_init (BoltManagerClass *klass)
                                          PROP_EXPORTED,
                                          PROP_LAST,
                                          props);
+
+  bolt_exported_class_property_setter (exported_class,
+                                       props[PROP_AUTHMODE],
+                                       handle_set_authmode);
 
   bolt_exported_class_export_method (exported_class,
                                      "ListDevices",
@@ -837,6 +861,12 @@ maybe_authorize_device (BoltManager *mgr,
   bolt_info (LOG_DEV (dev), "checking possible authorization: %s (%x)",
              bolt_policy_to_string (policy), status);
 
+  if (bolt_auth_mode_is_disabled (mgr->authmode))
+    {
+      bolt_info (LOG_DEV (dev), "authorization is globally disabled.");
+      return;
+    }
+
   if (bolt_status_is_authorized (status) ||
       policy != BOLT_POLICY_AUTO)
     return;
@@ -1348,6 +1378,7 @@ manager_load_user_config (BoltManager *mgr)
 {
   g_autoptr(GError) err = NULL;
   BoltPolicy policy;
+  BoltAuthMode authmode;
   BoltTri res;
 
   bolt_info (LOG_TOPIC ("config"), "loading user config");
@@ -1371,8 +1402,71 @@ manager_load_user_config (BoltManager *mgr)
   else if (res == TRI_YES)
     {
       mgr->policy = policy;
+      bolt_info (LOG_TOPIC ("config"), "default policy set to %s",
+                 bolt_policy_to_string (policy));
       g_object_notify_by_pspec (G_OBJECT (mgr), props[PROP_POLICY]);
     }
+
+  res = bolt_config_load_auth_mode (mgr->config, &authmode, &err);
+  if (res == TRI_ERROR)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("config"),
+                     "failed to load auth mode");
+      g_clear_error (&err);
+    }
+  else if (res == TRI_YES)
+    {
+      g_autofree char *str = NULL;
+
+      str = bolt_flags_to_string (BOLT_TYPE_AUTH_MODE, authmode, NULL);
+      bolt_info (LOG_TOPIC ("config"), "auth mode set to '%s'", str);
+      mgr->authmode = authmode;
+      g_object_notify_by_pspec (G_OBJECT (mgr), props[PROP_POLICY]);
+    }
+}
+
+/* dbus property setter */
+static gboolean
+handle_set_authmode (BoltExported *obj,
+                     const char   *name,
+                     const GValue *value,
+                     GError      **error)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *str = NULL;
+  BoltManager *mgr = BOLT_MANAGER (obj);
+  BoltAuthMode authmode;
+  gboolean ok;
+
+  authmode = g_value_get_flags (value);
+
+  if (authmode == mgr->authmode)
+    return TRUE;
+
+  if (mgr->config == NULL)
+    mgr->config = bolt_config_user_init ();
+
+  str = bolt_flags_to_string (BOLT_TYPE_AUTH_MODE, authmode, &err);
+  if (str == NULL)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("config"), "error setting authmode");
+      g_propagate_error (error, g_steal_pointer (&err));
+      return FALSE;
+    }
+
+  bolt_config_set_auth_mode (mgr->config, str);
+  ok = bolt_store_config_save (mgr->store, mgr->config, &err);
+
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("config"), "error saving config");
+      g_propagate_error (error, g_steal_pointer (&err));
+      return FALSE;
+    }
+
+  mgr->authmode = authmode;
+  bolt_info (LOG_TOPIC ("config"), "auth mode set to '%s'", str);
+  return ok;
 }
 
 /* dbus methods */
@@ -1516,6 +1610,13 @@ handle_enroll_device (BoltExported          *obj,
       g_dbus_method_invocation_return_error (inv, G_IO_ERROR, G_IO_ERROR_EXISTS,
                                              "device with id '%s' already enrolled.",
                                              uid);
+      return TRUE;
+    }
+
+  if (bolt_auth_mode_is_disabled (mgr->authmode))
+    {
+      g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+                                             "authorization of new devices is disabled");
       return TRUE;
     }
 
