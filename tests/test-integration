@@ -370,6 +370,15 @@ class BoltDevice(ProxyWrapper):
         return mapping.get(res, self.UNKNOWN)
 
     @property
+    def key(self):
+        res = getattr(self, 'Key')
+        mapping = {'missing': self.KEY_MISSING,
+                   'have': self.KEY_HAVE,
+                   'new': self.KEY_NEW}
+
+        return mapping.get(res, self.MISSING)
+
+    @property
     def label(self):
         res = getattr(self, 'Label')
         if res is not None and len(res) < 1:

@@ -218,7 +218,7 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
-    <property name="Key" type="u" access="read">
+    <property name="Key" type="s" access="read">
       <doc:doc><doc:description><doc:para>
         If a key is associated with the device.
       </doc:para></doc:description></doc:doc>

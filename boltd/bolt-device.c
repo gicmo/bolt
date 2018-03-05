@@ -209,7 +209,7 @@ bolt_device_get_property (GObject    *object,
       break;
 
     case PROP_HAVE_KEY:
-      g_value_set_uint (value, dev->key);
+      g_value_set_enum (value, dev->key);
       break;
 
     case PROP_STORETIME:
@@ -301,7 +301,7 @@ bolt_device_set_property (GObject      *object,
       break;
 
     case PROP_HAVE_KEY:
-      dev->key = g_value_get_uint (value);
+      dev->key = g_value_get_enum (value);
       break;
 
     case PROP_STORETIME:
@@ -433,10 +433,9 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_HAVE_KEY] =
-    g_param_spec_uint ("key",
+    g_param_spec_enum ("key",
                        "Key", NULL,
-                       0,
-                       BOLT_KEY_NEW,
+                       BOLT_TYPE_KEY_STATE,
                        BOLT_KEY_MISSING,
                        G_PARAM_READWRITE |
                        G_PARAM_STATIC_STRINGS);
