@@ -405,9 +405,9 @@ class BoltDevice(ProxyWrapper):
 class BoltClient(ProxyWrapper):
     signals = ['device_added', 'device_removed']
 
-    POLICY_DEFAULT = 0
-    POLICY_MANUAL = 1
-    POLICY_AUTO = 2
+    POLICY_DEFAULT = 'default'
+    POLICY_MANUAL = 'manual'
+    POLICY_AUTO = 'auto'
 
     def __init__(self, bus):
         super(BoltClient, self).__init__(bus,
@@ -440,7 +440,7 @@ class BoltClient(ProxyWrapper):
         return BoltDevice(bus, object_path)
 
     def enroll(self, uid, policy=POLICY_DEFAULT, flags=0):
-        object_path = self.EnrollDevice("(suu)", uid, policy, flags)
+        object_path = self.EnrollDevice("(ssu)", uid, policy, flags)
         if object_path is None:
             return None
         bus = self._proxy.get_connection()

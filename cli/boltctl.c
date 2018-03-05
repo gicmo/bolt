@@ -268,8 +268,8 @@ enroll (BoltClient *client, int argc, char **argv)
   const char *uid;
   BoltPolicy policy = BOLT_POLICY_DEFAULT;
   BoltAuthFlags flags = BOLT_AUTH_NONE;
-  static gchar *policy_arg;
-  static GOptionEntry options[] = {
+  const char *policy_arg = "default";
+  GOptionEntry options[] = {
     { "policy", 0, 0, G_OPTION_ARG_STRING, &policy_arg, "Policy for the device; one of {auto, manual, *default}", "POLICY" },
     { NULL }
   };

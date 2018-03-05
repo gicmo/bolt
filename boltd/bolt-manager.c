@@ -246,7 +246,7 @@ bolt_manager_get_property (GObject    *object,
       break;
 
     case PROP_POLICY:
-      g_value_set_uint (value, mgr->policy);
+      g_value_set_enum (value, mgr->policy);
       break;
 
     case PROP_SECURITY:
@@ -297,8 +297,9 @@ bolt_manager_class_init (BoltManagerClass *klass)
                           G_PARAM_STATIC_STRINGS);
 
   props[PROP_POLICY] =
-    g_param_spec_uint ("default-policy", "DefaultPolicy", "DefaultPolicy",
-                       0, G_MAXUINT32, 0,
+    g_param_spec_enum ("default-policy", "DefaultPolicy", "DefaultPolicy",
+                       BOLT_TYPE_POLICY,
+                       BOLT_POLICY_AUTO,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
 
@@ -1446,14 +1447,14 @@ enroll_device_done (GObject      *device,
   if (ok)
     {
       GVariant *params;
-      guint32 p;
+      const char *str;
       BoltPolicy policy;
       guint64 now;
 
       params = g_dbus_method_invocation_get_parameters (inv);
-      g_variant_get_child (params, 1, "u", &p);
+      g_variant_get_child (params, 1, "&s", &str);
 
-      policy = p;
+      policy = bolt_enum_from_string (BOLT_TYPE_POLICY, str, NULL);
       if (policy == BOLT_POLICY_DEFAULT)
         policy = mgr->policy;
 
@@ -1489,12 +1490,12 @@ handle_enroll_device (BoltExported          *obj,
   BoltManager *mgr;
   const char *uid;
   BoltSecurity level;
-  guint32 policy;
+  const char *policy;
 
   mgr = BOLT_MANAGER (obj);
 
   g_variant_get_child (params, 0, "&s", &uid);
-  g_variant_get_child (params, 1, "u", &policy);
+  g_variant_get_child (params, 1, "&s", &policy);
   dev = manager_find_device_by_uid (mgr, uid, &error);
 
   if (dev == NULL)
@@ -1503,10 +1504,10 @@ handle_enroll_device (BoltExported          *obj,
       return TRUE;
     }
 
-  if (!bolt_policy_validate ((BoltPolicy) policy))
+  if (bolt_enum_from_string (BOLT_TYPE_POLICY, policy, &error) == -1)
     {
       g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                                             "invalid policy: %" G_GUINT32_FORMAT, policy);
+                                             "invalid policy: %s", policy);
       return TRUE;
     }
 
