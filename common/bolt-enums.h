@@ -145,12 +145,9 @@ gboolean         bolt_policy_validate (BoltPolicy policy);
  *
  * Control authorization.
  */
-typedef enum {
+typedef enum { /*< flags >*/
 
-  BOLT_AUTH_NONE,
-
-  BOLT_AUTH_FLAGS_LAST,
-  BOLT_AUTH_FLAGS_INVALID = BOLT_AUTH_FLAGS_LAST
+  BOLT_AUTH_NONE = 0
 
 } BoltAuthFlags;
 
