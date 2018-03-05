@@ -84,7 +84,7 @@
         <doc:doc><doc:summary>Policy to use for the device.</doc:summary>
         </doc:doc>
       </arg>
-      <arg type='u' name='flags' direction='in'>
+      <arg type='s' name='flags' direction='in'>
         <doc:doc><doc:summary>Control aspects of enrollment.</doc:summary>
         </doc:doc>
       </arg>
@@ -256,7 +256,7 @@
 
     <method name="Authorize">
 
-     <arg type='u' name='flags' direction='in'>
+     <arg type='s' name='flags' direction='in'>
         <doc:doc><doc:summary>Control aspects of authorization.</doc:summary>
         </doc:doc>
      </arg>
