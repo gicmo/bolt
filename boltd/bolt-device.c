@@ -616,7 +616,8 @@ bolt_sysfs_device_get_time (struct udev_device *udev,
 }
 
 static BoltStatus
-bolt_status_from_udev (struct udev_device *udev)
+bolt_status_from_udev (struct udev_device *udev,
+                       BoltSecurity        security)
 {
   gint authorized;
   const char *key;
@@ -632,7 +633,9 @@ bolt_status_from_udev (struct udev_device *udev)
 
   if (authorized == 1)
     {
-      if (have_key)
+      if (security == BOLT_SECURITY_DPONLY)
+        return BOLT_STATUS_AUTHORIZED_DPONLY;
+      else if (have_key)
         return BOLT_STATUS_AUTHORIZED_NEWKEY;
       else
         return BOLT_STATUS_AUTHORIZED;
@@ -999,7 +1002,7 @@ bolt_device_new_for_udev (struct udev_device *udev,
 
   parent = bolt_sysfs_get_parent_uid (udev);
   security = bolt_sysfs_security_for_device (udev, NULL);
-  status = bolt_status_from_udev (udev);
+  status = bolt_status_from_udev (udev, security);
   at = bolt_status_is_authorized (status) ? ct : 0;
 
   dev = g_object_new (BOLT_TYPE_DEVICE,
@@ -1057,8 +1060,8 @@ bolt_device_connected (BoltDevice         *dev,
   guint64 ct, at;
 
   syspath = udev_device_get_syspath (udev);
-  status = bolt_status_from_udev (udev);
   security = bolt_sysfs_security_for_device (udev, NULL);
+  status = bolt_status_from_udev (udev, security);
   parent = bolt_sysfs_get_parent_uid (udev);
 
   ct = (guint64) bolt_sysfs_device_get_time (udev, BOLT_ST_CTIME);
@@ -1111,7 +1114,7 @@ BoltStatus
 bolt_device_update_from_udev (BoltDevice         *dev,
                               struct udev_device *udev)
 {
-  BoltStatus status = bolt_status_from_udev (udev);
+  BoltStatus status = bolt_status_from_udev (udev, dev->security);
 
   if (status == dev->status)
     return status;
