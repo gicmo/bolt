@@ -222,7 +222,7 @@ bt_exported_class_init (BtExportedClass *klass)
   props[PROP_SECURITY] =
     g_param_spec_enum ("security", "Security", NULL,
                        BOLT_TYPE_SECURITY,
-                       BOLT_SECURITY_INVALID,
+                       BOLT_SECURITY_UNKNOWN,
                        G_PARAM_READWRITE |
                        G_PARAM_STATIC_NICK |
                        G_PARAM_STATIC_BLURB);

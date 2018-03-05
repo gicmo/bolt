@@ -74,7 +74,7 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
     {
       g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_UDEV,
                            "failed to determine domain device");
-      return BOLT_SECURITY_INVALID;
+      return BOLT_SECURITY_UNKNOWN;
     }
 
   v = udev_device_get_sysattr_value (parent, "security");
@@ -84,7 +84,7 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
     {
       g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
                    "unknown security level '%s'", v);
-      s = BOLT_SECURITY_INVALID;
+      s = BOLT_SECURITY_UNKNOWN;
     }
 
   return s;

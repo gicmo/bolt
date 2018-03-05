@@ -267,7 +267,7 @@ bolt_manager_init (BoltManager *mgr)
   mgr->probing_roots = g_ptr_array_new_with_free_func (g_free);
   mgr->probing_tsettle = PROBING_SETTLE_TIME_MS; /* milliseconds */
 
-  mgr->security = BOLT_SECURITY_INVALID;
+  mgr->security = BOLT_SECURITY_UNKNOWN;
 
   /* default configuration */
   mgr->policy = BOLT_POLICY_AUTO;
@@ -306,7 +306,7 @@ bolt_manager_class_init (BoltManagerClass *klass)
   props[PROP_SECURITY] =
     g_param_spec_enum ("security-level", "SecurityLevel", NULL,
                        BOLT_TYPE_SECURITY,
-                       BOLT_SECURITY_INVALID,
+                       BOLT_SECURITY_UNKNOWN,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
 
@@ -1255,13 +1255,13 @@ manager_add_domain (BoltManager        *mgr,
   name = udev_device_get_sysname (domain);
   sl = bolt_sysfs_security_for_device (domain, &err);
 
-  if (!bolt_security_validate (sl))
+  if (sl == BOLT_SECURITY_UNKNOWN)
     {
       bolt_warn_err (err, LOG_TOPIC ("udev"), "domain '%s'", name);
       return;
     }
 
-  if (mgr->security == BOLT_SECURITY_INVALID)
+  if (mgr->security == BOLT_SECURITY_UNKNOWN)
     {
       bolt_info ("security level set to '%s'",
                  bolt_security_to_string (sl));

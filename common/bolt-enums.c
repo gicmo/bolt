@@ -267,40 +267,19 @@ bolt_status_is_connected (BoltStatus status)
 BoltSecurity
 bolt_security_from_string (const char *str)
 {
-  g_autoptr(GEnumClass) klass = NULL;
-  GEnumValue *value;
-
-  if (str == NULL)
-    return BOLT_SECURITY_INVALID;
-
-  klass = g_type_class_ref (BOLT_TYPE_SECURITY);
-  value = g_enum_get_value_by_nick (klass, str);
-
-  if (value == NULL)
-    return BOLT_SECURITY_INVALID;
-
-  return value->value;
+  return bolt_enum_from_string (BOLT_TYPE_SECURITY, str, NULL);
 }
 
 const char *
 bolt_security_to_string (BoltSecurity security)
 {
-  g_autoptr(GEnumClass) klass = NULL;
-  GEnumValue *value;
-
-  if (!bolt_security_validate (security))
-    return NULL;
-
-  klass = g_type_class_ref (BOLT_TYPE_SECURITY);
-  value = g_enum_get_value (klass, security);
-
-  return value->value_nick;
+  return bolt_enum_to_string (BOLT_TYPE_SECURITY, security, NULL);
 }
 
 gboolean
 bolt_security_validate (BoltSecurity security)
 {
-  return security < BOLT_SECURITY_INVALID && security >= 0;
+  return bolt_enum_validate (BOLT_TYPE_SECURITY, security, NULL);
 }
 
 BoltPolicy
