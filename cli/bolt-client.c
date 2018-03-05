@@ -402,6 +402,7 @@ bolt_client_enroll_device (BoltClient   *client,
 {
   g_autoptr(GVariant) val = NULL;
   g_autoptr(GError) err = NULL;
+  g_autofree char *fstr = NULL;
   BoltDevice *dev = NULL;
   GDBusConnection *bus = NULL;
   GVariant *params = NULL;
@@ -414,7 +415,11 @@ bolt_client_enroll_device (BoltClient   *client,
   if (pstr == NULL)
     return NULL;
 
-  params = g_variant_new ("(ssu)", uid, pstr, (guint32) flags);
+  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, flags, error);
+  if (fstr == NULL)
+    return NULL;
+
+  params = g_variant_new ("(sss)", uid, pstr, fstr);
   val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
                                 "EnrollDevice",
                                 params,

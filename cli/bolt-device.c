@@ -230,12 +230,17 @@ bolt_device_authorize (BoltDevice   *dev,
                        GError      **error)
 {
   g_autoptr(GError) err = NULL;
+  g_autofree char *fstr = NULL;
 
   g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
 
+  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, flags, error);
+  if (fstr == NULL)
+    return FALSE;
+
   g_dbus_proxy_call_sync (G_DBUS_PROXY (dev),
                           "Authorize",
-                          g_variant_new ("(u)", (guint32) flags),
+                          g_variant_new ("(s)", fstr),
                           G_DBUS_CALL_FLAGS_NONE,
                           -1,
                           NULL,

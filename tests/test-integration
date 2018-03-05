@@ -351,8 +351,8 @@ class BoltDevice(ProxyWrapper):
     def is_authorized(self):
         return self.status >= self.AUTHORIZED
 
-    def authorize(self, flags=0):
-        self.Authorize('(u)', flags)
+    def authorize(self, flags=""):
+        self.Authorize('(s)', flags)
         return True
 
     @property
@@ -439,8 +439,8 @@ class BoltClient(ProxyWrapper):
         bus = self._proxy.get_connection()
         return BoltDevice(bus, object_path)
 
-    def enroll(self, uid, policy=POLICY_DEFAULT, flags=0):
-        object_path = self.EnrollDevice("(ssu)", uid, policy, flags)
+    def enroll(self, uid, policy=POLICY_DEFAULT, flags=""):
+        object_path = self.EnrollDevice("(sss)", uid, policy, flags)
         if object_path is None:
             return None
         bus = self._proxy.get_connection()
