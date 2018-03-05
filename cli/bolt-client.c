@@ -117,7 +117,7 @@ bolt_client_class_init (BoltClientClass *klass)
     = g_param_spec_enum ("security-level",
                          "SecurityLevel", NULL,
                          BOLT_TYPE_SECURITY,
-                         BOLT_SECURITY_INVALID,
+                         BOLT_SECURITY_UNKNOWN,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NAME);
 
