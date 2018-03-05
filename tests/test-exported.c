@@ -754,9 +754,9 @@ static void
 test_exported_props_changed (TestExported *tt, gconstpointer data)
 {
   g_autoptr(CallCtx) ctx = NULL;
+  g_autoptr(GVariantIter) iter = NULL;
   gboolean have_bool = FALSE;
   gboolean have_str = FALSE;
-  GVariantIter *iter;
   GVariant *value;
   const char *key;
   guint sid;
