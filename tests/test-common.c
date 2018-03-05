@@ -40,6 +40,8 @@
 #include <sys/stat.h>
 #include <unistd.h> /* unlinkat */
 
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
+
 static void
 cleanup_dir (DIR *d)
 {
@@ -79,6 +81,44 @@ typedef struct
 static void
 test_enums (TestRng *tt, gconstpointer user_data)
 {
+  g_autoptr(GEnumClass) klass;
+  g_autoptr(GError) err = NULL;
+  const char *str;
+  gint val;
+  gboolean ok;
+  struct EnumTest
+  {
+    GType       enum_type;
+    const char *name;
+    gint        value;
+
+  } ett[] = {
+    {BOLT_TYPE_SECURITY, "none",   BOLT_SECURITY_NONE},
+    {BOLT_TYPE_SECURITY, "dponly", BOLT_SECURITY_DPONLY},
+    {BOLT_TYPE_SECURITY, "user",   BOLT_SECURITY_USER},
+    {BOLT_TYPE_SECURITY, "secure", BOLT_SECURITY_SECURE},
+  };
+
+  for (guint i = 0; i < G_N_ELEMENTS (ett); i++)
+    {
+
+      ok = bolt_enum_validate (ett[i].enum_type, ett[i].value, &err);
+      g_assert_no_error (err);
+      g_assert_true (ok);
+
+      /* to string */
+      str = bolt_enum_to_string (ett[i].enum_type, ett[i].value, &err);
+      g_assert_no_error (err);
+      g_assert_nonnull (str);
+      g_assert_cmpstr (str, ==, ett[i].name);
+
+      /* from string */
+      val = bolt_enum_from_string (ett[i].enum_type, ett[i].name, &err);
+      g_assert_no_error (err);
+      g_assert_nonnull (str);
+      g_assert_cmpint (val, ==, ett[i].value);
+    }
+
   g_assert_cmpstr (bolt_security_to_string (BOLT_SECURITY_NONE), ==, "none");
   g_assert_cmpstr (bolt_security_to_string (BOLT_SECURITY_DPONLY), ==, "dponly");
   g_assert_cmpstr (bolt_security_to_string (BOLT_SECURITY_USER), ==, "user");
@@ -88,6 +128,49 @@ test_enums (TestRng *tt, gconstpointer user_data)
   g_assert_cmpuint (bolt_security_from_string ("dponly"), ==, BOLT_SECURITY_DPONLY);
   g_assert_cmpuint (bolt_security_from_string ("user"), ==, BOLT_SECURITY_USER);
   g_assert_cmpuint (bolt_security_from_string ("secure"), ==, BOLT_SECURITY_SECURE);
+
+  klass = g_type_class_ref (BOLT_TYPE_SECURITY);
+
+  ok = bolt_enum_class_validate (klass, klass->minimum, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  ok = bolt_enum_class_validate (klass, klass->maximum, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  str = bolt_enum_to_string (BOLT_TYPE_SECURITY, klass->minimum, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (str);
+
+  str = bolt_enum_to_string (BOLT_TYPE_SECURITY, klass->maximum, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (str);
+
+  ok = bolt_enum_class_validate (klass, klass->maximum + 1, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  ok = bolt_enum_class_validate (klass, klass->minimum - 1, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  ok = bolt_enum_validate (BOLT_TYPE_SECURITY, -42, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  str = bolt_enum_to_string (BOLT_TYPE_SECURITY, -42, &err);
+  g_assert_nonnull (err);
+  g_assert_null (str);
+  g_clear_error (&err);
+
+  val = bolt_enum_from_string (BOLT_TYPE_SECURITY, "ILEDELI", &err);
+  g_assert_nonnull (err);
+  g_assert_cmpint (val, ==, -1);
+  g_clear_error (&err);
 }
 
 typedef void (*rng_t) (void *buf,
