@@ -169,7 +169,7 @@ bolt_device_get_property (GObject    *object,
       break;
 
     case PROP_TYPE:
-      g_value_set_uint (value, dev->type);
+      g_value_set_enum (value, dev->type);
       break;
 
     case PROP_VENDOR:
@@ -256,7 +256,7 @@ bolt_device_set_property (GObject      *object,
       break;
 
     case PROP_TYPE:
-      dev->type = g_value_get_uint (value);
+      dev->type = g_value_get_enum (value);
       break;
 
     case PROP_STATUS:
@@ -362,10 +362,9 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_TYPE] =
-    g_param_spec_uint ("type",
+    g_param_spec_enum ("type",
                        "Type", NULL,
-                       BOLT_DEVICE_HOST,
-                       BOLT_DEVICE_PERIPHERAL,
+                       BOLT_TYPE_DEVICE_TYPE,
                        BOLT_DEVICE_PERIPHERAL,
                        G_PARAM_READWRITE |
                        G_PARAM_CONSTRUCT_ONLY |
