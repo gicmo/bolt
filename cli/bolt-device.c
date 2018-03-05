@@ -44,7 +44,6 @@ enum {
   PROP_STATUS,
   PROP_PARENT,
   PROP_SYSPATH,
-  PROP_SECURITY,
   PROP_CONNTIME,
   PROP_AUTHTIME,
 
@@ -132,14 +131,6 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NICK);
-
-  props[PROP_SECURITY] =
-    g_param_spec_enum ("security",
-                       "Security", NULL,
-                       BOLT_TYPE_SECURITY,
-                       BOLT_SECURITY_NONE,
-                       G_PARAM_READABLE |
-                       G_PARAM_STATIC_NICK);
 
   props[PROP_CONNTIME] =
     g_param_spec_uint64 ("conntime",

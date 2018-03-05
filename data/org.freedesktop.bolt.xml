@@ -199,13 +199,6 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
-    <property name="Security" type="u" access="read">
-      <doc:doc><doc:description><doc:para>
-        The security level of the domain the device is
-        connected to.
-      </doc:para></doc:description></doc:doc>
-    </property>
-
     <property name="Stored" type="b" access="read">
       <doc:doc><doc:description><doc:para>
         Indication if the device is stored.

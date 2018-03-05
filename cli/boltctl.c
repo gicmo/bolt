@@ -65,7 +65,6 @@ print_device (BoltDevice *dev, gboolean verbose)
   g_autofree char *syspath = NULL;
   g_autofree char *parent = NULL;
   g_autofree char *label = NULL;
-  BoltSecurity security = BOLT_SECURITY_NONE;
   BoltDeviceType type;
   BoltStatus status;
   BoltKeyState keystate;
@@ -87,7 +86,6 @@ print_device (BoltDevice *dev, gboolean verbose)
                 "type", &type,
                 "status", &status,
                 "uid", &uid,
-                "security", &security,
                 "parent", &parent,
                 "syspath", &syspath,
                 "conntime", &ct,
@@ -172,11 +170,6 @@ print_device (BoltDevice *dev, gboolean verbose)
                    tree_branch,
                    syspath);
         }
-
-      g_print ("   %s %s security:   %s\n",
-               bolt_glyph (TREE_VERTICAL),
-               tree_branch,
-               bolt_security_to_string (security));
 
       if (bolt_status_is_authorized (status))
         {
