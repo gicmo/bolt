@@ -885,6 +885,12 @@ maybe_authorize_device (BoltManager *mgr,
         bolt_warn_err (err, LOG_DEV (dev), "could not load key");
     }
 
+  if (level == BOLT_SECURITY_SECURE && key == NULL)
+    {
+      bolt_msg (LOG_DEV (dev), "have no key, not authorizing (secure mode)");
+      return;
+    }
+
   data = g_slice_new (AuthIdleData);
   data->auth = bolt_auth_new (mgr, level, key);
   data->dev = g_object_ref (dev);
