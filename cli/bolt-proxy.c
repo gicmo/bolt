@@ -90,9 +90,9 @@ bolt_proxy_handle_props_changed (GDBusProxy *proxy,
                                  GStrv       invalidated_properties,
                                  gpointer    user_data)
 {
+  g_autoptr(GVariantIter) iter = NULL;
   gboolean handled = FALSE;
   GParamSpec **pp;
-  GVariantIter *iter;
   const char *key;
   guint n;
 
