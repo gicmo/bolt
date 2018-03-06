@@ -129,7 +129,7 @@ test_writer (GLogLevelFlags   log_level,
       if (!g_hash_table_contains (data->fields, key))
         continue;
 
-      g_hash_table_insert (index, (gpointer) key, (gpointer)  val);
+      g_hash_table_insert (index, (gpointer) key, (gpointer) val);
     }
 
   g_assert_cmpstr (message, ==, data->message);
@@ -180,13 +180,10 @@ static void
 test_log_device (TestLog *tt, gconstpointer user_data)
 {
   g_autoptr(BoltDevice) a = NULL;
-  g_autoptr(BoltDevice) b = NULL;
   const char *domain = "bolt-device";
   const char *msg;
-  const char *syspath;
   GLogLevelFlags lvl;
-  char uid_a[] = "fbc83890-e9bf-45e5-a777-b3728490989c";
-  char uid_b[] = " 15db9693-14d2-4ca9-a495-dfe5c4cd568f";
+  const char *uid_a = "fbc83890-e9bf-45e5-a777-b3728490989c";
 
   g_log_set_writer_func (test_writer, &tt->data, NULL);
 
@@ -195,15 +192,6 @@ test_log_device (TestLog *tt, gconstpointer user_data)
                     "name", "Laptop",
                     "vendor", "GNOME.org",
                     "status", BOLT_STATUS_DISCONNECTED,
-                    NULL);
-
-  syspath = "/sys/bus/thunderbolt/devices/0-0";
-  b = g_object_new (BOLT_TYPE_DEVICE,
-                    "uid", uid_b,
-                    "name", "Thunderbolt Dock",
-                    "vendor", "GNOME.org",
-                    "status", BOLT_STATUS_CONNECTED,
-                    "sysfs-path", syspath,
                     NULL);
 
   lvl = G_LOG_LEVEL_INFO;
