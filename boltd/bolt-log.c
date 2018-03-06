@@ -113,7 +113,7 @@ struct _BoltLogCtx
 static gboolean
 bolt_log_ctx_next_field (BoltLogCtx *ctx, GLogField **next)
 {
-  const gsize maxfields = sizeof (ctx->fields);
+  const gsize maxfields = G_N_ELEMENTS (ctx->fields);
   gboolean res = TRUE;
   gsize n; /* safe to use as index */
 
@@ -182,7 +182,6 @@ handle_device_field (BoltLogCtx *ctx,
                      const char *key,
                      va_list     args)
 {
-  g_auto(GStrv) suffixes = NULL;
   BoltDevice *dev = va_arg (args, BoltDevice *);
   BoltStatus status;
   GLogField *field;
