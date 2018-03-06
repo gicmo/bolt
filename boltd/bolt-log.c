@@ -180,9 +180,9 @@ bolt_log_ctx_find_field (const BoltLogCtx *ctx,
 static void
 handle_device_field (BoltLogCtx *ctx,
                      const char *key,
-                     va_list     args)
+                     gpointer    ptr)
 {
-  BoltDevice *dev = va_arg (args, BoltDevice *);
+  BoltDevice *dev = BOLT_DEVICE (ptr);
   BoltStatus status;
   GLogField *field;
 
@@ -209,12 +209,11 @@ handle_device_field (BoltLogCtx *ctx,
 static void
 handle_gerror_field (BoltLogCtx *ctx,
                      const char *key,
-                     va_list     args)
+                     gpointer    ptr)
 {
-  const GError *error;
+  const GError *error = ptr;
   GLogField *field;
 
-  error = va_arg (args, GError *);
   ctx->error = error;
 
   bolt_log_ctx_next_field (ctx, &field);
@@ -236,9 +235,9 @@ handle_gerror_field (BoltLogCtx *ctx,
 static void
 handle_topic_field (BoltLogCtx *ctx,
                     const char *key,
-                    va_list     args)
+                    gpointer    ptr)
 {
-  const char *value = va_arg (args, const char *);
+  const char *value = ptr;
   GLogField *field;
 
   bolt_log_ctx_next_field (ctx, &field);
@@ -253,19 +252,20 @@ handle_topic_field (BoltLogCtx *ctx,
 static gboolean
 handle_special_field (BoltLogCtx *ctx,
                       const char *key,
-                      va_list     args)
+                      gpointer    ptr)
 {
   gboolean handled = TRUE;
 
   key++; /* remove the special key indicator */
 
   if (g_str_has_prefix (key, "device"))
-    handle_device_field (ctx, key, args);
+    handle_device_field (ctx, key, ptr);
   else if (g_str_equal (key, "error"))
-    handle_gerror_field (ctx, key, args);
+    handle_gerror_field (ctx, key, ptr);
   else if (g_str_equal (key, "topic"))
-    handle_topic_field (ctx, key, args);
+    handle_topic_field (ctx, key, ptr);
   else
+
     handled = FALSE;
 
   return handled;
@@ -274,9 +274,8 @@ handle_special_field (BoltLogCtx *ctx,
 static gboolean
 handle_passthrough_field (BoltLogCtx *ctx,
                           const char *key,
-                          va_list     args)
+                          const char *val)
 {
-  const char *value = va_arg (args, const char *);
   GLogField *field;
 
   key++; /* remove the pass-through key indicator */
@@ -284,7 +283,7 @@ handle_passthrough_field (BoltLogCtx *ctx,
   bolt_log_ctx_next_field (ctx, &field);
 
   field->key = key;
-  field->value = value;
+  field->value = val;
   field->length = -1;
 
   return TRUE;
@@ -323,11 +322,19 @@ bolt_logv (const char    *domain,
       gboolean handled;
 
       if (*key == LOG_SPECIAL_CHAR)
-        handled = handle_special_field (&ctx, key, args);
+        {
+          gpointer ptr = va_arg (args, gpointer);
+          handled = handle_special_field (&ctx, key, ptr);
+        }
       else if (*key == LOG_PASSTHROUGH_CHAR)
-        handled = handle_passthrough_field (&ctx, key, args);
+        {
+          const char *val = va_arg (args, const char *);
+          handled = handle_passthrough_field (&ctx, key, val);
+        }
       else
-        break;
+        {
+          break;
+        }
 
       if (!handled)
         internal_error ("unknown field: %s", key);
