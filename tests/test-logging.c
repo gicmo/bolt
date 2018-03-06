@@ -39,8 +39,6 @@
 
 typedef struct _LogData
 {
-  const char    *message;
-  const char    *domain;
   GLogLevelFlags level;
   GHashTable    *fields;
 } LogData;
@@ -54,6 +52,7 @@ static void
 test_log_setup (TestLog *tt, gconstpointer user_data)
 {
   tt->data.fields = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  g_log_set_writer_func (g_log_writer_standard_streams, NULL, NULL);
 }
 
 static void
@@ -114,8 +113,6 @@ test_writer (GLogLevelFlags   log_level,
 {
   g_autoptr(GHashTable) index = NULL;
   LogData *data = user_data;
-  const char *message = NULL;
-  const char *domain = NULL;
   GHashTableIter iter;
   gpointer k, v;
 
@@ -131,9 +128,6 @@ test_writer (GLogLevelFlags   log_level,
 
       g_hash_table_insert (index, (gpointer) key, (gpointer) val);
     }
-
-  g_assert_cmpstr (message, ==, data->message);
-  g_assert_cmpstr (domain, ==, data->domain);
 
   g_hash_table_iter_init (&iter, data->fields);
   while (g_hash_table_iter_next (&iter, &k, &v))
@@ -154,9 +148,9 @@ test_writer (GLogLevelFlags   log_level,
 static void
 test_log_basic (TestLog *tt, gconstpointer user_data)
 {
-  g_log_set_writer_func (test_writer, &tt->data, NULL);
-
   log_expect (tt, G_LOG_LEVEL_MESSAGE, "bolt-test", "test", NULL);
+
+  g_log_set_writer_func (test_writer, &tt->data, NULL);
   bolt_log ("bolt-test", G_LOG_LEVEL_MESSAGE, "test");
 }
 
@@ -168,11 +162,11 @@ test_log_gerror (TestLog *tt, gconstpointer user_data)
   GLogLevelFlags lvl = G_LOG_LEVEL_INFO;
   const char *msg;
 
-  g_log_set_writer_func (test_writer, &tt->data, NULL);
-
   msg = "no udev";
   g_set_error_literal (&error, BOLT_ERROR, BOLT_ERROR_UDEV, msg);
   log_expect (tt, lvl, domain, NULL, "ERROR_MESSAGE", msg, NULL);
+
+  g_log_set_writer_func (test_writer, &tt->data, NULL);
   bolt_log (domain, lvl, LOG_ERR (error), NULL);
 }
 
@@ -184,8 +178,6 @@ test_log_device (TestLog *tt, gconstpointer user_data)
   const char *msg;
   GLogLevelFlags lvl;
   const char *uid_a = "fbc83890-e9bf-45e5-a777-b3728490989c";
-
-  g_log_set_writer_func (test_writer, &tt->data, NULL);
 
   a = g_object_new (BOLT_TYPE_DEVICE,
                     "uid", uid_a,
@@ -199,6 +191,8 @@ test_log_device (TestLog *tt, gconstpointer user_data)
   log_expect (tt, lvl, domain, msg,
               BOLT_LOG_DEVICE_UID, uid_a,
               NULL);
+
+  g_log_set_writer_func (test_writer, &tt->data, NULL);
   bolt_log (domain, lvl, LOG_DEV (a), msg);
 }
 
