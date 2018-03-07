@@ -13,6 +13,9 @@ BuildRequires: pkgconfig(gio-2.0)
 BuildRequires: pkgconfig(libudev)
 BuildRequires: pkgconfig(systemd)
 BuildRequires: polkit-devel
+BuildRequires: pygobject3-devel
+BuildRequires: python3-dbus
+BuildRequires: python3-dbusmock
 BuildRequires: umockdev-devel
 BuildRequires: systemd
 %{?systemd_requires}
