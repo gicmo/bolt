@@ -43,7 +43,7 @@ try:
     import dbusmock
 except ImportError as e:
     sys.stderr.write('Skipping integration test due to missing depdendencies: %s\n' % str(e))
-    sys.exit(0)
+    sys.exit(1)
 
 
 try:
