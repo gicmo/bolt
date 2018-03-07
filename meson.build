@@ -367,7 +367,12 @@ if res.returncode() == 0
     test(name, test_it, args: [t], env: test_env, timeout: 120)
   endforeach
 else
-  warning('ntegration tests not run: (@0@'.format(res.stderr().strip()))
+  msg = '@0@'.format(res.stderr().strip())
+  if meson.version().version_compare('<0.44.0')
+    message(msg)
+  else
+    warning(msg)
+  endif
 endif
 
 # contrib
