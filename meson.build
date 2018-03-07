@@ -76,7 +76,6 @@ gio     = dependency('gio-2.0')
 libudev = dependency('libudev')
 unix    = dependency('gio-unix-2.0')
 udev    = dependency('udev')
-umock   = dependency('umockdev-1.0')
 polkit  = dependency('polkit-gobject-1')
 systemd = dependency('systemd')
 
@@ -349,7 +348,6 @@ foreach t: tests
   e = executable(test_name, test_srcs, dependencies: test_deps)
 
   test_env = environment()
-  test_env.prepend('LD_PRELOAD', 'libumockdev-preload.so.0')
   test(test_name, e, env: test_env, timeout : 120)
 
 endforeach
