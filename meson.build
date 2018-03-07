@@ -366,6 +366,8 @@ if res.returncode() == 0
     name = 'integration @0@'.format(t.split('.')[1])
     test(name, test_it, args: [t], env: test_env, timeout: 120)
   endforeach
+else
+  warning('ntegration tests not run: (@0@'.format(res.stderr().strip()))
 endif
 
 # contrib
