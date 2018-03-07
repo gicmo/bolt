@@ -378,7 +378,7 @@ spec_file = configure_file(
 
 # documentation
 
-build_man = build_man != false and a2x.found()
+build_man = build_man != 'false' and a2x.found()
 if build_man
 
   foreach page : [
