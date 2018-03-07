@@ -28,6 +28,8 @@
 
 #include "bolt-daemon-resource.h"
 
+#include <systemd/sd-id128.h>
+
 #include <gio/gio.h>
 
 #include <locale.h>
@@ -41,8 +43,8 @@ static guint name_owner_id = 0;
 
 typedef struct _LogCfg
 {
-  gboolean    debug;
-  const char *session_id;
+  gboolean debug;
+  char     session_id[33];
 } LogCfg;
 
 static GLogWriterOutput
@@ -135,8 +137,6 @@ on_name_lost (GDBusConnection *connection,
 int
 main (int argc, char **argv)
 {
-  g_autofree char *session_id = NULL;
-
   g_autoptr(GError) error = NULL;
   GOptionContext *context;
   gboolean replace = FALSE;
@@ -145,6 +145,7 @@ main (int argc, char **argv)
   GBusType bus_type = G_BUS_TYPE_SYSTEM;
   GBusNameOwnerFlags flags;
   LogCfg log = { FALSE, };
+  sd_id128_t logid;
   const GOptionEntry options[] = {
     { "replace", 'r', 0, G_OPTION_ARG_NONE, &replace,  "Replace old daemon.", NULL },
     { "session-bus", 0, 0, G_OPTION_ARG_NONE, &session_bus, "Use the session bus.", NULL},
@@ -188,8 +189,8 @@ main (int argc, char **argv)
       log.debug = bolt_streq (domains, "all");
     }
 
-  session_id = g_uuid_string_random ();
-  log.session_id = session_id;
+  sd_id128_randomize (&logid);
+  sd_id128_to_string (logid, log.session_id);
 
   g_resources_register (bolt_daemon_get_resource ());
 

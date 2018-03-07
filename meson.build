@@ -78,6 +78,7 @@ unix    = dependency('gio-unix-2.0')
 udev    = dependency('udev')
 polkit  = dependency('polkit-gobject-1')
 systemd = dependency('systemd')
+libsysd = dependency('libsystemd')
 
 git     = find_program('git', required: false)
 a2x     = find_program(['a2x', 'a2x.py'], required: req_man)
@@ -274,6 +275,7 @@ daemon_deps = [
   glib,
   gio,
   libudev,
+  libsysd,
   polkit,
   unix,
   common
