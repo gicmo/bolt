@@ -9,6 +9,7 @@ RUN apt-get update -q && apt-get install -y \
     locales \
     libudev-dev \
     libumockdev-dev \
+    libsystemd-dev \
     meson \
     pkg-config \
     policykit-1 \
