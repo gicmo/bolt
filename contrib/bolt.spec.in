@@ -12,13 +12,18 @@ BuildRequires: libudev-devel
 BuildRequires: pkgconfig(gio-2.0)
 BuildRequires: pkgconfig(libudev)
 BuildRequires: pkgconfig(systemd)
+BuildRequires: pkgconfig(libsystemd)
 BuildRequires: polkit-devel
+BuildRequires: systemd
+%{?systemd_requires}
+
+# for the integration test (optional)
+%if 0%{?fedora}
 BuildRequires: pygobject3-devel
 BuildRequires: python3-dbus
 BuildRequires: python3-dbusmock
 BuildRequires: umockdev-devel
-BuildRequires: systemd
-%{?systemd_requires}
+%endif
 
 %description
 bolt is a system daemon to manage thunderbolt 3 devices via a D-BUS
