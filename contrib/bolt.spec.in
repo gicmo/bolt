@@ -1,6 +1,6 @@
 Name: bolt
 Version: @version@
-Release: @reltag@%{?dist}
+Release: 0.@reltag@%{?dist}
 Summary: Thunderbolt device manager
 License: LGPLv2+
 URL: https://github.com/gicmo/bolt
