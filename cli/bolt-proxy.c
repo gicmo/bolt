@@ -229,6 +229,30 @@ find_property (BoltProxy  *proxy,
   return res;
 }
 
+const char *
+bolt_proxy_get_property_string (BoltProxy  *proxy,
+                                const char *name)
+{
+  g_autoptr(GVariant) var = NULL;
+  const char *val = NULL;
+  const char *bus_name = NULL;
+  GParamSpec *pspec;
+
+  g_return_val_if_fail (BOLT_IS_PROXY (proxy), NULL);
+
+  pspec = g_object_class_find_property (G_OBJECT_GET_CLASS (proxy), name);
+
+  if (pspec == NULL)
+    return NULL;
+
+  bus_name = g_param_spec_get_nick (pspec);
+  var = g_dbus_proxy_get_cached_property (G_DBUS_PROXY (proxy), bus_name);
+  if (var != NULL)
+    val = g_variant_get_string (var, NULL);
+
+  return val;
+}
+
 gboolean
 bolt_proxy_set_property (BoltProxy    *proxy,
                          const char   *name,

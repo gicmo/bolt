@@ -51,6 +51,9 @@ gboolean          bolt_proxy_get_dbus_property (GObject    *proxy,
 
 const char *      bolt_proxy_get_object_path (BoltProxy *proxy);
 
+const char *      bolt_proxy_get_property_string (BoltProxy  *proxy,
+                                                  const char *name);
+
 gboolean          bolt_proxy_set_property (BoltProxy    *proxy,
                                            const char   *name,
                                            GVariant     *value,
