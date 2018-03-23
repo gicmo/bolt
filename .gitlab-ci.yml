@@ -1,0 +1,27 @@
+image: docker:latest
+
+services:
+  - docker:dind
+
+.build-template: &build
+  script:
+    - docker build -t bolt-$OS -f ./contrib/Dockerfile-$OS .
+    - docker run -e -t -v `pwd`:/src bolt-$OS ./contrib/docker-build.sh
+
+fedora:
+  stage: build
+  variables:
+    OS: fedora
+  <<: *build
+
+arch:
+  stage: build
+  variables:
+    OS: arch
+  <<: *build
+
+debian:
+  stage: build
+  variables:
+    OS: debian
+  <<: *build
