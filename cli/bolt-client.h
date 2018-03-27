@@ -60,4 +60,13 @@ void            bolt_client_forget_device_async (BoltClient         *client,
 gboolean        bolt_client_forget_device_finish (BoltClient   *client,
                                                   GAsyncResult *res,
                                                   GError      **error);
+
+/* getter */
+guint           bolt_client_get_version (BoltClient *client);
+
+gboolean        bolt_client_is_probing (BoltClient *client);
+
+BoltSecurity    bolt_client_get_security (BoltClient *client);
+
+
 G_END_DECLS

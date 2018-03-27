@@ -518,3 +518,58 @@ bolt_client_forget_device_finish (BoltClient   *client,
 
   return TRUE;
 }
+
+/* getter */
+guint
+bolt_client_get_version (BoltClient *client)
+{
+  const char *key;
+  guint val = 0;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
+
+  key = g_param_spec_get_name (props[PROP_VERSION]);
+  ok = bolt_proxy_get_property_uint32 (BOLT_PROXY (client), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+gboolean
+bolt_client_is_probing (BoltClient *client)
+{
+  const char *key;
+  gboolean val = FALSE;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
+
+  key = g_param_spec_get_name (props[PROP_PROBING]);
+  ok = bolt_proxy_get_property_bool (BOLT_PROXY (client), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+BoltSecurity
+bolt_client_get_security (BoltClient *client)
+{
+  const char *key;
+  gboolean ok;
+  gint val = BOLT_SECURITY_UNKNOWN;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
+
+  key = g_param_spec_get_name (props[PROP_SECURITY]);
+  ok = bolt_proxy_get_property_enum (BOLT_PROXY (client), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
