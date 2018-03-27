@@ -249,6 +249,74 @@ bolt_proxy_get_cached_property (BoltProxy  *proxy,
   return var;
 }
 
+gboolean
+bolt_proxy_get_property_bool (BoltProxy  *proxy,
+                              const char *name,
+                              gboolean   *value)
+{
+  g_autoptr(GVariant) var = NULL;
+
+  var = bolt_proxy_get_cached_property (proxy, name);
+
+  if (var == NULL)
+    return FALSE;
+  else if (value)
+    *value = g_variant_get_boolean (var);
+
+  return TRUE;
+}
+
+gboolean
+bolt_proxy_get_property_uint32 (BoltProxy  *proxy,
+                                const char *name,
+                                guint      *value)
+{
+  g_autoptr(GVariant) var = NULL;
+
+  var = bolt_proxy_get_cached_property (proxy, name);
+
+  if (var == NULL)
+    return FALSE;
+  else if (value)
+    *value = g_variant_get_uint32 (var);
+
+  return TRUE;
+}
+
+gboolean
+bolt_proxy_get_property_int64 (BoltProxy  *proxy,
+                               const char *name,
+                               gint64     *value)
+{
+  g_autoptr(GVariant) var = NULL;
+
+  var = bolt_proxy_get_cached_property (proxy, name);
+
+  if (var == NULL)
+    return FALSE;
+  else if (value)
+    *value = g_variant_get_int64 (var);
+
+  return TRUE;
+}
+
+gboolean
+bolt_proxy_get_property_uint64 (BoltProxy  *proxy,
+                                const char *name,
+                                guint64    *value)
+{
+  g_autoptr(GVariant) var = NULL;
+
+  var = bolt_proxy_get_cached_property (proxy, name);
+
+  if (var == NULL)
+    return FALSE;
+  else if (value)
+    *value = g_variant_get_uint64 (var);
+
+  return TRUE;
+}
+
 const char *
 bolt_proxy_get_property_string (BoltProxy  *proxy,
                                 const char *name)

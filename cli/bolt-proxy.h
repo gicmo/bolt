@@ -51,6 +51,22 @@ gboolean          bolt_proxy_get_dbus_property (GObject    *proxy,
 
 const char *      bolt_proxy_get_object_path (BoltProxy *proxy);
 
+gboolean          bolt_proxy_get_property_bool (BoltProxy  *proxy,
+                                                const char *name,
+                                                gboolean   *value);
+
+gboolean          bolt_proxy_get_property_uint32 (BoltProxy  *proxy,
+                                                  const char *name,
+                                                  guint      *value);
+
+gboolean          bolt_proxy_get_property_int64 (BoltProxy  *proxy,
+                                                 const char *name,
+                                                 gint64     *value);
+
+gboolean          bolt_proxy_get_property_uint64 (BoltProxy  *proxy,
+                                                  const char *name,
+                                                  guint64    *value);
+
 const char *      bolt_proxy_get_property_string (BoltProxy  *proxy,
                                                   const char *name);
 
