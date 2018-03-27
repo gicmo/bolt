@@ -58,13 +58,13 @@ usage_error_need_arg (const char *arg)
 static void
 print_device (BoltDevice *dev, gboolean verbose)
 {
-  g_autofree char *path = NULL;
-  g_autofree char *uid = NULL;
-  g_autofree char *name = NULL;
-  g_autofree char *vendor = NULL;
-  g_autofree char *syspath = NULL;
-  g_autofree char *parent = NULL;
-  g_autofree char *label = NULL;
+  const char *path;
+  const char *uid;
+  const char *name;
+  const char *vendor;
+  const char *syspath;
+  const char *parent;
+  const char *label;
   BoltDeviceType type;
   BoltStatus status;
   BoltKeyState keystate;
@@ -79,23 +79,21 @@ print_device (BoltDevice *dev, gboolean verbose)
   gboolean stored;
   guint64 ct, at, st;
 
-  g_object_get (dev,
-                "g-object-path", &path,
-                "name", &name,
-                "vendor", &vendor,
-                "type", &type,
-                "status", &status,
-                "uid", &uid,
-                "parent", &parent,
-                "syspath", &syspath,
-                "conntime", &ct,
-                "authtime", &at,
-                "stored", &stored,
-                "policy", &policy,
-                "key", &keystate,
-                "storetime", &st,
-                "label", &label,
-                NULL);
+  path = bolt_proxy_get_object_path (BOLT_PROXY (dev));
+  uid = bolt_device_get_uid (dev);
+  name = bolt_device_get_name (dev);
+  vendor = bolt_device_get_vendor (dev);
+  type = bolt_device_get_device_type (dev);
+  status = bolt_device_get_status (dev);
+  parent = bolt_device_get_parent (dev);
+  syspath = bolt_device_get_syspath (dev);
+  ct = bolt_device_get_conntime (dev);
+  at = bolt_device_get_authtime (dev);
+  stored = bolt_device_is_stored (dev);
+  policy = bolt_device_get_policy (dev);
+  keystate = bolt_device_get_keystate (dev);
+  st = bolt_device_get_storetime (dev);
+  label = bolt_device_get_label (dev);
 
   status_symbol = bolt_glyph (BLACK_CIRCLE);
   tree_branch = bolt_glyph (TREE_BRANCH);
@@ -138,7 +136,7 @@ print_device (BoltDevice *dev, gboolean verbose)
       break;
     }
 
-  label = bolt_strstrip (label);
+  label = bolt_strstrip (g_strdup (label));
 
   g_print (" %s%s%s %s\n",
            status_color,
@@ -363,8 +361,8 @@ handle_device_changed (GObject    *gobject,
                        GParamSpec *pspec,
                        gpointer    user_data)
 {
-  g_autofree char *uid = NULL;
-  g_autofree char *dev_name = NULL;
+  const char *uid = NULL;
+  const char *dev_name = NULL;
   g_autofree char *val = NULL;
 
   BoltDevice *dev = BOLT_DEVICE (gobject);
@@ -372,10 +370,8 @@ handle_device_changed (GObject    *gobject,
   GValue prop_val =  G_VALUE_INIT;
   GValue str_val = G_VALUE_INIT;
 
-  g_object_get (dev,
-                "uid", &uid,
-                "name", &dev_name,
-                NULL);
+  uid = bolt_device_get_uid (dev);
+  dev_name = bolt_device_get_name (dev);
 
   prop_name = g_param_spec_get_name (pspec);
 
@@ -401,12 +397,10 @@ handle_device_added (BoltClient *cli,
                      BoltDevice *dev,
                      gpointer    user_data)
 {
-  g_autofree char *path = NULL;
+  const char *path;
   GPtrArray *devices = user_data;
 
-  g_object_get (dev,
-                "g-object-path", &path,
-                NULL);
+  path = bolt_proxy_get_object_path (BOLT_PROXY (dev));
 
   g_print (" DeviceAdded: %s\n", path);
 
@@ -453,11 +447,7 @@ handle_probing_changed (BoltClient *client,
                         GParamSpec *pspec,
                         gpointer    user_data)
 {
-  gboolean probing;
-
-  g_object_get (client,
-                "probing", &probing,
-                NULL);
+  gboolean probing = bolt_client_is_probing (client);
 
   if (probing)
     g_print ("Probing started\n");
@@ -480,10 +470,8 @@ monitor (BoltClient *client, int argc, char **argv)
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
     return usage_error (error);
 
-  g_object_get (client,
-                "version", &version,
-                "security-level", &security,
-                NULL);
+  version = bolt_client_get_version (client);
+  security = bolt_client_get_security (client);
 
   g_print ("Daemon Version: %d.%u\n", VERSION_MAJOR, version);
   g_print ("Security Level: %s\n", bolt_security_to_string (security));
@@ -558,7 +546,7 @@ list_devices (BoltClient *client, int argc, char **argv)
 
       if (!show_all)
         {
-          g_object_get (dev, "type", &type, NULL);
+          type = bolt_device_get_device_type (dev);
           if (type != BOLT_DEVICE_PERIPHERAL)
             continue;
         }
