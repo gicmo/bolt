@@ -248,3 +248,231 @@ bolt_device_authorize (BoltDevice   *dev,
 
   return TRUE;
 }
+
+const char *
+bolt_device_get_uid (BoltDevice *dev)
+{
+  const char *key;
+  const char *str;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
+  key = g_param_spec_get_name (props[PROP_UID]);
+  str = bolt_proxy_get_property_string (BOLT_PROXY (dev), key);
+
+  return str;
+}
+
+const char *
+bolt_device_get_name (BoltDevice *dev)
+{
+  const char *key;
+  const char *str;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
+  key = g_param_spec_get_name (props[PROP_NAME]);
+  str = bolt_proxy_get_property_string (BOLT_PROXY (dev), key);
+
+  return str;
+}
+
+const char *
+bolt_device_get_vendor (BoltDevice *dev)
+{
+  const char *key;
+  const char *str;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
+  key = g_param_spec_get_name (props[PROP_VENDOR]);
+  str = bolt_proxy_get_property_string (BOLT_PROXY (dev), key);
+
+  return str;
+}
+
+BoltDeviceType
+bolt_device_get_device_type (BoltDevice *dev)
+{
+  const char *key;
+  gboolean ok;
+  gint val = BOLT_DEVICE_PERIPHERAL;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), val);
+
+  key = g_param_spec_get_name (props[PROP_TYPE]);
+  ok = bolt_proxy_get_property_enum (BOLT_PROXY (dev), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+BoltStatus
+bolt_device_get_status (BoltDevice *dev)
+{
+  const char *key;
+  gboolean ok;
+  gint val = BOLT_STATUS_UNKNOWN;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), val);
+
+  key = g_param_spec_get_name (props[PROP_STATUS]);
+  ok = bolt_proxy_get_property_enum (BOLT_PROXY (dev), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+const char *
+bolt_device_get_parent (BoltDevice *dev)
+{
+  const char *key;
+  const char *str;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
+  key = g_param_spec_get_name (props[PROP_PARENT]);
+  str = bolt_proxy_get_property_string (BOLT_PROXY (dev), key);
+
+  return str;
+}
+
+const char *
+bolt_device_get_syspath (BoltDevice *dev)
+{
+  const char *key;
+  const char *str;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
+  key = g_param_spec_get_name (props[PROP_SYSPATH]);
+  str = bolt_proxy_get_property_string (BOLT_PROXY (dev), key);
+
+  return str;
+}
+
+guint64
+bolt_device_get_conntime (BoltDevice *dev)
+{
+  const char *key;
+  guint64 val = 0;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), val);
+
+  key = g_param_spec_get_name (props[PROP_CONNTIME]);
+  ok = bolt_proxy_get_property_uint64 (BOLT_PROXY (dev), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+guint64
+bolt_device_get_authtime (BoltDevice *dev)
+{
+  const char *key;
+  guint64 val = 0;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), val);
+
+  key = g_param_spec_get_name (props[PROP_AUTHTIME]);
+  ok = bolt_proxy_get_property_uint64 (BOLT_PROXY (dev), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+gboolean
+bolt_device_is_stored (BoltDevice *dev)
+{
+  const char *key;
+  gboolean val = FALSE;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), val);
+
+  key = g_param_spec_get_name (props[PROP_STORED]);
+  ok = bolt_proxy_get_property_bool (BOLT_PROXY (dev), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+BoltPolicy
+bolt_device_get_policy (BoltDevice *dev)
+{
+  const char *key;
+  gboolean ok;
+  gint val = BOLT_POLICY_DEFAULT;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), val);
+
+  key = g_param_spec_get_name (props[PROP_POLICY]);
+  ok = bolt_proxy_get_property_enum (BOLT_PROXY (dev), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+BoltKeyState
+bolt_device_get_keystate (BoltDevice *dev)
+{
+  const char *key;
+  gboolean ok;
+  gint val = BOLT_KEY_MISSING;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), val);
+
+  key = g_param_spec_get_name (props[PROP_KEY]);
+  ok = bolt_proxy_get_property_enum (BOLT_PROXY (dev), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+guint64
+bolt_device_get_storetime (BoltDevice *dev)
+{
+  const char *key;
+  guint64 val = 0;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), val);
+
+  key = g_param_spec_get_name (props[PROP_STORETIME]);
+  ok = bolt_proxy_get_property_uint64 (BOLT_PROXY (dev), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+const char *
+bolt_device_get_label (BoltDevice *dev)
+{
+  const char *key;
+  const char *str;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
+  key = g_param_spec_get_name (props[PROP_LABEL]);
+  str = bolt_proxy_get_property_string (BOLT_PROXY (dev), key);
+
+  return str;
+}

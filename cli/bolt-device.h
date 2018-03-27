@@ -36,5 +36,33 @@ gboolean      bolt_device_authorize (BoltDevice   *dev,
                                      BoltAuthFlags flags,
                                      GError      **error);
 
+/* getter */
+const char *      bolt_device_get_uid (BoltDevice *dev);
+
+const char *      bolt_device_get_name (BoltDevice *dev);
+
+const char *      bolt_device_get_vendor (BoltDevice *dev);
+
+BoltDeviceType    bolt_device_get_device_type (BoltDevice *dev);
+
+BoltStatus        bolt_device_get_status (BoltDevice *dev);
+
+const char *      bolt_device_get_parent (BoltDevice *dev);
+
+const char *      bolt_device_get_syspath (BoltDevice *dev);
+
+guint64           bolt_device_get_conntime (BoltDevice *dev);
+
+guint64           bolt_device_get_authtime (BoltDevice *dev);
+
+gboolean          bolt_device_is_stored (BoltDevice *dev);
+
+BoltPolicy        bolt_device_get_policy (BoltDevice *dev);
+
+BoltKeyState      bolt_device_get_keystate (BoltDevice *dev);
+
+guint64           bolt_device_get_storetime (BoltDevice *dev);
+
+const char *      bolt_device_get_label (BoltDevice *dev);
 
 G_END_DECLS
