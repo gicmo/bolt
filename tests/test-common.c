@@ -441,8 +441,10 @@ test_str (TestRng *tt, gconstpointer user_data)
 static void
 test_str_erase (TestRng *tt, gconstpointer user_data)
 {
+  g_autofree char *d1 = NULL;
+  g_autofree char *d2 = NULL;
+  g_autofree char *n0 = NULL;
   char buf[256] = {0, };
-  char *d1, *d2, *n0 = NULL;
   size_t n;
 
   bolt_get_random_data (buf, sizeof (buf) - 1);
