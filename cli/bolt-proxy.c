@@ -323,6 +323,45 @@ bolt_proxy_get_property_enum (BoltProxy  *proxy,
 }
 
 gboolean
+bolt_proxy_get_property_flags (BoltProxy  *proxy,
+                               const char *name,
+                               guint      *value)
+{
+  g_autoptr(GVariant) var = NULL;
+  const char *str = NULL;
+  const char *bus_name = NULL;
+  GFlagsClass *flags_class;
+  GParamSpec *pspec;
+  guint v;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
+
+  pspec = g_object_class_find_property (G_OBJECT_GET_CLASS (proxy), name);
+
+  if (pspec == NULL || !G_IS_PARAM_SPEC_FLAGS (pspec))
+    return FALSE;
+
+  bus_name = g_param_spec_get_nick (pspec);
+  var = g_dbus_proxy_get_cached_property (G_DBUS_PROXY (proxy), bus_name);
+  if (var == NULL)
+    return FALSE;
+
+  str = g_variant_get_string (var, NULL);
+
+  if (str == NULL)
+    return FALSE;
+
+  flags_class = G_PARAM_SPEC_FLAGS (pspec)->flags_class;
+  ok = bolt_flags_class_from_string (flags_class, str, &v, NULL);
+
+  if (ok && value)
+    *value = v;
+
+  return ok;
+}
+
+gboolean
 bolt_proxy_get_property_uint32 (BoltProxy  *proxy,
                                 const char *name,
                                 guint      *value)

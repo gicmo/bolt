@@ -59,6 +59,10 @@ gboolean          bolt_proxy_get_property_enum (BoltProxy  *proxy,
                                                 const char *name,
                                                 gint       *value);
 
+gboolean          bolt_proxy_get_property_flags (BoltProxy  *proxy,
+                                                 const char *name,
+                                                 guint      *value);
+
 gboolean          bolt_proxy_get_property_uint32 (BoltProxy  *proxy,
                                                   const char *name,
                                                   guint      *value);
