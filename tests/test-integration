@@ -785,6 +785,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def setUp(self):
         self.testbed = UMockdev.Testbed.new()
+        self.assertTrue(UMockdev.in_mock_environment())
         self.dbpath = tempfile.mkdtemp()
 
         self.client = None
