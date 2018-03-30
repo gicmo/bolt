@@ -20,6 +20,7 @@
 
 #include "bolt-proxy.h"
 
+#include "bolt-enums.h"
 #include "bolt-error.h"
 #include "bolt-names.h"
 #include "bolt-str.h"
@@ -184,6 +185,22 @@ bolt_proxy_get_dbus_property (GObject    *proxy,
         g_value_set_enum (value, ev->value);
       else
         g_value_set_enum (value, enum_spec->default_value);
+    }
+  else if (g_variant_type_equal (vt, G_VARIANT_TYPE_STRING) &&
+           G_IS_PARAM_SPEC_FLAGS (spec))
+    {
+      GParamSpecFlags *flags_spec = G_PARAM_SPEC_FLAGS (spec);
+      GFlagsClass *flags_class = flags_spec->flags_class;
+      const char *str;
+      guint v;
+
+      str = g_variant_get_string (val, NULL);
+      handled = bolt_flags_class_from_string (flags_class, str, &v, NULL);
+
+      if (handled)
+        g_value_set_flags (value, v);
+      else
+        g_value_set_flags (value, flags_spec->default_value);
     }
   else
     {
