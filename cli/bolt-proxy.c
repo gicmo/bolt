@@ -368,6 +368,9 @@ bolt_proxy_get_property_string (BoltProxy  *proxy,
   if (var != NULL)
     val = g_variant_get_string (var, NULL);
 
+  if (val && *val == '\0')
+    val = NULL;
+
   return val;
 }
 
