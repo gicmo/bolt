@@ -115,7 +115,6 @@ test_enums (TestRng *tt, gconstpointer user_data)
       /* from string */
       val = bolt_enum_from_string (ett[i].enum_type, ett[i].name, &err);
       g_assert_no_error (err);
-      g_assert_nonnull (str);
       g_assert_cmpint (val, ==, ett[i].value);
     }
 
