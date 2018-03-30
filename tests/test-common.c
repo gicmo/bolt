@@ -27,6 +27,8 @@
 #include "bolt-rnd.h"
 #include "bolt-str.h"
 
+#include "test-enums.h"
+
 #include <glib.h>
 #include <gio/gio.h>
 #include <glib/gprintf.h>
@@ -41,6 +43,7 @@
 #include <unistd.h> /* unlinkat */
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (GFlagsClass, g_type_class_unref);
 
 static void
 cleanup_dir (DIR *d)
@@ -170,6 +173,110 @@ test_enums (TestRng *tt, gconstpointer user_data)
   g_assert_nonnull (err);
   g_assert_cmpint (val, ==, -1);
   g_clear_error (&err);
+}
+
+static void
+test_flags (TestRng *tt, gconstpointer user_data)
+{
+  g_autoptr(GFlagsClass) klass;
+  g_autoptr(GError) err = NULL;
+  char *str;
+  guint val;
+  guint ref;
+  gboolean ok;
+  struct EnumTest
+  {
+    GType       flags_type;
+    const char *name;
+    guint       value;
+
+  } ftt[] = {
+    {BOLT_TYPE_KITT_FLAGS, "disabled",    BOLT_KITT_DISABLED},
+    {BOLT_TYPE_KITT_FLAGS, "enabled",     BOLT_KITT_ENABLED},
+    {BOLT_TYPE_KITT_FLAGS, "sspm",        BOLT_KITT_SSPM},
+    {BOLT_TYPE_KITT_FLAGS, "turbo-boost", BOLT_KITT_TURBO_BOOST},
+    {BOLT_TYPE_KITT_FLAGS, "ski-mode",    BOLT_KITT_SKI_MODE},
+
+    {BOLT_TYPE_KITT_FLAGS,
+     "enabled | ski-mode",
+     BOLT_KITT_ENABLED | BOLT_KITT_SKI_MODE},
+
+    {BOLT_TYPE_KITT_FLAGS,
+     "sspm | turbo-boost | ski-mode",
+     BOLT_KITT_SSPM | BOLT_KITT_SKI_MODE | BOLT_KITT_TURBO_BOOST},
+
+  };
+
+  for (guint i = 0; i < G_N_ELEMENTS (ftt); i++)
+    {
+      g_autofree char *s = NULL;
+
+      /* to string */
+      s = bolt_flags_to_string (ftt[i].flags_type, ftt[i].value, &err);
+      g_assert_no_error (err);
+      g_assert_nonnull (s);
+      g_assert_cmpstr (s, ==, ftt[i].name);
+
+      /* from string */
+      ok = bolt_flags_from_string (ftt[i].flags_type, ftt[i].name, &val, &err);
+      g_assert_no_error (err);
+      g_assert_true (ok);
+      g_assert_cmpuint (val, ==, ftt[i].value);
+    }
+
+  /* handle NULL for flags class */
+  ok = bolt_flags_class_from_string (NULL, "fax-machine", &val, &err);
+  g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  str = bolt_flags_class_to_string (NULL, 0xFFFF, &err);
+  g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
+  g_assert_null (str);
+  g_clear_error (&err);
+
+  /* handle invalid values */
+  klass = g_type_class_ref (BOLT_TYPE_KITT_FLAGS);
+
+  ok = bolt_flags_class_from_string (klass, NULL, &val, &err);
+  g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  ok = bolt_flags_class_from_string (klass, "fax-machine", &val, &err);
+  g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  str = bolt_flags_class_to_string (klass, 0xFFFF, &err);
+  g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
+  g_assert_null (str);
+  g_clear_error (&err);
+
+  /* there and back again */
+  ref = BOLT_KITT_SSPM | BOLT_KITT_SKI_MODE | BOLT_KITT_TURBO_BOOST;
+  str = bolt_flags_class_to_string (klass, ref, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (str);
+
+  ok = bolt_flags_class_from_string (klass, str, &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_cmpuint (val, ==, ref);
+
+  g_clear_pointer (&str, g_free);
+
+  /* handle "" and 0 */
+  ok = bolt_flags_class_from_string (klass, "", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_cmpuint (val, ==, BOLT_KITT_DISABLED);
+
+  str = bolt_flags_class_to_string (klass, 0, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (str);
+  g_assert_cmpstr (str, ==, "disabled");
+  g_clear_pointer (&str, g_free);
 }
 
 typedef void (*rng_t) (void *buf,
@@ -488,6 +595,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_enums,
+              NULL);
+
+  g_test_add ("/common/flags",
+              TestRng,
+              NULL,
+              NULL,
+              test_flags,
               NULL);
 
   g_test_add ("/common/rng",

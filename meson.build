@@ -332,16 +332,16 @@ test_resources = gnome.compile_resources(
   source_dir: 'tests',
   c_name: 'bolt_test')
 
+test_enums = gnome.mkenums_simple(
+  'test-enum-types',
+  sources: ['tests/test-enums.h'])
+
 tests = [
-  ['test-common'],
+  ['test-common', [], test_enums],
   ['test-exported', [libdaemon], [test_resources]],
   ['test-logging', [libdaemon]],
   ['test-store', [libdaemon]]
 ]
-
-test_resources =  files(
-  'tests/tests.gresource.xml'
-)
 
 foreach t: tests
   test_name = t.get(0)
