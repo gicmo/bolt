@@ -462,7 +462,9 @@ monitor (BoltClient *client, int argc, char **argv)
   g_autoptr(GError) error = NULL;
   g_autoptr(GMainLoop) main_loop = NULL;
   g_autoptr(GPtrArray) devices = NULL;
+  g_autofree char *amstr = NULL;
   BoltSecurity security;
+  BoltAuthMode authmode;
   guint version = 0;
 
   optctx = g_option_context_new ("- Watch for changes");
@@ -472,9 +474,12 @@ monitor (BoltClient *client, int argc, char **argv)
 
   version = bolt_client_get_version (client);
   security = bolt_client_get_security (client);
+  authmode = bolt_client_get_authmode (client);
+  amstr = bolt_flags_to_string (BOLT_TYPE_AUTH_MODE, authmode, NULL);
 
   g_print ("Daemon Version: %d.%u\n", VERSION_MAJOR, version);
   g_print ("Security Level: %s\n", bolt_security_to_string (security));
+  g_print ("Auth Mode     : %s\n", amstr);
   g_print ("Ready\n");
 
   devices = bolt_client_list_devices (client, &error);
