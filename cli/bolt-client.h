@@ -68,5 +68,18 @@ gboolean        bolt_client_is_probing (BoltClient *client);
 
 BoltSecurity    bolt_client_get_security (BoltClient *client);
 
+BoltAuthMode    bolt_client_get_authmode (BoltClient *client);
+
+/* setter */
+
+void            bolt_client_set_authmode_async (BoltClient         *client,
+                                                BoltAuthMode        mode,
+                                                GCancellable       *cancellable,
+                                                GAsyncReadyCallback callback,
+                                                gpointer            user_data);
+
+gboolean         bolt_client_set_authmode_finish (BoltClient   *client,
+                                                  GAsyncResult *res,
+                                                  GError      **error);
 
 G_END_DECLS

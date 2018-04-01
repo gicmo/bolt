@@ -45,6 +45,7 @@ enum {
   PROP_VERSION,
   PROP_PROBING,
   PROP_SECURITY,
+  PROP_AUTHMODE,
 
   PROP_LAST
 };
@@ -121,6 +122,12 @@ bolt_client_class_init (BoltClientClass *klass)
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NAME);
 
+  props[PROP_AUTHMODE] =
+    g_param_spec_flags ("auth-mode", "AuthMode", NULL,
+                        BOLT_TYPE_AUTH_MODE,
+                        BOLT_AUTH_ENABLED,
+                        G_PARAM_READABLE |
+                        G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
@@ -572,4 +579,62 @@ bolt_client_get_security (BoltClient *client)
     g_warning ("failed to get enum property '%s'", key);
 
   return val;
+}
+
+BoltAuthMode
+bolt_client_get_authmode (BoltClient *client)
+{
+  const char *key;
+  gboolean ok;
+  guint val = BOLT_AUTH_DISABLED;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
+
+  key = g_param_spec_get_name (props[PROP_AUTHMODE]);
+  ok = bolt_proxy_get_property_flags (BOLT_PROXY (client), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+void
+bolt_client_set_authmode_async (BoltClient         *client,
+                                BoltAuthMode        mode,
+                                GCancellable       *cancellable,
+                                GAsyncReadyCallback callback,
+                                gpointer            user_data)
+{
+  g_autofree char *str = NULL;
+  GError *err = NULL;
+  GParamSpec *pspec;
+  GParamSpecFlags *flags_pspec;
+  GFlagsClass *flags_class;
+
+  pspec = props[PROP_AUTHMODE];
+  flags_pspec = G_PARAM_SPEC_FLAGS (pspec);
+  flags_class = flags_pspec->flags_class;
+  str = bolt_flags_class_to_string (flags_class, mode, &err);
+
+  if (str == NULL)
+    {
+      g_task_report_error (client, callback, user_data, NULL, err);
+      return;
+    }
+
+  bolt_proxy_set_property_async (BOLT_PROXY (client),
+                                 g_param_spec_get_nick (pspec),
+                                 g_variant_new ("s", str),
+                                 cancellable,
+                                 callback,
+                                 user_data);
+}
+
+gboolean
+bolt_client_set_authmode_finish (BoltClient   *client,
+                                 GAsyncResult *res,
+                                 GError      **error)
+{
+  return bolt_proxy_set_property_finish (res, error);
 }
