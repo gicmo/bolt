@@ -34,6 +34,7 @@ BoltDevice *  bolt_device_new_for_object_path (GDBusConnection *bus,
 
 gboolean      bolt_device_authorize (BoltDevice   *dev,
                                      BoltAuthFlags flags,
+                                     GCancellable *cancellable,
                                      GError      **error);
 
 /* getter */

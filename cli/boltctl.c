@@ -247,7 +247,7 @@ authorize (BoltClient *client, int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  ok = bolt_device_authorize (dev, flags, &error);
+  ok = bolt_device_authorize (dev, flags, NULL, &error);
   if (!ok)
     g_printerr ("Authorization error: %s\n", error->message);
 

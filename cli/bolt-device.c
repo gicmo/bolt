@@ -218,6 +218,7 @@ bolt_device_new_for_object_path (GDBusConnection *bus,
 gboolean
 bolt_device_authorize (BoltDevice   *dev,
                        BoltAuthFlags flags,
+                       GCancellable *cancel,
                        GError      **error)
 {
   g_autoptr(GError) err = NULL;
@@ -234,7 +235,7 @@ bolt_device_authorize (BoltDevice   *dev,
                           g_variant_new ("(s)", fstr),
                           G_DBUS_CALL_FLAGS_NONE,
                           -1,
-                          NULL,
+                          cancel,
                           &err);
 
   if (err != NULL)
