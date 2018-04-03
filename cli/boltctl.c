@@ -240,7 +240,7 @@ authorize (BoltClient *client, int argc, char **argv)
 
   uid = argv[1];
 
-  dev = bolt_client_get_device (client, uid, &error);
+  dev = bolt_client_get_device (client, uid, NULL, &error);
   if (dev == NULL)
     {
       g_printerr ("%s\n", error->message);
@@ -345,7 +345,7 @@ info (BoltClient *client, int argc, char **argv)
 
   uid = argv[1];
 
-  dev = bolt_client_get_device (client, uid, &error);
+  dev = bolt_client_get_device (client, uid, NULL, &error);
   if (dev == NULL)
     {
       g_printerr ("%s\n", error->message);

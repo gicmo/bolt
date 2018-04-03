@@ -362,9 +362,10 @@ bolt_client_list_devices (BoltClient   *client,
 }
 
 BoltDevice *
-bolt_client_get_device (BoltClient *client,
-                        const char *uid,
-                        GError    **error)
+bolt_client_get_device (BoltClient   *client,
+                        const char   *uid,
+                        GCancellable *cancel,
+                        GError      **error)
 {
   g_autoptr(GVariant) val = NULL;
   g_autoptr(GError) err = NULL;
@@ -379,7 +380,7 @@ bolt_client_get_device (BoltClient *client,
                                 g_variant_new ("(s)", uid),
                                 G_DBUS_CALL_FLAGS_NONE,
                                 -1,
-                                NULL,
+                                cancel,
                                 &err);
 
   if (val == NULL)
