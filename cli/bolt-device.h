@@ -30,6 +30,7 @@ G_DECLARE_FINAL_TYPE (BoltDevice, bolt_device, BOLT, DEVICE, BoltProxy);
 
 BoltDevice *  bolt_device_new_for_object_path (GDBusConnection *bus,
                                                const char      *path,
+                                               GCancellable    *cancellable,
                                                GError         **error);
 
 gboolean      bolt_device_authorize (BoltDevice   *dev,

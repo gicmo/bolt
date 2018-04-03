@@ -199,12 +199,13 @@ bolt_device_init (BoltDevice *mgr)
 BoltDevice *
 bolt_device_new_for_object_path (GDBusConnection *bus,
                                  const char      *path,
+                                 GCancellable    *cancel,
                                  GError         **error)
 {
   BoltDevice *dev;
 
   dev = g_initable_new (BOLT_TYPE_DEVICE,
-                        NULL, error,
+                        cancel, error,
                         "g-flags", G_DBUS_PROXY_FLAGS_NONE,
                         "g-connection", bus,
                         "g-name", BOLT_DBUS_NAME,

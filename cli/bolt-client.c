@@ -195,7 +195,7 @@ handle_dbus_device_added (GObject *self, GDBusProxy *bus_proxy, GVariant *params
   bus = g_dbus_proxy_get_connection (bus_proxy);
 
   g_variant_get_child (params, 0, "&o", &opath);
-  dev = bolt_device_new_for_object_path (bus, opath, &error);
+  dev = bolt_device_new_for_object_path (bus, opath, NULL, &error);
   if (!dev)
     {
       g_warning ("Could not construct device: %s", error->message);
@@ -350,7 +350,7 @@ bolt_client_list_devices (BoltClient   *client,
     {
       BoltDevice *dev;
 
-      dev = bolt_device_new_for_object_path (bus, d, error);
+      dev = bolt_device_new_for_object_path (bus, d, cancel, error);
       if (dev == NULL)
         return NULL;
 
@@ -398,7 +398,7 @@ bolt_client_get_device (BoltClient   *client,
   if (opath == NULL)
     return NULL;
 
-  dev = bolt_device_new_for_object_path (bus, opath, error);
+  dev = bolt_device_new_for_object_path (bus, opath, cancel, error);
   return dev;
 }
 
@@ -452,7 +452,7 @@ bolt_client_enroll_device (BoltClient   *client,
   if (opath == NULL)
     return NULL;
 
-  dev = bolt_device_new_for_object_path (bus, opath, error);
+  dev = bolt_device_new_for_object_path (bus, opath, NULL, error);
   return dev;
 }
 
