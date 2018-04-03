@@ -437,6 +437,73 @@ bolt_client_enroll_device (BoltClient   *client,
   return dev;
 }
 
+void
+bolt_client_enroll_device_async (BoltClient         *client,
+                                 const char         *uid,
+                                 BoltPolicy          policy,
+                                 BoltAuthFlags       flags,
+                                 GCancellable       *cancellable,
+                                 GAsyncReadyCallback callback,
+                                 gpointer            user_data)
+{
+  g_autofree char *fstr = NULL;
+  GError *err = NULL;
+  GVariant *params;
+  const char *pstr;
+
+  g_return_if_fail (BOLT_IS_CLIENT (client));
+  g_return_if_fail (uid != NULL);
+
+  pstr = bolt_enum_to_string (BOLT_TYPE_POLICY, policy, &err);
+  if (pstr == NULL)
+    {
+      g_task_report_error (client, callback, user_data, NULL, err);
+      return;
+    }
+
+  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, flags, &err);
+  if (fstr == NULL)
+    {
+      g_task_report_error (client, callback, user_data, NULL, err);
+      return;
+    }
+
+  params = g_variant_new ("(sss)", uid, pstr, fstr);
+  g_dbus_proxy_call (G_DBUS_PROXY (client),
+                     "EnrollDevice",
+                     params,
+                     G_DBUS_CALL_FLAGS_NONE,
+                     -1,
+                     cancellable,
+                     callback,
+                     user_data);
+}
+
+gboolean
+bolt_client_enroll_device_finish (BoltClient   *client,
+                                  GAsyncResult *res,
+                                  char        **path,
+                                  GError      **error)
+{
+  GVariant *val = NULL;
+
+  g_autoptr(GError) err = NULL;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
+
+  val = g_dbus_proxy_call_finish (G_DBUS_PROXY (client), res, &err);
+  if (val == NULL)
+    {
+      bolt_error_propagate_stripped (error, &err);
+      return FALSE;
+    }
+
+  if (path != NULL)
+    g_variant_get (val, "(o)", path);
+
+  return TRUE;
+}
+
 gboolean
 bolt_client_forget_device (BoltClient *client,
                            const char *uid,
