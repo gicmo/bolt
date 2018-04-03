@@ -38,6 +38,16 @@ gboolean      bolt_device_authorize (BoltDevice   *dev,
                                      GCancellable *cancellable,
                                      GError      **error);
 
+void          bolt_device_authorize_async (BoltDevice         *dev,
+                                           BoltAuthFlags       flags,
+                                           GCancellable       *cancellable,
+                                           GAsyncReadyCallback callback,
+                                           gpointer            user_data);
+
+gboolean      bolt_device_authorize_finish (BoltDevice   *dev,
+                                            GAsyncResult *res,
+                                            GError      **error);
+
 /* getter */
 const char *      bolt_device_get_uid (BoltDevice *dev);
 

@@ -245,6 +245,56 @@ bolt_device_authorize (BoltDevice   *dev,
   return TRUE;
 }
 
+void
+bolt_device_authorize_async (BoltDevice         *dev,
+                             BoltAuthFlags       flags,
+                             GCancellable       *cancellable,
+                             GAsyncReadyCallback callback,
+                             gpointer            user_data)
+{
+  GError *err = NULL;
+  g_autofree char *fstr = NULL;
+
+  g_return_if_fail (BOLT_IS_DEVICE (dev));
+
+  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, flags, &err);
+  if (fstr == NULL)
+    {
+      g_task_report_error (dev, callback, user_data, NULL, err);
+      return;
+    }
+
+  g_dbus_proxy_call (G_DBUS_PROXY (dev),
+                     "Authorize",
+                     g_variant_new ("(s)", fstr),
+                     G_DBUS_CALL_FLAGS_NONE,
+                     -1,
+                     cancellable,
+                     callback,
+                     user_data);
+}
+
+gboolean
+bolt_device_authorize_finish (BoltDevice   *dev,
+                              GAsyncResult *res,
+                              GError      **error)
+{
+  g_autoptr(GError) err = NULL;
+  GVariant *val;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+
+  val = g_dbus_proxy_call_finish (G_DBUS_PROXY (dev), res, &err);
+  if (val == NULL)
+    {
+      bolt_error_propagate_stripped (error, &err);
+      return FALSE;
+    }
+
+  g_object_unref (val);
+  return TRUE;
+}
+
 const char *
 bolt_device_get_uid (BoltDevice *dev)
 {
