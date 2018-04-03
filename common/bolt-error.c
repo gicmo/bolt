@@ -73,6 +73,12 @@ bolt_err_inval (const GError *error)
 }
 
 gboolean
+bolt_err_cancelled (const GError *error)
+{
+  return g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED);
+}
+
+gboolean
 bolt_error_propagate_stripped (GError **dest,
                                GError **source)
 {
