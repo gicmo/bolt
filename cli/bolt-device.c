@@ -240,13 +240,7 @@ bolt_device_authorize (BoltDevice   *dev,
                           &err);
 
   if (err != NULL)
-    {
-      if (g_dbus_error_is_remote_error (err))
-        g_dbus_error_strip_remote_error (err);
-
-      g_propagate_error (error, g_steal_pointer (&err));
-      return FALSE;
-    }
+    return bolt_error_propagate_stripped (error, &err);
 
   return TRUE;
 }

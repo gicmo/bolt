@@ -372,10 +372,7 @@ bolt_client_get_device (BoltClient   *client,
 
   if (val == NULL)
     {
-      if (g_dbus_error_is_remote_error (err))
-        g_dbus_error_strip_remote_error (err);
-
-      g_propagate_error (error, g_steal_pointer (&err));
+      bolt_error_propagate_stripped (error, &err);
       return NULL;
     }
 
@@ -426,10 +423,7 @@ bolt_client_enroll_device (BoltClient   *client,
 
   if (val == NULL)
     {
-      if (g_dbus_error_is_remote_error (err))
-        g_dbus_error_strip_remote_error (err);
-
-      g_propagate_error (error, g_steal_pointer (&err));
+      bolt_error_propagate_stripped (error, &err);
       return NULL;
     }
 
@@ -463,10 +457,7 @@ bolt_client_forget_device (BoltClient *client,
 
   if (err != NULL)
     {
-      if (g_dbus_error_is_remote_error (err))
-        g_dbus_error_strip_remote_error (err);
-
-      g_propagate_error (error, g_steal_pointer (&err));
+      bolt_error_propagate_stripped (error, &err);
       return FALSE;
     }
 
@@ -505,10 +496,7 @@ bolt_client_forget_device_finish (BoltClient   *client,
   val = g_dbus_proxy_call_finish (G_DBUS_PROXY (client), res, &err);
   if (err != NULL)
     {
-      if (g_dbus_error_is_remote_error (err))
-        g_dbus_error_strip_remote_error (err);
-
-      g_propagate_error (error, g_steal_pointer (&err));
+      bolt_error_propagate_stripped (error, &err);
       return FALSE;
     }
 
