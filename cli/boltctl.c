@@ -394,17 +394,26 @@ handle_device_changed (GObject    *gobject,
 
 static void
 handle_device_added (BoltClient *cli,
-                     BoltDevice *dev,
+                     const char *opath,
                      gpointer    user_data)
 {
-  const char *path;
+  g_autoptr(GError) err = NULL;
+  GDBusConnection *bus;
+  BoltDevice *dev;
   GPtrArray *devices = user_data;
 
-  path = bolt_proxy_get_object_path (BOLT_PROXY (dev));
+  g_print (" DeviceAdded: %s\n", opath);
 
-  g_print (" DeviceAdded: %s\n", path);
+  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (cli));
+  dev = bolt_device_new_for_object_path (bus, opath, NULL, &err);
 
-  g_ptr_array_add (devices, g_object_ref (dev));
+  if (err != NULL)
+    {
+      g_warning ("Could not create proxy object for %s", opath);
+      return;
+    }
+
+  g_ptr_array_add (devices, dev);
   g_signal_connect (dev, "notify",
                     G_CALLBACK (handle_device_changed),
                     NULL);

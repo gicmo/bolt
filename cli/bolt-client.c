@@ -142,7 +142,7 @@ bolt_client_class_init (BoltClientClass *klass)
                   NULL, NULL,
                   NULL,
                   G_TYPE_NONE,
-                  1, BOLT_TYPE_DEVICE);
+                  1, G_TYPE_STRING);
 
   signals[SIGNAL_DEVICE_REMOVED] =
     g_signal_new ("device-removed",
@@ -186,24 +186,11 @@ device_sort (gconstpointer ap,
 static void
 handle_dbus_device_added (GObject *self, GDBusProxy *bus_proxy, GVariant *params)
 {
-  g_autoptr(GError) error = NULL;
   BoltClient *cli = BOLT_CLIENT (self);
-  GDBusConnection *bus;
   const char *opath = NULL;
-  BoltDevice *dev;
-
-  bus = g_dbus_proxy_get_connection (bus_proxy);
 
   g_variant_get_child (params, 0, "&o", &opath);
-  dev = bolt_device_new_for_object_path (bus, opath, NULL, &error);
-  if (!dev)
-    {
-      g_warning ("Could not construct device: %s", error->message);
-      return;
-    }
-
-  g_signal_emit (cli, signals[SIGNAL_DEVICE_ADDED], 0, dev);
-  g_object_unref (dev);
+  g_signal_emit (cli, signals[SIGNAL_DEVICE_ADDED], 0, opath);
 }
 
 static void
