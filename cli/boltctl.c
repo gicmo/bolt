@@ -482,7 +482,7 @@ monitor (BoltClient *client, int argc, char **argv)
   g_print ("Auth Mode     : %s\n", amstr);
   g_print ("Ready\n");
 
-  devices = bolt_client_list_devices (client, &error);
+  devices = bolt_client_list_devices (client, NULL, &error);
 
   if (devices == NULL)
     {
@@ -536,7 +536,7 @@ list_devices (BoltClient *client, int argc, char **argv)
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
     return usage_error (error);
 
-  devices = bolt_client_list_devices (client, &error);
+  devices = bolt_client_list_devices (client, NULL, &error);
   if (devices == NULL)
     {
       g_printerr ("Failed to list devices: %s",

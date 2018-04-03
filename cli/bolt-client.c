@@ -319,8 +319,9 @@ bolt_client_new_finish (GAsyncResult *res,
 }
 
 GPtrArray *
-bolt_client_list_devices (BoltClient *client,
-                          GError    **error)
+bolt_client_list_devices (BoltClient   *client,
+                          GCancellable *cancel,
+                          GError      **error)
 {
   g_autoptr(GVariant) val = NULL;
   g_autoptr(GPtrArray) devices = NULL;
@@ -335,7 +336,7 @@ bolt_client_list_devices (BoltClient *client,
                                 NULL,
                                 G_DBUS_CALL_FLAGS_NONE,
                                 -1,
-                                NULL,
+                                cancel,
                                 error);
   if (val == NULL)
     return NULL;

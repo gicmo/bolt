@@ -37,8 +37,10 @@ void            bolt_client_new_async (GCancellable       *cancellable,
 BoltClient *    bolt_client_new_finish (GAsyncResult *res,
                                         GError      **error);
 
-GPtrArray *     bolt_client_list_devices (BoltClient *client,
-                                          GError    **error);
+GPtrArray *     bolt_client_list_devices (BoltClient   *client,
+                                          GCancellable *cancellable,
+                                          GError      **error);
+
 BoltDevice *    bolt_client_get_device (BoltClient *client,
                                         const char *uid,
                                         GError    **error);
