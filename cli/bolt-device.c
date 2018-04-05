@@ -522,3 +522,21 @@ bolt_device_get_label (BoltDevice *dev)
 
   return str;
 }
+
+char *
+bolt_device_get_display_name (BoltDevice *dev)
+{
+  const char *label;
+  const char *name;
+  const char *vendor;
+
+  label = bolt_device_get_label (dev);
+  if (label != NULL)
+    return g_strdup (label);
+
+  name = bolt_device_get_name (dev);
+  vendor = bolt_device_get_vendor (dev);
+
+  return g_strdup_printf ("%s %s", vendor, name);
+}
+

@@ -77,4 +77,7 @@ guint64           bolt_device_get_storetime (BoltDevice *dev);
 
 const char *      bolt_device_get_label (BoltDevice *dev);
 
+/* derived getter */
+char *            bolt_device_get_display_name (BoltDevice *dev);
+
 G_END_DECLS
