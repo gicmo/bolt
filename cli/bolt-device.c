@@ -540,3 +540,37 @@ bolt_device_get_display_name (BoltDevice *dev)
   return g_strdup_printf ("%s %s", vendor, name);
 }
 
+guint64
+bolt_device_get_timestamp (BoltDevice *dev)
+{
+  BoltStatus status;
+  guint64 timestamp;
+
+  status = bolt_device_get_status (dev);
+
+  switch (status)
+    {
+    case BOLT_STATUS_AUTHORIZING:
+    case BOLT_STATUS_AUTH_ERROR:
+    case BOLT_STATUS_CONNECTED:
+      timestamp = bolt_device_get_conntime (dev);
+      break;
+
+    case BOLT_STATUS_DISCONNECTED:
+      /* implicit: device is stored */
+      timestamp = bolt_device_get_storetime (dev);
+      break;
+
+    case BOLT_STATUS_AUTHORIZED:
+    case BOLT_STATUS_AUTHORIZED_DPONLY:
+    case BOLT_STATUS_AUTHORIZED_NEWKEY:
+    case BOLT_STATUS_AUTHORIZED_SECURE:
+      timestamp = bolt_device_get_authtime (dev);
+      break;
+
+    default:
+      timestamp = 0;
+    }
+
+  return timestamp;
+}
