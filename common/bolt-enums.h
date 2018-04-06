@@ -95,6 +95,7 @@ gboolean         bolt_status_validate (BoltStatus status);
 
 /**
  * BoltKeyState:
+ * @BOLT_KEY_UNKNOWN: unknown key state
  * @BOLT_KEY_MISSING: no key
  * @BOLT_KEY_HAVE: key exists
  * @BOLT_KEY_NEW: key is new
@@ -104,6 +105,7 @@ gboolean         bolt_status_validate (BoltStatus status);
 
 typedef enum {
 
+  BOLT_KEY_UNKNOWN = -1,
   BOLT_KEY_MISSING = 0,
   BOLT_KEY_HAVE = 1,
   BOLT_KEY_NEW = 2
@@ -138,6 +140,7 @@ gboolean         bolt_security_validate (BoltSecurity security);
 
 /**
  * BoltPolicy:
+ * @BOLT_POLICY_UNKNOWN: Unknown policy.
  * @BOLT_POLICY_DEFAULT: Default policy.
  * @BOLT_POLICY_MANUAL: Manual authorization of the device.
  * @BOLT_POLICY_AUTO: Connect the device automatically,
@@ -148,6 +151,7 @@ gboolean         bolt_security_validate (BoltSecurity security);
  */
 typedef enum {
 
+  BOLT_POLICY_UNKNOWN = -1,
   BOLT_POLICY_DEFAULT = 0,
   BOLT_POLICY_MANUAL = 1,
   BOLT_POLICY_AUTO = 2,
@@ -173,6 +177,7 @@ typedef enum { /*< flags >*/
 
 /**
  * BoltDeviceType:
+ * @BOLT_DEVICE_UNKNOWN_TYPE: Unknown device type
  * @BOLT_DEVICE_HOST: The device representing the host
  * @BOLT_DEVICE_PERIPHERAL: A generic thunderbolt peripheral
  *
@@ -180,7 +185,8 @@ typedef enum { /*< flags >*/
  */
 typedef enum {
 
-  BOLT_DEVICE_HOST,
+  BOLT_DEVICE_UNKNOWN_TYPE = -1,
+  BOLT_DEVICE_HOST = 0,
   BOLT_DEVICE_PERIPHERAL
 
 } BoltDeviceType;
