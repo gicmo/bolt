@@ -92,18 +92,34 @@ bolt_enum_from_string (GType       enum_type,
                        GError    **error)
 {
   g_autoptr(GEnumClass) klass = NULL;
+  const char *name;
   GEnumValue *ev;
 
   klass = g_type_class_ref (enum_type);
+
+  if (klass == NULL)
+    {
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "could not determine enum class");
+      return -1;
+    }
+
+  if (string == NULL)
+    {
+      name = g_type_name_from_class ((GTypeClass *) klass);
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "empty string passed for enum class for '%s'",
+                   name);
+      return -1;
+    }
 
   ev = g_enum_get_value_by_nick (klass, string);
 
   if (ev == NULL)
     {
-      const char *name = g_type_name (enum_type);
-
+      name = g_type_name (enum_type);
       g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "invalid str '%s' for enum '%s'", string, name);
+                   "invalid string '%s' for enum '%s'", string, name);
       return -1;
     }
 
