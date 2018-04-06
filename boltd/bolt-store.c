@@ -430,22 +430,24 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
   name = g_key_file_get_string (kf, DEVICE_GROUP, "name", NULL);
   vendor = g_key_file_get_string (kf, DEVICE_GROUP, "vendor", NULL);
   typestr = g_key_file_get_string (kf, DEVICE_GROUP, "type", NULL);
-  type = bolt_device_type_from_string (typestr);
   polstr = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
-  policy = bolt_policy_from_string (polstr);
   label = g_key_file_get_string (kf, USER_GROUP, "label", NULL);
 
-  if (!bolt_device_type_validate (type))
+  type = bolt_enum_from_string (BOLT_TYPE_DEVICE_TYPE, typestr, &err);
+  if (type == BOLT_DEVICE_UNKNOWN_TYPE)
     {
-      bolt_warn (LOG_TOPIC ("store"), LOG_DEV_UID (uid),
-                 "invalid device type: %s", typestr);
+      bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DEV_UID (uid),
+                     "invalid device type");
+      g_clear_error (&err);
       type = BOLT_DEVICE_PERIPHERAL;
     }
 
-  if (!bolt_policy_validate (policy))
+  policy = bolt_enum_from_string (BOLT_TYPE_POLICY, polstr, &err);
+  if (policy == BOLT_POLICY_UNKNOWN)
     {
-      bolt_warn (LOG_TOPIC ("store"), LOG_DEV_UID (uid),
-                 "invalid policy: %s", polstr);
+      bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DEV_UID (uid),
+                     "invalid policy");
+      g_clear_error (&err);
       policy = BOLT_POLICY_MANUAL;
     }
 
