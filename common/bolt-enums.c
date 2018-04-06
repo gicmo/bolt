@@ -262,6 +262,13 @@ bolt_status_is_authorized (BoltStatus status)
 }
 
 gboolean
+bolt_status_is_pending (BoltStatus status)
+{
+  return status == BOLT_STATUS_AUTH_ERROR ||
+         status == BOLT_STATUS_CONNECTED;
+}
+
+gboolean
 bolt_status_validate (BoltStatus status)
 {
   return bolt_enum_validate (BOLT_TYPE_STATUS, status, NULL);

@@ -90,6 +90,7 @@ typedef enum {
 const char *     bolt_status_to_string (BoltStatus status);
 gboolean         bolt_status_is_authorized (BoltStatus status);
 gboolean         bolt_status_is_connected (BoltStatus status);
+gboolean         bolt_status_is_pending (BoltStatus status);
 gboolean         bolt_status_validate (BoltStatus status);
 
 /**
