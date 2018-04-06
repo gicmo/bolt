@@ -192,22 +192,20 @@ bolt_flags_class_from_string (GFlagsClass *flags_class,
   const char *name;
   guint flags = 0;
 
+  if (flags_class == NULL)
+    {
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "could not determine flags class");
+
+      return FALSE;
+    }
+
   if (string == NULL)
     {
       name = g_type_name_from_class ((GTypeClass *) flags_class);
       g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "empty string passed for enum class for '%s'",
+                   "empty string passed for flags class for '%s'",
                    name);
-      return FALSE;
-    }
-
-  if (flags_class == NULL)
-    {
-      name = g_type_name_from_class ((GTypeClass *) flags_class);
-      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "could not determine enum class for '%s'",
-                   name);
-
       return FALSE;
     }
 
