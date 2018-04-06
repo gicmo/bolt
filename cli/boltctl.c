@@ -226,7 +226,7 @@ authorize (BoltClient *client, int argc, char **argv)
   g_autoptr(GOptionContext) optctx = NULL;
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(GError) error = NULL;
-  BoltAuthFlags flags = BOLT_AUTH_NONE;
+  BoltAuthCtrl flags = BOLT_AUTHCTRL_NONE;
   const char *uid;
   gboolean ok;
 
@@ -263,7 +263,7 @@ enroll (BoltClient *client, int argc, char **argv)
   g_autoptr(GError) error = NULL;
   const char *uid;
   BoltPolicy policy = BOLT_POLICY_DEFAULT;
-  BoltAuthFlags flags = BOLT_AUTH_NONE;
+  BoltAuthCtrl flags = BOLT_AUTHCTRL_NONE;
   const char *policy_arg = "default";
   GOptionEntry options[] = {
     { "policy", 0, 0, G_OPTION_ARG_STRING, &policy_arg, "Policy for the device; one of {auto, manual, *default}", "POLICY" },

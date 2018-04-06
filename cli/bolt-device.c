@@ -218,7 +218,7 @@ bolt_device_new_for_object_path (GDBusConnection *bus,
 
 gboolean
 bolt_device_authorize (BoltDevice   *dev,
-                       BoltAuthFlags flags,
+                       BoltAuthCtrl  flags,
                        GCancellable *cancel,
                        GError      **error)
 {
@@ -227,7 +227,7 @@ bolt_device_authorize (BoltDevice   *dev,
 
   g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
 
-  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, flags, error);
+  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_CTRL, flags, error);
   if (fstr == NULL)
     return FALSE;
 
@@ -247,7 +247,7 @@ bolt_device_authorize (BoltDevice   *dev,
 
 void
 bolt_device_authorize_async (BoltDevice         *dev,
-                             BoltAuthFlags       flags,
+                             BoltAuthCtrl        flags,
                              GCancellable       *cancellable,
                              GAsyncReadyCallback callback,
                              gpointer            user_data)
@@ -257,7 +257,7 @@ bolt_device_authorize_async (BoltDevice         *dev,
 
   g_return_if_fail (BOLT_IS_DEVICE (dev));
 
-  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, flags, &err);
+  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_CTRL, flags, &err);
   if (fstr == NULL)
     {
       g_task_report_error (dev, callback, user_data, NULL, err);

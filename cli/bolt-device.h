@@ -34,12 +34,12 @@ BoltDevice *  bolt_device_new_for_object_path (GDBusConnection *bus,
                                                GError         **error);
 
 gboolean      bolt_device_authorize (BoltDevice   *dev,
-                                     BoltAuthFlags flags,
+                                     BoltAuthCtrl  flags,
                                      GCancellable *cancellable,
                                      GError      **error);
 
 void          bolt_device_authorize_async (BoltDevice         *dev,
-                                           BoltAuthFlags       flags,
+                                           BoltAuthCtrl        flags,
                                            GCancellable       *cancellable,
                                            GAsyncReadyCallback callback,
                                            gpointer            user_data);

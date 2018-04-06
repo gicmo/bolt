@@ -164,16 +164,16 @@ const char *     bolt_policy_to_string (BoltPolicy policy);
 gboolean         bolt_policy_validate (BoltPolicy policy);
 
 /**
- * BoltAuthFlags:
- * @BOLT_AUTH_NONE: No flags set.
+ * BoltAuthCtrl:
+ * @BOLT_AUTHCTRL_NONE: No authorization flags.
  *
  * Control authorization.
  */
 typedef enum { /*< flags >*/
 
-  BOLT_AUTH_NONE = 0
+  BOLT_AUTHCTRL_NONE = 0
 
-} BoltAuthFlags;
+} BoltAuthCtrl;
 
 /**
  * BoltDeviceType:

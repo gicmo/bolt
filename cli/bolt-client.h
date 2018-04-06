@@ -46,16 +46,16 @@ BoltDevice *    bolt_client_get_device (BoltClient   *client,
                                         GCancellable *cancellable,
                                         GError      **error);
 
-BoltDevice *    bolt_client_enroll_device (BoltClient   *client,
-                                           const char   *uid,
-                                           BoltPolicy    policy,
-                                           BoltAuthFlags flags,
-                                           GError      **error);
+BoltDevice *    bolt_client_enroll_device (BoltClient  *client,
+                                           const char  *uid,
+                                           BoltPolicy   policy,
+                                           BoltAuthCtrl flags,
+                                           GError     **error);
 
 void            bolt_client_enroll_device_async (BoltClient         *client,
                                                  const char         *uid,
                                                  BoltPolicy          policy,
-                                                 BoltAuthFlags       flags,
+                                                 BoltAuthCtrl        flags,
                                                  GCancellable       *cancellable,
                                                  GAsyncReadyCallback callback,
                                                  gpointer            user_data);

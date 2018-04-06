@@ -387,11 +387,11 @@ bolt_client_get_device (BoltClient   *client,
 }
 
 BoltDevice *
-bolt_client_enroll_device (BoltClient   *client,
-                           const char   *uid,
-                           BoltPolicy    policy,
-                           BoltAuthFlags flags,
-                           GError      **error)
+bolt_client_enroll_device (BoltClient  *client,
+                           const char  *uid,
+                           BoltPolicy   policy,
+                           BoltAuthCtrl flags,
+                           GError     **error)
 {
   g_autoptr(GVariant) val = NULL;
   g_autoptr(GError) err = NULL;
@@ -408,7 +408,7 @@ bolt_client_enroll_device (BoltClient   *client,
   if (pstr == NULL)
     return NULL;
 
-  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, flags, error);
+  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_CTRL, flags, error);
   if (fstr == NULL)
     return NULL;
 
@@ -441,7 +441,7 @@ void
 bolt_client_enroll_device_async (BoltClient         *client,
                                  const char         *uid,
                                  BoltPolicy          policy,
-                                 BoltAuthFlags       flags,
+                                 BoltAuthCtrl        flags,
                                  GCancellable       *cancellable,
                                  GAsyncReadyCallback callback,
                                  gpointer            user_data)
@@ -461,7 +461,7 @@ bolt_client_enroll_device_async (BoltClient         *client,
       return;
     }
 
-  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, flags, &err);
+  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_CTRL, flags, &err);
   if (fstr == NULL)
     {
       g_task_report_error (client, callback, user_data, NULL, err);
