@@ -60,7 +60,7 @@ gboolean          bolt_flags_from_string (GType       flags_type,
                                           GError    **error);
 
 /**
- * BoltStatus
+ * BoltStatus:
  * @BOLT_STATUS_UNKNOWN: Device is in an unknown state (should normally not happen).
  * @BOLT_STATUS_DISCONNECTED: Device is not connected.
  * @BOLT_STATUS_CONNECTED: Device is connected, but not authorized.
@@ -198,6 +198,7 @@ gboolean         bolt_device_type_is_host (BoltDeviceType type);
 
 /**
  * BoltAuthMode:
+ * @BOLT_AUTH_DISABLED: Authorization is disabled
  * @BOLT_AUTH_ENABLED: Authorization is enabled.
  *
  * Control authorization.
