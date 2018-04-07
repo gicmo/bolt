@@ -27,6 +27,47 @@
 #include "bolt-log.h"
 
 #include <libudev.h>
+#include <sys/stat.h>
+
+gint64
+bolt_sysfs_device_get_time (struct udev_device *udev,
+                            BoltStatTime        st)
+{
+  const char *path;
+  struct stat sb;
+  gint64 ms = 0;
+  int r;
+
+  path = udev_device_get_syspath (udev);
+
+  if (path == NULL)
+    return 0;
+
+  r = lstat (path, &sb);
+
+  if (r == -1)
+    return 0;
+
+  switch (st)
+    {
+    case BOLT_ST_CTIME:
+      ms = (gint64) sb.st_ctim.tv_sec;
+      break;
+
+    case BOLT_ST_ATIME:
+      ms = (gint64) sb.st_atim.tv_sec;
+      break;
+
+    case BOLT_ST_MTIME:
+      ms = (gint64) sb.st_mtim.tv_sec;
+      break;
+    }
+
+  if (ms < 0)
+    ms = 0;
+
+  return ms;
+}
 
 gboolean
 bolt_sysfs_device_is_domain (struct udev_device *udev)

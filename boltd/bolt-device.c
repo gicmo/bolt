@@ -565,55 +565,6 @@ bolt_sysfs_get_parent_uid (struct udev_device *udev)
   return uid;
 }
 
-typedef enum BoltStatTime {
-  BOLT_ST_ATIME,
-  BOLT_ST_CTIME,
-  BOLT_ST_MTIME
-} BoltStatTime;
-
-static gint64
-bolt_sysfs_device_get_time (struct udev_device *udev,
-                            BoltStatTime        st)
-{
-  const char *path;
-  struct stat sb;
-  gint64 ms;
-  int r;
-
-  path = udev_device_get_syspath (udev);
-
-  if (path == NULL)
-    return 0;
-
-  r = lstat (path, &sb);
-
-  if (r == -1)
-    return 0;
-
-  switch (st)
-    {
-    case BOLT_ST_CTIME:
-      ms = (gint64) sb.st_ctim.tv_sec;
-      break;
-
-    case BOLT_ST_ATIME:
-      ms = (gint64) sb.st_atim.tv_sec;
-      break;
-
-    case BOLT_ST_MTIME:
-      ms = (gint64) sb.st_mtim.tv_sec;
-      break;
-
-    default:
-      bolt_warn_enum_unhandled (BoltStatTime, st);
-      return 0;
-    }
-
-  if (ms < 0)
-    ms = 0;
-
-  return ms;
-}
 
 static BoltStatus
 bolt_status_from_udev (struct udev_device *udev,
