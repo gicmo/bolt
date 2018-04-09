@@ -63,12 +63,13 @@ struct _BoltDevice
   BoltStatus     status;
 
   /* when device is attached */
-  char        *syspath;
-  BoltSecurity security;
-  char        *parent;
+  BoltAuthFlags aflags;
+  char         *syspath;
+  BoltSecurity  security;
+  char         *parent;
 
-  guint64      conntime;
-  guint64      authtime;
+  guint64       conntime;
+  guint64       authtime;
 
   /* when device is stored */
   BoltStore   *store;
@@ -93,6 +94,7 @@ enum {
   PROP_TYPE,
   PROP_STATUS,
 
+  PROP_AUTHFLAGS,
   PROP_PARENT,
   PROP_SYSFS,
   PROP_CONNTIME,
@@ -182,6 +184,10 @@ bolt_device_get_property (GObject    *object,
 
     case PROP_STATUS:
       g_value_set_enum (value, dev->status);
+      break;
+
+    case PROP_AUTHFLAGS:
+      g_value_set_flags (value, dev->aflags);
       break;
 
     case PROP_PARENT:
@@ -277,6 +283,10 @@ bolt_device_set_property (GObject      *object,
                        old);
         break;
       }
+
+    case PROP_AUTHFLAGS:
+      dev->aflags = g_value_get_flags (value);
+      break;
 
     case PROP_PARENT:
       g_clear_pointer (&dev->parent, g_free);
@@ -385,6 +395,14 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        BOLT_STATUS_DISCONNECTED,
                        G_PARAM_READWRITE |
                        G_PARAM_STATIC_STRINGS);
+
+  props[PROP_AUTHFLAGS] =
+    g_param_spec_flags ("authflags",
+                        "AuthFlags", NULL,
+                        BOLT_TYPE_AUTH_FLAGS,
+                        BOLT_AUTH_NONE,
+                        G_PARAM_READWRITE |
+                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_PARENT] =
     g_param_spec_string ("parent",

@@ -193,6 +193,17 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="AuthFlags" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+        Details of authorization information, including
+	if they device was securily authorized via key
+	verification ('secure') or does not support
+	this method ('nokey').
+	If no downstream PCIe tunnels are authorized
+	the 'nopcie' flag will be set.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <property name="Parent" type="s" access="read">
       <doc:doc><doc:description><doc:para>
         The unique id of the parent the device. The only

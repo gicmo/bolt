@@ -94,6 +94,24 @@ gboolean         bolt_status_is_pending (BoltStatus status);
 gboolean         bolt_status_validate (BoltStatus status);
 
 /**
+ * BoltAuthFlags:
+ * @BOLT_AUTH_NONE: No specific authorization.
+ * @BOLT_AUTH_NOPCIE: PCIe tunnels are *not* authorized.
+ * @BOLT_AUTH_SECURE: Device is securely authorized.
+ * @BOLT_AUTH_NOKEY: Device does *not* support key verification.
+ *
+ * More specific information about device authorization.
+ */
+typedef enum { /*< flags >*/
+
+  BOLT_AUTH_NONE   = 0,
+  BOLT_AUTH_NOPCIE = 1 << 0,
+  BOLT_AUTH_SECURE = 1 << 1,
+  BOLT_AUTH_NOKEY  = 1 << 2,
+
+} BoltAuthFlags;
+
+/**
  * BoltKeyState:
  * @BOLT_KEY_UNKNOWN: unknown key state
  * @BOLT_KEY_MISSING: no key
