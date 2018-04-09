@@ -508,83 +508,26 @@ read_sysattr_name (struct udev_device *udev, const char *attr, GError **error)
   return v;
 }
 
-static gint
-read_sysfs_attr_int (struct udev_device *device, const char *attr)
-{
-  const char *str;
-  char *end;
-  gint64 val;
-
-  str = udev_device_get_sysattr_value (device, attr);
-
-  if (str == NULL)
-    return 0;
-
-  val = g_ascii_strtoll (str, &end, 0);
-
-  if (str == end)
-    return 0;
-
-  if (val > G_MAXINT || val < G_MININT)
-    {
-      bolt_warn ("value read from sysfs outside of gint's range.");
-      val = 0;
-    }
-
-  return (gint) val;
-}
-
-static gboolean
-string_nonzero (const char *str)
-{
-  return str != NULL && str[0] != '\0';
-}
-
-static struct udev_device *
-bolt_sysfs_get_parent (struct udev_device *udev,
-                       GError            **error)
-{
-  struct udev_device * parent = udev_device_get_parent (udev);
-
-  if (parent == NULL)
-    g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                 "could not get parent udev device");
-
-  return parent;
-}
-
-static const char *
-bolt_sysfs_get_parent_uid (struct udev_device *udev)
-{
-  struct udev_device *parent;
-  const char *uid = NULL;
-
-  parent = udev_device_get_parent (udev);
-  if (parent)
-    uid = udev_device_get_sysattr_value (parent, "unique_id");
-  return uid;
-}
-
-
 static BoltStatus
-bolt_status_from_udev (struct udev_device *udev,
-                       BoltSecurity        security)
+bolt_status_from_info (BoltDevInfo *info)
 {
   gint authorized;
-  const char *key;
   gboolean have_key;
 
-  authorized = read_sysfs_attr_int (udev, "authorized");
+  authorized = info->authorized;
+  have_key = info->keysize > 0;
 
-  if (authorized == 2)
-    return BOLT_STATUS_AUTHORIZED_SECURE;
-
-  key = udev_device_get_sysattr_value (udev, "key");
-  have_key = string_nonzero (key);
-
-  if (authorized == 1)
+  if (authorized < 0)
     {
-      if (security == BOLT_SECURITY_DPONLY)
+      return BOLT_STATUS_UNKNOWN;
+    }
+  else if (authorized == 2)
+    {
+      return BOLT_STATUS_AUTHORIZED_SECURE;
+    }
+  else if (authorized == 1)
+    {
+      if (info->security == BOLT_SECURITY_DPONLY)
         return BOLT_STATUS_AUTHORIZED_DPONLY;
       else if (have_key)
         return BOLT_STATUS_AUTHORIZED_NEWKEY;
@@ -900,16 +843,14 @@ BoltDevice *
 bolt_device_new_for_udev (struct udev_device *udev,
                           GError            **error)
 {
-  struct udev_device *parent_dev;
+  BoltDevInfo info;
   const char *uid;
   const char *name;
   const char *vendor;
-  const char *syspath;
-  const char *parent;
-  BoltSecurity security;
   BoltStatus status;
   BoltDeviceType type;
   BoltDevice *dev;
+  gboolean ok;
   guint64 ct, at;
 
   g_return_val_if_fail (udev != NULL, NULL);
@@ -921,9 +862,6 @@ bolt_device_new_for_udev (struct udev_device *udev,
                    "could not get unique_id for udev");
       return NULL;
     }
-
-  syspath = udev_device_get_syspath (udev);
-  g_return_val_if_fail (syspath != NULL, NULL);
 
   name = read_sysattr_name (udev, "device", error);
   if (name == NULL)
@@ -937,26 +875,18 @@ bolt_device_new_for_udev (struct udev_device *udev,
   if (name == NULL)
     return NULL;
 
-  parent_dev = bolt_sysfs_get_parent (udev, error);
-  if (parent_dev == NULL)
+  ok = bolt_sysfs_info_for_device (udev, TRUE, &info, error);
+  if (!ok)
     return NULL;
 
-  if (bolt_sysfs_device_is_domain (parent_dev))
-    {
-      parent = NULL;
-      type = BOLT_DEVICE_HOST;
-    }
+  if (info.parent == NULL)
+    type = BOLT_DEVICE_HOST;
   else
-    {
-      parent = udev_device_get_sysattr_value (parent_dev, "unique_id");
-      type = BOLT_DEVICE_PERIPHERAL;
-    }
+    type = BOLT_DEVICE_PERIPHERAL;
 
-  ct = (guint64) bolt_sysfs_device_get_time (udev, BOLT_ST_CTIME);
+  ct = (guint64) info.ctim;
 
-  security = bolt_sysfs_security_for_device (udev, NULL);
-  status = bolt_status_from_udev (udev, security);
-  at = bolt_status_is_authorized (status) ? ct : 0;
+  status = bolt_status_from_info (&info);
 
   dev = g_object_new (BOLT_TYPE_DEVICE,
                       "uid", uid,
@@ -964,13 +894,12 @@ bolt_device_new_for_udev (struct udev_device *udev,
                       "vendor", vendor,
                       "type", type,
                       "status", status,
-                      "sysfs-path", syspath,
-                      "parent", parent,
+                      "sysfs-path", info.syspath,
+                      "parent", info.parent,
                       "conntime", ct,
                       "authtime", at,
-                      "security", security,
+                      "security", info.security,
                       NULL);
-
 
   return dev;
 }
@@ -1006,25 +935,27 @@ BoltStatus
 bolt_device_connected (BoltDevice         *dev,
                        struct udev_device *udev)
 {
-  const char *syspath;
-  const char *parent;
-  BoltSecurity security;
+  g_autoptr(GError) err = NULL;
+  BoltDevInfo info;
   BoltStatus status;
+  gboolean ok;
   guint64 ct, at;
 
-  syspath = udev_device_get_syspath (udev);
-  security = bolt_sysfs_security_for_device (udev, NULL);
-  status = bolt_status_from_udev (udev, security);
-  parent = bolt_sysfs_get_parent_uid (udev);
+  ok = bolt_sysfs_info_for_device (udev, TRUE, &info, &err);
+  if (!ok)
+    bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("udev"),
+                   "failed to get device info");
 
-  ct = (guint64) bolt_sysfs_device_get_time (udev, BOLT_ST_CTIME);
+  status = bolt_status_from_info (&info);
+  aflags = bolt_auth_flags_from_info (&info, NULL);
+
+  ct = (guint64) info.ctim;
   at = bolt_status_is_authorized (status) ? ct : 0;
 
-
   g_object_set (G_OBJECT (dev),
-                "parent", parent,
-                "sysfs-path", syspath,
-                "security", security,
+                "parent", info.parent,
+                "sysfs-path", info.syspath,
+                "security", info.security,
                 "status", status,
                 "conntime", ct,
                 "authtime", at,
@@ -1067,7 +998,31 @@ BoltStatus
 bolt_device_update_from_udev (BoltDevice         *dev,
                               struct udev_device *udev)
 {
-  BoltStatus status = bolt_status_from_udev (udev, dev->security);
+  g_autoptr(GError) err = NULL;
+  BoltDevInfo info;
+  BoltStatus status;
+  gboolean ok;
+
+  /* if we are currently authorizing, let's not update
+   * the status, because we are most likely causing that
+   * udev update and we cannot determine AUTHORIZING from
+   * outside;
+   * The status will be set by authorize_thread_done()
+   */
+  if (dev->status == BOLT_STATUS_AUTHORIZING)
+    return dev->status;
+
+  ok = bolt_sysfs_info_for_device (udev, FALSE, &info, &err);
+
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("udev"),
+                     "failed to get device info");
+      return dev->status;
+    }
+
+  info.security = dev->security;
+  status = bolt_status_from_info (&info);
 
   if (status == dev->status)
     return status;
