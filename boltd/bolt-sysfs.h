@@ -45,4 +45,25 @@ struct udev_device * bolt_sysfs_domain_for_device (struct udev_device *udev);
 BoltSecurity         bolt_sysfs_security_for_device (struct udev_device *udev,
                                                      GError            **error);
 
+typedef struct _BoltDevInfo
+{
+
+  /* always included  */
+  gint   authorized;
+  gssize keysize;
+
+  /* if 'full' is true the rest is valid */
+  gboolean     full;
+  gint64       ctim;
+  const char  *syspath;
+  const char  *parent;      /* the uid */
+  BoltSecurity security;
+
+} BoltDevInfo;
+
+gboolean             bolt_sysfs_info_for_device (struct udev_device *udev,
+                                                 gboolean            full,
+                                                 BoltDevInfo        *info,
+                                                 GError            **error);
+
 G_END_DECLS

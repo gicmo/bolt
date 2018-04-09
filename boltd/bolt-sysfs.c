@@ -26,6 +26,7 @@
 #include "bolt-str.h"
 #include "bolt-log.h"
 
+#include <errno.h>
 #include <libudev.h>
 #include <sys/stat.h>
 
@@ -129,4 +130,147 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
     }
 
   return s;
+}
+
+static gboolean
+sysfs_parse_str_as_int (const char *str,
+                        gint       *ret)
+{
+  char *end;
+  gint64 val;
+
+  g_return_val_if_fail (str != NULL, -1);
+
+  errno = 0;
+  val = g_ascii_strtoll (str, &end, 0);
+
+  /* conversion errors */
+  if (val == 0 && errno != 0)
+    return FALSE;
+
+  /* check over/underflow */
+  if ((val == G_MAXINT64 || val == G_MININT64) &&
+      errno == ERANGE)
+    return FALSE;
+
+  if (str == end)
+    {
+      errno = -EINVAL;
+      return FALSE;
+    }
+
+  if (val > G_MAXINT || val < G_MININT)
+    {
+      errno = -ERANGE;
+      return FALSE;
+    }
+
+  if (ret)
+    *ret = (gint) val;
+
+  return TRUE;
+}
+
+static gint
+sysfs_get_sysattr_value_as_int (struct udev_device *udev,
+                                const char         *attr)
+{
+  const char *str;
+  gboolean ok;
+  gint val;
+
+  g_return_val_if_fail (udev != NULL, FALSE);
+
+  str = udev_device_get_sysattr_value (udev, attr);
+  if (str == NULL)
+    return -errno;
+
+  ok = sysfs_parse_str_as_int (str, &val);
+
+  if (!ok)
+    return -errno;
+
+  return val;
+}
+
+static gssize
+sysfs_get_sysattr_size (struct udev_device *udev,
+                        const char         *attr)
+{
+  const char *str;
+
+  g_return_val_if_fail (udev != NULL, FALSE);
+
+  str = udev_device_get_sysattr_value (udev, attr);
+  if (str == NULL)
+    return -errno;
+
+  return strlen (str);
+}
+
+gboolean
+bolt_sysfs_info_for_device (struct udev_device *udev,
+                            gboolean            full,
+                            BoltDevInfo        *info,
+                            GError            **error)
+{
+  struct udev_device *parent;
+  struct udev_device *domain;
+  const char *str;
+  int auth;
+
+  g_return_val_if_fail (udev != NULL, FALSE);
+  g_return_val_if_fail (info != NULL, FALSE);
+
+  info->keysize = -1;
+  info->ctim = -1;
+  info->full = FALSE;
+  info->parent = NULL;
+  info->security = BOLT_SECURITY_UNKNOWN;
+
+  auth = sysfs_get_sysattr_value_as_int (udev, "authorized");
+  info->authorized = auth;
+
+  if (auth < 0)
+    {
+      int code = g_io_error_from_errno (errno);
+      g_set_error (error, G_IO_ERROR, code,
+                   "could not read 'authorized': %s",
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  info->keysize = sysfs_get_sysattr_size (udev, "key");
+
+  if (full == FALSE)
+    return TRUE;
+
+  info->full = TRUE;
+  info->ctim = bolt_sysfs_device_get_time (udev, BOLT_ST_CTIME);
+  info->syspath = udev_device_get_syspath (udev);
+
+  parent = udev_device_get_parent (udev);
+
+  if (bolt_sysfs_device_is_domain (parent))
+    domain = g_steal_pointer (&parent);
+  else
+    domain = bolt_sysfs_domain_for_device (parent);
+
+  if (domain == NULL)
+    {
+      info->security = BOLT_SECURITY_UNKNOWN;
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                           "could not determine domain for device");
+      return FALSE;
+    }
+
+  if (parent != NULL)
+    info->parent = udev_device_get_sysattr_value (parent, "unique_id");
+
+  str = udev_device_get_sysattr_value (domain, "security");
+  if (str == NULL)
+    return TRUE;
+
+  info->security = bolt_enum_from_string (BOLT_TYPE_SECURITY, str, error);
+  return info->security != BOLT_SECURITY_UNKNOWN;
 }
