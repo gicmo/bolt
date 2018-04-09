@@ -184,6 +184,7 @@ test_flags (TestRng *tt, gconstpointer user_data)
   guint val;
   guint ref;
   gboolean ok;
+  gboolean chg;
   struct EnumTest
   {
     GType       flags_type;
@@ -277,6 +278,51 @@ test_flags (TestRng *tt, gconstpointer user_data)
   g_assert_nonnull (str);
   g_assert_cmpstr (str, ==, "disabled");
   g_clear_pointer (&str, g_free);
+
+  /* test flags updating */
+  val = 0;
+  chg = bolt_flags_update (0, &val, 0);
+  g_assert_false (chg);
+
+  /* no updates */
+  val = 0;
+  ref = BOLT_KITT_SSPM | BOLT_KITT_SKI_MODE | BOLT_KITT_TURBO_BOOST;
+  chg = bolt_flags_update (ref, &val, 0);
+  g_assert_false (chg);
+
+  val = BOLT_KITT_SSPM | BOLT_KITT_SKI_MODE | BOLT_KITT_TURBO_BOOST;
+  chg = bolt_flags_update (ref, &val, 0);
+  g_assert_false (chg);
+
+  chg = bolt_flags_update (ref, &val, val);
+  g_assert_false (chg);
+
+  /* finally, some updates */
+  val = 0;
+  ref = BOLT_KITT_SSPM | BOLT_KITT_SKI_MODE | BOLT_KITT_TURBO_BOOST;
+
+  chg = bolt_flags_update (ref, &val, BOLT_KITT_SSPM);
+  g_assert_true (chg);
+  g_assert_cmpuint (val, ==, BOLT_KITT_SSPM);
+
+  val = 0;
+  chg = bolt_flags_update (ref, &val, BOLT_KITT_TURBO_BOOST);
+  g_assert_true (chg);
+  g_assert_cmpuint (val, ==, BOLT_KITT_TURBO_BOOST);
+
+  val = BOLT_KITT_SSPM;
+  ref = BOLT_KITT_TURBO_BOOST;
+  chg = bolt_flags_update (ref, &val, BOLT_KITT_TURBO_BOOST);
+  g_assert_true (chg);
+
+  ref = BOLT_KITT_TURBO_BOOST | BOLT_KITT_SSPM;
+  g_assert_cmpuint (val, ==, ref);
+
+  val = BOLT_KITT_TURBO_BOOST | BOLT_KITT_SSPM;
+  ref = 0;
+  chg = bolt_flags_update (ref, &val, BOLT_KITT_TURBO_BOOST);
+  g_assert_cmpuint (val, ==, BOLT_KITT_SSPM);
+  g_assert_true (chg);
 }
 
 typedef void (*rng_t) (void *buf,
