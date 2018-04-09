@@ -560,6 +560,37 @@ bolt_status_from_info (BoltDevInfo *info)
   return BOLT_STATUS_CONNECTED;
 }
 
+static BoltAuthFlags
+bolt_auth_flags_from_info (BoltDevInfo   *info,
+                           BoltAuthFlags *mask)
+{
+  guint val = 0;
+  guint msk = 0;
+
+  g_return_val_if_fail (info != NULL, FALSE);
+
+  msk |= BOLT_AUTH_SECURE;
+  if (info->authorized == 2)
+    val |= BOLT_AUTH_SECURE;
+
+  if (info->security == BOLT_SECURITY_SECURE)
+    {
+      msk |= BOLT_AUTH_NOKEY;
+
+      if (info->keysize < 0)
+        val |= BOLT_AUTH_NOKEY;
+    }
+
+  msk |= BOLT_AUTH_NOPCIE;
+  if (!bolt_security_allows_pcie (info->security))
+    val |= BOLT_AUTH_NOPCIE;
+
+  if (mask)
+    *mask = msk;
+
+  return val;
+}
+
 static const char *
 cleanup_name (const char *name,
               const char *vendor,
@@ -686,6 +717,9 @@ authorize_thread_done (GObject      *object,
   BoltStatus status;
   AuthData *auth_data;
   BoltAuth *auth;
+  guint aflags;
+  guint mask;
+  gboolean chg;
   gboolean ok;
   guint64 now;
 
@@ -699,10 +733,25 @@ authorize_thread_done (GObject      *object,
 
   now = bolt_now_in_seconds ();
   status = bolt_auth_to_status (auth);
+  aflags = bolt_auth_to_flags (auth, &mask);
+
+  bolt_debug (LOG_DEV (dev), LOG_TOPIC ("authorize"),
+              "finished: %s (new flags: %u)",
+              bolt_status_to_string (status),
+              aflags);
+
+  g_object_freeze_notify (object);
+
   g_object_set (dev,
                 "status", status,
                 "authtime", now,
                 NULL);
+
+  chg = bolt_flags_update (aflags, &dev->aflags, mask);
+  if (chg)
+    g_object_notify_by_pspec (object, props[PROP_AUTHFLAGS]);
+
+  g_object_thaw_notify (object);
 
   if (auth_data->callback)
     auth_data->callback (G_OBJECT (dev),
@@ -866,6 +915,7 @@ bolt_device_new_for_udev (struct udev_device *udev,
   const char *name;
   const char *vendor;
   BoltStatus status;
+  BoltAuthFlags aflags;
   BoltDeviceType type;
   BoltDevice *dev;
   gboolean ok;
@@ -905,6 +955,8 @@ bolt_device_new_for_udev (struct udev_device *udev,
   ct = (guint64) info.ctim;
 
   status = bolt_status_from_info (&info);
+  aflags = bolt_auth_flags_from_info (&info, NULL);
+  at = bolt_status_is_authorized (status) ? ct : 0;
 
   dev = g_object_new (BOLT_TYPE_DEVICE,
                       "uid", uid,
@@ -912,6 +964,7 @@ bolt_device_new_for_udev (struct udev_device *udev,
                       "vendor", vendor,
                       "type", type,
                       "status", status,
+                      "authflags", aflags,
                       "sysfs-path", info.syspath,
                       "parent", info.parent,
                       "conntime", ct,
@@ -954,6 +1007,7 @@ bolt_device_connected (BoltDevice         *dev,
                        struct udev_device *udev)
 {
   g_autoptr(GError) err = NULL;
+  BoltAuthFlags aflags;
   BoltDevInfo info;
   BoltStatus status;
   gboolean ok;
@@ -975,6 +1029,7 @@ bolt_device_connected (BoltDevice         *dev,
                 "sysfs-path", info.syspath,
                 "security", info.security,
                 "status", status,
+                "authflags", aflags,
                 "conntime", ct,
                 "authtime", at,
                 NULL);
@@ -1017,6 +1072,7 @@ bolt_device_update_from_udev (BoltDevice         *dev,
                               struct udev_device *udev)
 {
   g_autoptr(GError) err = NULL;
+  BoltAuthFlags aflags;
   BoltDevInfo info;
   BoltStatus status;
   gboolean ok;
@@ -1045,8 +1101,11 @@ bolt_device_update_from_udev (BoltDevice         *dev,
   if (status == dev->status)
     return status;
 
+  aflags = bolt_auth_flags_from_info (&info, NULL);
+
   g_object_set (G_OBJECT (dev),
                 "status", status,
+                "authflags", aflags,
                 NULL);
 
   if (bolt_status_is_authorized (status) &&
