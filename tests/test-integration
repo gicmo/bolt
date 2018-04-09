@@ -30,6 +30,7 @@ import tempfile
 import time
 
 from collections import namedtuple
+from functools import reduce
 from itertools import chain
 
 try:
@@ -338,6 +339,10 @@ class BoltDevice(ProxyWrapper):
     KEY_HAVE = 1
     KEY_NEW = 2
 
+    NOPCIE = 1 << 0
+    SECURE = 1 << 1
+    NOKEY  = 1 << 2
+
     def __init__(self, bus, path):
         super(BoltDevice, self).__init__(bus,
                                          DBUS_IFACE_DEVICE,
@@ -368,6 +373,18 @@ class BoltDevice(ProxyWrapper):
                    'authorized-newkey': self.AUTHORIZED_NEWKEY}
 
         return mapping.get(res, self.UNKNOWN)
+
+    @property
+    def authflags(self):
+        res = getattr(self, 'AuthFlags')
+        mapping = {'none': 0,
+                   'nopcie': self.NOPCIE,
+                   'secure': self.SECURE,
+                   'nokey': self.NOKEY}
+
+        print(res, file=sys.stderr)
+        keys = [x.strip() for x in res.split('|')]
+        return reduce (lambda r, x: r | mapping.get(x, 0), keys, 0)
 
     @property
     def key(self):
@@ -582,6 +599,23 @@ class TbDevice(Device):
             return BoltDevice.AUTHORIZED_SECURE
 
     @property
+    def bolt_authflags(self):
+        flags = 0
+        if self.syspath is None:
+            return 0
+
+        if self.authorized == 2:
+            flags |= BoltDevice.SECURE
+
+        if self.domain.security == TbDomain.SECURITY_SECURE:
+            if self.key is None:
+                flags |= BoltDevice.NOKEY
+        elif self.domain.security in [TbDomain.SECURITY_DPONLY]:
+            flags |= BoltDevice.NOPCIE
+
+        return flags
+
+    @property
     def domain(self):
         return self.parent.domain
 
@@ -625,6 +659,7 @@ class TbDomain(Device):
     SECURITY_NONE = 'none'
     SECURITY_USER = 'user'
     SECURITY_SECURE = 'secure'
+    SECURITY_DPONLY = 'dponly'
 
     def __init__(self, security=SECURITY_SECURE, index=0, host=None):
         assert host
@@ -920,19 +955,24 @@ class BoltTest(dbusmock.DBusTestCase):
                 self.assertEqual(local.parent.unique_id, remote.parent)
 
         self.assertEqual(local.bolt_status, remote.status)
+        self.assertEqual(local.bolt_authflags, remote.authflags)
         return True
 
-    def add_device(self, parent, devid, name, vendor, domain=0, authorized=1):
+    def add_device(self, parent, devid, name, vendor, domain=0, authorized=1, key=''):
         uid = str(uuid.uuid4())
+        props = ['device_name', name,
+                 'device', '0x23',
+                 'vendor_name', vendor,
+                 'vendor', '0x23',
+                 'authorized', '%d' % authorized,
+                 'unique_id', uid]
+
+        if key is not None:
+            props += ['key', key]
+
         d = self.testbed.add_device('thunderbolt',
                                     "%d-%d" % (domain, devid), parent,
-                                    ['device_name', name,
-                                     'device', '0x23',
-                                     'vendor_name', vendor,
-                                     'vendor', '0x23',
-                                     'authorized', '%d' % authorized,
-                                     'key', '',
-                                     'unique_id', uid],
+                                    props,
                                     ['DEVTYPE', 'thunderbolt_device'])
         return d, uid
 
@@ -1055,6 +1095,59 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertIsNotNone(remote)
             self.assertDeviceEqual(d, remote)
 
+        self.daemon_stop()
+
+    def test_device_authflags(self):
+        domain = 0
+        security = 'secure'
+        key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
+
+        dc = self.testbed.add_device('thunderbolt', 'domain%d' % domain, None,
+                                     ['security', security],
+                                     ['DEVTYPE', 'thunderbolt_domain'])
+
+        host = self.testbed.add_device('thunderbolt', "%d-0" % domain, dc,
+                                       ['device_name', 'Host',
+                                        'device', '0x23',
+                                        'vendor_name', 'GNOME.org',
+                                        'vendor', '0x23',
+                                        'authorized', '1',
+                                        'unique_id', str(uuid.uuid4())],
+                                       ['DEVTYPE', 'thunderbolt_device'])
+        print(host)
+
+        d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=2, key=key)
+        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=1, key=None)
+
+        self.daemon_start()
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), 3)
+
+        device = self.find_device_by_uid(devices, d1_uid)
+        flags = BoltDevice.SECURE
+        self.assertEqual(device.authflags, flags)
+
+        device = self.find_device_by_uid(devices, d2_uid)
+        flags = BoltDevice.NOKEY
+        self.assertEqual(device.authflags, flags)
+
+        self.daemon_stop()
+        self.testbed.set_attribute(dc, 'security', 'dponly')
+        self.testbed.remove_device(d1)
+        self.testbed.remove_device(d2)
+
+        d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=1, key=None)
+        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=1, key=None)
+
+        self.daemon_start()
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), 3)
+
+        flags = BoltDevice.NOPCIE
+        device = self.find_device_by_uid(devices, d1_uid)
+        self.assertEqual(device.authflags, flags)
+        device = self.find_device_by_uid(devices, d2_uid)
+        self.assertEqual(device.authflags, flags)
         self.daemon_stop()
 
     def test_device_authorize(self):
