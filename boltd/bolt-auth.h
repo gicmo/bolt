@@ -54,5 +54,8 @@ gpointer         bolt_auth_get_origin (BoltAuth *auth);
 
 BoltStatus       bolt_auth_to_status (BoltAuth *auth);
 
+BoltAuthFlags    bolt_auth_to_flags (BoltAuth      *auth,
+                                     BoltAuthFlags *mask);
+
 
 G_END_DECLS

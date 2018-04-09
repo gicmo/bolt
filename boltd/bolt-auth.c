@@ -334,3 +334,28 @@ bolt_auth_to_status (BoltAuth *auth)
 
   return BOLT_STATUS_UNKNOWN;
 }
+
+BoltAuthFlags
+bolt_auth_to_flags (BoltAuth      *auth,
+                    BoltAuthFlags *mask)
+{
+  BoltKeyState ks;
+
+  g_return_val_if_fail (BOLT_IS_AUTH (auth), 0);
+
+  if (auth->error != NULL)
+    return 0;
+
+  if (auth->level != BOLT_SECURITY_SECURE)
+    return 0;
+
+  if (mask)
+    *mask = BOLT_AUTH_SECURE;
+
+  ks = bolt_key_get_state (auth->key);
+
+  if (ks == BOLT_KEY_NEW)
+    return 0;
+
+  return BOLT_AUTH_SECURE;
+}
