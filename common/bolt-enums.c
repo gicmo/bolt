@@ -260,6 +260,23 @@ bolt_flags_from_string (GType       flags_type,
   return bolt_flags_class_from_string (klass, string, flags_out, error);
 }
 
+gboolean
+bolt_flags_update (guint  from,
+                   guint *to,
+                   guint  mask)
+{
+  guint val;
+  gboolean chg;
+
+  g_return_val_if_fail (to != NULL, FALSE);
+
+  val = *to & ~mask;          /* clear all bits in mask */
+  val = val | (from & mask);  /* set all bits in from and mask */
+  chg = *to != val;
+  *to = val;
+
+  return chg;
+}
 
 const char *
 bolt_status_to_string (BoltStatus status)

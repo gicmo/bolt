@@ -59,6 +59,10 @@ gboolean          bolt_flags_from_string (GType       flags_type,
                                           guint      *flags_out,
                                           GError    **error);
 
+gboolean          bolt_flags_update (guint  from,
+                                     guint *to,
+                                     guint  mask);
+
 /**
  * BoltStatus:
  * @BOLT_STATUS_UNKNOWN: Device is in an unknown state (should normally not happen).
