@@ -961,8 +961,10 @@ bolt_device_new_for_udev (struct udev_device *udev,
   BoltDevice *dev;
   guint64 ct, at;
 
+  g_return_val_if_fail (udev != NULL, NULL);
+
   uid = udev_device_get_sysattr_value (udev, "unique_id");
-  if (udev == NULL)
+  if (uid == NULL)
     {
       g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
                    "could not get unique_id for udev");
