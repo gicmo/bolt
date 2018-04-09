@@ -312,6 +312,28 @@ bolt_security_validate (BoltSecurity security)
   return bolt_enum_validate (BOLT_TYPE_SECURITY, security, NULL);
 }
 
+gboolean
+bolt_security_allows_pcie (BoltSecurity security)
+{
+  gboolean pcie = FALSE;
+
+  switch (security)
+    {
+    case BOLT_SECURITY_NONE:
+    case BOLT_SECURITY_USER:
+    case BOLT_SECURITY_SECURE:
+      pcie = TRUE;
+      break;
+
+    case BOLT_SECURITY_DPONLY:
+    case BOLT_SECURITY_UNKNOWN:
+      pcie = FALSE;
+      break;
+    }
+
+  return pcie;
+}
+
 BoltPolicy
 bolt_policy_from_string (const char *str)
 {

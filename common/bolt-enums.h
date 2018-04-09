@@ -137,6 +137,7 @@ typedef enum {
 BoltSecurity     bolt_security_from_string (const char *str);
 const char *     bolt_security_to_string (BoltSecurity security);
 gboolean         bolt_security_validate (BoltSecurity security);
+gboolean         bolt_security_allows_pcie (BoltSecurity security);
 
 /**
  * BoltPolicy:
