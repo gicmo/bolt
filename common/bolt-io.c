@@ -381,6 +381,7 @@ bolt_read_value_at (int         dirfd,
                        "io error of file %s: %s",
                        name,
                        g_strerror (errno));
+          return NULL;
         }
 
       line[0] = '\0';
