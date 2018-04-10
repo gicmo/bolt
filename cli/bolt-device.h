@@ -59,6 +59,8 @@ BoltDeviceType    bolt_device_get_device_type (BoltDevice *dev);
 
 BoltStatus        bolt_device_get_status (BoltDevice *dev);
 
+BoltAuthFlags     bolt_device_get_authflags (BoltDevice *dev);
+
 const char *      bolt_device_get_parent (BoltDevice *dev);
 
 const char *      bolt_device_get_syspath (BoltDevice *dev);

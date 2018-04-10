@@ -42,6 +42,7 @@ enum {
   PROP_VENDOR,
   PROP_TYPE,
   PROP_STATUS,
+  PROP_AUTHFLAGS,
   PROP_PARENT,
   PROP_SYSPATH,
   PROP_CONNTIME,
@@ -117,6 +118,14 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        BOLT_STATUS_DISCONNECTED,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_NICK);
+
+  props[PROP_AUTHFLAGS] =
+    g_param_spec_flags ("authflags",
+                        "AuthFlags", NULL,
+                        BOLT_TYPE_AUTH_FLAGS,
+                        BOLT_AUTH_NONE,
+                        G_PARAM_READABLE |
+                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_PARENT] =
     g_param_spec_string ("parent",
@@ -365,6 +374,24 @@ bolt_device_get_status (BoltDevice *dev)
 
   key = g_param_spec_get_name (props[PROP_STATUS]);
   ok = bolt_proxy_get_property_enum (BOLT_PROXY (dev), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+BoltAuthFlags
+bolt_device_get_authflags (BoltDevice *dev)
+{
+  const char *key;
+  gboolean ok;
+  guint val = BOLT_AUTH_NONE;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), val);
+
+  key = g_param_spec_get_name (props[PROP_AUTHFLAGS]);
+  ok = bolt_proxy_get_property_flags (BOLT_PROXY (dev), key, &val);
 
   if (!ok)
     g_warning ("failed to get enum property '%s'", key);
