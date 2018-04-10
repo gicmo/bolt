@@ -280,7 +280,7 @@ bolt_device_authorize_finish (BoltDevice   *dev,
                               GError      **error)
 {
   g_autoptr(GError) err = NULL;
-  GVariant *val;
+  g_autoptr(GVariant) val = NULL;
 
   g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
 
@@ -291,7 +291,6 @@ bolt_device_authorize_finish (BoltDevice   *dev,
       return FALSE;
     }
 
-  g_object_unref (val);
   return TRUE;
 }
 
