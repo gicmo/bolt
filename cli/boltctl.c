@@ -504,7 +504,9 @@ monitor (BoltClient *client, int argc, char **argv)
   authmode = bolt_client_get_authmode (client);
   amstr = bolt_flags_to_string (BOLT_TYPE_AUTH_MODE, authmode, NULL);
 
-  g_print ("Daemon Version: %d.%u\n", VERSION_MAJOR, version);
+  g_print ("Bolt Version  : %d.%d\n", VERSION_MAJOR, VERSION_MINOR);
+  g_print ("Daemon API    : %u\n", version);
+  g_print ("Client API    : %u\n", BOLT_DBUS_API_VERSION);
   g_print ("Security Level: %s\n", bolt_security_to_string (security));
   g_print ("Auth Mode     : %s\n", amstr);
   g_print ("Ready\n");
