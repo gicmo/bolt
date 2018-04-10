@@ -342,6 +342,9 @@ bolt_auth_to_flags (BoltAuth      *auth,
 
   g_return_val_if_fail (BOLT_IS_AUTH (auth), 0);
 
+  if (mask)
+    *mask = 0;
+
   if (auth->error != NULL)
     return 0;
 
