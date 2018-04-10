@@ -108,6 +108,7 @@ gboolean         bolt_status_validate (BoltStatus status);
  * @BOLT_AUTH_NOPCIE: PCIe tunnels are *not* authorized.
  * @BOLT_AUTH_SECURE: Device is securely authorized.
  * @BOLT_AUTH_NOKEY: Device does *not* support key verification.
+ * @BOLT_AUTH_BOOT: Device was already authorized during pre-boot.
  *
  * More specific information about device authorization.
  */
@@ -117,6 +118,7 @@ typedef enum { /*< flags >*/
   BOLT_AUTH_NOPCIE = 1 << 0,
   BOLT_AUTH_SECURE = 1 << 1,
   BOLT_AUTH_NOKEY  = 1 << 2,
+  BOLT_AUTH_BOOT   = 1 << 3,
 
 } BoltAuthFlags;
 
