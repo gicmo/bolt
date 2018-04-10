@@ -13,21 +13,24 @@ computer.
 
 Devices connected via Thunderbolt can be DMA masters and thus read
 system memory without interference of the operating system (or even
-the CPU).  Version 3 of the interface provides 4 different security
+the CPU).  Version 3 of the interface provides 5 different security
 levels, in order to mitigate the aforementioned security risk that
 connected devices pose to the system. The security level is set by the
 system firmware.
 
-The four security levels are:
+The five security levels are:
 
- * `none`:   Security disabled, all devices will fully functional
-             on connect.
- * `dponly`: Only pass the display-port stream through to the
-             connected device.
- * `user`:   Connected devices need to be manually authorized by
-             the user.
- * `secure`: As 'user', but also challenge the device with a secret
-             key to verify its identity.
+ * `none`:    Security disabled, all devices will fully functional
+              on connect.
+ * `dponly`:  Only pass the display-port stream through to the
+              connected device.
+ * `user`:    Connected devices need to be manually authorized by
+              the user.
+ * `secure`:  As 'user', but also challenge the device with a secret
+              key to verify its identity.
+ * `usbonly`: One PCIe tunnel is created to a usb controller in a
+              thunderbolt dock; no other downstream PCIe tunnels are
+              authorized (needs 4.17 kernel and recent hardware).
 
 The Linux kernel, starting with version 4.13, provides an interface via
 sysfs that enables userspace query the security level, the status of
