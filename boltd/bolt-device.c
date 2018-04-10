@@ -570,6 +570,10 @@ bolt_auth_flags_from_info (BoltDevInfo   *info,
   if (!bolt_security_allows_pcie (info->security))
     val |= BOLT_AUTH_NOPCIE;
 
+  msk |= BOLT_AUTH_BOOT;
+  if (info->boot > 0)
+    val |= BOLT_AUTH_BOOT;
+
   if (mask)
     *mask = msk;
 
