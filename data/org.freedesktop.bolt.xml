@@ -198,7 +198,9 @@
         Details of authorization information, including
 	if they device was securily authorized via key
 	verification ('secure') or does not support
-	this method ('nokey').
+	this method ('nokey'). The flag 'boot' indicates
+	that the devices was already authorized by
+	the firmware during pre-boot.
 	If no downstream PCIe tunnels are authorized
 	the 'nopcie' flag will be set.
       </doc:para></doc:description></doc:doc>
