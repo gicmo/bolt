@@ -46,7 +46,6 @@ test_args = [
   '-Wsign-compare',
   '-Wstrict-aliasing',
   '-Wstrict-prototypes',
-  '-Wswitch-default',
   '-Wtype-limits',
   '-Wundef',
   '-Wuninitialized',
