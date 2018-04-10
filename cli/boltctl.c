@@ -67,6 +67,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   const char *label;
   BoltDeviceType type;
   BoltStatus status;
+  BoltAuthFlags aflags;
   BoltKeyState keystate;
   BoltPolicy policy;
   const char *status_color;
@@ -77,6 +78,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   const char *tree_right;
   const char *tree_space;
   gboolean stored;
+  gboolean pcie;
   guint64 ct, at, st;
 
   path = bolt_proxy_get_object_path (BOLT_PROXY (dev));
@@ -85,6 +87,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   vendor = bolt_device_get_vendor (dev);
   type = bolt_device_get_device_type (dev);
   status = bolt_device_get_status (dev);
+  aflags = bolt_device_get_authflags (dev);
   parent = bolt_device_get_parent (dev);
   syspath = bolt_device_get_syspath (dev);
   ct = bolt_device_get_conntime (dev);
@@ -93,6 +96,8 @@ print_device (BoltDevice *dev, gboolean verbose)
   policy = bolt_device_get_policy (dev);
   keystate = bolt_device_get_keystate (dev);
   st = bolt_device_get_storetime (dev);
+
+  pcie = bolt_flag_isclear (aflags, BOLT_AUTH_NOPCIE);
 
   status_symbol = bolt_glyph (BLACK_CIRCLE);
   tree_branch = bolt_glyph (TREE_BRANCH);
@@ -115,18 +120,22 @@ print_device (BoltDevice *dev, gboolean verbose)
     case BOLT_STATUS_AUTHORIZED:
     case BOLT_STATUS_AUTHORIZED_NEWKEY:
     case BOLT_STATUS_AUTHORIZED_SECURE:
-      status_color = bolt_color (ANSI_GREEN);
-      status_text = "authorized";
+    case BOLT_STATUS_AUTHORIZED_DPONLY:
+      if (pcie)
+        {
+          status_color = bolt_color (ANSI_GREEN);
+          status_text = "authorized";
+        }
+      else
+        {
+          status_color = bolt_color (ANSI_BLUE);
+          status_text = "connected (no PCIe tunnels)";
+        }
       break;
 
     case BOLT_STATUS_AUTH_ERROR:
       status_color = bolt_color (ANSI_RED);
       status_text = "authorization error";
-      break;
-
-    case BOLT_STATUS_AUTHORIZED_DPONLY:
-      status_color = bolt_color (ANSI_BLUE);
-      status_text = "connected (no thunderbolt)";
       break;
 
     default:
@@ -156,6 +165,13 @@ print_device (BoltDevice *dev, gboolean verbose)
   if (bolt_status_is_connected (status))
     {
       g_autofree char *ctstr = NULL;
+      g_autofree char *flags = NULL;
+
+      flags = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, aflags, NULL);
+      g_print ("   %s %s authflags:  %s\n",
+               bolt_glyph (TREE_VERTICAL),
+               tree_branch,
+               flags);
 
       ctstr = bolt_epoch_format (ct, "%c");
 
