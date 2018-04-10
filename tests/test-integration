@@ -601,7 +601,8 @@ class TbDevice(Device):
         if self.domain.security == TbDomain.SECURITY_SECURE:
             if self.key is None:
                 flags |= BoltDevice.NOKEY
-        elif self.domain.security in [TbDomain.SECURITY_DPONLY]:
+        elif self.domain.security in [TbDomain.SECURITY_DPONLY,
+                                      TbDomain.SECURITY_USBONLY]:
             flags |= BoltDevice.NOPCIE
 
         return flags
@@ -651,6 +652,7 @@ class TbDomain(Device):
     SECURITY_USER = 'user'
     SECURITY_SECURE = 'secure'
     SECURITY_DPONLY = 'dponly'
+    SECURITY_USBONLY = 'usbonly'
 
     def __init__(self, security=SECURITY_SECURE, index=0, host=None):
         assert host
@@ -1134,11 +1136,21 @@ class BoltTest(dbusmock.DBusTestCase):
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 3)
 
-        flags = BoltDevice.NOPCIE
         device = self.find_device_by_uid(devices, d1_uid)
-        self.assertEqual(device.authflags, flags)
+        self.assertEqual(device.authflags, BoltDevice.NOPCIE)
         device = self.find_device_by_uid(devices, d2_uid)
-        self.assertEqual(device.authflags, flags)
+        self.assertEqual(device.authflags, BoltDevice.NOPCIE)
+        self.daemon_stop()
+
+        self.testbed.set_attribute(dc, 'security', 'usbonly')
+        self.daemon_start()
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), 3)
+
+        device = self.find_device_by_uid(devices, d1_uid)
+        self.assertEqual(device.authflags, BoltDevice.NOPCIE)
+        device = self.find_device_by_uid(devices, d2_uid)
+        self.assertEqual(device.authflags, BoltDevice.NOPCIE)
         self.daemon_stop()
 
     def test_device_authorize(self):
