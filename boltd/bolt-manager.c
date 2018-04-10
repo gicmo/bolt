@@ -242,11 +242,7 @@ bolt_manager_get_property (GObject    *object,
   switch (prop_id)
     {
     case PROP_VERSION:
-#if VERSION_MAJOR < 1
-      g_value_set_uint (value, 0);
-#else
-      g_value_set_uint (value, VERSION_MINOR);
-#endif
+      g_value_set_uint (value, BOLT_DBUS_API_VERSION);
       break;
 
     case PROP_PROBING:
