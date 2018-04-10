@@ -323,6 +323,15 @@ test_flags (TestRng *tt, gconstpointer user_data)
   chg = bolt_flags_update (ref, &val, BOLT_KITT_TURBO_BOOST);
   g_assert_cmpuint (val, ==, BOLT_KITT_SSPM);
   g_assert_true (chg);
+
+  /* simple checks for helper class */
+  ref = BOLT_KITT_TURBO_BOOST | BOLT_KITT_SSPM;
+  g_assert_true (bolt_flag_isset (ref, BOLT_KITT_TURBO_BOOST));
+  g_assert_true (bolt_flag_isset (ref, BOLT_KITT_SSPM));
+  g_assert_false (bolt_flag_isclear (ref,  BOLT_KITT_TURBO_BOOST));
+
+  g_assert_false (bolt_flag_isset (ref, BOLT_KITT_SKI_MODE));
+  g_assert_true (bolt_flag_isclear (ref, BOLT_KITT_SKI_MODE));
 }
 
 typedef void (*rng_t) (void *buf,

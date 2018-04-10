@@ -63,6 +63,9 @@ gboolean          bolt_flags_update (guint  from,
                                      guint *to,
                                      guint  mask);
 
+#define bolt_flag_isset(flags_, flag_)  (!!(flags_ & flag_))
+#define bolt_flag_isclear(flags_, flag_) (!(flags_ & flag_))
+
 /**
  * BoltStatus:
  * @BOLT_STATUS_UNKNOWN: Device is in an unknown state (should normally not happen).
