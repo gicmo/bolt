@@ -522,7 +522,7 @@ bolt_client_forget_device (BoltClient *client,
                                 NULL,
                                 &err);
 
-  if (err != NULL)
+  if (val == NULL)
     {
       bolt_error_propagate_stripped (error, &err);
       return FALSE;
@@ -561,7 +561,7 @@ bolt_client_forget_device_finish (BoltClient   *client,
   g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
 
   val = g_dbus_proxy_call_finish (G_DBUS_PROXY (client), res, &err);
-  if (err != NULL)
+  if (val == NULL)
     {
       bolt_error_propagate_stripped (error, &err);
       return FALSE;
