@@ -120,14 +120,7 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
     }
 
   v = udev_device_get_sysattr_value (parent, "security");
-  s = bolt_security_from_string (v);
-
-  if (!bolt_security_validate (s))
-    {
-      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                   "unknown security level '%s'", v);
-      s = BOLT_SECURITY_UNKNOWN;
-    }
+  s = bolt_enum_from_string (BOLT_TYPE_SECURITY, v, error);
 
   return s;
 }
