@@ -340,6 +340,7 @@ class BoltDevice(ProxyWrapper):
     NOPCIE = 1 << 0
     SECURE = 1 << 1
     NOKEY  = 1 << 2
+    BOOT   = 1 << 3
 
     def __init__(self, bus, path):
         super(BoltDevice, self).__init__(bus,
@@ -376,7 +377,8 @@ class BoltDevice(ProxyWrapper):
         mapping = {'none': 0,
                    'nopcie': self.NOPCIE,
                    'secure': self.SECURE,
-                   'nokey': self.NOKEY}
+                   'nokey': self.NOKEY,
+                   'boot': self.BOOT}
 
         print(res, file=sys.stderr)
         keys = [x.strip() for x in res.split('|')]
@@ -951,7 +953,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(local.bolt_authflags, remote.authflags)
         return True
 
-    def add_device(self, parent, devid, name, vendor, domain=0, authorized=1, key=''):
+    def add_device(self, parent, devid, name, vendor, domain=0, authorized=1, key='', boot=None):
         uid = str(uuid.uuid4())
         props = ['device_name', name,
                  'device', '0x23',
@@ -962,6 +964,9 @@ class BoltTest(dbusmock.DBusTestCase):
 
         if key is not None:
             props += ['key', key]
+
+        if boot is not None:
+            props += ['boot', boot]
 
         d = self.testbed.add_device('thunderbolt',
                                     "%d-%d" % (domain, devid), parent,
@@ -1109,8 +1114,8 @@ class BoltTest(dbusmock.DBusTestCase):
                                        ['DEVTYPE', 'thunderbolt_device'])
         print(host)
 
-        d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=2, key=key)
-        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=1, key=None)
+        d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=2, key=key, boot='0')
+        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=1, key=None, boot='1')
 
         self.daemon_start()
         devices = self.client.list_devices()
@@ -1121,7 +1126,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(device.authflags, flags)
 
         device = self.find_device_by_uid(devices, d2_uid)
-        flags = BoltDevice.NOKEY
+        flags = BoltDevice.NOKEY | BoltDevice.BOOT
         self.assertEqual(device.authflags, flags)
 
         self.daemon_stop()
