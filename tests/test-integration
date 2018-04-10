@@ -332,8 +332,6 @@ class BoltDevice(ProxyWrapper):
     AUTHORIZING = 2
     AUTH_ERROR = 3
     AUTHORIZED = 4
-    AUTHORIZED_SECURE = 5
-    AUTHORIZED_NEWKEY = 6
 
     KEY_MISSING = 0
     KEY_HAVE = 1
@@ -368,9 +366,7 @@ class BoltDevice(ProxyWrapper):
                    'connected': self.CONNECTED,
                    'authorizing': self.AUTHORIZING,
                    'auth-error': self.AUTH_ERROR,
-                   'authorized': self.AUTHORIZED,
-                   'authorized-secure': self.AUTHORIZED_SECURE,
-                   'authorized-newkey': self.AUTHORIZED_NEWKEY}
+                   'authorized': self.AUTHORIZED}
 
         return mapping.get(res, self.UNKNOWN)
 
@@ -590,13 +586,8 @@ class TbDevice(Device):
             return BoltDevice.DISCONNECTED
         elif self.authorized == 0:
             return BoltDevice.CONNECTED
-        elif self.authorized == 1:
-            if self.key == "":
-                return BoltDevice.AUTHORIZED
-            else:
-                return BoltDevice.AUTHORIZED_NEWKEY
-        elif self.authorized == 2:
-            return BoltDevice.AUTHORIZED_SECURE
+        elif self.authorized in [1, 2]:
+            return BoltDevice.AUTHORIZED
 
     @property
     def bolt_authflags(self):
@@ -1219,9 +1210,10 @@ class BoltTest(dbusmock.DBusTestCase):
             d.reload_auth()  # will emit the uevent, so the daemon can update
             # the security level for the domain is SECURE, which means we should
             # have authorized via a new key:
-            #  status should be AUTHORIZED_NEWKEY
+            #  status should be AUTHORIZED
             #  stored should be True
             #  key(state) should be KEY_NEW
+            #  authflags should be 'secure'
             self.assertDeviceEqual(d, remote)
             self.assertTrue(remote.stored, True)
             self.assertEqual(remote.key, BoltDevice.KEY_NEW)
@@ -1260,7 +1252,7 @@ class BoltTest(dbusmock.DBusTestCase):
                 local.connect(self.testbed)
                 res = tape.wait_for_event('property',
                                           'Status',
-                                          'authorized-secure')
+                                          'authorized')
                 local.reload_auth()  # will emit the uevent, so the daemon can update
                 self.assertTrue(res)
                 self.assertDeviceEqual(local, remote)

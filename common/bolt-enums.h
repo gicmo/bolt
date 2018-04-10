@@ -74,9 +74,9 @@ gboolean          bolt_flags_update (guint  from,
  * @BOLT_STATUS_AUTHORIZING: Device is currently authorizing.
  * @BOLT_STATUS_AUTH_ERROR: Failed to authorize a device via a key.
  * @BOLT_STATUS_AUTHORIZED: Device connected and authorized.
- * @BOLT_STATUS_AUTHORIZED_SECURE: Device connected and securely authorized via a key.
- * @BOLT_STATUS_AUTHORIZED_NEWKEY: Device connected and authorized via a new key.
- * @BOLT_STATUS_AUTHORIZED_DPONLY: Device authorized but with thunderbolt disabled.
+ * @BOLT_STATUS_AUTHORIZED_SECURE: Device connected and securely authorized via a key (deprecated).
+ * @BOLT_STATUS_AUTHORIZED_NEWKEY: Device connected and authorized via a new key (deprecated).
+ * @BOLT_STATUS_AUTHORIZED_DPONLY: Device authorized but with thunderbolt disabled (deprecated).
  *
  * The current status of the device.
  */
@@ -88,6 +88,8 @@ typedef enum {
   BOLT_STATUS_AUTHORIZING,
   BOLT_STATUS_AUTH_ERROR,
   BOLT_STATUS_AUTHORIZED,
+
+  /* deprecated, do not use */
   BOLT_STATUS_AUTHORIZED_SECURE,
   BOLT_STATUS_AUTHORIZED_NEWKEY,
   BOLT_STATUS_AUTHORIZED_DPONLY

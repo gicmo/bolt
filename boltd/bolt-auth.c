@@ -23,6 +23,7 @@
 #include "bolt-auth.h"
 #include "bolt-device.h"
 #include "bolt-io.h"
+#include "bolt-log.h"
 #include "bolt-store.h"
 
 #include <gio/gio.h>
@@ -310,26 +311,23 @@ bolt_auth_to_status (BoltAuth *auth)
   g_return_val_if_fail (BOLT_IS_AUTH (auth), BOLT_STATUS_UNKNOWN);
 
   if (auth->error != NULL)
-    {
-      return BOLT_STATUS_AUTH_ERROR;
-    }
-  else if (auth->level == BOLT_SECURITY_SECURE)
-    {
-      BoltKeyState ks = bolt_key_get_state (auth->key);
+    return BOLT_STATUS_AUTH_ERROR;
 
-      if (ks == BOLT_KEY_NEW)
-        return BOLT_STATUS_AUTHORIZED_NEWKEY;
-      else
-        return BOLT_STATUS_AUTHORIZED_SECURE;
-    }
-  else if (auth->level == BOLT_SECURITY_USER)
+  switch (auth->level)
     {
-      BoltKeyState ks = bolt_key_get_state (auth->key);
+    case BOLT_SECURITY_SECURE:
+    case BOLT_SECURITY_USER:
+      return BOLT_STATUS_AUTHORIZED;
 
-      if (ks == BOLT_KEY_NEW)
-        return BOLT_STATUS_AUTHORIZED_NEWKEY;
-      else
-        return BOLT_STATUS_AUTHORIZED;
+    case BOLT_SECURITY_DPONLY:
+    case BOLT_SECURITY_NONE:
+      bolt_bug ("unexpected security in BoltAuth::level: %s",
+                bolt_security_to_string (auth->level));
+      return BOLT_STATUS_AUTHORIZED;
+
+    case BOLT_SECURITY_UNKNOWN:
+      bolt_bug ("unknown status in BoltAUth::level");
+      return BOLT_STATUS_UNKNOWN;
     }
 
   return BOLT_STATUS_UNKNOWN;

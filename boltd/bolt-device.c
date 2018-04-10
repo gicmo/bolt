@@ -536,26 +536,11 @@ bolt_status_from_info (BoltDevInfo *info)
   have_key = info->keysize > 0;
 
   if (authorized < 0)
-    {
-      return BOLT_STATUS_UNKNOWN;
-    }
-  else if (authorized == 2)
-    {
-      return BOLT_STATUS_AUTHORIZED_SECURE;
-    }
-  else if (authorized == 1)
-    {
-      if (info->security == BOLT_SECURITY_DPONLY)
-        return BOLT_STATUS_AUTHORIZED_DPONLY;
-      else if (have_key)
-        return BOLT_STATUS_AUTHORIZED_NEWKEY;
-      else
-        return BOLT_STATUS_AUTHORIZED;
-    }
-  else if (authorized == 0 && have_key)
-    {
-      return BOLT_STATUS_AUTH_ERROR;
-    }
+    return BOLT_STATUS_UNKNOWN;
+  else if (authorized > 0)
+    return BOLT_STATUS_AUTHORIZED;
+  if (have_key) /* authorized == 0 */
+    return BOLT_STATUS_AUTH_ERROR;
 
   return BOLT_STATUS_CONNECTED;
 }
