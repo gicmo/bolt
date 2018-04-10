@@ -20,6 +20,8 @@
 
 #pragma once
 
+/* D-Bus API revision (here for the lack of a better place) */
+#define BOLT_DBUS_API_VERSION 1U
 
 /* logging */
 
