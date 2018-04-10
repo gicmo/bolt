@@ -93,7 +93,6 @@ print_device (BoltDevice *dev, gboolean verbose)
   policy = bolt_device_get_policy (dev);
   keystate = bolt_device_get_keystate (dev);
   st = bolt_device_get_storetime (dev);
-  label = bolt_device_get_label (dev);
 
   status_symbol = bolt_glyph (BLACK_CIRCLE);
   tree_branch = bolt_glyph (TREE_BRANCH);
@@ -136,7 +135,7 @@ print_device (BoltDevice *dev, gboolean verbose)
       break;
     }
 
-  label = bolt_strstrip (g_strdup (label));
+  label = bolt_device_get_display_name (dev);
 
   g_print (" %s%s%s %s\n",
            status_color,
@@ -146,10 +145,8 @@ print_device (BoltDevice *dev, gboolean verbose)
 
   type_text = bolt_device_type_to_string (type);
 
-  if (label)
-    g_print ("   %s name:          %s\n", tree_branch, name);
-
   g_print ("   %s type:          %s\n", tree_branch, type_text);
+  g_print ("   %s name:          %s\n", tree_branch, name);
   g_print ("   %s vendor:        %s\n", tree_branch, vendor);
   g_print ("   %s uuid:          %s\n", tree_branch, uid);
   if (verbose)
