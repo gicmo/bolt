@@ -329,9 +329,10 @@ class BoltDevice(ProxyWrapper):
     UNKNOWN = -1
     DISCONNECTED = 0
     CONNECTED = 1
-    AUTHORIZING = 2
-    AUTH_ERROR = 3
-    AUTHORIZED = 4
+    CONNECTING = 2
+    AUTHORIZING = 3
+    AUTH_ERROR = 4
+    AUTHORIZED = 5
 
     KEY_MISSING = 0
     KEY_HAVE = 1
@@ -364,6 +365,7 @@ class BoltDevice(ProxyWrapper):
         res = getattr(self, 'Status')
         mapping = {'unknown': self.UNKNOWN,
                    'disconnected': self.DISCONNECTED,
+                   'connecting': self.CONNECTING,
                    'connected': self.CONNECTED,
                    'authorizing': self.AUTHORIZING,
                    'auth-error': self.AUTH_ERROR,

@@ -578,6 +578,7 @@ bolt_device_get_timestamp (BoltDevice *dev)
     {
     case BOLT_STATUS_AUTHORIZING:
     case BOLT_STATUS_AUTH_ERROR:
+    case BOLT_STATUS_CONNECTING:
     case BOLT_STATUS_CONNECTED:
       timestamp = bolt_device_get_conntime (dev);
       break;

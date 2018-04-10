@@ -112,6 +112,11 @@ print_device (BoltDevice *dev, gboolean verbose)
       status_text = "disconnected";
       break;
 
+    case BOLT_STATUS_CONNECTING:
+      status_color = bolt_color (ANSI_YELLOW);
+      status_text = "connecting";
+      break;
+
     case BOLT_STATUS_CONNECTED:
       status_color = bolt_color (ANSI_YELLOW);
       status_text = "connected";

@@ -70,6 +70,7 @@ gboolean          bolt_flags_update (guint  from,
  * BoltStatus:
  * @BOLT_STATUS_UNKNOWN: Device is in an unknown state (should normally not happen).
  * @BOLT_STATUS_DISCONNECTED: Device is not connected.
+ * @BOLT_STATUS_CONNECTING: Device is currently being connected.
  * @BOLT_STATUS_CONNECTED: Device is connected, but not authorized.
  * @BOLT_STATUS_AUTHORIZING: Device is currently authorizing.
  * @BOLT_STATUS_AUTH_ERROR: Failed to authorize a device via a key.
@@ -84,6 +85,7 @@ typedef enum {
 
   BOLT_STATUS_UNKNOWN = -1,
   BOLT_STATUS_DISCONNECTED = 0,
+  BOLT_STATUS_CONNECTING,
   BOLT_STATUS_CONNECTED,
   BOLT_STATUS_AUTHORIZING,
   BOLT_STATUS_AUTH_ERROR,
