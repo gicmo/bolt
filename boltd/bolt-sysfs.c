@@ -234,6 +234,7 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
     }
 
   info->keysize = sysfs_get_sysattr_size (udev, "key");
+  info->boot = sysfs_get_sysattr_value_as_int (udev, "boot");
 
   if (full == FALSE)
     return TRUE;

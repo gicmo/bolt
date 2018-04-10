@@ -51,6 +51,7 @@ typedef struct _BoltDevInfo
   /* always included  */
   gint   authorized;
   gssize keysize;
+  gint   boot;
 
   /* if 'full' is true the rest is valid */
   gboolean     full;
