@@ -1211,12 +1211,5 @@ bolt_device_get_storetime (const BoltDevice *dev)
 gboolean
 bolt_device_supports_secure_mode (const BoltDevice *dev)
 {
-  g_autofree char *path = NULL;
-
-  if (dev->syspath == NULL)
-    return FALSE;
-
-  path = g_build_filename (dev->syspath, "key", NULL);
-
-  return g_file_test (path, G_FILE_TEST_IS_REGULAR);
+  return bolt_flag_isclear (dev->aflags, BOLT_AUTH_NOKEY);
 }
