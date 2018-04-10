@@ -343,6 +343,7 @@ bolt_security_allows_pcie (BoltSecurity security)
       break;
 
     case BOLT_SECURITY_DPONLY:
+    case BOLT_SECURITY_USBONLY:
     case BOLT_SECURITY_UNKNOWN:
       pcie = FALSE;
       break;

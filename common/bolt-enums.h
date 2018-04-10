@@ -147,6 +147,8 @@ typedef enum {
  * @BOLT_SECURITY_USER    : User needs to authorize devices.
  * @BOLT_SECURITY_SECURE  : User needs to authorize devices. Authorization can
  *     be done via key exchange to verify the device identity.
+ * @BOLT_SECURITY_USBONLY : Only create a PCIe tunnel to the USB controller in a
+ *     connected thunderbolt dock, allowing no downstream PCIe tunnels.
  *
  * The security level of the thunderbolt domain.
  */
@@ -157,6 +159,7 @@ typedef enum {
   BOLT_SECURITY_DPONLY = 1,
   BOLT_SECURITY_USER = '1',
   BOLT_SECURITY_SECURE = '2',
+  BOLT_SECURITY_USBONLY = 4,
 
 } BoltSecurity;
 

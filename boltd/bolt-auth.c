@@ -320,6 +320,7 @@ bolt_auth_to_status (BoltAuth *auth)
       return BOLT_STATUS_AUTHORIZED;
 
     case BOLT_SECURITY_DPONLY:
+    case BOLT_SECURITY_USBONLY:
     case BOLT_SECURITY_NONE:
       bolt_bug ("unexpected security in BoltAuth::level: %s",
                 bolt_security_to_string (auth->level));
