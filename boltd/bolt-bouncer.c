@@ -252,12 +252,12 @@ bolt_bouncer_add_client (BoltBouncer *bnc,
 {
   if (BOLT_IS_EXPORTED (client))
     {
-      g_signal_connect (client, "authorize-method",
-                        G_CALLBACK (handle_authorize_method),
-                        bnc);
-      g_signal_connect (client, "authorize-property",
-                        G_CALLBACK (handle_authorize_property),
-                        bnc);
+      g_signal_connect_object (client, "authorize-method",
+                               G_CALLBACK (handle_authorize_method),
+                               bnc, 0);
+      g_signal_connect_object (client, "authorize-property",
+                               G_CALLBACK (handle_authorize_property),
+                               bnc, 0);
     }
   else
     {
