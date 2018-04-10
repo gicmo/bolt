@@ -285,7 +285,9 @@ bolt_manager_init (BoltManager *mgr)
   mgr->policy = BOLT_POLICY_AUTO;
   mgr->authmode = BOLT_AUTH_ENABLED;
 
-  g_signal_connect (mgr->store, "device-removed", G_CALLBACK (handle_store_device_removed), mgr);
+  g_signal_connect_object (mgr->store, "device-removed",
+                           G_CALLBACK (handle_store_device_removed),
+                           mgr, 0);
 }
 
 static void
@@ -694,8 +696,9 @@ manager_register_device (BoltManager *mgr,
 
   g_ptr_array_add (mgr->devices, dev);
   bolt_bouncer_add_client (mgr->bouncer, dev);
-  g_signal_connect (dev, "status-changed",
-                    G_CALLBACK (handle_device_status_changed), mgr);
+  g_signal_connect_object (dev, "status-changed",
+                           G_CALLBACK (handle_device_status_changed),
+                           mgr, 0);
 }
 
 static void
@@ -703,7 +706,6 @@ manager_deregister_device (BoltManager *mgr,
                            BoltDevice  *dev)
 {
   g_ptr_array_remove_fast (mgr->devices, dev);
-  //  g_signal_handlers_unblock_by_func (dev, G_CALLBACK (handle_device_status_changed), mgr);
 }
 
 static BoltDevice *
