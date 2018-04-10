@@ -863,9 +863,9 @@ handle_authorize (BoltExported          *object,
                   GVariant              *params,
                   GDBusMethodInvocation *inv)
 {
+  g_autoptr(BoltAuth) auth = NULL;
   BoltDevice *dev = BOLT_DEVICE (object);
   GError *error = NULL;
-  BoltAuth *auth;
   BoltSecurity level;
   BoltKey *key;
 
