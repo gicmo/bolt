@@ -543,7 +543,7 @@ guint64
 bolt_device_get_timestamp (BoltDevice *dev)
 {
   BoltStatus status;
-  guint64 timestamp;
+  guint64 timestamp = 0;
 
   status = bolt_device_get_status (dev);
 
@@ -567,8 +567,9 @@ bolt_device_get_timestamp (BoltDevice *dev)
       timestamp = bolt_device_get_authtime (dev);
       break;
 
-    default:
+    case BOLT_STATUS_UNKNOWN:
       timestamp = 0;
+      break;
     }
 
   return timestamp;
