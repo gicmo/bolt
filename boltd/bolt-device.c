@@ -759,11 +759,11 @@ bolt_device_authorize (BoltDevice         *dev,
 
   g_object_set (auth, "device", dev, NULL);
 
-  if (dev->status != BOLT_STATUS_CONNECTED &&
-      dev->status != BOLT_STATUS_AUTH_ERROR)
+  if (!bolt_status_is_pending (dev->status))
     {
       bolt_auth_return_new_error (auth, BOLT_ERROR, BOLT_ERROR_FAILED,
-                                  "wrong device state: %d", dev->status);
+                                  "wrong device state: %s",
+                                  bolt_status_to_string (dev->status));
 
       if (callback)
         callback (G_OBJECT (dev), G_ASYNC_RESULT (auth), user_data);
