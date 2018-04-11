@@ -748,11 +748,11 @@ authorize_thread_done (GObject      *object,
                          auth_data->user_data);
 }
 
-void
-bolt_device_authorize (BoltDevice         *dev,
-                       BoltAuth           *auth,
-                       GAsyncReadyCallback callback,
-                       gpointer            user_data)
+static GTask *
+authorize_prepare (BoltDevice         *dev,
+                   BoltAuth           *auth,
+                   GAsyncReadyCallback callback,
+                   gpointer            user_data)
 {
   AuthData *auth_data;
   GTask *task;
@@ -768,7 +768,7 @@ bolt_device_authorize (BoltDevice         *dev,
       if (callback)
         callback (G_OBJECT (dev), G_ASYNC_RESULT (auth), user_data);
 
-      return;
+      return NULL;
     }
 
   task = g_task_new (dev, NULL, authorize_thread_done, NULL);
@@ -780,8 +780,23 @@ bolt_device_authorize (BoltDevice         *dev,
 
   g_object_set (dev, "status", BOLT_STATUS_AUTHORIZING, NULL);
 
+  return task;
+}
+
+void
+bolt_device_authorize (BoltDevice         *dev,
+                       BoltAuth           *auth,
+                       GAsyncReadyCallback callback,
+                       gpointer            user_data)
+{
+  g_autoptr(GTask) task = NULL;
+
+  task = authorize_prepare (dev, auth, callback, user_data);
+
+  if (task == NULL)
+    return;
+
   g_task_run_in_thread (task, authorize_in_thread);
-  g_object_unref (task);
 }
 
 /* dbus property setter */
