@@ -51,7 +51,8 @@ gboolean          bolt_proxy_get_dbus_property (GObject    *proxy,
 
 gboolean          bolt_proxy_has_name_owner (BoltProxy *proxy);
 
-const char *      bolt_proxy_get_object_path (BoltProxy *proxy);
+const char *      bolt_proxy_get_object_path (BoltProxy *proxy)
+  G_DEPRECATED_FOR (g_dbus_proxy_get_object_path);
 
 gboolean          bolt_proxy_get_property_bool (BoltProxy  *proxy,
                                                 const char *name,
