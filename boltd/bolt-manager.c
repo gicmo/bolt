@@ -803,12 +803,6 @@ bolt_manager_get_children (BoltManager *mgr,
 }
 
 /* device authorization */
-typedef struct
-{
-  BoltAuth   *auth;
-  BoltDevice *dev;
-} AuthIdleData;
-
 static void
 authorize_device_finish (GObject      *source,
                          GAsyncResult *res,
@@ -827,33 +821,16 @@ authorize_device_finish (GObject      *source,
     bolt_msg (LOG_DEV (dev), "authorized");
 }
 
-static gboolean
-authorize_device_idle (gpointer user_data)
-{
-  AuthIdleData *data = user_data;
-  BoltDevice *dev = data->dev;
-  BoltAuth *auth = data->auth;
-
-  bolt_msg (LOG_DEV (dev), "authorizing");
-  bolt_device_authorize (dev, auth, authorize_device_finish, NULL);
-
-  g_object_unref (data->auth);
-  g_object_unref (data->dev);
-  g_slice_free (AuthIdleData, data);
-
-  return G_SOURCE_REMOVE;
-}
-
 static void
 maybe_authorize_device (BoltManager *mgr,
                         BoltDevice  *dev)
 {
+  g_autoptr(BoltAuth) auth = NULL;
   BoltStatus status = bolt_device_get_status (dev);
   BoltPolicy policy = bolt_device_get_policy (dev);
   const char *uid = bolt_device_get_uid (dev);
   BoltKey *key = NULL;
   BoltSecurity level;
-  AuthIdleData *data;
   gboolean stored;
 
   bolt_info (LOG_DEV (dev), "checking possible authorization: %s (%x)",
@@ -889,11 +866,8 @@ maybe_authorize_device (BoltManager *mgr,
       return;
     }
 
-  data = g_slice_new (AuthIdleData);
-  data->auth = bolt_auth_new (mgr, level, key);
-  data->dev = g_object_ref (dev);
-
-  g_idle_add (authorize_device_idle, data);
+  auth = bolt_auth_new (mgr, level, key);
+  bolt_device_authorize_idle (dev, auth, authorize_device_finish, mgr);
 }
 
 /* udev callbacks */
