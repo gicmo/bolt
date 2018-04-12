@@ -74,6 +74,8 @@ bolt_client_get_property (GObject    *object,
 {
   if (bolt_proxy_get_dbus_property (object, pspec, value))
     return;
+
+  G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 }
 
 static const BoltProxySignal *
