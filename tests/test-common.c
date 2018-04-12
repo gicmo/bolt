@@ -279,6 +279,23 @@ test_flags (TestRng *tt, gconstpointer user_data)
   g_assert_cmpstr (str, ==, "disabled");
   g_clear_pointer (&str, g_free);
 
+  /* values as compositions */
+  ok = bolt_flags_class_from_string (klass, "default", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_cmpuint (val, ==, BOLT_KITT_DEFAULT);
+  g_assert_cmpuint (val, ==, BOLT_KITT_ENABLED | BOLT_KITT_SSPM);
+
+  ref = BOLT_KITT_ENABLED | BOLT_KITT_SSPM;
+  str = bolt_flags_class_to_string (klass, ref, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (str);
+
+  g_assert_true (strstr (str, "enabled"));
+  g_assert_true (strstr (str, "sspm"));
+
+  g_clear_pointer (&str, g_free);
+
   /* test flags updating */
   val = 0;
   chg = bolt_flags_update (0, &val, 0);

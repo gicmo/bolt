@@ -56,6 +56,8 @@ typedef enum { /*< flags >*/
   BOLT_KITT_ENABLED     = 1,
   BOLT_KITT_SSPM        = 1 << 1,
   BOLT_KITT_TURBO_BOOST = 1 << 2,
-  BOLT_KITT_SKI_MODE    = 1 << 3
+  BOLT_KITT_SKI_MODE    = 1 << 3,
+
+  BOLT_KITT_DEFAULT     = BOLT_KITT_ENABLED | BOLT_KITT_SSPM,
 
 } BoltKittFlags;
