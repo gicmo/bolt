@@ -565,7 +565,7 @@ bolt_client_get_version (BoltClient *client)
   ok = bolt_proxy_get_property_uint32 (BOLT_PROXY (client), key, &val);
 
   if (!ok)
-    g_warning ("failed to get enum property '%s'", key);
+    g_warning ("failed to get property '%s'", key);
 
   return val;
 }
