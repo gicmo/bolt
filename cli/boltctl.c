@@ -81,7 +81,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   gboolean pcie;
   guint64 ct, at, st;
 
-  path = bolt_proxy_get_object_path (BOLT_PROXY (dev));
+  path = g_dbus_proxy_get_object_path (G_DBUS_PROXY (dev));
   uid = bolt_device_get_uid (dev);
   name = bolt_device_get_name (dev);
   vendor = bolt_device_get_vendor (dev);
@@ -450,7 +450,7 @@ handle_device_removed (BoltClient *cli,
   for (guint i = 0; i < devices->len; i++)
     {
       BoltDevice *dev = g_ptr_array_index (devices, i);
-      const char *dev_opath = bolt_proxy_get_object_path (BOLT_PROXY (dev));
+      const char *dev_opath = g_dbus_proxy_get_object_path (G_DBUS_PROXY (dev));
 
       if (bolt_streq (opath, dev_opath))
         {
