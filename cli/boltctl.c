@@ -404,7 +404,7 @@ handle_device_changed (GObject    *gobject,
   else
     val = g_strdup_value_contents (&prop_val);
 
-  g_print ("%s\n", val);
+  g_print ("%s\n", val ? : "");
 
   g_value_unset (&str_val);
   g_value_unset (&prop_val);
