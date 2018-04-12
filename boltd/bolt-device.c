@@ -783,6 +783,19 @@ authorize_prepare (BoltDevice         *dev,
   return task;
 }
 
+static gboolean
+authorize_device_idle (gpointer user_data)
+{
+  g_autoptr(GTask) task = NULL;
+
+  g_return_val_if_fail (G_IS_TASK (user_data), G_SOURCE_REMOVE);
+  task = (GTask *) user_data;
+
+  g_task_run_in_thread (task, authorize_in_thread);
+
+  return G_SOURCE_REMOVE;
+}
+
 /* dbus property setter */
 
 static gboolean
@@ -1003,6 +1016,22 @@ bolt_device_authorize (BoltDevice         *dev,
     return;
 
   g_task_run_in_thread (task, authorize_in_thread);
+}
+
+void
+bolt_device_authorize_idle (BoltDevice         *dev,
+                            BoltAuth           *auth,
+                            GAsyncReadyCallback callback,
+                            gpointer            user_data)
+{
+  GTask *task = NULL;
+
+  task = authorize_prepare (dev, auth, callback, user_data);
+
+  if (task == NULL)
+    return;
+
+  g_idle_add (authorize_device_idle, task);
 }
 
 BoltStatus
