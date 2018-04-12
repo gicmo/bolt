@@ -647,16 +647,28 @@ main (int argc, char **argv)
   g_autofree char *cmdline = NULL;
   SubCommand *cmd = NULL;
   const char *cmdname = NULL;
+  gboolean version = FALSE;
+  GOptionEntry options[] = {
+    { "version", 0, 0, G_OPTION_ARG_NONE, &version, "Print version information and exit", NULL },
+    { NULL }
+  };
 
   setlocale (LC_ALL, "");
 
   optctx = g_option_context_new ("[COMMAND]");
+  g_option_context_add_main_entries (optctx, options, NULL);
 
   option_context_make_summary (optctx);
   g_option_context_set_strict_posix (optctx, TRUE);
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
     return usage_error (error);
+
+  if (version)
+    {
+      g_print ("%s %s\n", PACKAGE_NAME, PACKAGE_VERSION);
+      exit (EXIT_SUCCESS);
+    }
 
   if (argc < 2)
     cmdname = "list";
