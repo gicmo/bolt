@@ -62,6 +62,7 @@ static const char *const ansi_glphys[BOLT_GLYPH_LAST] = {
   [BLACK_CIRCLE]         = "*",
   [ARROW]                = "->",
   [MDASH]                = "-",
+  [WARNING_SIGN]         = "!",
 };
 
 static const char *const utf8_glphys[BOLT_GLYPH_LAST] = {
@@ -73,6 +74,7 @@ static const char *const utf8_glphys[BOLT_GLYPH_LAST] = {
   [BLACK_CIRCLE]         = "\342\227\217",             /* ● */
   [ARROW]                = "\342\206\222",             /* → */
   [MDASH]                = "\342\200\223",             /* – */
+  [WARNING_SIGN]         = "\342\232\240",             /* ⚠ */
 };
 
 

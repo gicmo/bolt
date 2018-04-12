@@ -47,6 +47,8 @@ typedef enum {
   ARROW,
   MDASH,
 
+  WARNING_SIGN,
+
   BOLT_GLYPH_LAST
 } BoltGlyph;
 
