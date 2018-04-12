@@ -96,8 +96,12 @@ void            bolt_client_set_authmode_async (BoltClient         *client,
                                                 GAsyncReadyCallback callback,
                                                 gpointer            user_data);
 
-gboolean         bolt_client_set_authmode_finish (BoltClient   *client,
-                                                  GAsyncResult *res,
-                                                  GError      **error);
+gboolean        bolt_client_set_authmode_finish (BoltClient   *client,
+                                                 GAsyncResult *res,
+                                                 GError      **error);
+
+/* utility functions */
+void            bolt_devices_sort_by_syspath (GPtrArray *devices,
+                                              gboolean   reverse);
 
 G_END_DECLS

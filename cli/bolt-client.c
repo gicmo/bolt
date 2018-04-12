@@ -163,26 +163,6 @@ bolt_client_init (BoltClient *cli)
 {
 }
 
-static gint
-device_sort (gconstpointer ap,
-             gconstpointer bp)
-{
-  BoltDevice *a = BOLT_DEVICE (*((BoltDevice **) ap));
-  BoltDevice *b = BOLT_DEVICE (*((BoltDevice **) bp));
-  g_autofree char *pa = NULL;
-  g_autofree char *pb = NULL;
-
-  g_object_get (a,
-                "syspath", &pa,
-                NULL);
-
-  g_object_get (b,
-                "syspath", &pb,
-                NULL);
-
-  return g_strcmp0 (pa, pb);
-}
-
 /* dbus signals */
 
 static void
@@ -346,7 +326,6 @@ bolt_client_list_devices (BoltClient   *client,
       g_ptr_array_add (devices, dev);
     }
 
-  g_ptr_array_sort (devices, device_sort);
   return g_steal_pointer (&devices);
 }
 
@@ -683,4 +662,36 @@ bolt_client_set_authmode_finish (BoltClient   *client,
                                  GError      **error)
 {
   return bolt_proxy_set_property_finish (res, error);
+}
+
+/* utility functions */
+static gint
+device_sort_by_syspath (gconstpointer ap,
+                        gconstpointer bp,
+                        gpointer      data)
+{
+  BoltDevice *a = BOLT_DEVICE (*((BoltDevice **) ap));
+  BoltDevice *b = BOLT_DEVICE (*((BoltDevice **) bp));
+  gint sort_order = GPOINTER_TO_INT (data);
+  const char *pa;
+  const char *pb;
+
+  pa = bolt_device_get_syspath (a);
+  pb = bolt_device_get_syspath (b);
+
+  return sort_order * g_strcmp0 (pa, pb);
+}
+
+void
+bolt_devices_sort_by_syspath (GPtrArray *devices,
+                              gboolean   reverse)
+{
+  gpointer sort_order = GINT_TO_POINTER (reverse ? -1 : 1);
+
+  if (devices == NULL)
+    return;
+
+  g_ptr_array_sort_with_data (devices,
+                              device_sort_by_syspath,
+                              sort_order);
 }

@@ -519,6 +519,7 @@ monitor (BoltClient *client, int argc, char **argv)
       devices = g_ptr_array_new_with_free_func (g_object_unref);
     }
 
+  bolt_devices_sort_by_syspath (devices, FALSE);
   for (guint i = 0; i < devices->len; i++)
     {
       BoltDevice *dev = g_ptr_array_index (devices, i);
@@ -573,6 +574,7 @@ list_devices (BoltClient *client, int argc, char **argv)
       return EXIT_FAILURE;
     }
 
+  bolt_devices_sort_by_syspath (devices, FALSE);
   for (guint i = 0; i < devices->len; i++)
     {
       BoltDevice *dev = g_ptr_array_index (devices, i);
