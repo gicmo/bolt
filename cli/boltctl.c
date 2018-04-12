@@ -504,6 +504,10 @@ monitor (BoltClient *client, int argc, char **argv)
   authmode = bolt_client_get_authmode (client);
   amstr = bolt_flags_to_string (BOLT_TYPE_AUTH_MODE, authmode, NULL);
 
+  if (!bolt_proxy_has_name_owner (BOLT_PROXY (client)))
+    g_print ("%s no name owner for bolt (not running?)\n",
+             bolt_glyph (WARNING_SIGN));
+
   g_print ("Bolt Version  : %d.%d\n", VERSION_MAJOR, VERSION_MINOR);
   g_print ("Daemon API    : %u\n", version);
   g_print ("Client API    : %u\n", BOLT_DBUS_API_VERSION);
