@@ -217,6 +217,19 @@ bolt_proxy_get_object_path (BoltProxy *proxy)
   return g_dbus_proxy_get_object_path (G_DBUS_PROXY (proxy));
 }
 
+gboolean
+bolt_proxy_has_name_owner (BoltProxy *proxy)
+{
+  const char *name_owner;
+
+  g_return_val_if_fail (proxy != NULL, FALSE);
+  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
+
+  name_owner = g_dbus_proxy_get_name_owner (G_DBUS_PROXY (proxy));
+
+  return name_owner != NULL;
+}
+
 static GParamSpec *
 find_property (BoltProxy  *proxy,
                const char *name,

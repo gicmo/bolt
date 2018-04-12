@@ -49,6 +49,8 @@ gboolean          bolt_proxy_get_dbus_property (GObject    *proxy,
                                                 GParamSpec *spec,
                                                 GValue     *value);
 
+gboolean          bolt_proxy_has_name_owner (BoltProxy *proxy);
+
 const char *      bolt_proxy_get_object_path (BoltProxy *proxy);
 
 gboolean          bolt_proxy_get_property_bool (BoltProxy  *proxy,
