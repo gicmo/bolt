@@ -916,29 +916,21 @@ handle_udev_device_changed (BoltManager        *mgr,
                             BoltDevice         *dev,
                             struct udev_device *udev)
 {
-  g_autoptr(GPtrArray) children = NULL;
   BoltStatus after;
   BoltStatus before;
 
   before = bolt_device_get_status (dev);
   after = bolt_device_update_from_udev (dev, udev);
 
-  if (before == after)
-    return;
-
-  bolt_info (LOG_DEV (dev), "device changed: %s",
+  bolt_info (LOG_DEV (dev), LOG_TOPIC ("udev"),
+             "device changed: %s -> %s",
+             bolt_status_to_string (before),
              bolt_status_to_string (after));
 
-  if (!bolt_status_is_authorized (after))
-    return;
-
-  children = bolt_manager_get_children (mgr, dev);
-
-  for (guint i = 0; i < children->len; i++)
-    {
-      BoltDevice *child = g_ptr_array_index (children, i);
-      maybe_authorize_device (mgr, child);
-    }
+  /* reaction to status changes of the device, i.e.
+   * authorizing the children are done in the
+   * handle_device_status_changed () signal handler
+   */
 }
 
 static void
@@ -1064,6 +1056,7 @@ handle_device_status_changed (BoltDevice  *dev,
                               BoltStatus   old,
                               BoltManager *mgr)
 {
+  g_autoptr(GPtrArray) children = NULL;
   BoltStatus now;
 
   now = bolt_device_get_status (dev);
@@ -1081,6 +1074,19 @@ handle_device_status_changed (BoltDevice  *dev,
     mgr->authorizing -= 1;
 
   manager_probing_activity (mgr, !mgr->authorizing);
+
+  if (now != BOLT_STATUS_AUTHORIZED)
+    return;
+
+  /* see if the new status changes anything for the
+   * children, e.g. the can now be authorized */
+  children = bolt_manager_get_children (mgr, dev);
+
+  for (guint i = 0; i < children->len; i++)
+    {
+      BoltDevice *child = g_ptr_array_index (children, i);
+      maybe_authorize_device (mgr, child);
+    }
 }
 
 static gboolean
