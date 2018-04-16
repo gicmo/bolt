@@ -993,6 +993,40 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(len(x), 1)
         return x[0]
 
+    def store_device(self, dev, policy='auto', key=None):
+        import configparser
+        df = configparser.ConfigParser()
+        df.optionxform = lambda option: option
+
+        uid = dev.unique_id
+        df['device'] = {
+            'name': dev.device_name,
+            'vendor': dev.vendor_name,
+            'type': 'peripheral'
+        }
+
+        df['user'] = {
+            'storetime': int(time.time()),
+            'policy': policy
+        }
+
+        path = os.path.join(self.dbpath, 'devices', uid)
+        with open(path, 'w') as f:
+            df.write(f)
+
+        if key == 'known':
+            key = 'a26d5ad55b011df39ae06cae1fd329babfecac3465fe0a8828d6178f88e59083'
+        elif key == 'device':
+            key = dev.key
+
+        if key is None:
+            return
+
+        path = os.path.join(self.dbpath, 'keys', uid)
+        with open(path, 'w') as f:
+            f.write(key)
+
+
     # the actual tests
     def test_basic(self):
         self.daemon_start()
