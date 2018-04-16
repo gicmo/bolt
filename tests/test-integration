@@ -394,7 +394,7 @@ class BoltDevice(ProxyWrapper):
 
         print(res, file=sys.stderr)
         keys = [x.strip() for x in res.split('|')]
-        return reduce (lambda r, x: r | mapping.get(x, 0), keys, 0)
+        return reduce(lambda r, x: r | mapping.get(x, 0), keys, 0)
 
     @property
     def key(self):
