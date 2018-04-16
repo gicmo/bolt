@@ -243,12 +243,20 @@ class Recorder(object):
             return True
         return e.details == target.details
 
-    def events(self, what, name, details=None):
-        t = self.Event(what, name, details, None)
-        return list(filter(self.event_match(t), self.events))
+    @staticmethod
+    def events_list_has_event(events, target):
+        return list(filter(lambda x: Recorder.event_match(x, target), events))
 
-    def have_event(self, what, name, details=None):
-        return len(self.events(what, name, details=details)) > 0
+    @staticmethod
+    def events_list_contains(events, what, name, details=None):
+        target = Recorder.Event(what, name, details, None)
+        return list(filter(lambda x: Recorder.event_match(x, target), events))
+
+    def events_filter(self, e):
+        return self.events_list_has_event(self.events, e)
+
+    def have_event(self, e):
+        return len(self.events_filter(e)) > 0
 
     def wait_for_events(self, lst, timeout=None):
         loop = GLib.MainLoop()
@@ -275,6 +283,8 @@ class Recorder(object):
 
     def wait_for_event(self, what, name, details=None):
         t = self.Event(what, name, details, None)
+        if self.have_event(t):
+            return True
         return self.wait_for_events([t])
 
 
