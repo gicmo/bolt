@@ -829,6 +829,8 @@ class BoltTest(dbusmock.DBusTestCase):
         self.testbed = UMockdev.Testbed.new()
         self.assertTrue(UMockdev.in_mock_environment())
         self.dbpath = tempfile.mkdtemp()
+        os.makedirs(os.path.join(self.dbpath, 'devices'))
+        os.makedirs(os.path.join(self.dbpath, 'keys'))
 
         self.client = None
         self.log = None
