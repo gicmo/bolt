@@ -125,21 +125,25 @@ static gboolean handle_set_authmode (BoltExported *obj,
                                      GError      **error);
 
 /* dbus method calls */
-static gboolean handle_list_devices (BoltExported          *object,
-                                     GVariant              *params,
-                                     GDBusMethodInvocation *invocation);
+static GVariant *  handle_list_devices (BoltExported          *object,
+                                        GVariant              *params,
+                                        GDBusMethodInvocation *invocation,
+                                        GError               **error);
 
-static gboolean handle_device_by_uid (BoltExported          *object,
-                                      GVariant              *params,
-                                      GDBusMethodInvocation *invocation);
+static GVariant *  handle_device_by_uid (BoltExported          *object,
+                                         GVariant              *params,
+                                         GDBusMethodInvocation *invocation,
+                                         GError               **error);
 
-static gboolean handle_enroll_device (BoltExported          *object,
-                                      GVariant              *params,
-                                      GDBusMethodInvocation *invocation);
+static GVariant *  handle_enroll_device (BoltExported          *object,
+                                         GVariant              *params,
+                                         GDBusMethodInvocation *invocation,
+                                         GError               **error);
 
-static gboolean handle_forget_device (BoltExported          *object,
-                                      GVariant              *params,
-                                      GDBusMethodInvocation *invocation);
+static GVariant *  handle_forget_device (BoltExported          *object,
+                                         GVariant              *params,
+                                         GDBusMethodInvocation *invocation,
+                                         GError               **error);
 
 /*  */
 struct _BoltManager
@@ -1452,10 +1456,11 @@ handle_set_authmode (BoltExported *obj,
 }
 
 /* dbus methods */
-static gboolean
+static GVariant *
 handle_list_devices (BoltExported          *obj,
                      GVariant              *params,
-                     GDBusMethodInvocation *inv)
+                     GDBusMethodInvocation *inv,
+                     GError               **error)
 {
   BoltManager *mgr = BOLT_MANAGER (obj);
   const char **devs;
@@ -1470,17 +1475,16 @@ handle_list_devices (BoltExported          *obj,
 
   devs[mgr->devices->len] = NULL;
 
-  g_dbus_method_invocation_return_value (inv, g_variant_new ("(^ao)", devs));
-  return TRUE;
+  return g_variant_new ("(^ao)", devs);
 }
 
-static gboolean
+static GVariant *
 handle_device_by_uid (BoltExported          *obj,
                       GVariant              *params,
-                      GDBusMethodInvocation *inv)
+                      GDBusMethodInvocation *inv,
+                      GError               **error)
 {
   g_autoptr(BoltDevice) dev = NULL;
-  g_autoptr(GError) error = NULL;
   BoltManager *mgr;
   const char *uid;
   const char *opath;
@@ -1488,17 +1492,13 @@ handle_device_by_uid (BoltExported          *obj,
   mgr = BOLT_MANAGER (obj);
 
   g_variant_get (params, "(&s)", &uid);
-  dev = manager_find_device_by_uid (mgr, uid, &error);
+  dev = manager_find_device_by_uid (mgr, uid, error);
 
   if (dev == NULL)
-    {
-      g_dbus_method_invocation_return_gerror (inv, error);
-      return TRUE;
-    }
+    return NULL;
 
   opath = bolt_device_get_object_path (dev);
-  g_dbus_method_invocation_return_value (inv, g_variant_new ("(o)", opath));
-  return TRUE;
+  return g_variant_new ("(o)", opath);
 }
 
 static void
@@ -1554,52 +1554,52 @@ enroll_device_done (GObject      *device,
   g_dbus_method_invocation_return_value (inv, g_variant_new ("(o)", opath));
 }
 
-static gboolean
+static GVariant *
 handle_enroll_device (BoltExported          *obj,
                       GVariant              *params,
-                      GDBusMethodInvocation *inv)
+                      GDBusMethodInvocation *inv,
+                      GError               **error)
 {
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(BoltAuth) auth = NULL;
   g_autoptr(BoltKey) key = NULL;
-  g_autoptr(GError) error = NULL;
   BoltManager *mgr;
   const char *uid;
   BoltSecurity level;
+  BoltPolicy pol;
   const char *policy;
 
   mgr = BOLT_MANAGER (obj);
 
   g_variant_get_child (params, 0, "&s", &uid);
   g_variant_get_child (params, 1, "&s", &policy);
-  dev = manager_find_device_by_uid (mgr, uid, &error);
+  dev = manager_find_device_by_uid (mgr, uid, error);
 
   if (dev == NULL)
-    {
-      g_dbus_method_invocation_return_gerror (inv, error);
-      return TRUE;
-    }
+    return NULL;
 
-  if (bolt_enum_from_string (BOLT_TYPE_POLICY, policy, &error) == -1)
+  pol = bolt_enum_from_string (BOLT_TYPE_POLICY, policy, error);
+  if (pol == BOLT_POLICY_UNKNOWN)
     {
-      g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                                             "invalid policy: %s", policy);
-      return TRUE;
+      if (*error == NULL)
+        g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                     "invalid policy: %s", policy);
+      return NULL;
     }
 
   if (bolt_device_get_stored (dev))
     {
-      g_dbus_method_invocation_return_error (inv, G_IO_ERROR, G_IO_ERROR_EXISTS,
-                                             "device with id '%s' already enrolled.",
-                                             uid);
-      return TRUE;
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS,
+                   "device with id '%s' already enrolled.",
+                   uid);
+      return NULL;
     }
 
   if (bolt_auth_mode_is_disabled (mgr->authmode))
     {
-      g_dbus_method_invocation_return_error (inv, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
-                                             "authorization of new devices is disabled");
-      return TRUE;
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+                   "authorization of new devices is disabled");
+      return NULL;
     }
 
   if (bolt_device_supports_secure_mode (dev))
@@ -1614,17 +1614,17 @@ handle_enroll_device (BoltExported          *obj,
   auth = bolt_auth_new (mgr, level, key);
   bolt_device_authorize (dev, auth, enroll_device_done, inv);
 
-  return TRUE;
+  return NULL;
 
 }
 
-static gboolean
+static GVariant *
 handle_forget_device (BoltExported          *obj,
                       GVariant              *params,
-                      GDBusMethodInvocation *inv)
+                      GDBusMethodInvocation *inv,
+                      GError               **error)
 {
   g_autoptr(BoltDevice) dev = NULL;
-  g_autoptr(GError) error = NULL;
   BoltManager *mgr;
   gboolean ok;
   const char *uid;
@@ -1632,22 +1632,14 @@ handle_forget_device (BoltExported          *obj,
   mgr = BOLT_MANAGER (obj);
 
   g_variant_get (params, "(&s)", &uid);
-  dev = manager_find_device_by_uid (mgr, uid, &error);
+  dev = manager_find_device_by_uid (mgr, uid, error);
 
   if (dev == NULL)
-    {
-      g_dbus_method_invocation_take_error (inv, g_steal_pointer (&error));
-      return TRUE;
-    }
+    return FALSE;
 
-  ok = bolt_store_del (mgr->store, dev, &error);
+  ok = bolt_store_del (mgr->store, dev, error);
 
-  if (!ok)
-    g_dbus_method_invocation_take_error (inv, g_steal_pointer (&error));
-  else
-    g_dbus_method_invocation_return_value (inv, g_variant_new ("()"));
-
-  return TRUE;
+  return ok ? g_variant_new ("()") : NULL;
 }
 
 /* public methods */

@@ -41,9 +41,10 @@
 #define BT_TYPE_EXPORTED bt_exported_get_type ()
 G_DECLARE_FINAL_TYPE (BtExported, bt_exported, BT, EXPORTED, BoltExported);
 
-static gboolean  handle_ping (BoltExported          *obj,
-                              GVariant              *params,
-                              GDBusMethodInvocation *inv);
+static GVariant *  handle_ping (BoltExported          *obj,
+                                GVariant              *params,
+                                GDBusMethodInvocation *inv,
+                                GError               **error);
 
 static gboolean handle_authorize_method (BoltExported          *exported,
                                          GDBusMethodInvocation *inv,
@@ -299,15 +300,14 @@ bt_exported_install_property_authorizer (BtExported *be)
 }
 
 
-static gboolean
+static GVariant *
 handle_ping (BoltExported          *obj,
              GVariant              *params,
-             GDBusMethodInvocation *inv)
+             GDBusMethodInvocation *inv,
+             GError               **error)
 {
   //  BtExported *be = BT_EXPORTED (obj);
-
-  g_dbus_method_invocation_return_value (inv, g_variant_new ("(s)", "PONG"));
-  return TRUE;
+  return g_variant_new ("(s)", "PONG");
 }
 
 static gboolean

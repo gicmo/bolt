@@ -460,9 +460,11 @@ dispatch_method_call (BoltExported          *exported,
                       GError               **error)
 {
   GVariant *params = g_dbus_method_invocation_get_parameters (inv);
+  GVariant *res;
 
-  method->handler (exported, params, inv);
-  return NULL;
+  res = method->handler (exported, params, inv, error);
+
+  return res;
 }
 
 static void

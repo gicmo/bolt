@@ -43,9 +43,10 @@ static gboolean handle_set_label (BoltExported *obj,
                                   GError      **error);
 
 /* dbus method calls */
-static gboolean    handle_authorize (BoltExported          *object,
+static GVariant *  handle_authorize (BoltExported          *object,
                                      GVariant              *params,
-                                     GDBusMethodInvocation *invocation);
+                                     GDBusMethodInvocation *invocation,
+                                     GError               **error);
 
 
 struct _BoltDevice
@@ -870,14 +871,14 @@ handle_authorize_done (GObject      *device,
     g_dbus_method_invocation_take_error (inv, error);
 }
 
-static gboolean
+static GVariant *
 handle_authorize (BoltExported          *object,
                   GVariant              *params,
-                  GDBusMethodInvocation *inv)
+                  GDBusMethodInvocation *inv,
+                  GError               **error)
 {
   g_autoptr(BoltAuth) auth = NULL;
   BoltDevice *dev = BOLT_DEVICE (object);
-  GError *error = NULL;
   BoltSecurity level;
   BoltKey *key;
 
@@ -887,22 +888,19 @@ handle_authorize (BoltExported          *object,
   if (level == BOLT_SECURITY_SECURE)
     {
       if (dev->key)
-        key = bolt_store_get_key (dev->store, dev->uid, &error);
+        key = bolt_store_get_key (dev->store, dev->uid, error);
       else
         level = BOLT_SECURITY_USER;
     }
 
+  /* only happens if the key could not be read */
   if (level == BOLT_SECURITY_SECURE && key == NULL)
-    {
-      /* only happens if the key could not be read */
-      g_dbus_method_invocation_take_error (inv, error);
-      return TRUE;
-    }
+    return NULL;
 
   auth = bolt_auth_new (dev, level, key);
   bolt_device_authorize (dev, auth, handle_authorize_done, inv);
 
-  return TRUE;
+  return NULL;
 }
 
 /* public methods */

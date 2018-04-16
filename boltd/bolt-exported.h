@@ -53,9 +53,10 @@ struct _BoltExportedClass
   gpointer padding[10];
 };
 
-typedef gboolean (* BoltExportedMethodHandler) (BoltExported          *obj,
-                                                GVariant              *params,
-                                                GDBusMethodInvocation *inv);
+typedef GVariant *  (* BoltExportedMethodHandler) (BoltExported          *obj,
+                                                   GVariant              *params,
+                                                   GDBusMethodInvocation *inv,
+                                                   GError               **error);
 
 typedef gboolean (* BoltExportedSetter) (BoltExported *obj,
                                          const char   *name,
