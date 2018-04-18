@@ -1113,7 +1113,6 @@ probing_timeout (gpointer user_data)
   mgr->probing_timeout = 0;
   g_object_notify_by_pspec (G_OBJECT (mgr), props[PROP_PROBING]);
   bolt_info (LOG_TOPIC ("probing"), "timeout, done: [%ld] (%ld)", dt, timeout);
-  bolt_exported_flush (BOLT_EXPORTED (mgr));
   return G_SOURCE_REMOVE;
 }
 
@@ -1131,7 +1130,6 @@ manager_probing_activity (BoltManager *mgr,
   bolt_info (LOG_TOPIC ("probing"), "started [%u]", dt);
   mgr->probing_timeout = g_timeout_add (dt, probing_timeout, mgr);
   g_object_notify_by_pspec (G_OBJECT (mgr), props[PROP_PROBING]);
-  bolt_exported_flush (BOLT_EXPORTED (mgr));
 }
 
 static gboolean

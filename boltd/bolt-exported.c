@@ -34,8 +34,9 @@ typedef struct _BoltExportedProp   BoltExportedProp;
 static GVariant * bolt_exported_get_prop (BoltExported     *exported,
                                           BoltExportedProp *prop);
 
-static void       bolt_exported_notify (GObject    *object,
-                                        GParamSpec *pspec);
+static void       bolt_exported_dispatch_properties_changed (GObject     *object,
+                                                             guint        n_pspecs,
+                                                             GParamSpec **pspecs);
 
 static gboolean   handle_authorize_method_default (BoltExported          *exported,
                                                    GDBusMethodInvocation *inv,
@@ -116,6 +117,7 @@ static void     bolt_exported_base_init (gpointer g_class);
 static void     bolt_exported_base_finalize (gpointer g_class);
 
 #define GET_PRIV(self) G_STRUCT_MEMBER_P (self, BoltExported_private_offset)
+#define CHAIN_UP(method) G_OBJECT_CLASS (bolt_exported_parent_class)->method
 
 GType
 bolt_exported_get_type (void)
@@ -229,7 +231,7 @@ bolt_exported_class_init (BoltExportedClass *klass)
 
   gobject_class->finalize = bolt_exported_finalize;
   gobject_class->get_property = bolt_exported_get_property;
-  gobject_class->notify = bolt_exported_notify;
+  gobject_class->dispatch_properties_changed = bolt_exported_dispatch_properties_changed;
 
   klass->authorize_method = handle_authorize_method_default;
   klass->authorize_property = handle_authorize_property_default;
@@ -684,8 +686,10 @@ handle_dbus_get_property (GDBusConnection *connection,
   return ret;
 }
 
-static gboolean
-emit_prop_changes (gpointer user_data)
+static void
+bolt_exported_dispatch_properties_changed (GObject     *object,
+                                           guint        n_pspecs,
+                                           GParamSpec **pspecs)
 {
   g_autoptr(GVariant) changes = NULL;
   g_autoptr(GError) err = NULL;
@@ -694,40 +698,44 @@ emit_prop_changes (gpointer user_data)
   const char *iface_name;
   BoltExported *exported;
   BoltExportedPrivate *priv;
-  GPtrArray *props_changed;
   gboolean ok;
+  guint count = 0;
 
-  exported = BOLT_EXPORTED (user_data);
+  exported = BOLT_EXPORTED (object);
   priv = GET_PRIV (exported);
-
-  props_changed = priv->props_changed;
 
   g_variant_builder_init (&changed, G_VARIANT_TYPE ("a{sv}"));
   g_variant_builder_init (&invalidated, G_VARIANT_TYPE ("as"));
 
   /* no bus, no changed signal */
   if (priv->dbus == NULL || priv->object_path == NULL)
-    {
-      g_ptr_array_remove_range (props_changed, 0, props_changed->len);
-      priv->props_changed_id = 0;
-      return FALSE;
-    }
+    goto out;
 
-  /* no changes, no changed signal */
-  if (props_changed->len == 0)
-    {
-      priv->props_changed_id = 0;
-      return FALSE;
-    }
-
-  for (guint i = 0; i < props_changed->len; i++)
+  for (guint i = 0; i < n_pspecs; i++)
     {
       g_autoptr(GVariant) var = NULL;
-      BoltExportedProp *prop = g_ptr_array_index (props_changed, i);
+      GParamSpec *pspec = pspecs[i];
+      BoltExportedProp *prop;
+      const char *nick;
+
+      nick = g_param_spec_get_nick (pspec);
+      prop =  bolt_exported_lookup_property (exported, nick, NULL);
+
+      if (prop == NULL)
+        {
+          bolt_debug (LOG_TOPIC ("dbus"), "prop %s change ignored", nick);
+          continue;
+        }
+
+      bolt_debug (LOG_TOPIC ("dbus"), "prop %s changed", nick);
 
       var = bolt_exported_get_prop (exported, prop);
       g_variant_builder_add (&changed, "{sv}", prop->name_bus, var);
+      count++;
     }
+
+  if (count == 0)
+    goto out;
 
   iface_name = bolt_exported_get_iface_name (exported);
   changes = g_variant_ref_sink (g_variant_new ("(sa{sv}as)",
@@ -747,49 +755,10 @@ emit_prop_changes (gpointer user_data)
     bolt_warn_err (err, LOG_TOPIC ("dbus"),
                    "error emitting property changes");
 
-  g_ptr_array_remove_range (props_changed, 0, props_changed->len);
-  priv->props_changed_id = 0;
+  bolt_debug (LOG_TOPIC ("dbus"), "emitted property %u changes", count);
 
-  bolt_debug (LOG_TOPIC ("dbus"), "emitted property changes");
-  return FALSE;
-}
-
-static void
-bolt_exported_notify (GObject    *object,
-                      GParamSpec *pspec)
-{
-  g_autoptr(GSource) src = NULL;
-  BoltExported *exported;
-  BoltExportedPrivate *priv;
-  BoltExportedProp *prop;
-  const char *nick;
-
-  exported = BOLT_EXPORTED (object);
-  priv = GET_PRIV (exported);
-
-  if (priv->dbus == NULL)
-    return;
-
-  nick = g_param_spec_get_nick (pspec);
-
-  prop = bolt_exported_lookup_property (exported, nick, NULL);
-
-  if (prop == NULL)
-    return;
-
-  g_ptr_array_add (priv->props_changed, prop);
-
-  if (priv->props_changed_id != 0)
-    return;
-
-  src = g_idle_source_new ();
-  g_source_set_priority (src, G_PRIORITY_DEFAULT);
-  g_source_set_name (src, "bolt_exported_notify");
-  g_source_set_callback (src, emit_prop_changes,
-                         g_object_ref (exported),
-                         (GDestroyNotify) g_object_unref);
-  g_source_attach (src, NULL);
-
+ out:
+	CHAIN_UP (dispatch_properties_changed) (object, n_pspecs, pspecs);
 }
 
 static GDBusInterfaceVTable dbus_vtable = {
@@ -1142,21 +1111,6 @@ bolt_exported_emit_signal (BoltExported *exported,
     }
 
   return ok;
-}
-
-void
-bolt_exported_flush (BoltExported *exported)
-{
-  BoltExportedPrivate *priv;
-
-  g_return_if_fail (BOLT_IS_EXPORTED (exported));
-
-  priv = GET_PRIV (exported);
-
-  if (priv->props_changed_id == 0)
-    return;
-
-  emit_prop_changes (exported);
 }
 
 /* non BoltExported internal methods */
