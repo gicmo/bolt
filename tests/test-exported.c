@@ -747,7 +747,21 @@ props_changed_signal (GDBusConnection *connection,
 
   g_debug ("got prop changes signal");
   ctx->data = changed_properties; /* transfer ownership */
-  g_main_loop_quit (ctx->loop);
+  if (g_main_loop_is_running (ctx->loop))
+    g_main_loop_quit (ctx->loop);
+}
+
+static gboolean
+change_properties (gpointer user_data)
+{
+  TestExported *tt = user_data;
+
+  g_object_set (tt->obj,
+                "str-rw", "huhu",
+                "bool", TRUE,
+                NULL);
+
+  return G_SOURCE_REMOVE;
 }
 
 static void
@@ -776,17 +790,11 @@ test_exported_props_changed (TestExported *tt, gconstpointer data)
 
   g_assert_cmpuint (sid, >, 0);
 
-  /* g_signal_connect (tt->obj, "notify::str-rw", */
-  /*                   G_CALLBACK (call_ctx_stop_on_notify), */
-  /*                   ctx); */
+  g_idle_add (change_properties, tt);
 
-  g_object_set (tt->obj,
-                "str-rw", "huhu",
-                "bool", TRUE,
-                NULL);
-
-  G_DEBUG_HERE ();
   call_ctx_run (ctx);
+  g_dbus_connection_signal_unsubscribe (tt->bus, sid);
+
   g_assert_no_error (ctx->error);
   g_assert_nonnull (ctx->data);
 
