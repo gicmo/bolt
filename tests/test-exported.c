@@ -46,6 +46,11 @@ static GVariant *  handle_ping (BoltExported          *obj,
                                 GDBusMethodInvocation *inv,
                                 GError               **error);
 
+static GVariant *  handle_peng (BoltExported          *obj,
+                                GVariant              *params,
+                                GDBusMethodInvocation *inv,
+                                GError               **error);
+
 static gboolean handle_authorize_method (BoltExported          *exported,
                                          GDBusMethodInvocation *inv,
                                          GError               **error,
@@ -234,6 +239,7 @@ bt_exported_class_init (BtExportedClass *klass)
 
   bolt_exported_class_export_properties (exported_class, PROP_STR, PROP_LAST, props);
   bolt_exported_class_export_method (exported_class, "Ping", handle_ping);
+  bolt_exported_class_export_method (exported_class, "Peng", handle_peng);
 
   bolt_exported_class_property_setter (exported_class,
                                        props[PROP_STR_RW],
@@ -309,6 +315,24 @@ handle_ping (BoltExported          *obj,
   //  BtExported *be = BT_EXPORTED (obj);
   return g_variant_new ("(s)", "PONG");
 }
+
+static GVariant *
+handle_peng (BoltExported          *obj,
+             GVariant              *params,
+             GDBusMethodInvocation *inv,
+             GError               **error)
+{
+  const char *str;
+  g_variant_get_child (params, 0, "&s", &str);
+  if (str == NULL)
+    str = "PENG";
+
+  g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+               "failing with: %s", str);
+
+  return NULL;
+}
+
 
 static gboolean
 handle_set_str_rw (BoltExported *obj,
@@ -535,6 +559,22 @@ test_exported_basic (TestExported *tt, gconstpointer data)
   g_variant_get (ctx->data, "(&s)", &str);
 
   g_assert_cmpstr (str, ==, "PONG");
+
+  /* check error handling in BoltExported's method dispatching */
+  g_dbus_connection_call (bus,
+                          tt->bus_name,
+                          tt->obj_path,
+                          DBUS_IFACE,
+                          "Peng",
+                          g_variant_new ("(s)", "Out of cheese"),
+                          NULL,
+                          G_DBUS_CALL_FLAGS_NONE,
+                          2000,
+                          NULL,
+                          dbus_call_done,
+                          ctx);
+  call_ctx_run (ctx);
+  g_assert_error (ctx->error, BOLT_ERROR, BOLT_ERROR_FAILED);
 }
 
 static void
