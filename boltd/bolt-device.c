@@ -36,6 +36,11 @@
 #include <dirent.h>
 #include <libudev.h>
 
+/* internal methods */
+static void     device_set_status_internal (BoltDevice *dev,
+                                            BoltStatus  status,
+                                            gboolean    notify);
+
 /* dbus property setter */
 static gboolean handle_set_label (BoltExported *obj,
                                   const char   *name,
@@ -272,16 +277,8 @@ bolt_device_set_property (GObject      *object,
 
     case PROP_STATUS:
       {
-        BoltStatus old = dev->status;
         BoltStatus now = g_value_get_enum (value);
-        if (old == now)
-          break;
-
-        dev->status = now;
-        g_signal_emit (dev,
-                       signals[SIGNAL_STATUS_CHANGED],
-                       0,
-                       old);
+        device_set_status_internal (dev, now, FALSE);
         break;
       }
 
@@ -504,6 +501,24 @@ bolt_device_class_init (BoltDeviceClass *klass)
 }
 
 /* internal methods */
+static void
+device_set_status_internal (BoltDevice *dev,
+                            BoltStatus  status,
+                            gboolean    notify)
+{
+  BoltStatus before;
+
+  before = dev->status;
+  if (before == status)
+    return;
+
+  dev->status = status;
+
+  g_signal_emit (dev, signals[SIGNAL_STATUS_CHANGED], 0, before);
+
+  if (notify)
+    g_object_notify_by_pspec (G_OBJECT (dev), props[PROP_STATUS]);
+}
 
 static const char *
 read_sysattr_name (struct udev_device *udev, const char *attr, GError **error)
@@ -732,14 +747,14 @@ authorize_thread_done (GObject      *object,
 
   g_object_freeze_notify (object);
 
-  g_object_set (dev,
-                "status", status,
-                "authtime", now,
-                NULL);
+  dev->authtime = now;
+  g_object_notify_by_pspec (G_OBJECT (dev), props[PROP_AUTHTIME]);
 
   chg = bolt_flags_update (aflags, &dev->aflags, mask);
   if (chg)
     g_object_notify_by_pspec (object, props[PROP_AUTHFLAGS]);
+
+  device_set_status_internal (dev, status, TRUE);
 
   g_object_thaw_notify (object);
 
@@ -1105,6 +1120,8 @@ bolt_device_update_from_udev (BoltDevice         *dev,
   BoltAuthFlags aflags;
   BoltDevInfo info;
   BoltStatus status;
+  guint mask;
+  gboolean chg;
   gboolean ok;
 
   /* if we are currently authorizing, let's not update
@@ -1127,23 +1144,24 @@ bolt_device_update_from_udev (BoltDevice         *dev,
 
   info.security = dev->security;
   status = bolt_status_from_info (&info);
+  aflags = bolt_auth_flags_from_info (&info, &mask);
 
-  if (status == dev->status)
-    return status;
-
-  aflags = bolt_auth_flags_from_info (&info, NULL);
-
-  g_object_set (G_OBJECT (dev),
-                "status", status,
-                "authflags", aflags,
-                NULL);
+  g_object_freeze_notify (G_OBJECT (dev));
 
   if (bolt_status_is_authorized (status) &&
-      dev->status != BOLT_STATUS_AUTHORIZING)
+      !bolt_status_is_authorized (dev->status))
     {
       dev->authtime = bolt_now_in_seconds ();
       g_object_notify_by_pspec (G_OBJECT (dev), props[PROP_AUTHTIME]);
     }
+
+  chg = bolt_flags_update (aflags, &dev->aflags, mask);
+  if (chg)
+    g_object_notify_by_pspec (G_OBJECT (dev), props[PROP_AUTHFLAGS]);
+
+  device_set_status_internal (dev, status, TRUE);
+
+  g_object_thaw_notify (G_OBJECT (dev));
 
   return status;
 }
