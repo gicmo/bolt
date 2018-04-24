@@ -323,6 +323,7 @@ handle_peng (BoltExported          *obj,
              GError               **error)
 {
   const char *str;
+
   g_variant_get_child (params, 0, "&s", &str);
   if (str == NULL)
     str = "PENG";

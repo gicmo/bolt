@@ -759,8 +759,8 @@ bolt_exported_dispatch_properties_changed (GObject     *object,
 
   bolt_debug (LOG_TOPIC ("dbus"), "emitted property %u changes", count);
 
- out:
-	CHAIN_UP (dispatch_properties_changed) (object, n_pspecs, pspecs);
+out:
+  CHAIN_UP (dispatch_properties_changed) (object, n_pspecs, pspecs);
 }
 
 static GDBusInterfaceVTable dbus_vtable = {
