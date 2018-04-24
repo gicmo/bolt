@@ -39,6 +39,7 @@ static const GDBusErrorEntry bolt_error_entries[] = {
   {BOLT_ERROR_BADKEY,     BOLT_DBUS_NAME ".Error.BadKey"},
   {BOLT_ERROR_CFG,        BOLT_DBUS_NAME ".Error.Cfg"},
   {BOLT_ERROR_BADSTATE,   BOLT_DBUS_NAME ".Error.BadState"},
+  {BOLT_ERROR_AUTHCHAIN,  BOLT_DBUS_NAME ".Error.AuthChain"},
 };
 
 
