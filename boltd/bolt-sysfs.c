@@ -125,45 +125,6 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
   return s;
 }
 
-static gboolean
-sysfs_parse_str_as_int (const char *str,
-                        gint       *ret)
-{
-  char *end;
-  gint64 val;
-
-  g_return_val_if_fail (str != NULL, -1);
-
-  errno = 0;
-  val = g_ascii_strtoll (str, &end, 0);
-
-  /* conversion errors */
-  if (val == 0 && errno != 0)
-    return FALSE;
-
-  /* check over/underflow */
-  if ((val == G_MAXINT64 || val == G_MININT64) &&
-      errno == ERANGE)
-    return FALSE;
-
-  if (str == end)
-    {
-      errno = -EINVAL;
-      return FALSE;
-    }
-
-  if (val > G_MAXINT || val < G_MININT)
-    {
-      errno = -ERANGE;
-      return FALSE;
-    }
-
-  if (ret)
-    *ret = (gint) val;
-
-  return TRUE;
-}
-
 static gint
 sysfs_get_sysattr_value_as_int (struct udev_device *udev,
                                 const char         *attr)
@@ -178,7 +139,7 @@ sysfs_get_sysattr_value_as_int (struct udev_device *udev,
   if (str == NULL)
     return -errno;
 
-  ok = sysfs_parse_str_as_int (str, &val);
+  ok = bolt_str_parse_as_int (str, &val);
 
   if (!ok)
     return -errno;

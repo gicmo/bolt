@@ -22,6 +22,7 @@
 
 #include "bolt-str.h"
 
+#include <errno.h>
 #include <string.h>
 
 typedef void (* zero_fn_t) (void  *s,
@@ -114,4 +115,43 @@ bolt_strstrip (char *string)
     g_clear_pointer (&str, g_free);
 
   return str;
+}
+
+gboolean
+bolt_str_parse_as_int (const char *str,
+                       gint       *ret)
+{
+  char *end;
+  gint64 val;
+
+  g_return_val_if_fail (str != NULL, -1);
+
+  errno = 0;
+  val = g_ascii_strtoll (str, &end, 0);
+
+  /* conversion errors */
+  if (val == 0 && errno != 0)
+    return FALSE;
+
+  /* check over/underflow */
+  if ((val == G_MAXINT64 || val == G_MININT64) &&
+      errno == ERANGE)
+    return FALSE;
+
+  if (str == end)
+    {
+      errno = -EINVAL;
+      return FALSE;
+    }
+
+  if (val > G_MAXINT || val < G_MININT)
+    {
+      errno = -ERANGE;
+      return FALSE;
+    }
+
+  if (ret)
+    *ret = (gint) val;
+
+  return TRUE;
 }

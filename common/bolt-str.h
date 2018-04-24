@@ -40,4 +40,7 @@ char *bolt_strdup_validate (const char *string);
 
 char *bolt_strstrip (char *string);
 
+gboolean bolt_str_parse_as_int (const char *str,
+                                gint       *ret);
+
 G_END_DECLS
