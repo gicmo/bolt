@@ -626,6 +626,90 @@ cleanup_name (const char *name,
 
 /*  device authorization */
 
+static gboolean
+device_check_parent_auth (BoltDevice *dev,
+                          DIR        *devdir,
+                          int        *auth)
+{
+
+  g_autoptr(DIR) parent = NULL;
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+
+  parent = bolt_opendir_at (dirfd (devdir), "..", O_RDONLY, &err);
+
+  if (!parent)
+    {
+      bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("authorize"),
+                     "could not open parent directory of device");
+      return FALSE;
+    }
+
+  ok = bolt_read_int_at (dirfd (parent), "authorized", auth, &err);
+
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("authorize"),
+                     "could not read parent authorization");
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static void
+authorize_adjust_error (BoltDevice *dev,
+                        DIR        *devdir,
+                        GError    **error)
+{
+  GError *err;
+  gint auth = -1;
+  gboolean ok;
+
+  if (error == NULL)
+    return;
+
+  err = *error;
+
+  if (bolt_err_inval (err))
+    {
+      /* EINVAL is reported by the kernel if:
+       *  a) device is already authorized
+       *  b) parent device is *not* authorized
+       */
+
+      /* check for a) */
+      ok = bolt_read_int_at (dirfd (devdir), "authorized", &auth, NULL);
+      if (ok && auth > 0)
+        {
+          g_clear_error (error);
+          g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_BADSTATE,
+                               "device is already authorized");
+
+          return;
+        }
+
+      /* check for b) */
+      ok = device_check_parent_auth (dev, devdir, &auth);
+      if (ok && auth < 1)
+        {
+          /* parent is not authorized, adjust the error */
+          g_clear_error (error);
+          g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_AUTHCHAIN,
+                               "parent device is not authorized");
+
+          return;
+        }
+    }
+
+  /* if we have a generic, non bolt error, it is most likely a
+   * G_IO_ERROR. We prefix the error message to make it clearer
+   * where the (probably cryptic) error originated
+   */
+  if (err->domain != BOLT_ERROR)
+    g_prefix_error (error, "%s", "kernel error: ");
+}
+
 typedef struct
 {
   BoltAuth *auth;
@@ -686,6 +770,10 @@ authorize_device_internal (BoltDevice *dev,
                            "authorized",
                            level,
                            error);
+
+  if (!ok)
+    authorize_adjust_error (dev, devdir, error);
+
   return ok;
 }
 
@@ -695,7 +783,7 @@ authorize_in_thread (GTask        *task,
                      gpointer      context,
                      GCancellable *cancellable)
 {
-  g_autoptr(GError) error = NULL;
+  GError *error = NULL;
   BoltDevice *dev = source;
   AuthData *auth_data = context;
   BoltAuth *auth = auth_data->auth;
@@ -704,9 +792,7 @@ authorize_in_thread (GTask        *task,
   ok = authorize_device_internal (dev, auth, &error);
 
   if (!ok)
-    g_task_return_new_error (task, BOLT_ERROR, BOLT_ERROR_FAILED,
-                             "failed to authorize device: %s",
-                             error->message);
+    g_task_return_error (task, error);
   else
     g_task_return_boolean (task, TRUE);
 }
