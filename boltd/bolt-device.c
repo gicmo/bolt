@@ -754,7 +754,7 @@ authorize_device_internal (BoltDevice *dev,
     {
       int keyfd;
 
-      bolt_debug (LOG_DEV (dev), "writing key");
+      bolt_debug (LOG_DEV (dev), LOG_TOPIC ("authorize"), "writing key");
       keyfd = bolt_openat (dirfd (devdir), "key", O_WRONLY | O_CLOEXEC, error);
       if (keyfd < 0)
         return FALSE;
@@ -765,7 +765,9 @@ authorize_device_internal (BoltDevice *dev,
         return FALSE;
     }
 
-  bolt_debug (LOG_DEV (dev), "writing authorization");
+  bolt_debug (LOG_DEV (dev), LOG_TOPIC ("authorize"),
+              "writing authorization");
+
   ok = bolt_write_char_at (dirfd (devdir),
                            "authorized",
                            level,
@@ -826,10 +828,11 @@ authorize_thread_done (GObject      *object,
   status = bolt_auth_to_status (auth);
   aflags = bolt_auth_to_flags (auth, &mask);
 
-  bolt_debug (LOG_DEV (dev), LOG_TOPIC ("authorize"),
-              "finished: %s (new flags: %u)",
-              bolt_status_to_string (status),
-              aflags);
+  bolt_info (LOG_DEV (dev), LOG_TOPIC ("authorize"),
+             "finished: %s (status: %s, flags: %u)",
+             ok ? "ok" : "FAIL",
+             bolt_status_to_string (status),
+             aflags);
 
   g_object_freeze_notify (object);
 
@@ -856,6 +859,7 @@ authorize_prepare (BoltDevice         *dev,
                    GAsyncReadyCallback callback,
                    gpointer            user_data)
 {
+  BoltSecurity lvl;
   AuthData *auth_data;
   GTask *task;
 
@@ -881,6 +885,11 @@ authorize_prepare (BoltDevice         *dev,
   g_task_set_task_data (task, auth_data, auth_data_free);
 
   g_object_set (dev, "status", BOLT_STATUS_AUTHORIZING, NULL);
+
+  lvl = bolt_auth_get_level (auth);
+  bolt_info (LOG_DEV (dev), LOG_TOPIC ("authorize"),
+             "authorization prepared for '%s' level",
+             bolt_security_to_string (lvl));
 
   return task;
 }
