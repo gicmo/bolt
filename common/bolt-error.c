@@ -74,7 +74,7 @@ bolt_err_exists (const GError *error)
 gboolean
 bolt_err_inval (const GError *error)
 {
-  return g_error_matches (error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE);
+  return g_error_matches (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
 }
 
 gboolean
