@@ -35,6 +35,9 @@
 static const GDBusErrorEntry bolt_error_entries[] = {
   {BOLT_ERROR_FAILED,     BOLT_DBUS_NAME ".Error.Failed"},
   {BOLT_ERROR_UDEV,       BOLT_DBUS_NAME ".Error.UDev"},
+  {BOLT_ERROR_NOKEY,      BOLT_DBUS_NAME ".Error.NoKey"},
+  {BOLT_ERROR_BADKEY,     BOLT_DBUS_NAME ".Error.BadKey"},
+  {BOLT_ERROR_CFG,        BOLT_DBUS_NAME ".Error.Cfg"},
 };
 
 
