@@ -31,6 +31,7 @@ G_BEGIN_DECLS
  * @BOLT_ERROR_NOKEY: Key for authorization is missing
  * @BOLT_ERROR_BADKEY: The key is invalid
  * @BOLT_ERROR_CFG: Configuration is invalid
+ * @BOLT_ERROR_BADSTATE: Device is in the wrong state
  *
  * Error codes used inside Bolt.
  */
@@ -40,6 +41,7 @@ enum {
   BOLT_ERROR_NOKEY,
   BOLT_ERROR_BADKEY,
   BOLT_ERROR_CFG,
+  BOLT_ERROR_BADSTATE,
 } BoltError;
 
 
