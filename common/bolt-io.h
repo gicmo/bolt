@@ -86,6 +86,11 @@ gboolean   bolt_write_char_at (int         dirfd,
                                char        value,
                                GError    **error);
 
+gboolean   bolt_read_int_at (int         dirfd,
+                             const char *name,
+                             gint       *val,
+                             GError    **error);
+
 gboolean   bolt_verify_uid (int         dirfd,
                             const char *uid,
                             GError    **error);

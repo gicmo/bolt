@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "bolt-error.h"
+#include "bolt-str.h"
 
 #include "bolt-io.h"
 
@@ -437,6 +438,33 @@ retry:
   (void) close (fd);
 
   return n > 0;
+}
+
+gboolean
+bolt_read_int_at (int         dirfd,
+                  const char *name,
+                  gint       *val,
+                  GError    **error)
+{
+  g_autofree char *str = NULL;
+  gboolean ok;
+
+  str = bolt_read_value_at (dirfd, name, error);
+
+  if (str == NULL)
+    return FALSE;
+
+  ok = bolt_str_parse_as_int (str, val);
+
+  if (!ok)
+    {
+      g_set_error (error, G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "could not parse str '%s' as integer: %s",
+                   str, g_strerror (errno));
+    }
+
+  return ok;
 }
 
 gboolean
