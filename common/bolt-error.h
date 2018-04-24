@@ -28,6 +28,9 @@ G_BEGIN_DECLS
  * BoltError:
  * @BOLT_ERROR_FAILED: Generic error code
  * @BOLT_ERROR_UDEV: UDev error
+ * @BOLT_ERROR_NOKEY: Key for authorization is missing
+ * @BOLT_ERROR_BADKEY: The key is invalid
+ * @BOLT_ERROR_CFG: Configuration is invalid
  *
  * Error codes used inside Bolt.
  */
