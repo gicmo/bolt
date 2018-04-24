@@ -777,7 +777,7 @@ authorize_prepare (BoltDevice         *dev,
 
   if (!bolt_status_is_pending (dev->status))
     {
-      bolt_auth_return_new_error (auth, BOLT_ERROR, BOLT_ERROR_FAILED,
+      bolt_auth_return_new_error (auth, BOLT_ERROR, BOLT_ERROR_BADSTATE,
                                   "wrong device state: %s",
                                   bolt_status_to_string (dev->status));
 
