@@ -1207,6 +1207,12 @@ bolt_device_is_connected (const BoltDevice *device)
   return bolt_status_is_connected (device->status);
 }
 
+gboolean
+bolt_device_is_authorized (const BoltDevice *device)
+{
+  return bolt_status_is_authorized (device->status);
+}
+
 BoltStatus
 bolt_device_update_from_udev (BoltDevice         *dev,
                               struct udev_device *udev)

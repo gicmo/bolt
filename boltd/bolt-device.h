@@ -48,6 +48,8 @@ BoltStatus        bolt_device_disconnected (BoltDevice *dev);
 
 gboolean          bolt_device_is_connected (const BoltDevice *device);
 
+gboolean          bolt_device_is_authorized (const BoltDevice *device);
+
 BoltStatus        bolt_device_update_from_udev (BoltDevice         *dev,
                                                 struct udev_device *udev);
 
