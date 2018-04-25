@@ -27,6 +27,7 @@
 #include "bolt-io.h"
 #include "bolt-log.h"
 #include "bolt-str.h"
+#include "bolt-time.h"
 
 #include <string.h>
 
@@ -345,9 +346,10 @@ bolt_store_put_device (BoltStore  *store,
 
   stime = bolt_device_get_storetime (device);
 
-  if (stime > 0)
-    g_key_file_set_uint64 (kf, USER_GROUP, "storetime", stime);
+  if (stime < 1)
+    stime = (gint64) bolt_now_in_seconds ();
 
+  g_key_file_set_uint64 (kf, USER_GROUP, "storetime", stime);
 
   data = g_key_file_to_data (kf, &len, error);
 
@@ -382,6 +384,7 @@ bolt_store_put_device (BoltStore  *store,
                     "store", store,
                     "policy", policy,
                     "key", keystate,
+                    "storetime", stime,
                     NULL);
 
       g_signal_emit (store, signals[SIGNAL_DEVICE_ADDED], 0, uid);
