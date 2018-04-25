@@ -1220,6 +1220,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
 
         self.polkitd.SetAllowed(['org.freedesktop.bolt.authorize'])
+        before = int(time.time())
         for d in to_authorize:
             remote = self.client.device_by_uid(d.unique_id)
             tape = remote.record()
@@ -1228,6 +1229,11 @@ class BoltTest(dbusmock.DBusTestCase):
             res = tape.wait_for_event('property', 'Status', 'authorized')
             self.assertTrue(res)
             self.assertDeviceEqual(d, remote)
+            # make sure AuthorizeTime is correct
+            now = int(time.time())
+            self.assertTrue(remote.AuthorizeTime > 1)
+            self.assertTrue(remote.AuthorizeTime >= before)
+            self.assertTrue(remote.AuthorizeTime <= now)
             tape.close()
 
         for d in to_authorize:
@@ -1342,6 +1348,9 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertTrue(remote.StoreTime > 1)
             self.assertTrue(remote.StoreTime >= before)
             self.assertTrue(remote.StoreTime <= now)
+            self.assertTrue(remote.AuthorizeTime > 1)
+            self.assertTrue(remote.AuthorizeTime >= before)
+            self.assertTrue(remote.AuthorizeTime <= now)
 
         # we disconnect the tree, but since the devices are connected
         # the daemon should have them in its database now
