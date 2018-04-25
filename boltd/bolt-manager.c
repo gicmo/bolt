@@ -1550,6 +1550,51 @@ enroll_device_done (GObject      *device,
 }
 
 static GVariant *
+enroll_device_store_authorized (BoltManager *mgr,
+                                BoltDevice  *dev,
+                                BoltPolicy   policy,
+                                GError     **error)
+{
+  g_autofree char *keypath = NULL;
+
+  g_autoptr(GFile) keyfile = NULL;
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+  BoltKey *key;
+  const char *syspath;
+  const char *opath;
+
+  bolt_info (LOG_DEV (dev), "enrolling an authorized device");
+
+  syspath = bolt_device_get_syspath (dev);
+  keypath = g_build_filename (syspath, "key", NULL);
+  keyfile = g_file_new_for_path (keypath);
+
+  key = bolt_key_load_file (keyfile, &err);
+  if (key == NULL && !bolt_err_notfound (err))
+    {
+      bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("udev"),
+                     "failed to read key from sysfs");
+      g_propagate_prefixed_error (error, g_steal_pointer (&err), "%s",
+                                  "could not determine existing authorization");
+      return NULL;
+    }
+
+  ok = bolt_store_put_device (mgr->store, dev, policy, key, &err);
+
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("store"),
+                     "failed to store device");
+      g_propagate_error (error, g_steal_pointer (&err));
+      return NULL;
+    }
+
+  opath = bolt_device_get_object_path (dev);
+  return g_variant_new ("(o)", opath);
+}
+
+static GVariant *
 handle_enroll_device (BoltExported          *obj,
                       GVariant              *params,
                       GDBusMethodInvocation *inv,
@@ -1589,6 +1634,10 @@ handle_enroll_device (BoltExported          *obj,
                    uid);
       return NULL;
     }
+
+  /* if the device is already authorized, we just store it */
+  if (bolt_device_is_authorized (dev))
+    return enroll_device_store_authorized (mgr, dev, pol, error);
 
   if (bolt_auth_mode_is_disabled (mgr->authmode))
     {
