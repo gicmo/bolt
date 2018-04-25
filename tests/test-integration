@@ -1374,6 +1374,42 @@ class BoltTest(dbusmock.DBusTestCase):
                 self.assertTrue(res)
                 self.assertDeviceEqual(local, remote)
 
+    def test_enroll_authorized(self):
+        key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
+
+        dc, host = self.add_domain_host()
+        d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=2, key=key, boot='0')
+        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=1, key=None, boot='1')
+
+        self.daemon_start()
+        self.polkitd_start()
+        client = self.client
+
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), 3)
+
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.enroll'])
+
+        d1_remote = self.find_device_by_uid(devices, d1_uid)
+        d2_remote = self.find_device_by_uid(devices, d2_uid)
+
+        for remote in [d1_remote, d2_remote]:
+            self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
+            self.assertEqual(remote.stored, False)
+
+        policy = BoltClient.POLICY_AUTO
+        for remote, uid in [(d1_remote, d1_uid), (d2_remote, d2_uid)]:
+
+            with remote.record() as tape:
+                client.enroll(uid, policy)
+                res = tape.wait_for_event('property',
+                                          'Stored',
+                                          True)
+                self.assertTrue(res)
+            self.assertEqual(remote.stored, True)
+
+        self.daemon_stop()
+
     def test_device_forget(self):
         self.daemon_start()
         tree = self.default_mock_tree()
