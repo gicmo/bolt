@@ -29,7 +29,6 @@
 #include "bolt-store.h"
 #include "bolt-str.h"
 #include "bolt-sysfs.h"
-#include "bolt-time.h"
 
 #include "bolt-manager.h"
 
@@ -1525,7 +1524,6 @@ enroll_device_done (GObject      *device,
       GVariant *params;
       const char *str;
       BoltPolicy policy;
-      guint64 now;
 
       params = g_dbus_method_invocation_get_parameters (inv);
       g_variant_get_child (params, 1, "&s", &str);
@@ -1533,9 +1531,6 @@ enroll_device_done (GObject      *device,
       policy = bolt_enum_from_string (BOLT_TYPE_POLICY, str, NULL);
       if (policy == BOLT_POLICY_DEFAULT)
         policy = mgr->policy;
-
-      now = bolt_now_in_seconds ();
-      g_object_set (dev, "storetime", now, NULL);
 
       ok = bolt_store_put_device (mgr->store,
                                   dev,
