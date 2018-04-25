@@ -1321,6 +1321,7 @@ class BoltTest(dbusmock.DBusTestCase):
             # non-existent uuid
             client.forget("884c6edd-7118-4b21-b186-b02d396ecca0")
 
+        before = int(time.time())
         policy = BoltClient.POLICY_AUTO
         for d in to_enroll:
             remote = client.enroll(d.unique_id, policy)
@@ -1335,6 +1336,12 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertTrue(remote.stored, True)
             self.assertEqual(remote.key, BoltDevice.KEY_NEW)
             self.assertEqual(remote.policy, policy)
+            # check the StoreTime is correct
+            now = int(time.time())
+            self.assertEqual(remote.stored, True)
+            self.assertTrue(remote.StoreTime > 1)
+            self.assertTrue(remote.StoreTime >= before)
+            self.assertTrue(remote.StoreTime <= now)
 
         # we disconnect the tree, but since the devices are connected
         # the daemon should have them in its database now
@@ -1393,6 +1400,8 @@ class BoltTest(dbusmock.DBusTestCase):
         d1_remote = self.find_device_by_uid(devices, d1_uid)
         d2_remote = self.find_device_by_uid(devices, d2_uid)
 
+        before = int(time.time())
+
         for remote in [d1_remote, d2_remote]:
             self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
             self.assertEqual(remote.stored, False)
@@ -1406,7 +1415,11 @@ class BoltTest(dbusmock.DBusTestCase):
                                           'Stored',
                                           True)
                 self.assertTrue(res)
+            now = int(time.time())
             self.assertEqual(remote.stored, True)
+            self.assertTrue(remote.StoreTime > 1)
+            self.assertTrue(remote.StoreTime >= before)
+            self.assertTrue(remote.StoreTime <= now)
 
         self.daemon_stop()
 
