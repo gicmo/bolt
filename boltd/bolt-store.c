@@ -482,8 +482,12 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
 
   key = bolt_store_have_key (store, uid);
 
-  g_return_val_if_fail (name != NULL, NULL);
-  g_return_val_if_fail (vendor != NULL, NULL);
+  if (name == NULL || vendor == NULL)
+    {
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                           "invalid device entry in store");
+      return NULL;
+    }
 
   return g_object_new (BOLT_TYPE_DEVICE,
                        "uid", uid,
