@@ -29,6 +29,7 @@
 #include <glib.h>
 #include <gio/gio.h>
 #include <glib/gprintf.h>
+#include <glib/gstdio.h>
 
 #include <dirent.h>
 #include <errno.h>
@@ -320,6 +321,45 @@ test_key (TestStore *tt, gconstpointer user_data)
   g_clear_error (&err);
 }
 
+static GLogWriterOutput
+null_logger (GLogLevelFlags   log_level,
+             const GLogField *fields,
+             gsize            n_fields,
+             gpointer         user_data)
+{
+  return G_LOG_WRITER_HANDLED;
+}
+
+
+static void
+test_store_invalid_data (TestStore *tt, gconstpointer user_data)
+{
+  g_autofree char *path = NULL;
+  g_autofree char *fn = NULL;
+
+  g_autoptr(GError) err = NULL;
+  g_autoptr(BoltDevice) dev = NULL;
+  static const char *uid = "399d33cb-c9cf-4273-8f92-9445437e0b43";
+  gboolean ok;
+  int r;
+
+  path = g_build_filename (tt->path, "devices", NULL);
+  r = g_mkdir (path, 0755);
+  g_assert_true (r == 0);
+
+  fn = g_build_filename (path, uid, NULL);
+  ok = g_file_set_contents (fn, "", 0, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_log_set_writer_func (null_logger, NULL, NULL);
+  dev = bolt_store_get_device (tt->store, uid, &err);
+  g_log_set_writer_func (g_log_writer_default, NULL, NULL);
+
+  g_assert_null (dev);
+  g_assert_error (err, BOLT_ERROR, BOLT_ERROR_FAILED);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -342,6 +382,13 @@ main (int argc, char **argv)
               NULL,
               test_store_setup,
               test_store_basic,
+              test_store_tear_down);
+
+  g_test_add ("/daemon/store/invalid_data",
+              TestStore,
+              NULL,
+              test_store_setup,
+              test_store_invalid_data,
               test_store_tear_down);
 
   return g_test_run ();
