@@ -1,7 +1,7 @@
 bolt
 ====
 
-Userpsace system daemon to enable security levels for *Thunderbolt™ 3*
+Userspace system daemon to enable security levels for *Thunderbolt™ 3*
 on GNU/Linux®.
 
 Introduction
