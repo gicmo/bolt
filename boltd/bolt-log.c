@@ -213,8 +213,16 @@ handle_gerror_field (BoltLogCtx *ctx,
 {
   const GError *error = ptr;
   GLogField *field;
+  GError fallback = {
+    .domain = BOLT_ERROR,
+    .code = BOLT_ERROR_FAILED,
+    .message = (char *) "unknown cause",
+  };
 
-  ctx->error = error;
+  if (error != NULL)
+    ctx->error = error;
+  else
+    error = &fallback;
 
   bolt_log_ctx_next_field (ctx, &field);
   field->key =  BOLT_LOG_ERROR_DOMAIN;
