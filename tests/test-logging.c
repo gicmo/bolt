@@ -168,6 +168,10 @@ test_log_gerror (TestLog *tt, gconstpointer user_data)
 
   g_log_set_writer_func (test_writer, &tt->data, NULL);
   bolt_log (domain, lvl, LOG_ERR (error), NULL);
+
+  /* check we handle NULL GErrors without crashing */
+  log_expect (tt, lvl, domain, NULL, "ERROR_MESSAGE", "unknown cause", NULL);
+  bolt_log (domain, lvl, LOG_ERR (NULL), NULL);
 }
 
 static void
