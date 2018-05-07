@@ -24,6 +24,7 @@
 #include "bolt-error.h"
 #include "bolt-fs.h"
 #include "bolt-io.h"
+#include "bolt-list.h"
 #include "bolt-rnd.h"
 #include "bolt-str.h"
 
@@ -654,6 +655,64 @@ test_str_erase (TestRng *tt, gconstpointer user_data)
     g_assert_cmpint (buf[i], ==, 0);
 }
 
+static void
+test_list_nh (TestRng *tt, gconstpointer user_data)
+{
+  BoltList n[10];
+  BoltList *l = n;
+  BoltList *k;
+  BoltList iter;
+  guint c;
+
+  bolt_list_init (l);
+  g_assert_cmpuint (bolt_nhlist_len (NULL), ==, 0);
+  g_assert_cmpuint (bolt_nhlist_len (l), ==, 1);
+
+  g_assert_true (l->next == l);
+  g_assert_true (l->prev == l);
+
+  c = 0;
+  bolt_nhlist_iter_init (&iter, l);
+  while ((k = bolt_nhlist_iter_next (&iter)))
+    {
+      BoltList *p = bolt_nhlist_iter_node (&iter);
+      g_assert_true (k == l);
+      g_assert_true (p == l);
+      c++;
+    }
+  g_assert_cmpuint (c, ==, 1);
+
+  for (gsize i = 1; i < 10; i++)
+    {
+      bolt_list_init (&n[i]);
+      bolt_list_add_before (l, &n[i]);
+      g_assert_cmpuint (bolt_nhlist_len (l), ==, i + 1);
+    }
+
+  for (gsize i = 0; i < 10; i++)
+    {
+      gsize j = (i + 1) % 10;
+      g_assert_true (l[i].next == &l[j]);
+      g_assert_true (l[j].prev == &l[i]);
+
+      g_assert_true (l[i].next->prev == &l[i]);
+      g_assert_true (l[i].prev->next == &l[i]);
+    }
+
+  c = 0;
+  bolt_nhlist_iter_init (&iter, l);
+  while ((k = bolt_nhlist_iter_next (&iter)))
+    {
+      BoltList *p = bolt_nhlist_iter_node (&iter);
+      g_assert_true (k == n + (c % 10));
+      g_assert_true (k == p);
+      c++;
+    }
+
+  g_assert_cmpuint (c, ==, 10);
+}
+
+
 int
 main (int argc, char **argv)
 {
@@ -709,6 +768,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_str_erase,
+              NULL);
+
+  g_test_add ("/common/list/nh",
+              TestRng,
+              NULL,
+              NULL,
+              test_list_nh,
               NULL);
 
   return g_test_run ();
