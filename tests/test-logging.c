@@ -170,7 +170,9 @@ test_log_gerror (TestLog *tt, gconstpointer user_data)
   bolt_log (domain, lvl, LOG_ERR (error), NULL);
 
   /* check we handle NULL GErrors without crashing */
-  log_expect (tt, lvl, domain, NULL, "ERROR_MESSAGE", "unknown cause", NULL);
+  log_expect (tt, lvl, domain, NULL, "ERROR_MESSAGE", "unknown cause",
+              BOLT_LOG_BUG_MARK, "*",
+              NULL);
   bolt_log (domain, lvl, LOG_ERR (NULL), NULL);
 }
 
@@ -230,6 +232,13 @@ test_log_macros (TestLog *tt, gconstpointer user_data)
               "CODE_FUNC", G_STRFUNC,
               NULL);
   bolt_debug (msg);
+
+  msg = "nasty bug";
+  log_expect (tt, G_LOG_LEVEL_DEBUG, G_LOG_DOMAIN, msg,
+              BOLT_LOG_TOPIC, "code",
+              BOLT_LOG_BUG_MARK, "*",
+              NULL);
+  bolt_bug (msg);
 }
 
 int
