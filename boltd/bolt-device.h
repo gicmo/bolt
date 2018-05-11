@@ -79,6 +79,8 @@ gboolean          bolt_device_get_stored (const BoltDevice *dev);
 
 BoltStatus        bolt_device_get_status (const BoltDevice *dev);
 
+BoltAuthFlags     bolt_device_get_authflags (const BoltDevice *dev);
+
 const char *      bolt_device_get_syspath (const BoltDevice *dev);
 
 const char *      bolt_device_get_vendor (const BoltDevice *dev);
@@ -90,5 +92,8 @@ const char *      bolt_device_get_label (const BoltDevice *dev);
 gint64            bolt_device_get_storetime (const BoltDevice *dev);
 
 gboolean          bolt_device_supports_secure_mode (const BoltDevice *dev);
+
+gboolean          bolt_device_check_authflag (const BoltDevice *dev,
+                                              BoltAuthFlags     flag);
 
 G_END_DECLS

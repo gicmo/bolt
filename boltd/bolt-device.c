@@ -1321,6 +1321,12 @@ bolt_device_get_status (const BoltDevice *dev)
   return dev->status;
 }
 
+BoltAuthFlags
+bolt_device_get_authflags (const BoltDevice *dev)
+{
+  return dev->aflags;
+}
+
 gboolean
 bolt_device_get_stored (const BoltDevice *dev)
 {
@@ -1361,4 +1367,11 @@ gboolean
 bolt_device_supports_secure_mode (const BoltDevice *dev)
 {
   return bolt_flag_isclear (dev->aflags, BOLT_AUTH_NOKEY);
+}
+
+gboolean
+bolt_device_check_authflag (const BoltDevice *dev,
+                            BoltAuthFlags     flag)
+{
+  return bolt_flag_isset (dev->aflags, flag);
 }
