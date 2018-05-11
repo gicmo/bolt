@@ -881,6 +881,7 @@ handle_udev_device_added (BoltManager        *mgr,
   g_autoptr(GError) err = NULL;
   GDBusConnection *bus;
   BoltDevice *dev;
+  BoltStatus status;
   const char *opath;
   const char *syspath;
 
@@ -893,8 +894,11 @@ handle_udev_device_added (BoltManager        *mgr,
 
   manager_register_device (mgr, dev);
 
+  status = bolt_device_get_status (dev);
   syspath = udev_device_get_syspath (udev);
-  bolt_msg (LOG_DEV (dev), "device added (%s)", syspath);
+  bolt_msg (LOG_DEV (dev), "device added, status: %s, at %s",
+            bolt_status_to_string (status), syspath);
+
 
   /* if we have a valid dbus connection */
   bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
