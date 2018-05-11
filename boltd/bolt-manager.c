@@ -873,6 +873,56 @@ maybe_authorize_device (BoltManager *mgr,
   bolt_device_authorize_idle (dev, auth, authorize_device_finish, mgr);
 }
 
+static void
+manager_maybe_auto_import_device (BoltManager *mgr,
+                                  BoltDevice  *dev)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(BoltKey) key = NULL;
+  gboolean boot;
+  gboolean ok;
+
+  if (!bolt_device_is_authorized (dev))
+    return;
+
+  if (bolt_device_get_device_type (dev) == BOLT_DEVICE_HOST)
+    return;
+
+  boot = bolt_device_check_authflag (dev, BOLT_AUTH_BOOT);
+
+  if (!boot)
+    {
+      bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-import"),
+                "boot flag missing, not auto-importing");
+      return;
+    }
+
+  key = bolt_device_get_key_from_sysfs (dev, &err);
+  if (key == NULL && !bolt_err_notfound (err))
+    {
+      bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("auto-import"),
+                     "failed to read key from sysfs");
+      return;
+    }
+
+  if (key == NULL && mgr->security == BOLT_SECURITY_SECURE)
+    {
+      bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-import"),
+                "secure mode enabled, no key, not auto-importing");
+      return;
+    }
+
+  bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-import"),
+            "new authorized device (boot: %s, key: %s), importing",
+            bolt_yesno (boot), bolt_yesno (key != NULL));
+
+  ok = bolt_store_put_device (mgr->store, dev, BOLT_POLICY_AUTO, key, &err);
+
+  if (!ok)
+    bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("auto-import"),
+                   "failed to store device");
+}
+
 /* udev callbacks */
 static void
 handle_udev_device_added (BoltManager        *mgr,
@@ -899,6 +949,7 @@ handle_udev_device_added (BoltManager        *mgr,
   bolt_msg (LOG_DEV (dev), "device added, status: %s, at %s",
             bolt_status_to_string (status), syspath);
 
+  manager_maybe_auto_import_device (mgr, dev);
 
   /* if we have a valid dbus connection */
   bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
