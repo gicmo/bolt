@@ -102,6 +102,8 @@ struct _BoltLogCtx
   GLogField *domain;
   GLogField *topic;
 
+  gboolean   is_bug;
+
   /* field storage */
   gsize     n_fields;
   GLogField fields[32];
@@ -219,10 +221,12 @@ handle_gerror_field (BoltLogCtx *ctx,
     .message = (char *) "unknown cause",
   };
 
-  if (error != NULL)
-    ctx->error = error;
-  else
-    error = &fallback;
+  ctx->error = error;
+  if (error == NULL)
+    {
+      error = &fallback;
+      ctx->is_bug = TRUE;
+    }
 
   bolt_log_ctx_next_field (ctx, &field);
   field->key =  BOLT_LOG_ERROR_DOMAIN;
@@ -255,6 +259,9 @@ handle_topic_field (BoltLogCtx *ctx,
   field->length = -1;
 
   ctx->topic = field;
+
+  if (bolt_streq ((const char *) ptr, "code"))
+    ctx->is_bug = TRUE;
 }
 
 static gboolean
@@ -295,6 +302,18 @@ handle_passthrough_field (BoltLogCtx *ctx,
   field->length = -1;
 
   return TRUE;
+}
+
+static void
+add_bug_marker (BoltLogCtx *ctx)
+{
+  GLogField *field;
+
+  bolt_log_ctx_next_field (ctx, &field);
+
+  field->key = BOLT_LOG_BUG_MARK;
+  field->value = "*";
+  field->length = -1;
 }
 
 void
@@ -360,6 +379,9 @@ bolt_logv (const char    *domain,
   ctx.domain->key = "GLIB_DOMAIN";
   ctx.domain->value = domain ? : "boltd";
   ctx.domain->length = -1;
+
+  if (ctx.is_bug)
+    add_bug_marker (&ctx);
 
   bolt_log_ctx_finish (&ctx);
 
