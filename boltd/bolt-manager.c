@@ -1555,22 +1555,14 @@ enroll_device_store_authorized (BoltManager *mgr,
                                 BoltPolicy   policy,
                                 GError     **error)
 {
-  g_autofree char *keypath = NULL;
-
-  g_autoptr(GFile) keyfile = NULL;
   g_autoptr(GError) err = NULL;
-  gboolean ok;
-  BoltKey *key;
-  const char *syspath;
+  g_autoptr(BoltKey) key = NULL;
   const char *opath;
+  gboolean ok;
 
   bolt_info (LOG_DEV (dev), "enrolling an authorized device");
 
-  syspath = bolt_device_get_syspath (dev);
-  keypath = g_build_filename (syspath, "key", NULL);
-  keyfile = g_file_new_for_path (keypath);
-
-  key = bolt_key_load_file (keyfile, &err);
+  key = bolt_device_get_key_from_sysfs (dev, &err);
   if (key == NULL && !bolt_err_notfound (err))
     {
       bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("udev"),
