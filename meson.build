@@ -419,6 +419,10 @@ endif
 
 meson.add_install_script('scripts/meson-install.sh', dbdir)
 
+run_target('uncrustify',
+           command: 'scripts/uncrustify.sh')
+
+
 # all done, phew
 
 msg = ['',
