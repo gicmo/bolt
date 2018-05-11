@@ -8,8 +8,10 @@ Patches should be submitted in the form of pull requests at
 Coding style
 ============
 
-Run `scripts/uncrustify.sh` to format the source code before submitting
-pull requests.
+The style is codified via the supplied `sscripts/uncrustify.cfg` config.
+It can be automatically formatted by the `uncrustify` target, i.e. by
+invoking `ninja -C <builddir> uncrustify`.
+Make sure to format the source code before submitting pull requests.
 
 Testing
 =======
