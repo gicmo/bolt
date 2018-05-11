@@ -1375,3 +1375,22 @@ bolt_device_check_authflag (const BoltDevice *dev,
 {
   return bolt_flag_isset (dev->aflags, flag);
 }
+
+BoltKey *
+bolt_device_get_key_from_sysfs (const BoltDevice *dev,
+                                GError          **error)
+{
+  g_autoptr(GFile) keyfile = NULL;
+  g_autofree char *keypath = NULL;
+  BoltKey *key;
+
+  g_return_val_if_fail (dev != NULL, NULL);
+
+  if (dev->syspath == NULL)
+    return NULL;
+
+  keypath = g_build_filename (dev->syspath, "key", NULL);
+  keyfile = g_file_new_for_path (keypath);
+
+  return key = bolt_key_load_file (keyfile, error);
+}
