@@ -185,7 +185,7 @@ common_lib = static_library('common',
   sources: common_sources + gen_sources + gen_headers,
   dependencies: common_deps,
   include_directories: [
-    include_directories('.')
+    include_directories('common')
 ])
 
 common = declare_dependency(
@@ -346,10 +346,16 @@ foreach t: tests
   test_name = t.get(0)
   test_deps = [common] + t.get(1, [])
   test_srcs = ['tests/@0@.c'.format(test_name), t.get(2, [])]
-  e = executable(test_name, test_srcs, dependencies: test_deps)
+  test_exec = executable(
+    test_name,
+    test_srcs,
+    dependencies: test_deps,
+    include_directories: [
+      include_directories('tests')
+    ])
 
   test_env = environment()
-  test(test_name, e, env: test_env, timeout : 120)
+  test(test_name, test_exec, env: test_env, timeout: 120)
 
 endforeach
 
