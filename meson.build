@@ -202,6 +202,7 @@ daemon_sources = files([
   'boltd/bolt-auth.c',
   'boltd/bolt-bouncer.c',
   'boltd/bolt-config.c',
+  'boltd/bolt-domain.c',
   'boltd/bolt-exported.c',
   'boltd/bolt-manager.c',
   'boltd/bolt-power.c',
