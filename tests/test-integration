@@ -1101,28 +1101,31 @@ class BoltTest(dbusmock.DBusTestCase):
         # prepare the basic setup
         dc, host = self.add_domain_host()
 
-        # duplicated vendor in name
-        d1_vendor = "GNOME.org"
-        d1_name = "Cable"
-        d2_name = '⍾ Laptop'
-        d2_vendor = 'Evil Corp. ☢'
-        _, d1_uid = self.add_device(host, 1, d1_vendor + d1_name, d1_vendor)
-        _, d2_uid = self.add_device(host, 2, d2_name, d2_vendor)
+        devs = [
+            # name              vendor           label                         notes
+            ['GNOME.org Cable', 'GNOME.org',     'GNOME.org Cable'       ],  # duplicated vendor name
+            ['GNOME.org Cable', 'GNOME.org',     'GNOME.org Cable #2'    ],  # duplicated device
+            ['GNOME.org Cable', 'GNOME.org',     'GNOME.org Cable #3'    ],  # duplicated device, again
+            ['⍾ Laptop',        'Evil Corp. ☢', 'Evil Corp. ☢ ⍾ Laptop'],  # utf-8 chars
+        ]
+
+        devs = [{'name': d[0], 'vendor': d[1], 'label': d[2], 'id': i+1} for i, d in enumerate(devs)]
+
+        for i, d in enumerate(devs):
+            did, name, vendor = d['id'], d['name'], d['vendor']
+            path, uid = self.add_device(host, did, name, vendor);
+            d['path'] = path
+            d['uid'] = uid
 
         self.daemon_start()
         devices = self.client.list_devices()
-        self.assertEqual(len(devices), 3)
+        self.assertEqual(len(devices), len(devs) + 1)
 
-        device = self.find_device_by_uid(devices, d1_uid)
-        self.assertEqual(device.Name, d1_name)
-        self.assertEqual(device.Vendor, d1_vendor)
-
-        device = self.find_device_by_uid(devices, d2_uid)
-        self.assertEqual(device.Name, d2_name)
-        self.assertEqual(device.Vendor, d2_vendor)
-
-        label = device.label
-        self.assertIsNone(label)
+        for d in devs:
+            remote = self.find_device_by_uid(devices, d['uid'])
+            self.assertEqual(remote.name, d['name'])
+            self.assertEqual(remote.vendor, d['vendor'])
+            self.assertEqual(remote.label, d['label'])
 
         self.daemon_stop()
 
@@ -1536,7 +1539,7 @@ class BoltTest(dbusmock.DBusTestCase):
         local.reload_auth()
 
         label = remote.label
-        self.assertIsNone(label)
+        self.assertEqual(remote.label, "%s %s" % (local.vendor_name, local.device_name))
 
         self.assertDeviceEqual(local, remote)
         self.assertTrue(remote.stored, True)
@@ -1557,8 +1560,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
             self.assertEqual(err.code, int(Gio.DBusError.INVALID_ARGS))
 
-        label = remote.label
-        self.assertIsNone(label)
+        self.assertEqual(remote.label, "%s %s" % (local.vendor_name, local.device_name))
 
         val = 'A valid label'
 

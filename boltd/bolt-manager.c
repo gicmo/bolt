@@ -51,7 +51,7 @@ static void     bolt_manager_initable_iface_init (GInitableIface *iface);
 static gboolean bolt_manager_initialize (GInitable    *initable,
                                          GCancellable *cancellable,
                                          GError      **error);
-/*  */
+/* device related functions */
 
 static void          manager_register_device (BoltManager *mgr,
                                               BoltDevice  *device);
@@ -72,6 +72,10 @@ static BoltDevice *  bolt_manager_get_parent (BoltManager *mgr,
 static GPtrArray *   bolt_manager_get_children (BoltManager *mgr,
                                                 BoltDevice  *target);
 
+static void          bolt_manager_label_device (BoltManager *mgr,
+                                                BoltDevice  *target);
+
+/* udev events */
 static void          handle_udev_device_added (BoltManager        *mgr,
                                                struct udev_device *udev);
 
@@ -805,6 +809,51 @@ bolt_manager_get_children (BoltManager *mgr,
   return res;
 }
 
+static void
+bolt_manager_label_device (BoltManager *mgr,
+                           BoltDevice  *target)
+{
+  g_autofree char *label = NULL;
+  const char *name;
+  const char *vendor;
+  guint count = 0;
+
+  name = bolt_device_get_name (target);
+  vendor = bolt_device_get_vendor (target);
+
+  for (guint i = 0; i < mgr->devices->len; i++)
+    {
+      BoltDevice *dev = g_ptr_array_index (mgr->devices, i);
+      const char *dev_name = bolt_device_get_name (dev);
+      const char *dev_vendor = bolt_device_get_vendor (dev);
+
+      if (bolt_streq (dev_name, name) &&
+          bolt_streq (dev_vendor, vendor))
+        count++;
+    }
+
+  /* cleanup name */
+  if (g_str_has_prefix (name, vendor))
+    {
+      name += strlen (vendor);
+
+      while (g_ascii_isspace (*name))
+        name++;
+
+      if (*name == '\0')
+        name = bolt_device_get_name (target);
+    }
+
+  /* we counted the target too, > 1 means duplicates */
+  if (count > 1)
+    label = g_strdup_printf ("%s %s #%u", vendor, name, count);
+  else
+    label = g_strdup_printf ("%s %s", vendor, name);
+
+  bolt_info (LOG_DEV (target), "labeling device: %s", label);
+  g_object_set (G_OBJECT (target), "label", label, NULL);
+}
+
 /* device authorization */
 static void
 authorize_device_finish (GObject      *source,
@@ -948,6 +997,8 @@ handle_udev_device_added (BoltManager        *mgr,
   syspath = udev_device_get_syspath (udev);
   bolt_msg (LOG_DEV (dev), "device added, status: %s, at %s",
             bolt_status_to_string (status), syspath);
+
+  bolt_manager_label_device (mgr, dev);
 
   manager_maybe_auto_import_device (mgr, dev);
 

@@ -596,34 +596,6 @@ bolt_auth_flags_from_info (BoltDevInfo   *info,
   return val;
 }
 
-static const char *
-cleanup_name (const char *name,
-              const char *vendor,
-              GError    **error)
-{
-  g_return_val_if_fail (vendor != NULL, NULL);
-  g_return_val_if_fail (name != NULL, NULL);
-
-  /* some devices have the vendor name as a prefix */
-  if (!g_str_has_prefix (name, vendor))
-    return name;
-
-  name += strlen (vendor);
-
-  while (g_ascii_isspace (*name))
-    name++;
-
-  if (*name == '\0')
-    {
-      g_set_error_literal (error,
-                           BOLT_ERROR, BOLT_ERROR_UDEV,
-                           "device has empty name after cleanup");
-      return NULL;
-    }
-
-  return name;
-}
-
 /*  device authorization */
 
 static gboolean
@@ -1046,10 +1018,6 @@ bolt_device_new_for_udev (struct udev_device *udev,
 
   vendor = read_sysattr_name (udev, "vendor", error);
   if (vendor == NULL)
-    return NULL;
-
-  name = cleanup_name (name, vendor, error);
-  if (name == NULL)
     return NULL;
 
   ok = bolt_sysfs_info_for_device (udev, TRUE, &info, error);
