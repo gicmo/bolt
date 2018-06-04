@@ -78,6 +78,7 @@ udev    = dependency('udev')
 polkit  = dependency('polkit-gobject-1')
 systemd = dependency('systemd')
 libsysd = dependency('libsystemd')
+mockdev = dependency('umockdev-1.0', required: false)
 
 git     = find_program('git', required: false)
 a2x     = find_program(['a2x', 'a2x.py'], required: req_man)
@@ -343,6 +344,14 @@ tests = [
   ['test-store', [libdaemon]]
 ]
 
+if mockdev.found()
+  tests += [
+    ['test-sysfs',
+     [libdaemon, mockdev],
+     ['tests/mock-sysfs.c']]
+  ]
+endif
+
 foreach t: tests
   test_name = t.get(0)
   test_deps = [common] + t.get(1, [])
@@ -356,8 +365,12 @@ foreach t: tests
     ])
 
   test_env = environment()
-  test(test_name, test_exec, env: test_env, timeout: 120)
 
+  if test_deps.contains(mockdev)
+    test_env.prepend('LD_PRELOAD', 'libumockdev-preload.so.0')
+  endif
+
+  test(test_name, test_exec, env: test_env, timeout: 120)
 endforeach
 
 test_it = find_program(join_paths(srcdir, 'tests', 'test-integration'))
