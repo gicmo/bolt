@@ -114,8 +114,6 @@ static void          manager_probing_activity (BoltManager *mgr,
 static void          manager_add_domain (BoltManager        *mgr,
                                          struct udev_device *domain);
 
-static int           manager_count_domains (BoltManager *mgr);
-
 static gboolean      manager_maybe_power_controller (BoltManager *mgr);
 
 /* config */
@@ -1396,31 +1394,6 @@ manager_add_domain (BoltManager        *mgr,
     }
 }
 
-static int
-manager_count_domains (BoltManager *mgr)
-{
-  struct udev_enumerate *e;
-  struct udev_list_entry *l, *devices;
-  int res, count = 0;
-
-  e = udev_enumerate_new (mgr->udev);
-  udev_enumerate_add_match_subsystem (e, "thunderbolt");
-
-  udev_enumerate_add_match_property (e, "DEVTYPE", "thunderbolt_domain");
-  res = udev_enumerate_scan_devices (e);
-
-  if (res < 0)
-    return res;
-
-  devices = udev_enumerate_get_list_entry (e);
-  udev_list_entry_foreach (l, devices)
-    count++;
-
-  udev_enumerate_unref (e);
-
-  return count;
-}
-
 static gboolean
 manager_maybe_power_controller (BoltManager *mgr)
 {
@@ -1436,9 +1409,18 @@ manager_maybe_power_controller (BoltManager *mgr)
   if (can_force_power == FALSE)
     return FALSE;
 
-  n = manager_count_domains (mgr);
-  if (n > 0)
-    return FALSE;
+  n = bolt_sysfs_count_domains (mgr->udev, &err);
+  if (n < 0)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("udev"),
+                     "failed to count domains");
+      return FALSE;
+    }
+  else if (n > 0)
+    {
+      ok = FALSE;
+      goto out;
+    }
 
   bolt_info (LOG_TOPIC ("power"), "setting force_power to ON");
   ok = bolt_power_force_switch (mgr->power, TRUE, &err);
@@ -1455,10 +1437,12 @@ manager_maybe_power_controller (BoltManager *mgr)
   for (int i = 0; i < 25 && n < 1; i++)
     {
       g_usleep (200000); /* 200 000 us = 0.2s */
-      n = manager_count_domains (mgr);
+      n = bolt_sysfs_count_domains (mgr->udev, NULL);
     }
 
-  bolt_info (LOG_TOPIC ("power"), "found %d domains", n);
+ out:
+  bolt_info (LOG_TOPIC ("udev"), "found %d domain%s",
+             n, n > 1 ? "s" : "");
   return ok;
 }
 
