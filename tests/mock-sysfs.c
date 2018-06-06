@@ -26,6 +26,9 @@
 
 #include <umockdev.h>
 
+#include <glib/gstdio.h>
+#include <sys/stat.h>
+
 typedef struct _MockDomain MockDomain;
 
 struct _MockDomain
@@ -88,9 +91,30 @@ mock_sysfs_finalize (GObject *object)
 static void
 mock_sysfs_init (MockSysfs *ms)
 {
+  g_autofree char *bus = NULL;
+  g_autofree char *cls = NULL;
+  g_autofree char *sys = NULL;
+  int r;
+
   ms->bed = umockdev_testbed_new ();
   ms->domains = g_hash_table_new_full (g_str_hash, g_str_equal,
                                        NULL, mock_domain_destory);
+
+  /* udev_enumerate_scan_devices() will return -ENOENT, if
+   * sys/bus or sys/class directories can not be found
+   */
+  sys = umockdev_testbed_get_sys_dir (ms->bed);
+
+  bus = g_build_filename (sys, "bus", NULL);
+  r = g_mkdir (bus, 0744);
+
+  if (r < 0)
+    g_warning ("could not create %s", bus);
+
+  cls = g_build_filename (sys, "class", NULL);
+  r = g_mkdir (cls, 0744);
+  if (r < 0)
+    g_warning ("could not create %s", bus);
 }
 
 static void
