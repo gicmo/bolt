@@ -60,6 +60,7 @@ test_sysfs_tear_down (TestSysfs *tt, gconstpointer user)
 static void
 test_sysfs_domains (TestSysfs *tt, gconstpointer user)
 {
+  g_autoptr(GError) err = NULL;
   const char *ids[5];
   BoltSecurity sl[5] = {BOLT_SECURITY_NONE,
                         BOLT_SECURITY_DPONLY,
@@ -69,11 +70,16 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
   BoltDomain *all[5] = {NULL, };
   BoltDomain *domains = NULL;
   BoltDomain *iter;
+  int n;
+
+  n = bolt_sysfs_count_domains (tt->udev, &err);
+
+  g_assert_no_error (err);
+  g_assert_cmpint (n, ==, 0);
 
   for (gsize i = 0; i < G_N_ELEMENTS (sl); i++)
     {
       g_autoptr(udev_device) udevice = NULL;
-      g_autoptr(GError) err = NULL;
       g_autoptr(BoltDomain) dom = NULL; /* the list will own reference */
       const char *syspath;
 
@@ -98,6 +104,10 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
   g_assert_cmpuint (bolt_domain_count (domains),
                     ==,
                     G_N_ELEMENTS (sl));
+
+  g_assert_cmpint (bolt_sysfs_count_domains (tt->udev, NULL),
+                   ==,
+                   (int) G_N_ELEMENTS (sl));
 
   iter = domains;
   for (gsize i = 0; i < bolt_domain_count (domains); i++)
