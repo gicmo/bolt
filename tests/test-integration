@@ -45,6 +45,8 @@ try:
 
     import dbus
     import dbusmock
+
+    import configparser
 except ImportError as e:
     sys.stderr.write('Skipping integration test due to missing depdendencies: %s\n' % str(e))
     sys.exit(1)
@@ -925,7 +927,6 @@ class BoltTest(dbusmock.DBusTestCase):
         self.polkitd = None
 
     def user_config(self, **kwargs):
-        import configparser
         cfg = configparser.ConfigParser()
         cfg.optionxform = lambda option: option
 
@@ -1018,7 +1019,6 @@ class BoltTest(dbusmock.DBusTestCase):
         return x[0]
 
     def store_device(self, dev, policy='auto', key=None):
-        import configparser
         df = configparser.ConfigParser()
         df.optionxform = lambda option: option
 
