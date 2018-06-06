@@ -125,6 +125,38 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
   return s;
 }
 
+
+int
+bolt_sysfs_count_domains (struct udev *udev,
+                          GError **error)
+{
+  struct udev_enumerate *e;
+  struct udev_list_entry *l, *devices;
+  int r, count = 0;
+
+  e = udev_enumerate_new (udev);
+
+  udev_enumerate_add_match_subsystem (e, "thunderbolt");
+  udev_enumerate_add_match_property (e, "DEVTYPE", "thunderbolt_domain");
+
+  r = udev_enumerate_scan_devices (e);
+  if (r < 0)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                   "failed to scan udev: %s",
+                   g_strerror (-r));
+      return r;
+    }
+
+  devices = udev_enumerate_get_list_entry (e);
+  udev_list_entry_foreach (l, devices)
+    count++;
+
+  udev_enumerate_unref (e);
+
+  return count;
+}
+
 static gint
 sysfs_get_sysattr_value_as_int (struct udev_device *udev,
                                 const char         *attr)

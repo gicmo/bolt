@@ -45,6 +45,8 @@ struct udev_device * bolt_sysfs_domain_for_device (struct udev_device *udev);
 BoltSecurity         bolt_sysfs_security_for_device (struct udev_device *udev,
                                                      GError            **error);
 
+int                  bolt_sysfs_count_domains (struct udev *udev,
+                                               GError **error);
 typedef struct _BoltDevInfo
 {
 
