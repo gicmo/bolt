@@ -17,3 +17,6 @@ compile_commands.json
 
 # visual studio code
 .vscode/
+
+# emacs
+TAGS
