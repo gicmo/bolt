@@ -71,11 +71,25 @@ bolt_sysfs_device_get_time (struct udev_device *udev,
 }
 
 gboolean
-bolt_sysfs_device_is_domain (struct udev_device *udev)
+bolt_sysfs_device_is_domain (struct udev_device *udev,
+                             GError            **error)
 {
   const char *devtype = udev_device_get_devtype (udev);
+  const char *subsystem = udev_device_get_subsystem (udev);
+  gboolean is_domain;
 
-  return bolt_streq (devtype, "thunderbolt_domain");
+  is_domain = bolt_streq (subsystem, "thunderbolt") &&
+              bolt_streq (devtype, "thunderbolt_domain");
+
+  if (!is_domain)
+    {
+      const char *syspath = udev_device_get_syspath (udev);
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                   "device '%s' is not a thunderbolt domain",
+                   syspath);
+    }
+
+  return is_domain;
 }
 
 struct udev_device *
@@ -92,7 +106,7 @@ bolt_sysfs_domain_for_device (struct udev_device *udev)
       if (!parent)
         break;
 
-      found = bolt_sysfs_device_is_domain (parent);
+      found = bolt_sysfs_device_is_domain (parent, NULL);
     }
   while (!found);
 
@@ -107,7 +121,7 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
   const char *v;
   BoltSecurity s;
 
-  if (bolt_sysfs_device_is_domain (udev))
+  if (bolt_sysfs_device_is_domain (udev, NULL))
     parent = udev;
   else
     parent = bolt_sysfs_domain_for_device (udev);
@@ -128,7 +142,7 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
 
 int
 bolt_sysfs_count_domains (struct udev *udev,
-                          GError **error)
+                          GError     **error)
 {
   struct udev_enumerate *e;
   struct udev_list_entry *l, *devices;
@@ -238,7 +252,7 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
 
   parent = udev_device_get_parent (udev);
 
-  if (bolt_sysfs_device_is_domain (parent))
+  if (bolt_sysfs_device_is_domain (parent, NULL))
     domain = g_steal_pointer (&parent);
   else
     domain = bolt_sysfs_domain_for_device (parent);

@@ -38,7 +38,8 @@ typedef enum BoltStatTime {
 gint64               bolt_sysfs_device_get_time (struct udev_device *udev,
                                                  BoltStatTime        st);
 
-gboolean             bolt_sysfs_device_is_domain (struct udev_device *udev);
+gboolean             bolt_sysfs_device_is_domain (struct udev_device *udev,
+                                                  GError            **error);
 
 struct udev_device * bolt_sysfs_domain_for_device (struct udev_device *udev);
 
@@ -46,7 +47,7 @@ BoltSecurity         bolt_sysfs_security_for_device (struct udev_device *udev,
                                                      GError            **error);
 
 int                  bolt_sysfs_count_domains (struct udev *udev,
-                                               GError **error);
+                                               GError     **error);
 typedef struct _BoltDevInfo
 {
 
