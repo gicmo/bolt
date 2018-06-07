@@ -80,6 +80,10 @@ static gboolean      handle_uevent_udev (GIOChannel  *source,
                                          GIOCondition condition,
                                          gpointer     user_data);
 
+static void          handle_udev_device_event (BoltManager        *mgr,
+                                               struct udev_device *device,
+                                               const char         *action);
+
 static void          handle_udev_device_added (BoltManager        *mgr,
                                                struct udev_device *udev);
 
@@ -888,7 +892,6 @@ handle_uevent_udev (GIOChannel  *source,
                     GIOCondition condition,
                     gpointer     user_data)
 {
-  g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(udev_device) device = NULL;
   BoltManager *mgr;
   const char *action;
@@ -922,6 +925,18 @@ handle_uevent_udev (GIOChannel  *source,
   bolt_debug (LOG_TOPIC ("udev"), "%s (%s%s%s)", action,
               subsystem, devtype ? "/" : "", devtype ? : "");
 
+  handle_udev_device_event (mgr, device, action);
+
+  return G_SOURCE_CONTINUE;
+}
+
+static void
+handle_udev_device_event (BoltManager        *mgr,
+                          struct udev_device *device,
+                          const char         *action)
+{
+  g_autoptr(BoltDevice) dev = NULL;
+
   if (g_str_equal (action, "add") ||
       g_str_equal (action, "change"))
     {
@@ -931,7 +946,7 @@ handle_uevent_udev (GIOChannel  *source,
        * the unique_id attribute */
       uid = udev_device_get_sysattr_value (device, "unique_id");
       if (uid == NULL)
-        return G_SOURCE_CONTINUE;
+        return;
 
       dev = manager_find_device_by_uid (mgr, uid, NULL);
 
@@ -951,28 +966,26 @@ handle_uevent_udev (GIOChannel  *source,
       if (syspath == NULL)
         {
           bolt_warn (LOG_TOPIC ("udev"), "device without syspath");
-          return G_SOURCE_CONTINUE;
+          return;
         }
 
       /* filter out the domain controller */
       name = udev_device_get_sysname (device);
       if (name && g_str_has_prefix (name, "domain"))
-        return G_SOURCE_CONTINUE;
+        return;
 
       dev = manager_find_device_by_syspath (mgr, syspath);
 
       /* if we don't have any records of the device,
        *  then we don't care */
       if (!dev)
-        return G_SOURCE_CONTINUE;
+        return;
 
       if (bolt_device_get_stored (dev))
         handle_udev_device_detached (mgr, dev);
       else
         hanlde_udev_device_removed (mgr, dev);
     }
-
-  return G_SOURCE_CONTINUE;
 }
 
 static void
