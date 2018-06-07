@@ -182,8 +182,6 @@ bolt_domain_new_for_udev (struct udev_device *udev,
                           GError            **error)
 {
   BoltDomain *dom = NULL;
-  const char *subsystem;
-  const char *devtype;
   BoltSecurity security = BOLT_SECURITY_UNKNOWN;
   const char *syspath;
   const char *sysname;
@@ -192,20 +190,12 @@ bolt_domain_new_for_udev (struct udev_device *udev,
   g_return_val_if_fail (udev != NULL, NULL);
   g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
+  if (!bolt_sysfs_device_is_domain (udev, error))
+    return NULL;
+
   syspath = udev_device_get_syspath (udev);
-  devtype = udev_device_get_devtype (udev);
-  subsystem = udev_device_get_subsystem (udev);
-
-  if (!bolt_streq (subsystem, "thunderbolt") ||
-      !bolt_streq (devtype, "thunderbolt_domain"))
-    {
-      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                   "device '%s' is not a thunderbolt domain",
-                   syspath);
-      return NULL;
-    }
-
   sysname = udev_device_get_sysname (udev);
+
   if (sysname == NULL)
     {
       g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
