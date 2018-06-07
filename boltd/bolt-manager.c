@@ -76,6 +76,10 @@ static void          bolt_manager_label_device (BoltManager *mgr,
                                                 BoltDevice  *target);
 
 /* udev events */
+static gboolean      handle_uevent_udev (GIOChannel  *source,
+                                         GIOCondition condition,
+                                         gpointer     user_data);
+
 static void          handle_udev_device_added (BoltManager        *mgr,
                                                struct udev_device *udev);
 
@@ -461,98 +465,6 @@ setup_monitor (BoltManager        *mgr,
   *watch_out   = watch;
 
   return TRUE;
-}
-
-static gboolean
-handle_uevent_udev (GIOChannel  *source,
-                    GIOCondition condition,
-                    gpointer     user_data)
-{
-  g_autoptr(BoltDevice) dev = NULL;
-  g_autoptr(udev_device) device = NULL;
-  BoltManager *mgr;
-  const char *action;
-  const char *subsystem;
-  const char *devtype;
-
-  mgr = BOLT_MANAGER (user_data);
-  device = udev_monitor_receive_device (mgr->udev_monitor);
-
-  if (device == NULL)
-    return G_SOURCE_CONTINUE;
-
-  action = udev_device_get_action (device);
-  if (action == NULL)
-    return G_SOURCE_CONTINUE;
-
-  devtype = udev_device_get_devtype (device);
-  subsystem = udev_device_get_subsystem (device);
-
-  if (g_str_equal (action, "add"))
-    manager_probing_device_added (mgr, device);
-  else if (g_str_equal (action, "remove"))
-    manager_probing_device_removed (mgr, device);
-
-  /* beyond this point only thunderbolt/thunderbolt_device
-   * devices are allowed */
-  if (!bolt_streq (devtype, "thunderbolt_device") ||
-      !bolt_streq (subsystem, "thunderbolt"))
-    return G_SOURCE_CONTINUE;
-
-  bolt_debug (LOG_TOPIC ("udev"), "%s (%s%s%s)", action,
-              subsystem, devtype ? "/" : "", devtype ? : "");
-
-  if (g_str_equal (action, "add") ||
-      g_str_equal (action, "change"))
-    {
-      const char *uid;
-
-      /* filter sysfs devices (e.g. the domain) that don't have
-       * the unique_id attribute */
-      uid = udev_device_get_sysattr_value (device, "unique_id");
-      if (uid == NULL)
-        return G_SOURCE_CONTINUE;
-
-      dev = manager_find_device_by_uid (mgr, uid, NULL);
-
-      if (!dev)
-        handle_udev_device_added (mgr, device);
-      else if (!bolt_device_is_connected (dev))
-        handle_udev_device_attached (mgr, dev, device);
-      else
-        handle_udev_device_changed (mgr, dev, device);
-    }
-  else if (g_str_equal (action, "remove"))
-    {
-      const char *syspath;
-      const char *name;
-
-      syspath = udev_device_get_syspath (device);
-      if (syspath == NULL)
-        {
-          bolt_warn (LOG_TOPIC ("udev"), "device without syspath");
-          return G_SOURCE_CONTINUE;
-        }
-
-      /* filter out the domain controller */
-      name = udev_device_get_sysname (device);
-      if (name && g_str_has_prefix (name, "domain"))
-        return G_SOURCE_CONTINUE;
-
-      dev = manager_find_device_by_syspath (mgr, syspath);
-
-      /* if we don't have any records of the device,
-       *  then we don't care */
-      if (!dev)
-        return G_SOURCE_CONTINUE;
-
-      if (bolt_device_get_stored (dev))
-        handle_udev_device_detached (mgr, dev);
-      else
-        hanlde_udev_device_removed (mgr, dev);
-    }
-
-  return G_SOURCE_CONTINUE;
 }
 
 static gboolean
@@ -971,6 +883,98 @@ manager_maybe_auto_import_device (BoltManager *mgr,
 }
 
 /* udev callbacks */
+static gboolean
+handle_uevent_udev (GIOChannel  *source,
+                    GIOCondition condition,
+                    gpointer     user_data)
+{
+  g_autoptr(BoltDevice) dev = NULL;
+  g_autoptr(udev_device) device = NULL;
+  BoltManager *mgr;
+  const char *action;
+  const char *subsystem;
+  const char *devtype;
+
+  mgr = BOLT_MANAGER (user_data);
+  device = udev_monitor_receive_device (mgr->udev_monitor);
+
+  if (device == NULL)
+    return G_SOURCE_CONTINUE;
+
+  action = udev_device_get_action (device);
+  if (action == NULL)
+    return G_SOURCE_CONTINUE;
+
+  devtype = udev_device_get_devtype (device);
+  subsystem = udev_device_get_subsystem (device);
+
+  if (g_str_equal (action, "add"))
+    manager_probing_device_added (mgr, device);
+  else if (g_str_equal (action, "remove"))
+    manager_probing_device_removed (mgr, device);
+
+  /* beyond this point only thunderbolt/thunderbolt_device
+   * devices are allowed */
+  if (!bolt_streq (devtype, "thunderbolt_device") ||
+      !bolt_streq (subsystem, "thunderbolt"))
+    return G_SOURCE_CONTINUE;
+
+  bolt_debug (LOG_TOPIC ("udev"), "%s (%s%s%s)", action,
+              subsystem, devtype ? "/" : "", devtype ? : "");
+
+  if (g_str_equal (action, "add") ||
+      g_str_equal (action, "change"))
+    {
+      const char *uid;
+
+      /* filter sysfs devices (e.g. the domain) that don't have
+       * the unique_id attribute */
+      uid = udev_device_get_sysattr_value (device, "unique_id");
+      if (uid == NULL)
+        return G_SOURCE_CONTINUE;
+
+      dev = manager_find_device_by_uid (mgr, uid, NULL);
+
+      if (!dev)
+        handle_udev_device_added (mgr, device);
+      else if (!bolt_device_is_connected (dev))
+        handle_udev_device_attached (mgr, dev, device);
+      else
+        handle_udev_device_changed (mgr, dev, device);
+    }
+  else if (g_str_equal (action, "remove"))
+    {
+      const char *syspath;
+      const char *name;
+
+      syspath = udev_device_get_syspath (device);
+      if (syspath == NULL)
+        {
+          bolt_warn (LOG_TOPIC ("udev"), "device without syspath");
+          return G_SOURCE_CONTINUE;
+        }
+
+      /* filter out the domain controller */
+      name = udev_device_get_sysname (device);
+      if (name && g_str_has_prefix (name, "domain"))
+        return G_SOURCE_CONTINUE;
+
+      dev = manager_find_device_by_syspath (mgr, syspath);
+
+      /* if we don't have any records of the device,
+       *  then we don't care */
+      if (!dev)
+        return G_SOURCE_CONTINUE;
+
+      if (bolt_device_get_stored (dev))
+        handle_udev_device_detached (mgr, dev);
+      else
+        hanlde_udev_device_removed (mgr, dev);
+    }
+
+  return G_SOURCE_CONTINUE;
+}
+
 static void
 handle_udev_device_added (BoltManager        *mgr,
                           struct udev_device *udev)
