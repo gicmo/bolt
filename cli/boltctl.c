@@ -171,6 +171,13 @@ print_device (BoltDevice *dev, gboolean verbose)
     {
       g_autofree char *ctstr = NULL;
       g_autofree char *flags = NULL;
+      const char *domain;
+
+      domain = bolt_device_get_domain (dev);
+      g_print ("   %s %s domain:     %s\n",
+               bolt_glyph (TREE_VERTICAL),
+               tree_branch,
+               domain);
 
       flags = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, aflags, NULL);
       g_print ("   %s %s authflags:  %s\n",
