@@ -34,6 +34,68 @@
 
 #include <locale.h>
 
+/* *** Tiny object with only an "id" property */
+#define BT_TYPE_ID bt_id_get_type ()
+G_DECLARE_FINAL_TYPE (BtId, bt_id, BT, ID, BoltExported);
+
+struct _BtId
+{
+  BoltExported parent;
+};
+
+G_DEFINE_TYPE (BtId, bt_id, BOLT_TYPE_EXPORTED);
+
+enum {
+  PROP_ID_0,
+  PROP_ID,
+  PROP_ID_LAST
+};
+
+
+static GParamSpec *id_props[PROP_ID_LAST] = {NULL, };
+
+
+static void
+bt_id_init (BtId *be)
+{
+}
+
+static void
+bt_id_get_property (GObject    *object,
+                    guint       prop_id,
+                    GValue     *value,
+                    GParamSpec *pspec)
+{
+  switch (prop_id)
+    {
+    case PROP_ID:
+      g_value_set_string (value, "bolt-id");
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
+bt_id_class_init (BtIdClass *klass)
+{
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+
+  gobject_class->get_property = bt_id_get_property;
+
+  id_props[PROP_ID] =
+    g_param_spec_string ("id", "Id", NULL,
+                         NULL,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_NICK |
+                         G_PARAM_STATIC_BLURB);
+
+  g_object_class_install_properties (gobject_class,
+                                     PROP_ID_LAST,
+                                     id_props);
+
+}
 
 /*  */
 #define DBUS_IFACE "org.gnome.bolt.Example"
@@ -82,6 +144,8 @@ struct _BtExported
 
   gboolean     prop_bool;
 
+  BtId        *prop_obj;
+
   gboolean     authorize_methods;
   gboolean     authorize_properties;
 
@@ -98,6 +162,7 @@ enum {
   PROP_STR_RW_NOSETTER,
 
   PROP_BOOL,
+  PROP_OBJECT,
 
   PROP_SECURITY,
 
@@ -120,7 +185,7 @@ static void
 bt_exported_init (BtExported *be)
 {
   be->str = g_strdup ("strfoo");
-
+  be->prop_obj = g_object_new (BT_TYPE_ID, NULL);
 }
 
 static void
@@ -143,6 +208,9 @@ bt_exported_get_property (GObject    *object,
       g_value_set_boolean (value, be->prop_bool);
       break;
 
+    case PROP_OBJECT:
+      g_value_set_object (value, be->prop_obj);
+      break;
 
     case PROP_SECURITY:
       g_value_set_enum (value, be->security);
@@ -224,6 +292,12 @@ bt_exported_class_init (BtExportedClass *klass)
                           G_PARAM_STATIC_NICK |
                           G_PARAM_STATIC_BLURB);
 
+  props[PROP_OBJECT] =
+    g_param_spec_object ("object", "Object", NULL,
+                         BT_TYPE_ID,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_NICK |
+                         G_PARAM_STATIC_BLURB);
 
   props[PROP_SECURITY] =
     g_param_spec_enum ("security", "Security", NULL,
@@ -923,6 +997,67 @@ test_exported_props_enums (TestExported *tt, gconstpointer data)
   g_assert_cmpint (tt->obj->security, ==, BOLT_SECURITY_USER);
 }
 
+static void
+test_exported_props_object (TestExported *tt, gconstpointer data)
+{
+  g_autoptr(CallCtx) ctx = NULL;
+  g_autoptr(GVariant) v = NULL;
+  g_autofree char *want = NULL;
+  const char *have;
+
+  ctx = call_ctx_new ();
+
+  /* valid property value, should be converted to string */
+  g_dbus_connection_call (tt->bus,
+                          tt->bus_name,
+                          tt->obj_path,
+                          "org.freedesktop.DBus.Properties",
+                          "Get",
+                          g_variant_new ("(ss)",
+                                         DBUS_IFACE,
+                                         "Object"),
+                          G_VARIANT_TYPE ("(v)"),
+                          G_DBUS_CALL_FLAGS_NONE,
+                          2000,
+                          NULL,
+                          dbus_call_done,
+                          ctx);
+
+  call_ctx_run (ctx);
+  g_assert_no_error (ctx->error);
+
+  g_assert_nonnull (ctx->data);
+  g_variant_get (ctx->data, "(v)", &v);
+  have = g_variant_get_string (v, NULL);
+  g_object_get (tt->obj->prop_obj, "id", &want, NULL);
+
+  g_assert_cmpstr (have, ==, want);
+
+  /* setter, should be an error (invalid arguments) */
+  bt_exported_install_property_authorizer (tt->obj);
+  tt->obj->authorize_properties = TRUE;
+  have = bolt_security_to_string (BOLT_SECURITY_USER);
+
+  g_dbus_connection_call (tt->bus,
+                          tt->bus_name,
+                          tt->obj_path,
+                          "org.freedesktop.DBus.Properties",
+                          "Set",
+                          g_variant_new ("(ssv)",
+                                         DBUS_IFACE,
+                                         "Object",
+                                         g_variant_new ("s", have)),
+                          NULL,
+                          G_DBUS_CALL_FLAGS_NONE,
+                          2000,
+                          NULL,
+                          dbus_call_done,
+                          ctx);
+
+  call_ctx_run (ctx);
+  g_assert_error (ctx->error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -960,6 +1095,13 @@ main (int argc, char **argv)
               NULL,
               test_exported_setup,
               test_exported_props_enums,
+              test_exported_teardown);
+
+  g_test_add ("/exported/props/object",
+              TestExported,
+              NULL,
+              test_exported_setup,
+              test_exported_props_object,
               test_exported_teardown);
 
   test_bus = g_test_dbus_new (G_TEST_DBUS_NONE);
