@@ -30,7 +30,6 @@
 typedef struct _BoltExportedMethod BoltExportedMethod;
 typedef struct _BoltExportedProp   BoltExportedProp;
 
-
 static GVariant * bolt_exported_get_prop (BoltExported     *exported,
                                           BoltExportedProp *prop);
 
@@ -80,6 +79,7 @@ struct _BoltExportedProp
   /* auto string conversion */
   GEnumClass  *enum_class; /* shortcut for spec->enum_class */
   GFlagsClass *flags_class; /* shortcut for spec->enum_class */
+  gboolean     object_conv;
 };
 
 struct _BoltExportedClassPrivate
@@ -909,6 +909,11 @@ bolt_exported_class_export_property (BoltExportedClass *klass,
       prop->flags_class = flags_spec->flags_class;
       conv = " [flags-auto-convert]";
     }
+  else if (is_str_prop && G_IS_PARAM_SPEC_OBJECT (prop->spec))
+    {
+      prop->object_conv = TRUE;
+      conv = " [object-auto-convert]";
+    }
 
   bolt_debug (LOG_TOPIC ("dbus"), "installed prop: %s -> %s%s",
               prop->name_bus, prop->name_obj,
@@ -1253,6 +1258,35 @@ flags_gvariant_to_gvalue (GFlagsClass *flags_class,
 }
 
 static GVariant *
+object_gvalue_to_gvariant (const GValue *value)
+{
+  g_autofree char *str = NULL;
+  GVariant *res;
+  GObject *obj;
+
+  obj = g_value_get_object (value);
+
+  if (obj)
+    g_object_get (obj, "id", &str, NULL);
+
+  if (str == NULL)
+    str = g_strdup ("");
+
+  res = g_variant_new_string (str);
+  return g_variant_ref_sink (res);
+}
+
+static gboolean
+object_gvariant_to_gvalue (GVariant    *variant G_GNUC_UNUSED,
+                           GValue      *value   G_GNUC_UNUSED,
+                           GError             **error)
+{
+  g_set_error_literal (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                       "can not set object property from string");
+  return FALSE;
+}
+
+static GVariant *
 bolt_exported_prop_gvalue_to_gvariant (BoltExportedProp *prop,
                                        const GValue     *value)
 {
@@ -1260,6 +1294,8 @@ bolt_exported_prop_gvalue_to_gvariant (BoltExportedProp *prop,
     return enum_gvalue_to_gvariant (prop->enum_class, value);
   else if (prop->flags_class != NULL)
     return flags_gvalue_to_gvariant (prop->flags_class, value);
+  else if (prop->object_conv)
+    return object_gvalue_to_gvariant (value);
   else
     return g_dbus_gvalue_to_gvariant (value, prop->signature);
 }
@@ -1274,7 +1310,10 @@ bolt_exported_prop_gvariant_to_gvalue (BoltExportedProp *prop,
     return enum_gvariant_to_gvalue (prop->enum_class, variant, value, error);
   else if (prop->flags_class != NULL)
     return flags_gvariant_to_gvalue (prop->flags_class, variant, value, error);
+  else if (prop->object_conv)
+    return object_gvariant_to_gvalue (variant, value, error);
 
   g_dbus_gvariant_to_gvalue (variant, value);
+
   return TRUE;
 }
