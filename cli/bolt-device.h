@@ -65,6 +65,8 @@ const char *      bolt_device_get_parent (BoltDevice *dev);
 
 const char *      bolt_device_get_syspath (BoltDevice *dev);
 
+const char *      bolt_device_get_domain (BoltDevice *dev);
+
 guint64           bolt_device_get_conntime (BoltDevice *dev);
 
 guint64           bolt_device_get_authtime (BoltDevice *dev);

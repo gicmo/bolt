@@ -45,6 +45,7 @@ enum {
   PROP_AUTHFLAGS,
   PROP_PARENT,
   PROP_SYSPATH,
+  PROP_DOMAIN,
   PROP_CONNTIME,
   PROP_AUTHTIME,
 
@@ -140,6 +141,14 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NICK);
+
+  props[PROP_DOMAIN] =
+    g_param_spec_string ("domain",
+                         "Domain", NULL,
+                         "unknown",
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_NICK);
+
 
   props[PROP_CONNTIME] =
     g_param_spec_uint64 ("conntime",
@@ -427,6 +436,19 @@ bolt_device_get_syspath (BoltDevice *dev)
   return str;
 }
 
+const char *
+bolt_device_get_domain (BoltDevice *dev)
+{
+  const char *key;
+  const char *str;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
+  key = g_param_spec_get_name (props[PROP_DOMAIN]);
+  str = bolt_proxy_get_property_string (BOLT_PROXY (dev), key);
+
+  return str;
+}
 guint64
 bolt_device_get_conntime (BoltDevice *dev)
 {
