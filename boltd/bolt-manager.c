@@ -23,6 +23,7 @@
 #include "bolt-bouncer.h"
 #include "bolt-config.h"
 #include "bolt-device.h"
+#include "bolt-domain.h"
 #include "bolt-error.h"
 #include "bolt-log.h"
 #include "bolt-power.h"
@@ -51,8 +52,17 @@ static void     bolt_manager_initable_iface_init (GInitableIface *iface);
 static gboolean bolt_manager_initialize (GInitable    *initable,
                                          GCancellable *cancellable,
                                          GError      **error);
-/* device related functions */
+/* domain related functions */
+static BoltDomain *  manager_find_domain_by_syspath (BoltManager *mgr,
+                                                     const char  *syspath);
 
+static void          manager_register_domain (BoltManager *mgr,
+                                              BoltDomain  *domain);
+
+static void          manager_deregister_domain (BoltManager *mgr,
+                                                BoltDomain  *domain);
+
+/* device related functions */
 static void          manager_register_device (BoltManager *mgr,
                                               BoltDevice  *device);
 
@@ -80,6 +90,13 @@ static gboolean      handle_uevent_udev (GIOChannel  *source,
                                          GIOCondition condition,
                                          gpointer     user_data);
 
+static void          handle_udev_domain_event (BoltManager        *mgr,
+                                               struct udev_device *device,
+                                               const char         *action);
+
+static void          handle_udev_domain_added (BoltManager        *mgr,
+                                               struct udev_device *udev);
+
 static void          handle_udev_device_event (BoltManager        *mgr,
                                                struct udev_device *device,
                                                const char         *action);
@@ -101,27 +118,29 @@ static void          handle_udev_device_attached (BoltManager        *mgr,
 static void          handle_udev_device_detached (BoltManager *mgr,
                                                   BoltDevice  *dev);
 
+/* signal callbacks */
 static void          handle_store_device_removed (BoltStore   *store,
                                                   const char  *uid,
                                                   BoltManager *mgr);
-/* acquiring indicator  */
+
 static void          handle_device_status_changed (BoltDevice  *dev,
                                                    BoltStatus   old,
                                                    BoltManager *mgr);
 
+/* acquiring indicator  */
 static void          manager_probing_device_added (BoltManager        *mgr,
                                                    struct udev_device *dev);
 
 static void          manager_probing_device_removed (BoltManager        *mgr,
                                                      struct udev_device *dev);
 
+static void          manager_probing_domain_added (BoltManager        *mgr,
+                                                   struct udev_device *domain);
+
 static void          manager_probing_activity (BoltManager *mgr,
                                                gboolean     weak);
 
-/* domain related functions */
-static void          manager_add_domain (BoltManager        *mgr,
-                                         struct udev_device *domain);
-
+/* force powering */
 static gboolean      manager_maybe_power_controller (BoltManager *mgr);
 
 /* config */
@@ -166,6 +185,7 @@ struct _BoltManager
 
   /* state */
   BoltStore   *store;
+  BoltDomain  *domains;
   GPtrArray   *devices;
   BoltPower   *power;
   BoltSecurity security;
@@ -237,6 +257,7 @@ bolt_manager_finalize (GObject *object)
 
   g_clear_object (&mgr->store);
   g_ptr_array_free (mgr->devices, TRUE);
+  bolt_domain_clear (&mgr->domains);
 
   g_clear_object (&mgr->power);
 
@@ -570,7 +591,7 @@ bolt_manager_initialize (GInitable    *initable,
       devtype = udev_device_get_devtype (udevice);
 
       if (bolt_streq (devtype, "thunderbolt_domain"))
-        manager_add_domain (mgr, udevice);
+        handle_udev_domain_added (mgr, udevice);
 
       if (!bolt_streq (devtype, "thunderbolt_device"))
         continue;
@@ -606,6 +627,73 @@ bolt_manager_initialize (GInitable    *initable,
   return TRUE;
 }
 
+/* domain related function */
+static BoltDomain *
+manager_find_domain_by_syspath (BoltManager *mgr,
+                                const char  *syspath)
+{
+  BoltDomain *iter = mgr->domains;
+  guint n_domains;
+
+  n_domains = bolt_domain_count (mgr->domains);
+  for (guint i = 0; i < n_domains; i++)
+    {
+      const char *prefix = bolt_domain_get_syspath (iter);
+
+      /* we get a perfect match, if we search for the domain
+       * itself, or if we are looking for the domain that
+       * is the parent of the device in @syspath */
+      if (g_str_has_prefix (syspath, prefix))
+        return iter;
+
+      iter = bolt_domain_next (iter);
+    }
+
+  return NULL;
+}
+
+static void
+manager_register_domain (BoltManager *mgr,
+                         BoltDomain  *domain)
+{
+  const char *name;
+  BoltSecurity sl;
+
+  mgr->domains = bolt_domain_insert (mgr->domains, domain);
+
+  name = bolt_domain_get_id (domain);
+  sl = bolt_domain_get_security (domain);
+
+  bolt_info (LOG_TOPIC ("domain"), "'%s' (security: %s) added",
+             name, bolt_security_to_string (sl));
+
+  if (mgr->security == BOLT_SECURITY_UNKNOWN)
+    {
+      bolt_info ("security level set to '%s'",
+                 bolt_security_to_string (sl));
+      mgr->security = sl;
+    }
+  else if (mgr->security != sl)
+    {
+      bolt_warn ("multiple security levels (%s vs %s)",
+                 bolt_security_to_string (mgr->security),
+                 bolt_security_to_string (sl));
+    }
+}
+
+static void
+manager_deregister_domain (BoltManager *mgr,
+                           BoltDomain  *domain)
+{
+  const char *name;
+
+  name = bolt_domain_get_id (domain);
+  bolt_info (LOG_TOPIC ("domain"), "'%s' removed", name);
+
+  mgr->domains = bolt_domain_remove (mgr->domains, domain);
+}
+
+/* device related functions */
 static void
 manager_register_device (BoltManager *mgr,
                          BoltDevice  *dev)
@@ -897,6 +985,7 @@ handle_uevent_udev (GIOChannel  *source,
   const char *action;
   const char *subsystem;
   const char *devtype;
+  const char *syspath;
 
   mgr = BOLT_MANAGER (user_data);
   device = udev_monitor_receive_device (mgr->udev_monitor);
@@ -908,6 +997,10 @@ handle_uevent_udev (GIOChannel  *source,
   if (action == NULL)
     return G_SOURCE_CONTINUE;
 
+  syspath = udev_device_get_syspath (device);
+  if (syspath == NULL)
+    return G_SOURCE_CONTINUE;
+
   devtype = udev_device_get_devtype (device);
   subsystem = udev_device_get_subsystem (device);
 
@@ -916,18 +1009,75 @@ handle_uevent_udev (GIOChannel  *source,
   else if (g_str_equal (action, "remove"))
     manager_probing_device_removed (mgr, device);
 
-  /* beyond this point only thunderbolt/thunderbolt_device
-   * devices are allowed */
-  if (!bolt_streq (devtype, "thunderbolt_device") ||
-      !bolt_streq (subsystem, "thunderbolt"))
+  /* beyond this point only udev device from the
+   * thunderbolt are handled */
+  if (!bolt_streq (subsystem, "thunderbolt"))
     return G_SOURCE_CONTINUE;
 
-  bolt_debug (LOG_TOPIC ("udev"), "%s (%s%s%s)", action,
-              subsystem, devtype ? "/" : "", devtype ? : "");
+  bolt_debug (LOG_TOPIC ("udev"), "%s (%s%s%s) %s", action,
+              subsystem, devtype ? "/" : "", devtype ? : "",
+              syspath);
 
-  handle_udev_device_event (mgr, device, action);
+  if (bolt_streq (devtype, "thunderbolt_device"))
+    handle_udev_device_event (mgr, device, action);
+  else if (bolt_streq (devtype, "thunderbolt_domain"))
+    handle_udev_domain_event (mgr, device, action);
 
   return G_SOURCE_CONTINUE;
+}
+
+static void
+handle_udev_domain_event (BoltManager        *mgr,
+                          struct udev_device *device,
+                          const char         *action)
+{
+  const char *syspath;
+  BoltDomain *domain;
+
+  syspath = udev_device_get_syspath (device);
+
+  if (g_str_equal (action, "add") ||
+      g_str_equal (action, "change"))
+    {
+      domain = manager_find_domain_by_syspath (mgr, syspath);
+
+      if (domain != NULL)
+        return; /*change event, ignore for now */
+
+      handle_udev_domain_added (mgr, device);
+    }
+  else if (g_str_equal (action, "remove"))
+    {
+      domain = manager_find_domain_by_syspath (mgr, syspath);
+
+      if (domain)
+        manager_deregister_domain (mgr, domain);
+      else
+        bolt_warn (LOG_TOPIC ("domain"),
+                   "unregistered domain removed at %s",
+                   syspath);
+    }
+}
+
+static void
+handle_udev_domain_added (BoltManager        *mgr,
+                          struct udev_device *device)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(BoltDomain) domain = NULL;
+
+  manager_probing_domain_added (mgr, device);
+
+  domain = bolt_domain_new_for_udev (device, &err);
+
+  if (domain == NULL)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("udev"),
+                     "failed to create domain: %s");
+      return;
+    }
+
+  manager_register_domain (mgr, domain);
 }
 
 static void
@@ -996,10 +1146,22 @@ handle_udev_device_added (BoltManager        *mgr,
   GDBusConnection *bus;
   BoltDevice *dev;
   BoltStatus status;
+  BoltDomain *domain;
   const char *opath;
   const char *syspath;
 
-  dev = bolt_device_new_for_udev (udev, &err);
+  syspath = udev_device_get_syspath (udev);
+  domain = manager_find_domain_by_syspath (mgr, syspath);
+
+  if (domain == NULL)
+    {
+      bolt_warn (LOG_TOPIC ("domain"),
+                 "could not find domain for device at '%s'",
+                 syspath);
+      return;
+    }
+
+  dev = bolt_device_new_for_udev (udev, domain, &err);
   if (dev == NULL)
     {
       bolt_warn_err (err, LOG_TOPIC ("udev"), "could not create device");
@@ -1009,7 +1171,6 @@ handle_udev_device_added (BoltManager        *mgr,
   manager_register_device (mgr, dev);
 
   status = bolt_device_get_status (dev);
-  syspath = udev_device_get_syspath (udev);
   bolt_msg (LOG_DEV (dev), "device added, status: %s, at %s",
             bolt_status_to_string (status), syspath);
 
@@ -1089,12 +1250,23 @@ handle_udev_device_attached (BoltManager        *mgr,
                              struct udev_device *udev)
 {
   g_autoptr(BoltDevice) parent = NULL;
+  BoltDomain *domain;
   const char *syspath;
   BoltStatus status;
 
-  status = bolt_device_connected (dev, udev);
+  syspath = udev_device_get_syspath (udev);
+  domain = manager_find_domain_by_syspath (mgr, syspath);
 
-  syspath = bolt_device_get_syspath (dev);
+  if (domain == NULL)
+    {
+      bolt_warn (LOG_TOPIC ("domain"),
+                 "could not find domain for device at '%s'",
+                 syspath);
+      return;
+    }
+
+  status = bolt_device_connected (dev, domain, udev);
+
   bolt_msg (LOG_DEV (dev), "connected: %s (%s)",
             bolt_status_to_string (status), syspath);
 
@@ -1377,39 +1549,6 @@ manager_probing_domain_added (BoltManager        *mgr,
   probing_add_root (mgr, p);
 }
 
-/* domain related function */
-static void
-manager_add_domain (BoltManager        *mgr,
-                    struct udev_device *domain)
-{
-  g_autoptr(GError) err = NULL;
-  const char *name;
-  BoltSecurity sl;
-
-  manager_probing_domain_added (mgr, domain);
-
-  name = udev_device_get_sysname (domain);
-  sl = bolt_sysfs_security_for_device (domain, &err);
-
-  if (sl == BOLT_SECURITY_UNKNOWN)
-    {
-      bolt_warn_err (err, LOG_TOPIC ("udev"), "domain '%s'", name);
-      return;
-    }
-
-  if (mgr->security == BOLT_SECURITY_UNKNOWN)
-    {
-      bolt_info ("security level set to '%s'",
-                 bolt_security_to_string (sl));
-      mgr->security = sl;
-    }
-  else if (mgr->security != sl)
-    {
-      bolt_warn ("multiple security levels (%s vs %s)",
-                 bolt_security_to_string (mgr->security),
-                 bolt_security_to_string (sl));
-    }
-}
 
 static gboolean
 manager_maybe_power_controller (BoltManager *mgr)
@@ -1457,7 +1596,7 @@ manager_maybe_power_controller (BoltManager *mgr)
       n = bolt_sysfs_count_domains (mgr->udev, NULL);
     }
 
- out:
+out:
   bolt_info (LOG_TOPIC ("udev"), "found %d domain%s",
              n, n > 1 ? "s" : "");
   return ok;

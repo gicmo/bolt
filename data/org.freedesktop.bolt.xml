@@ -220,6 +220,14 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="Domain" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+        When a device is connected, it always is connected
+	via a thunderbolt domain, directly or via a chain of
+	other devices. This is the indentifier of the domain.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <property name="Stored" type="b" access="read">
       <doc:doc><doc:description><doc:para>
         Indication if the device is stored.

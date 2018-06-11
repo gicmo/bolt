@@ -26,6 +26,7 @@
 
 /* forward declaration */
 struct udev_device;
+typedef struct _BoltDomain BoltDomain;
 
 G_BEGIN_DECLS
 
@@ -33,6 +34,7 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE (BoltDevice, bolt_device, BOLT, DEVICE, BoltExported);
 
 BoltDevice *      bolt_device_new_for_udev (struct udev_device *udev,
+                                            BoltDomain         *domain,
                                             GError            **error);
 
 const char *      bolt_device_export (BoltDevice      *device,
@@ -42,6 +44,7 @@ const char *      bolt_device_export (BoltDevice      *device,
 void              bolt_device_unexport (BoltDevice *device);
 
 BoltStatus        bolt_device_connected (BoltDevice         *dev,
+                                         BoltDomain         *domain,
                                          struct udev_device *udev);
 
 BoltStatus        bolt_device_disconnected (BoltDevice *dev);
