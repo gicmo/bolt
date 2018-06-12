@@ -157,6 +157,7 @@ bolt_exported_get_type (void)
 enum {
   PROP_0,
 
+  PROP_OBJECT_ID,
   PROP_OBJECT_PATH,
   PROP_EXPORTED,
 
@@ -199,6 +200,10 @@ bolt_exported_get_property (GObject    *object,
 
   switch (prop_id)
     {
+    case PROP_OBJECT_ID:
+      bolt_bug ("BoltExported::object-id must be overridden");
+      break;
+
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
       break;
@@ -236,6 +241,13 @@ bolt_exported_class_init (BoltExportedClass *klass)
   klass->authorize_method = handle_authorize_method_default;
   klass->authorize_property = handle_authorize_property_default;
 
+  props[PROP_OBJECT_ID] =
+    g_param_spec_string ("object-id",
+                         NULL, NULL,
+                         NULL,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_NICK);
+
   props[PROP_OBJECT_PATH] =
     g_param_spec_string ("object-path",
                          NULL, NULL,
@@ -248,6 +260,10 @@ bolt_exported_class_init (BoltExportedClass *klass)
                           FALSE,
                           G_PARAM_READABLE |
                           G_PARAM_STATIC_NICK);
+
+  g_object_class_install_properties (gobject_class,
+                                     PROP_LAST,
+                                     props);
 
   signals[SIGNAL_AUTHORIZE_METHOD] =
     g_signal_new ("authorize-method",
