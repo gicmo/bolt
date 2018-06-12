@@ -1283,7 +1283,7 @@ object_gvalue_to_gvariant (const GValue *value)
   obj = g_value_get_object (value);
 
   if (obj)
-    g_object_get (obj, "id", &str, NULL);
+    g_object_get (obj, "object-id", &str, NULL);
 
   if (str == NULL)
     str = g_strdup ("");

@@ -47,6 +47,7 @@ G_DEFINE_TYPE (BtId, bt_id, BOLT_TYPE_EXPORTED);
 
 enum {
   PROP_ID_0,
+  PROP_OBJECT_ID,
   PROP_ID,
   PROP_ID_LAST
 };
@@ -69,6 +70,7 @@ bt_id_get_property (GObject    *object,
   switch (prop_id)
     {
     case PROP_ID:
+    case PROP_OBJECT_ID:
       g_value_set_string (value, "bolt-id");
       break;
 
@@ -84,6 +86,10 @@ bt_id_class_init (BtIdClass *klass)
 
   gobject_class->get_property = bt_id_get_property;
 
+  id_props[PROP_OBJECT_ID] =
+    bolt_param_spec_override (gobject_class,
+                              "object-id");
+
   id_props[PROP_ID] =
     g_param_spec_string ("id", "Id", NULL,
                          NULL,
@@ -94,6 +100,7 @@ bt_id_class_init (BtIdClass *klass)
   g_object_class_install_properties (gobject_class,
                                      PROP_ID_LAST,
                                      id_props);
+
 
 }
 
@@ -465,7 +472,9 @@ static void
 test_exported_setup (TestExported *tt, gconstpointer data)
 {
   g_autoptr(GError) err = NULL;
+  g_autofree char *opath = NULL;
   const char *obj_path = "/obj";
+  gboolean exported = FALSE;
   gboolean ok;
 
   tt->bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &err);
@@ -489,6 +498,14 @@ test_exported_setup (TestExported *tt, gconstpointer data)
 
   g_assert_cmpstr (tt->obj_path, ==, obj_path);
   tt->bus_name = g_dbus_connection_get_unique_name (tt->bus);
+
+  g_object_get (tt->obj,
+                "object-path", &opath,
+                "exported", &exported,
+                NULL);
+
+  g_assert_cmpstr (obj_path, ==, opath);
+  g_assert_true (exported);
 }
 
 static void
