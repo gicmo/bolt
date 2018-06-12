@@ -1317,3 +1317,46 @@ bolt_exported_prop_gvariant_to_gvalue (BoltExportedProp *prop,
 
   return TRUE;
 }
+
+GParamSpec *
+bolt_param_spec_override (GObjectClass *klass,
+                          const char   *name)
+{
+  GObjectClass *parent_class = NULL;
+  GParamSpec *base = NULL;
+  GType parent;
+  GType type;
+  guint n;
+
+  g_return_val_if_fail (G_IS_OBJECT_CLASS (klass), NULL);
+  g_return_val_if_fail (name != NULL, NULL);
+
+  type = G_OBJECT_CLASS_TYPE (klass);
+  parent = g_type_parent (type);
+
+  parent_class = g_type_class_peek (parent);
+  if (parent_class)
+    base = g_object_class_find_property (parent_class, name);
+
+  if (base == NULL)
+    {
+      g_autofree GType *ifaces = g_type_interfaces (type, &n);
+
+      while (n-- && base == NULL)
+        {
+          gpointer iface = g_type_default_interface_peek (ifaces[n]);
+
+          if (iface)
+            base = g_object_interface_find_property (iface, name);
+        }
+    }
+
+  if (base == NULL)
+    {
+      bolt_bug ("Could not override unknown property: '%s::%s'",
+                G_OBJECT_CLASS_NAME (klass), name);
+      return NULL;
+    }
+
+  return g_param_spec_override (name, base);
+}
