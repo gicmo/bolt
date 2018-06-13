@@ -1925,7 +1925,6 @@ handle_forget_device (BoltExported          *obj,
 }
 
 /* public methods */
-
 gboolean
 bolt_manager_export (BoltManager     *mgr,
                      GDBusConnection *connection,
@@ -1952,7 +1951,7 @@ bolt_manager_export (BoltManager     *mgr,
         }
 
       bolt_info (LOG_DEV (dev), LOG_TOPIC ("dbus"),
-                 "exported deviceat %.43s...", opath);
+                 "exported device at %.43s...", opath);
     }
 
   return TRUE;
