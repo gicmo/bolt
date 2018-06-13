@@ -1079,8 +1079,8 @@ bolt_exported_export (BoltExported    *exported,
                                           object_path,
                                           klass->priv->iface_info,
                                           &dbus_vtable,
-                                          g_object_ref (exported),
-                                          g_object_unref,
+                                          exported,
+                                          NULL,
                                           error);
 
   if (id == 0)
