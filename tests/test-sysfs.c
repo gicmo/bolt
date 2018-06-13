@@ -162,9 +162,8 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
   g_assert_cmpstr (bolt_domain_get_id (domains), ==, ids[2]);
 
   /* remove of domains: clear the whole list */
-  while (bolt_domain_count (domains))
-    domains = bolt_domain_remove (domains, domains);
-
+  bolt_domain_clear (&domains);
+  g_assert_null (domains);
   g_assert_cmpuint (bolt_domain_count (domains), ==, 0);
 
   /* check we also got rid of all references */

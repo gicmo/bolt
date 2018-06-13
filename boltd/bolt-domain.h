@@ -60,4 +60,7 @@ void              bolt_domain_foreach (BoltDomain *list,
                                        GFunc       func,
                                        gpointer    user_data);
 
+void              bolt_domain_clear (BoltDomain **list);
+
+
 G_END_DECLS

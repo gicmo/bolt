@@ -342,3 +342,18 @@ bolt_domain_foreach (BoltDomain *list,
       func ((gpointer) d, data);
     }
 }
+
+void
+bolt_domain_clear (BoltDomain **list)
+{
+  BoltDomain *iter;
+
+  g_return_if_fail (list != NULL);
+
+  iter = *list;
+
+  while (bolt_domain_count (iter))
+    iter = bolt_domain_remove (iter, iter);
+
+  *list = iter;
+}
