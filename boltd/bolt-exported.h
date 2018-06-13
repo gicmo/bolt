@@ -49,6 +49,7 @@ struct _BoltExportedClass
                                   gboolean               setting,
                                   GDBusMethodInvocation *invocation,
                                   GError               **error);
+
   /* for the future */
   gpointer padding[10];
 };
@@ -73,6 +74,9 @@ void     bolt_exported_class_set_interface_info_from_xml (BoltExportedClass *kla
 void     bolt_exported_class_set_interface_info (BoltExportedClass *klass,
                                                  const char        *iface_name,
                                                  const char        *resource_name);
+
+void     bolt_exported_class_set_object_path (BoltExportedClass *klass,
+                                              const char        *base_path);
 
 void     bolt_exported_class_export_property (BoltExportedClass *klass,
                                               GParamSpec        *spec);

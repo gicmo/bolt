@@ -33,6 +33,8 @@ typedef struct _BoltExportedProp   BoltExportedProp;
 static GVariant * bolt_exported_get_prop (BoltExported     *exported,
                                           BoltExportedProp *prop);
 
+static char *     bolt_exported_make_object_path (BoltExported *exported);
+
 static void       bolt_exported_dispatch_properties_changed (GObject     *object,
                                                              guint        n_pspecs,
                                                              GParamSpec **pspecs);
@@ -87,6 +89,7 @@ struct _BoltExportedClassPrivate
   GDBusNodeInfo      *node_info;
   char               *iface_name;
   GDBusInterfaceInfo *iface_info;
+  char               *object_path;
 
   GHashTable         *methods;
   GHashTable         *properties;
@@ -326,6 +329,7 @@ bolt_exported_base_finalize (gpointer g_class)
   g_hash_table_unref (priv->methods);
 
   g_clear_pointer (&priv->iface_name, g_free);
+  g_clear_pointer (&priv->object_path, g_free);
 }
 
 /* internal utility functions  */
@@ -402,6 +406,31 @@ bolt_exported_get_prop (BoltExported     *exported,
   ret = bolt_exported_prop_gvalue_to_gvariant (prop, &res);
 
   return ret;
+}
+
+static char *
+bolt_exported_make_object_path (BoltExported *exported)
+{
+  g_autofree char *id = NULL;
+  BoltExportedClass *klass;
+  const char *base;
+
+  klass = BOLT_EXPORTED_GET_CLASS (exported);
+  base = klass->priv->object_path;
+
+  g_object_get (exported, "object-id", &id, NULL);
+
+  if (id)
+    g_strdelimit (id, "<->@/\\.", '_');
+
+  if (base && id)
+    return g_build_path ("/", "/", base, id, NULL);
+  else if (base)
+    return g_build_path ("/", "/", base, NULL);
+  else if (id)
+    return g_build_path ("/", "/", id, NULL);
+
+  return g_strdup ("/");
 }
 
 /* dispatch helper function */
@@ -862,6 +891,19 @@ bolt_exported_class_set_interface_info (BoltExportedClass *klass,
 }
 
 void
+bolt_exported_class_set_object_path (BoltExportedClass *klass,
+                                     const char        *base_path)
+{
+  g_return_if_fail (BOLT_IS_EXPORTED_CLASS (klass));
+  g_return_if_fail (klass->priv != NULL);
+  g_return_if_fail (klass->priv->object_path == NULL);
+  g_return_if_fail (base_path != NULL);
+  g_return_if_fail (g_variant_is_object_path (base_path));
+
+  klass->priv->object_path = g_strdup (base_path);
+}
+
+void
 bolt_exported_class_export_property (BoltExportedClass *klass,
                                      GParamSpec        *spec)
 {
@@ -991,6 +1033,7 @@ bolt_exported_class_export_method (BoltExportedClass        *klass,
   g_hash_table_insert (klass->priv->methods, method->name, method);
 }
 
+
 /* public methods: instance */
 gboolean
 bolt_exported_export (BoltExported    *exported,
@@ -1004,7 +1047,6 @@ bolt_exported_export (BoltExported    *exported,
 
   g_return_val_if_fail (BOLT_IS_EXPORTED (exported), FALSE);
   g_return_val_if_fail (connection != NULL, FALSE);
-  g_return_val_if_fail (object_path != NULL, FALSE);
 
   priv = GET_PRIV (exported);
   klass = BOLT_EXPORTED_GET_CLASS (exported);
@@ -1013,6 +1055,20 @@ bolt_exported_export (BoltExported    *exported,
     {
       g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
                    "interface information is missing");
+      return FALSE;
+    }
+
+  if (object_path == NULL)
+    {
+      object_path = bolt_exported_make_object_path (exported);
+      bolt_debug (LOG_TOPIC ("dbus"), "generated object path: %s",
+                  object_path);
+    }
+
+  if (object_path == NULL)
+    {
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                           "object path empty for object");
       return FALSE;
     }
 
