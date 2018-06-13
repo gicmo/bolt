@@ -97,6 +97,9 @@ static void          handle_udev_domain_event (BoltManager        *mgr,
 static void          handle_udev_domain_added (BoltManager        *mgr,
                                                struct udev_device *udev);
 
+static void          handle_udev_domain_removed (BoltManager *mgr,
+                                                 BoltDomain  *domain);
+
 static void          handle_udev_device_event (BoltManager        *mgr,
                                                struct udev_device *device,
                                                const char         *action);
@@ -1051,7 +1054,7 @@ handle_udev_domain_event (BoltManager        *mgr,
       domain = manager_find_domain_by_syspath (mgr, syspath);
 
       if (domain)
-        manager_deregister_domain (mgr, domain);
+        handle_udev_domain_removed (mgr, domain);
       else
         bolt_warn (LOG_TOPIC ("domain"),
                    "unregistered domain removed at %s",
@@ -1065,6 +1068,7 @@ handle_udev_domain_added (BoltManager        *mgr,
 {
   g_autoptr(GError) err = NULL;
   g_autoptr(BoltDomain) domain = NULL;
+  GDBusConnection *bus;
 
   manager_probing_domain_added (mgr, device);
 
@@ -1078,6 +1082,32 @@ handle_udev_domain_added (BoltManager        *mgr,
     }
 
   manager_register_domain (mgr, domain);
+
+  bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
+  if (bus != NULL)
+    bolt_domain_export (domain, bus);
+}
+
+static void
+handle_udev_domain_removed (BoltManager *mgr,
+                            BoltDomain  *domain)
+{
+  const char *name;
+
+  name = bolt_domain_get_id (domain);
+  bolt_info (LOG_TOPIC ("domain"), "'%s' removed", name);
+
+  if (bolt_exported_is_exported (BOLT_EXPORTED (domain)))
+    {
+      gboolean ok;
+
+      ok = bolt_exported_unexport (BOLT_EXPORTED (domain));
+
+      bolt_info (LOG_TOPIC ("dbus"), "%s unexported: %s",
+                 name, bolt_okfail (ok));
+    }
+
+  manager_deregister_domain (mgr, domain);
 }
 
 static void
@@ -1549,7 +1579,6 @@ manager_probing_domain_added (BoltManager        *mgr,
   probing_add_root (mgr, p);
 }
 
-
 static gboolean
 manager_maybe_power_controller (BoltManager *mgr)
 {
@@ -1935,6 +1964,10 @@ bolt_manager_export (BoltManager     *mgr,
                              BOLT_DBUS_PATH,
                              error))
     return FALSE;
+
+  bolt_domain_foreach (mgr->domains,
+                       (GFunc) bolt_domain_export,
+                       connection);
 
   for (guint i = 0; i < mgr->devices->len; i++)
     {
