@@ -62,6 +62,7 @@ DBUS_PATH = '/org/freedesktop/bolt'
 DBUS_IFACE_PREFIX = 'org.freedesktop.bolt1.'
 DBUS_IFACE_MANAGER = DBUS_IFACE_PREFIX + 'Manager'
 DBUS_IFACE_DEVICE = DBUS_IFACE_PREFIX + 'Device'
+DBUS_IFACE_DOMAIN = DBUS_IFACE_PREFIX + 'Domain'
 SERVICE_FILE = '/usr/share/dbus-1/system-services/org.freedesktop.bolt.service'
 
 
@@ -433,6 +434,23 @@ class BoltDevice(ProxyWrapper):
         return res is not None
 
 
+class BoltDomain(ProxyWrapper):
+    SECURITY_NONE = 'none'
+    SECURITY_USER = 'user'
+    SECURITY_SECURE = 'secure'
+    SECURITY_DPONLY = 'dponly'
+    SECURITY_USBONLY = 'usbonly'
+
+    @classmethod
+    def security_levels(cls):
+        v = vars(cls)
+        return [v[k] for k in v.keys() if k.startswith('SECURITY_')]
+
+    def __init__(self, bus, path):
+        super(BoltDomain, self).__init__(bus,
+                                         DBUS_IFACE_DOMAIN,
+                                         path)
+
 @Signal.enable
 class BoltClient(ProxyWrapper):
     signals = ['device_added', 'device_removed']
@@ -456,6 +474,13 @@ class BoltClient(ProxyWrapper):
             self.device_removed.emit(params[0])
             return True
         return False
+
+    def list_domains(self):
+        domains = self.ListDomains()
+        if domains is None:
+            return None
+        bus = self._proxy.get_connection()
+        return [BoltDomain(bus, d) for d in domains]
 
     def list_devices(self):
         devices = self.ListDevices()
@@ -1081,6 +1106,34 @@ class BoltTest(dbusmock.DBusTestCase):
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 0)
         self.daemon_stop()
+
+    def test_domain_basic(self):
+
+        def make_domain(domain, security):
+            name = 'domain%d' % domain
+            path = self.testbed.add_device('thunderbolt',
+                                           name,
+                                           None,
+                                           ['security', security],
+                                           ['DEVTYPE', 'thunderbolt_domain'])
+            return name, path
+
+        domains = [make_domain(d, '') for d in range(4)]
+
+        for security in BoltDomain.security_levels():
+
+            for name, domain in domains:
+                self.testbed.set_attribute(domain, 'security', security)
+
+            self.daemon_start()
+
+            remotes = self.client.list_domains()
+            self.assertEqual(len(domains), len(remotes))
+
+            for remote in remotes:
+                self.assertEqual(remote.security_level, security)
+
+            self.daemon_stop()
 
     def test_signals_on_start(self):
         # Check that we get DeviceAdded signals for un-authorized
