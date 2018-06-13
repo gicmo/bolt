@@ -323,3 +323,22 @@ bolt_domain_count (BoltDomain *domain)
 
   return bolt_nhlist_len (&domain->domains);
 }
+
+void
+bolt_domain_foreach (BoltDomain *list,
+                     GFunc       func,
+                     gpointer    data)
+{
+  BoltList iter;
+  BoltList *n;
+
+  if (list == NULL)
+    return;
+
+  bolt_nhlist_iter_init (&iter, &list->domains);
+  while ((n = bolt_nhlist_iter_next (&iter)))
+    {
+      BoltDomain *d = bolt_list_entry (n, BoltDomain, domains);
+      func ((gpointer) d, data);
+    }
+}

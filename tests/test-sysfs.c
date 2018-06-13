@@ -58,6 +58,15 @@ test_sysfs_tear_down (TestSysfs *tt, gconstpointer user)
 }
 
 static void
+count_domains (gpointer data,
+               gpointer user_data)
+{
+  int *n = user_data;
+
+  (*n)++;
+}
+
+static void
 test_sysfs_domains (TestSysfs *tt, gconstpointer user)
 {
   g_autoptr(GError) err = NULL;
@@ -108,6 +117,10 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
   g_assert_cmpint (bolt_sysfs_count_domains (tt->udev, NULL),
                    ==,
                    (int) G_N_ELEMENTS (sl));
+
+  n = 0;
+  bolt_domain_foreach (domains, count_domains, &n);
+  g_assert_cmpint (n, ==, (int) G_N_ELEMENTS (sl));
 
   iter = domains;
   for (gsize i = 0; i < bolt_domain_count (domains); i++)

@@ -56,4 +56,8 @@ BoltDomain *      bolt_domain_prev (BoltDomain *domain);
 
 guint             bolt_domain_count (BoltDomain *domain);
 
+void              bolt_domain_foreach (BoltDomain *list,
+                                       GFunc       func,
+                                       gpointer    user_data);
+
 G_END_DECLS
