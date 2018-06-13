@@ -46,6 +46,8 @@
 
 #define BOLT_DBUS_NAME "org.freedesktop.bolt"
 #define BOLT_DBUS_PATH "/org/freedesktop/bolt"
+#define BOLT_DBUS_PATH_DOMAINS BOLT_DBUS_PATH "/domains"
 #define BOLT_DBUS_INTERFACE "org.freedesktop.bolt1.Manager"
 
 #define BOLT_DBUS_DEVICE_INTERFACE "org.freedesktop.bolt1.Device"
+#define BOLT_DBUS_DOMAIN_INTERFACE "org.freedesktop.bolt1.Domain"

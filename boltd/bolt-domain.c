@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "bolt-error.h"
+#include "bolt-log.h"
 #include "bolt-str.h"
 #include "bolt-sysfs.h"
 
@@ -144,6 +145,7 @@ static void
 bolt_domain_class_init (BoltDomainClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  BoltExportedClass *exported_class = BOLT_EXPORTED_CLASS (klass);
 
   gobject_class->finalize = bolt_domain_finalize;
 
@@ -181,6 +183,17 @@ bolt_domain_class_init (BoltDomainClass *klass)
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
                                      props);
+
+  bolt_exported_class_set_interface_info (exported_class,
+                                          BOLT_DBUS_DOMAIN_INTERFACE,
+                                          "/boltd/org.freedesktop.bolt.xml");
+
+  bolt_exported_class_set_object_path (exported_class, BOLT_DBUS_PATH_DOMAINS);
+
+  bolt_exported_class_export_properties (exported_class,
+                                         PROP_EXPORTED,
+                                         PROP_LAST,
+                                         props);
 
 }
 

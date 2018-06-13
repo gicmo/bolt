@@ -294,4 +294,34 @@
 
   </interface>
 
+  <interface name="org.freedesktop.bolt1.Domain">
+
+    <doc:doc>
+      <doc:description>
+        <doc:para>
+          Representation of a Thunderbolt domain.
+        </doc:para>
+      </doc:description>
+    </doc:doc>
+
+    <property name="Id" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+        The id of the domain.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+    <property name="SysfsPath" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+        The sysfs path of the domain, if it is connected.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+    <property name="SecurityLevel" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+        The security level of the domain.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+  </interface>
+
 </node>
