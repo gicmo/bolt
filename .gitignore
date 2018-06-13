@@ -3,6 +3,7 @@
 *~
 *.log
 *.xz
+*.patch
 
 # directories
 build/
