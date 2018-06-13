@@ -106,6 +106,7 @@ bt_id_class_init (BtIdClass *klass)
 
 /*  */
 #define DBUS_IFACE "org.gnome.bolt.Example"
+#define DBUS_OPATH_BASE "/bolt/test"
 
 #define BT_TYPE_EXPORTED bt_exported_get_type ()
 G_DECLARE_FINAL_TYPE (BtExported, bt_exported, BT, EXPORTED, BoltExported);
@@ -146,6 +147,8 @@ struct _BtExported
 {
   BoltExported parent;
 
+  char        *object_id;
+
   char        *str;
   GError      *setter_err;
 
@@ -163,6 +166,8 @@ G_DEFINE_TYPE (BtExported, bt_exported, BOLT_TYPE_EXPORTED);
 
 enum {
   PROP_0,
+
+  PROP_MYID,
 
   PROP_STR,
   PROP_STR_RW,
@@ -183,7 +188,11 @@ bt_exported_finalize (GObject *object)
 {
   BtExported *be = BT_EXPORTED (object);
 
+  g_clear_object (&be->prop_obj);
+
   g_free (be->str);
+  g_free (be->object_id);
+
 
   G_OBJECT_CLASS (bt_exported_parent_class)->finalize (object);
 }
@@ -191,6 +200,7 @@ bt_exported_finalize (GObject *object)
 static void
 bt_exported_init (BtExported *be)
 {
+  be->object_id = g_strdup ("bt_exported0");
   be->str = g_strdup ("strfoo");
   be->prop_obj = g_object_new (BT_TYPE_ID, NULL);
 }
@@ -205,6 +215,10 @@ bt_exported_get_property (GObject    *object,
 
   switch (prop_id)
     {
+    case PROP_MYID:
+      g_value_set_string (value, be->object_id);
+      break;
+
     case PROP_STR:
     case PROP_STR_RW:
     case PROP_STR_RW_NOSETTER:
@@ -270,6 +284,11 @@ bt_exported_class_init (BtExportedClass *klass)
   bolt_exported_class_set_interface_info (exported_class,
                                           DBUS_IFACE,
                                           "/bolt/tests/exported/example.bolt.xml");
+
+  bolt_exported_class_set_object_path (exported_class, DBUS_OPATH_BASE);
+
+  props[PROP_MYID] =
+    bolt_param_spec_override (gobject_class, "object-id");
 
   props[PROP_STR] =
     g_param_spec_string ("str", "StrFoo", NULL,
@@ -577,6 +596,59 @@ call_ctx_run (CallCtx *ctx)
   call_ctx_reset (ctx);
   g_main_loop_run (ctx->loop);
 }
+
+/* the actual tests */
+static void
+test_exported_export (TestExported *unused, gconstpointer data)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GDBusConnection) bus = NULL;
+  g_autoptr(BtExported) obj = NULL;
+  g_autofree char *want = NULL;
+  g_autofree char *have = NULL;
+  const char *obj_path = NULL;
+  gboolean exported = FALSE;
+  gboolean ok;
+
+  bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (bus);
+  g_assert_false (g_dbus_connection_is_closed (bus));
+
+  obj = g_object_new (BT_TYPE_EXPORTED, NULL);
+  g_assert_nonnull (obj);
+
+  /* we test auto object path generation */
+  want = g_build_path ("/", DBUS_OPATH_BASE, obj->object_id, NULL);
+  ok = bolt_exported_export (BOLT_EXPORTED (obj),
+                             bus,
+                             NULL,
+                             &err);
+
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  obj_path = bolt_exported_get_object_path (BOLT_EXPORTED (obj));
+
+  g_assert_cmpstr (want, ==, obj_path);
+
+  g_object_get (obj,
+                "object-path", &have,
+                "exported", &exported,
+                NULL);
+
+  g_assert_cmpstr (want, ==, have);
+  g_assert_true (exported);
+  g_assert_true (bolt_exported_is_exported (BOLT_EXPORTED (obj)));
+
+  /* unexport */
+  ok = bolt_exported_unexport (BOLT_EXPORTED (obj));
+
+  g_assert_true (ok);
+  g_assert_false (bolt_exported_is_exported (BOLT_EXPORTED (obj)));
+}
+
 
 static void
 test_exported_basic (TestExported *tt, gconstpointer data)
@@ -1087,6 +1159,13 @@ main (int argc, char **argv)
   g_test_init (&argc, &argv, NULL);
 
   g_resources_register (bolt_test_get_resource ());
+
+  g_test_add ("/exported/export",
+              TestExported,
+              NULL,
+              NULL,
+              test_exported_export,
+              NULL);
 
   g_test_add ("/exported/basic",
               TestExported,
