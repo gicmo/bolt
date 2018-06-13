@@ -51,6 +51,20 @@
 
     <!-- methods -->
 
+    <method name="ListDomains">
+      <arg name="domains" direction="out" type="ao">
+        <doc:doc><doc:summary>An array of object paths for the domains.</doc:summary></doc:doc>
+      </arg>
+
+      <doc:doc>
+        <doc:description>
+          <doc:para>
+            List all active thunderbolt domains.
+          </doc:para>
+        </doc:description>
+      </doc:doc>
+    </method>
+
     <method name="ListDevices">
       <arg name="devices" direction="out" type="ao">
         <doc:doc><doc:summary>An array of object paths for the devices.</doc:summary></doc:doc>

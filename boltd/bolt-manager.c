@@ -156,6 +156,11 @@ static gboolean handle_set_authmode (BoltExported *obj,
                                      GError      **error);
 
 /* dbus method calls */
+static GVariant *  handle_list_domains (BoltExported          *object,
+                                        GVariant              *params,
+                                        GDBusMethodInvocation *invocation,
+                                        GError               **error);
+
 static GVariant *  handle_list_devices (BoltExported          *object,
                                         GVariant              *params,
                                         GDBusMethodInvocation *invocation,
@@ -380,6 +385,10 @@ bolt_manager_class_init (BoltManagerClass *klass)
   bolt_exported_class_property_setter (exported_class,
                                        props[PROP_AUTHMODE],
                                        handle_set_authmode);
+
+  bolt_exported_class_export_method (exported_class,
+                                     "ListDomains",
+                                     handle_list_domains);
 
   bolt_exported_class_export_method (exported_class,
                                      "ListDevices",
@@ -1729,7 +1738,34 @@ handle_set_authmode (BoltExported *obj,
   return ok;
 }
 
-/* dbus methods */
+/* dbus methods: domain related */
+static GVariant *
+handle_list_domains (BoltExported          *object,
+                     GVariant              *params,
+                     GDBusMethodInvocation *invocation,
+                     GError               **error)
+{
+  BoltManager *mgr = BOLT_MANAGER (object);
+  const char **domains;
+  BoltDomain *iter;
+  guint count;
+
+  count = bolt_domain_count (mgr->domains);
+  domains = g_newa (const char *, count + 1);
+
+  iter = mgr->domains;
+  for (guint i = 0; i < count; i++)
+    {
+      domains[i] = bolt_exported_get_object_path (BOLT_EXPORTED (iter));
+      iter = bolt_domain_next (iter);
+    }
+
+  domains[count] = NULL;
+
+  return g_variant_new ("(^ao)", domains);
+}
+
+/* dbus methods: device related */
 static GVariant *
 handle_list_devices (BoltExported          *obj,
                      GVariant              *params,
