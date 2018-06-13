@@ -506,6 +506,7 @@ test_exported_setup (TestExported *tt, gconstpointer data)
 
   g_assert_cmpstr (obj_path, ==, opath);
   g_assert_true (exported);
+  g_assert_true (bolt_exported_is_exported (BOLT_EXPORTED (tt->obj)));
 }
 
 static void
@@ -516,6 +517,7 @@ test_exported_teardown (TestExported *tt, gconstpointer data)
   ok = bolt_exported_unexport (BOLT_EXPORTED (tt->obj));
 
   g_assert_true (ok);
+  g_assert_false (bolt_exported_is_exported (BOLT_EXPORTED (tt->obj)));
 
   g_clear_object (&tt->bus);
   g_clear_object (&tt->obj);

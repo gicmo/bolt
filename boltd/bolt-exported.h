@@ -98,6 +98,8 @@ gboolean           bolt_exported_export (BoltExported    *exported,
 
 gboolean           bolt_exported_unexport (BoltExported *exported);
 
+gboolean           bolt_exported_is_exported (BoltExported *exported);
+
 GDBusConnection *  bolt_exported_get_connection (BoltExported *exported);
 
 const char *       bolt_exported_get_object_path (BoltExported *exported);

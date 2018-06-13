@@ -1070,6 +1070,18 @@ bolt_exported_unexport (BoltExported *exported)
   return ok;
 }
 
+gboolean
+bolt_exported_is_exported (BoltExported *exported)
+{
+  BoltExportedPrivate *priv;
+
+  g_return_val_if_fail (BOLT_IS_EXPORTED (exported), FALSE);
+
+  priv = GET_PRIV (exported);
+
+  return priv->registration > 0;
+}
+
 GDBusConnection *
 bolt_exported_get_connection (BoltExported *exported)
 {
