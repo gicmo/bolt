@@ -185,6 +185,9 @@ bolt_exported_finalize (GObject *object)
   BoltExported *exported = BOLT_EXPORTED (object);
   BoltExportedPrivate *priv = GET_PRIV (exported);
 
+  if (bolt_exported_is_exported (exported))
+    bolt_exported_unexport (exported);
+
   g_clear_pointer (&priv->object_path, g_free);
   g_ptr_array_free (priv->props_changed, TRUE);
 
