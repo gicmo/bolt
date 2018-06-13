@@ -49,6 +49,10 @@ struct _BoltDomain
 enum {
   PROP_0,
 
+  /* internal properties */
+  PROP_OBJECT_ID,
+
+  /* exported properties */
   PROP_ID,
   PROP_SYSPATH,
   PROP_SECURITY,
@@ -90,6 +94,7 @@ bolt_domain_get_property (GObject    *object,
 
   switch (prop_id)
     {
+    case PROP_OBJECT_ID:
     case PROP_ID:
       g_value_set_string (value, dom->id);
       break;
@@ -144,6 +149,9 @@ bolt_domain_class_init (BoltDomainClass *klass)
 
   gobject_class->get_property = bolt_domain_get_property;
   gobject_class->set_property = bolt_domain_set_property;
+
+  props[PROP_OBJECT_ID] =
+    bolt_param_spec_override (gobject_class, "object-id");
 
   props[PROP_ID] =
     g_param_spec_string ("id",
