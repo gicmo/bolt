@@ -42,6 +42,9 @@ const char *      bolt_domain_get_syspath (BoltDomain *domain);
 
 BoltSecurity      bolt_domain_get_security (BoltDomain *domain);
 
+void              bolt_domain_export (BoltDomain      *domain,
+                                      GDBusConnection *connection);
+
 /* domain list management */
 
 BoltDomain *      bolt_domain_insert (BoltDomain *list,

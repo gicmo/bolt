@@ -268,6 +268,29 @@ bolt_domain_get_security (BoltDomain *domain)
   return domain->security;
 }
 
+void
+bolt_domain_export (BoltDomain      *domain,
+                    GDBusConnection *bus)
+{
+  g_autoptr(GError) err  = NULL;
+  BoltExported *exported;
+  const char *opath;
+  gboolean ok;
+
+  exported = BOLT_EXPORTED (domain);
+  ok = bolt_exported_export (exported, bus, NULL, &err);
+
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("dbus"),
+                     "error exporting a domain");
+      return;
+    }
+
+  opath = bolt_exported_get_object_path (exported);
+  bolt_info (LOG_TOPIC ("dbus"), "exported domain at %s", opath);
+}
+
 BoltDomain *
 bolt_domain_insert (BoltDomain *list, BoltDomain *domain)
 {
