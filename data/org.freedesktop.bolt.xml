@@ -60,7 +60,23 @@
         <doc:description>
           <doc:para>
             List all active thunderbolt domains.
-          </doc:para>
+	  </doc:para>
+        </doc:description>
+      </doc:doc>
+    </method>
+
+    <method name="DomainById">
+      <arg type='s' name='id' direction='in'>
+	<doc:doc><doc:summary>The id of the domain. </doc:summary></doc:doc>
+      </arg>
+      <arg name="domain" direction="out" type="o">
+	<doc:doc><doc:summary>Object path for the domain.</doc:summary></doc:doc>
+      </arg>
+      <doc:doc>
+	<doc:description>
+	  <doc:para>
+	    Return a domain given its identifier.
+	  </doc:para>
         </doc:description>
       </doc:doc>
     </method>

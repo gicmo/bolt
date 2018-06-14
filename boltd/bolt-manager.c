@@ -161,6 +161,11 @@ static GVariant *  handle_list_domains (BoltExported          *object,
                                         GDBusMethodInvocation *invocation,
                                         GError               **error);
 
+static GVariant *  handle_domain_by_id (BoltExported          *object,
+                                        GVariant              *params,
+                                        GDBusMethodInvocation *invocation,
+                                        GError               **error);
+
 static GVariant *  handle_list_devices (BoltExported          *object,
                                         GVariant              *params,
                                         GDBusMethodInvocation *invocation,
@@ -389,6 +394,10 @@ bolt_manager_class_init (BoltManagerClass *klass)
   bolt_exported_class_export_method (exported_class,
                                      "ListDomains",
                                      handle_list_domains);
+
+  bolt_exported_class_export_method (exported_class,
+                                     "DomainById",
+                                     handle_domain_by_id);
 
   bolt_exported_class_export_method (exported_class,
                                      "ListDevices",
@@ -1763,6 +1772,36 @@ handle_list_domains (BoltExported          *object,
   domains[count] = NULL;
 
   return g_variant_new ("(^ao)", domains);
+}
+
+static GVariant *
+handle_domain_by_id (BoltExported          *object,
+                     GVariant              *params,
+                     GDBusMethodInvocation *invocation,
+                     GError               **error)
+{
+  BoltManager *mgr = BOLT_MANAGER (object);
+  BoltDomain *domain;
+  const char *op;
+  const char *id;
+
+  g_variant_get (params, "(&s)", &id);
+
+  if (id == NULL || id[0] == '\0')
+    {
+      g_set_error_literal (error, G_IO_ERROR,
+                           G_IO_ERROR_INVALID_ARGUMENT,
+                           "empty domain id");
+      return NULL;
+    }
+
+  domain = bolt_domain_find_id (mgr->domains, id, error);
+
+  if (domain == NULL)
+    return NULL;
+
+  op = bolt_exported_get_object_path (BOLT_EXPORTED (domain));
+  return g_variant_new ("(o)", op);
 }
 
 /* dbus methods: device related */

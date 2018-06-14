@@ -161,6 +161,8 @@ handle_authorize_method (BoltExported          *exported,
     action = "org.freedesktop.bolt.manage";
   else if (bolt_streq (method_name, "ListDomains"))
     authorized = TRUE;
+  else if (bolt_streq (method_name, "DomainById"))
+    authorized = TRUE;
   else if (bolt_streq (method_name, "ListDevices"))
     authorized = TRUE;
   else if (bolt_streq (method_name, "DeviceByUid"))
