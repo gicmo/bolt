@@ -55,6 +55,70 @@ usage_error_need_arg (const char *arg)
   return usage_error (error);
 }
 
+/* domain related commands */
+static void
+print_domain (BoltDomain *domain, gboolean verbose)
+{
+  const char *tree_branch;
+  const char *tree_right;
+  const char *id;
+  const char *syspath;
+  const char *security;
+  BoltSecurity sl;
+
+  tree_branch = bolt_glyph (TREE_BRANCH);
+  tree_right = bolt_glyph (TREE_RIGHT);
+
+  id = bolt_domain_get_id (domain);
+  sl = bolt_domain_get_security (domain);
+
+  syspath = bolt_domain_get_syspath (domain);
+  security = bolt_security_to_string (sl);
+
+  g_print (" %s\n", id);
+  if (verbose)
+    g_print ("   %s syspath:       %s\n", tree_branch, syspath);
+  g_print ("   %s security:      %s\n", tree_right, security);
+
+  g_print ("\n");
+}
+
+static int
+list_domains (BoltClient *client, int argc, char **argv)
+{
+  g_autoptr(GOptionContext) optctx = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GPtrArray) domains = NULL;
+  gboolean details = FALSE;
+  GOptionEntry options[] = {
+    { "verbose", 'v', 0, G_OPTION_ARG_NONE, &details, "Show more details", NULL },
+    { NULL }
+  };
+
+  optctx = g_option_context_new ("- List thunderbolt domains");
+  g_option_context_add_main_entries (optctx, options, NULL);
+
+  if (!g_option_context_parse (optctx, &argc, &argv, &err))
+    return usage_error (err);
+
+  domains = bolt_client_list_domains (client, NULL, &err);
+
+  if (domains == NULL)
+    {
+      g_warning ("Could not list domains: %s", err->message);
+      domains = g_ptr_array_new_with_free_func (g_object_unref);
+    }
+
+  for (guint i = 0; i < domains->len; i++)
+    {
+      BoltDomain *dom = g_ptr_array_index (domains, i);
+      print_domain (dom, details);
+    }
+
+  return EXIT_SUCCESS;
+}
+
+/* device related commands */
 static void
 print_device (BoltDevice *dev, gboolean verbose)
 {
@@ -381,6 +445,63 @@ info (BoltClient *client, int argc, char **argv)
   return EXIT_SUCCESS;
 }
 
+
+static void
+handle_domain_added (BoltClient *cli,
+                     const char *opath,
+                     gpointer    user_data)
+{
+  g_autoptr(GError) err = NULL;
+  GDBusConnection *bus;
+  BoltDomain *dom;
+  GPtrArray *domains = user_data;
+
+  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (cli));
+  dom = bolt_domain_new_for_object_path (bus, opath, NULL, &err);
+
+  if (err != NULL)
+    {
+      g_warning ("Could not create proxy object for %s", opath);
+      return;
+    }
+
+
+  g_print (" DomainAdded: %s\n", opath);
+
+  g_ptr_array_add (domains, dom);
+}
+
+static void
+handle_domain_removed (BoltClient *cli,
+                       const char *opath,
+                       gpointer    user_data)
+{
+  GPtrArray *domains = user_data;
+  BoltDomain *domain = NULL;
+
+  for (guint i = 0; i < domains->len; i++)
+    {
+      BoltDomain *dom = g_ptr_array_index (domains, i);
+      const char *dom_opath = g_dbus_proxy_get_object_path (G_DBUS_PROXY (dom));
+
+      if (bolt_streq (opath, dom_opath))
+        {
+          domain = dom;
+          break;
+        }
+    }
+
+  if (domain == NULL)
+    {
+      g_warning ("DomainRemoved signal for unknown domain: %s", opath);
+      return;
+    }
+
+  g_print (" DomainRemoved: %s\n", opath);
+
+  g_ptr_array_remove_fast (domains, domain);
+}
+
 static void
 handle_device_changed (GObject    *gobject,
                        GParamSpec *pspec,
@@ -496,6 +617,7 @@ monitor (BoltClient *client, int argc, char **argv)
   g_autoptr(GError) error = NULL;
   g_autoptr(GMainLoop) main_loop = NULL;
   g_autoptr(GPtrArray) devices = NULL;
+  g_autoptr(GPtrArray) domains = NULL;
   g_autofree char *amstr = NULL;
   BoltSecurity security;
   BoltAuthMode authmode;
@@ -522,12 +644,31 @@ monitor (BoltClient *client, int argc, char **argv)
   g_print ("Auth Mode     : %s\n", amstr);
   g_print ("Ready\n");
 
+  /* domains */
+  domains = bolt_client_list_domains (client, NULL, &error);
+
+  if (domains == NULL)
+    {
+      g_warning ("Could not list domains: %s", error->message);
+      devices = g_ptr_array_new_with_free_func (g_object_unref);
+      g_clear_error (&error);
+    }
+
+  g_signal_connect (client, "domain-added",
+                    G_CALLBACK (handle_domain_added), domains);
+
+  g_signal_connect (client, "domain-removed",
+                    G_CALLBACK (handle_domain_removed), domains);
+
+
+  /* devices */
   devices = bolt_client_list_devices (client, NULL, &error);
 
   if (devices == NULL)
     {
       g_warning ("Could not list devices: %s", error->message);
       devices = g_ptr_array_new_with_free_func (g_object_unref);
+      g_clear_error (&error);
     }
 
   bolt_devices_sort_by_syspath (devices, FALSE);
@@ -620,6 +761,7 @@ typedef struct SubCommand
 static SubCommand subcommands[] = {
   {"authorize",    authorize,     "Authorize a device"},
   {"enroll",       enroll,        "Authorize and store a device in the database"},
+  {"domains",      list_domains,  "List the active thunderbolt domains"},
   {"forget",       forget,        "Remove a stored device from the database"},
   {"info",         info,          "Show information about a device"},
   {"list",         list_devices,  "List connected and stored devices"},
