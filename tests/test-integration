@@ -1153,6 +1153,35 @@ class BoltTest(dbusmock.DBusTestCase):
         with self.assertRaises(GLib.GError):
             self.client.device_by_uid("nonexistant")
 
+        for name, path in domains:
+            remote = self.client.domain_by_id(name)
+            self.assertIsNotNone(remote)
+
+            with self.client.record() as tape:
+                self.testbed.uevent(path, "remove")
+                self.testbed.remove_device(path)
+                res = tape.wait_for_event('signal',
+                                          'DomainRemoved',
+                                          None)
+                self.assertTrue(res)
+
+            with self.assertRaises(GLib.GError):
+                self.client.device_by_uid(name)
+
+        for d in range(4):
+            with self.client.record() as tape:
+                name, path = make_domain(d, 'secure')
+                res = tape.wait_for_event('signal',
+                                          'DomainAdded',
+                                          None)
+                self.assertTrue(res)
+
+            remote = self.client.domain_by_id(name)
+            self.assertIsNotNone(remote)
+
+        remotes = self.client.list_domains()
+        self.assertEqual(len(remotes), 4)
+
         self.daemon_stop()
 
     def test_signals_on_start(self):
