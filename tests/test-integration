@@ -482,6 +482,13 @@ class BoltClient(ProxyWrapper):
         bus = self._proxy.get_connection()
         return [BoltDomain(bus, d) for d in domains]
 
+    def domain_by_id(self, uid):
+        object_path = self.DomainById("(s)", uid)
+        if object_path is None:
+            return None
+        bus = self._proxy.get_connection()
+        return BoltDomain(bus, object_path)
+
     def list_devices(self):
         devices = self.ListDevices()
         if devices is None:
@@ -1133,7 +1140,20 @@ class BoltTest(dbusmock.DBusTestCase):
             for remote in remotes:
                 self.assertEqual(remote.security_level, security)
 
+            remote = self.client.domain_by_id (name)
+            self.assertEqual(remote.id, name)
+
             self.daemon_stop()
+
+        self.daemon_start()
+
+        with self.assertRaises(GLib.GError):
+            self.client.device_by_uid("")
+
+        with self.assertRaises(GLib.GError):
+            self.client.device_by_uid("nonexistant")
+
+        self.daemon_stop()
 
     def test_signals_on_start(self):
         # Check that we get DeviceAdded signals for un-authorized
