@@ -387,6 +387,35 @@ bolt_domain_foreach (BoltDomain *list,
     }
 }
 
+BoltDomain *
+bolt_domain_find_id (BoltDomain *list,
+                     const char *id,
+                     GError    **error)
+{
+  BoltList iter;
+  BoltList *n;
+
+  g_return_val_if_fail (id != NULL, NULL);
+
+  if (list == NULL)
+    goto notfound;
+
+  bolt_nhlist_iter_init (&iter, &list->domains);
+  while ((n = bolt_nhlist_iter_next (&iter)))
+    {
+      BoltDomain *d = bolt_list_entry (n, BoltDomain, domains);
+      if (bolt_streq (d->id, id))
+        return d;
+    }
+
+notfound:
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+               "domain with id '%s' could not be found.",
+               id);
+
+  return NULL;
+}
+
 void
 bolt_domain_clear (BoltDomain **list)
 {

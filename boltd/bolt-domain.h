@@ -63,6 +63,10 @@ void              bolt_domain_foreach (BoltDomain *list,
                                        GFunc       func,
                                        gpointer    user_data);
 
+BoltDomain *      bolt_domain_find_id (BoltDomain *list,
+                                       const char *id,
+                                       GError    **error);
+
 void              bolt_domain_clear (BoltDomain **list);
 
 
