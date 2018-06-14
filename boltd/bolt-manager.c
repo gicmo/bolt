@@ -1087,6 +1087,7 @@ handle_udev_domain_added (BoltManager        *mgr,
   g_autoptr(GError) err = NULL;
   g_autoptr(BoltDomain) domain = NULL;
   GDBusConnection *bus;
+  const char *op;
 
   manager_probing_domain_added (mgr, device);
 
@@ -1102,8 +1103,16 @@ handle_udev_domain_added (BoltManager        *mgr,
   manager_register_domain (mgr, domain);
 
   bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
-  if (bus != NULL)
-    bolt_domain_export (domain, bus);
+  if (bus == NULL)
+    return;
+
+  bolt_domain_export (domain, bus);
+
+  op = bolt_exported_get_object_path (BOLT_EXPORTED (domain));
+  bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
+                             "DomainAdded",
+                             g_variant_new ("(o)", op),
+                             NULL);
 }
 
 static void
@@ -1117,7 +1126,14 @@ handle_udev_domain_removed (BoltManager *mgr,
 
   if (bolt_exported_is_exported (BOLT_EXPORTED (domain)))
     {
+      const char *op;
       gboolean ok;
+
+      op = bolt_exported_get_object_path (BOLT_EXPORTED (domain));
+      bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
+                                 "DomainRemoved",
+                                 g_variant_new ("(o)", op),
+                                 NULL);
 
       ok = bolt_exported_unexport (BOLT_EXPORTED (domain));
 

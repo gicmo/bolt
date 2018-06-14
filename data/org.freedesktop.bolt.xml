@@ -180,6 +180,25 @@
       </doc:para></doc:description></doc:doc>
     </signal>
 
+    <signal name="DomainAdded">
+      <arg name="domain" type="o">
+        <doc:doc><doc:summary>Object path of the domain.</doc:summary></doc:doc>
+      </arg>
+
+      <doc:doc><doc:description><doc:para>
+        A thunderbolt domain was added.
+      </doc:para></doc:description></doc:doc>
+    </signal>
+
+    <signal name="DomainRemoved">
+      <arg name="domain" type="o">
+        <doc:doc><doc:summary>Object path of the removed domain.</doc:summary></doc:doc>
+      </arg>
+
+      <doc:doc><doc:description><doc:para>
+        A thunderbolt domain was removed.
+      </doc:para></doc:description></doc:doc>
+    </signal>
 
   </interface>
 
