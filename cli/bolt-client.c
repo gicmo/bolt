@@ -32,6 +32,12 @@ static void         handle_dbus_device_added (GObject    *self,
 static void         handle_dbus_device_removed (GObject    *self,
                                                 GDBusProxy *bus_proxy,
                                                 GVariant   *params);
+static void         handle_dbus_domain_added (GObject    *self,
+                                              GDBusProxy *bus_proxy,
+                                              GVariant   *params);
+static void         handle_dbus_domain_removed (GObject    *self,
+                                                GDBusProxy *bus_proxy,
+                                                GVariant   *params);
 
 struct _BoltClient
 {
@@ -55,6 +61,8 @@ static GParamSpec *props[PROP_LAST] = {NULL, };
 enum {
   SIGNAL_DEVICE_ADDED,
   SIGNAL_DEVICE_REMOVED,
+  SIGNAL_DOMAIN_ADDED,
+  SIGNAL_DOMAIN_REMOVED,
   SIGNAL_LAST
 };
 
@@ -84,6 +92,8 @@ bolt_client_get_dbus_signals (guint *n)
   static BoltProxySignal dbus_signals[] = {
     {"DeviceAdded", handle_dbus_device_added},
     {"DeviceRemoved", handle_dbus_device_removed},
+    {"DomainAdded", handle_dbus_domain_added},
+    {"DomainRemoved", handle_dbus_domain_removed},
   };
 
   *n = G_N_ELEMENTS (dbus_signals);
@@ -155,6 +165,26 @@ bolt_client_class_init (BoltClientClass *klass)
                   NULL,
                   G_TYPE_NONE,
                   1, G_TYPE_STRING);
+
+  signals[SIGNAL_DOMAIN_ADDED] =
+    g_signal_new ("domain-added",
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  NULL,
+                  G_TYPE_NONE,
+                  1, G_TYPE_STRING);
+
+  signals[SIGNAL_DOMAIN_REMOVED] =
+    g_signal_new ("domain-removed",
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  NULL,
+                  G_TYPE_NONE,
+                  1, G_TYPE_STRING);
 }
 
 
@@ -184,6 +214,27 @@ handle_dbus_device_removed (GObject *self, GDBusProxy *bus_proxy, GVariant *para
   g_variant_get_child (params, 0, "&o", &opath);
   g_signal_emit (cli, signals[SIGNAL_DEVICE_REMOVED], 0, opath);
 }
+
+static void
+handle_dbus_domain_added (GObject *self, GDBusProxy *bus_proxy, GVariant *params)
+{
+  BoltClient *cli = BOLT_CLIENT (self);
+  const char *opath = NULL;
+
+  g_variant_get_child (params, 0, "&o", &opath);
+  g_signal_emit (cli, signals[SIGNAL_DOMAIN_ADDED], 0, opath);
+}
+
+static void
+handle_dbus_domain_removed (GObject *self, GDBusProxy *bus_proxy, GVariant *params)
+{
+  BoltClient *cli = BOLT_CLIENT (self);
+  const char *opath = NULL;
+
+  g_variant_get_child (params, 0, "&o", &opath);
+  g_signal_emit (cli, signals[SIGNAL_DOMAIN_REMOVED], 0, opath);
+}
+
 
 /* public methods */
 
@@ -285,6 +336,48 @@ bolt_client_new_finish (GAsyncResult *res,
   g_return_val_if_fail (G_IS_TASK (res), NULL);
 
   return g_task_propagate_pointer (G_TASK (res), error);
+}
+
+GPtrArray *
+bolt_client_list_domains (BoltClient   *client,
+                          GCancellable *cancel,
+                          GError      **error)
+{
+  g_autoptr(GVariant) val = NULL;
+  g_autoptr(GPtrArray) domains = NULL;
+  g_autoptr(GVariantIter) iter = NULL;
+  GDBusConnection *bus = NULL;
+  const char *d;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
+
+  val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
+                                "ListDomains",
+                                NULL,
+                                G_DBUS_CALL_FLAGS_NONE,
+                                -1,
+                                cancel,
+                                error);
+  if (val == NULL)
+    return NULL;
+
+  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
+
+  domains = g_ptr_array_new_with_free_func (g_object_unref);
+
+  g_variant_get (val, "(ao)", &iter);
+  while (g_variant_iter_loop (iter, "&o", &d, NULL))
+    {
+      BoltDomain *dom;
+
+      dom = bolt_domain_new_for_object_path (bus, d, cancel, error);
+      if (dom == NULL)
+        return NULL;
+
+      g_ptr_array_add (domains, dom);
+    }
+
+  return g_steal_pointer (&domains);
 }
 
 GPtrArray *

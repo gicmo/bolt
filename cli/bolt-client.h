@@ -22,6 +22,7 @@
 
 #include "bolt-enums.h"
 #include "bolt-device.h"
+#include "bolt-domain.h"
 #include "bolt-proxy.h"
 
 G_BEGIN_DECLS
@@ -36,6 +37,10 @@ void            bolt_client_new_async (GCancellable       *cancellable,
                                        gpointer            user_data);
 BoltClient *    bolt_client_new_finish (GAsyncResult *res,
                                         GError      **error);
+
+GPtrArray *     bolt_client_list_domains (BoltClient   *client,
+                                          GCancellable *cancellable,
+                                          GError      **error);
 
 GPtrArray *     bolt_client_list_devices (BoltClient   *client,
                                           GCancellable *cancellable,
