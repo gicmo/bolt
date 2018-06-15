@@ -43,8 +43,10 @@
 #include <sys/stat.h>
 #include <unistd.h> /* unlinkat */
 
+#if !GLIB_CHECK_VERSION (2, 57, 0)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GFlagsClass, g_type_class_unref);
+#endif
 
 static void
 cleanup_dir (DIR *d)
