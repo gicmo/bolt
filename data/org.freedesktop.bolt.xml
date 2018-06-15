@@ -462,6 +462,11 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="BootACL" type="as" access="read">
+      <doc:doc><doc:description><doc:para>
+        The boot access control list.
+      </doc:para></doc:description></doc:doc>
+    </property>
   </interface>
 
 </node>

@@ -47,6 +47,7 @@ struct _BoltDomain
   char        *id;
   char        *syspath;
   BoltSecurity security;
+  GStrv        bootacl;
 };
 
 
@@ -61,6 +62,7 @@ enum {
   PROP_ID,
   PROP_SYSPATH,
   PROP_SECURITY,
+  PROP_BOOTACL,
 
   PROP_LAST,
   PROP_EXPORTED = PROP_UID
@@ -80,6 +82,7 @@ bolt_domain_finalize (GObject *object)
   g_free (dom->uid);
   g_free (dom->id);
   g_free (dom->syspath);
+  g_strfreev (dom->bootacl);
 
   G_OBJECT_CLASS (bolt_domain_parent_class)->finalize (object);
 }
@@ -117,6 +120,10 @@ bolt_domain_get_property (GObject    *object,
       g_value_set_enum (value, dom->security);
       break;
 
+    case PROP_BOOTACL:
+      g_value_set_boxed (value, dom->bootacl);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -148,6 +155,11 @@ bolt_domain_set_property (GObject      *object,
 
     case PROP_SECURITY:
       dom->security = g_value_get_enum (value);
+      break;
+
+    case PROP_BOOTACL:
+      g_strfreev (dom->bootacl);
+      dom->bootacl = g_value_dup_boxed (value);
       break;
 
     default:
@@ -202,6 +214,13 @@ bolt_domain_class_init (BoltDomainClass *klass)
                        G_PARAM_CONSTRUCT_ONLY |
                        G_PARAM_STATIC_STRINGS);
 
+  props[PROP_BOOTACL] =
+    g_param_spec_boxed ("bootacl",
+                        "BootACL", NULL,
+                        G_TYPE_STRV,
+                        G_PARAM_READWRITE |
+                        G_PARAM_STATIC_STRINGS);
+
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
                                      props);
@@ -225,6 +244,8 @@ bolt_domain_new_for_udev (struct udev_device *udev,
                           const char         *uid,
                           GError            **error)
 {
+  g_autoptr(GError) err = NULL;
+  g_auto(GStrv) acl = NULL;
   BoltDomain *dom = NULL;
   BoltSecurity security = BOLT_SECURITY_UNKNOWN;
   const char *syspath;
@@ -259,11 +280,16 @@ bolt_domain_new_for_udev (struct udev_device *udev,
   if (security == BOLT_SECURITY_UNKNOWN)
     return NULL;
 
+  acl = bolt_sysfs_read_boot_acl (udev, &err);
+  if (acl == NULL && !bolt_err_notfound (err))
+    bolt_warn_err (err, "failed to get boot_acl");
+
   dom = g_object_new (BOLT_TYPE_DOMAIN,
                       "uid", uid,
                       "id", sysname,
                       "syspath", syspath,
                       "security", security,
+                      "bootacl", acl,
                       NULL);
 
   return dom;
@@ -322,6 +348,29 @@ bolt_domain_export (BoltDomain      *domain,
 
   opath = bolt_exported_get_object_path (exported);
   bolt_info (LOG_TOPIC ("dbus"), "exported domain at %s", opath);
+}
+
+void
+bolt_domain_update_from_udev (BoltDomain         *domain,
+                              struct udev_device *udev)
+{
+  g_autoptr(GError) err = NULL;
+  g_auto(GStrv) acl = NULL;
+  GStrv tmp;
+
+  acl = bolt_sysfs_read_boot_acl (udev, &err);
+  if (acl == NULL && !bolt_err_notfound (err))
+    {
+      bolt_warn_err (err, "failed to get boot_acl");
+      return;
+    }
+
+  /* TODO: check if something really has changed */
+  tmp = domain->bootacl;
+  domain->bootacl = acl;
+  acl = tmp;
+
+  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
 }
 
 BoltDomain *

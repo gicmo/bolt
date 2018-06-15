@@ -48,6 +48,9 @@ BoltSecurity      bolt_domain_get_security (BoltDomain *domain);
 void              bolt_domain_export (BoltDomain      *domain,
                                       GDBusConnection *connection);
 
+void              bolt_domain_update_from_udev (BoltDomain         *domain,
+                                                struct udev_device *udev);
+
 /* domain list management */
 
 BoltDomain *      bolt_domain_insert (BoltDomain *list,
