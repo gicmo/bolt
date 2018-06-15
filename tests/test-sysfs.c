@@ -177,6 +177,38 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
     g_assert_null (all[i]);
 }
 
+static void
+test_sysfs_domain_bootacl (TestSysfs *tt, gconstpointer user)
+{
+  g_auto(GStrv) acl = NULL;
+  g_auto(GStrv) have = NULL;
+  g_autoptr(BoltDomain) dom = NULL;
+  g_autoptr(udev_device) udevice = NULL;
+  g_autoptr(GError) err = NULL;
+  const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
+  const char *syspath;
+  const char *d;
+
+  acl = g_strsplit (",,,,,,,,,,,,,,,", ",", 1024);
+
+  g_assert_cmpuint (g_strv_length (acl), ==, 16);
+  d = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_USER, acl);
+
+  syspath = mock_sysfs_domain_get_syspath (tt->sysfs, d);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+
+  dom = bolt_domain_new_for_udev (udevice, uid, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (dom);
+
+  g_object_get (dom, "bootacl", &have, NULL);
+  g_assert_nonnull (have);
+
+  g_assert_cmpuint (g_strv_length (acl),
+                    ==,
+                    g_strv_length (have));
+}
+
 int
 main (int argc, char **argv)
 {
@@ -192,6 +224,13 @@ main (int argc, char **argv)
               NULL,
               test_sysfs_setup,
               test_sysfs_domains,
+              test_sysfs_tear_down);
+
+  g_test_add ("/sysfs/domain/bootacl",
+              TestSysfs,
+              NULL,
+              test_sysfs_setup,
+              test_sysfs_domain_bootacl,
               test_sysfs_tear_down);
 
   return g_test_run ();
