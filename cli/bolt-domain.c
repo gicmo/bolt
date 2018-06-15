@@ -36,6 +36,7 @@ enum {
   PROP_ID,
   PROP_SYSPATH,
   PROP_SECURITY,
+  PROP_BOOTACL,
 
   PROP_LAST
 };
@@ -86,6 +87,13 @@ bolt_domain_class_init (BoltDomainClass *klass)
                          BOLT_SECURITY_UNKNOWN,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_NAME);
+
+  props[PROP_BOOTACL] =
+    g_param_spec_boxed ("bootacl",
+                        "BootACL", NULL,
+                        G_TYPE_STRV,
+                        G_PARAM_READABLE |
+                        G_PARAM_STATIC_NAME);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
@@ -163,4 +171,18 @@ bolt_domain_get_security (BoltDomain *domain)
     g_warning ("failed to get enum property '%s'", key);
 
   return val;
+}
+
+char **
+bolt_domain_get_bootacl (BoltDomain *domain)
+{
+  const char *key;
+  char **strv;
+
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), NULL);
+
+  key = g_param_spec_get_name (props[PROP_BOOTACL]);
+  strv = bolt_proxy_get_property_strv (BOLT_PROXY (domain), key);
+
+  return strv;
 }

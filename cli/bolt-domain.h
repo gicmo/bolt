@@ -39,4 +39,7 @@ const char *      bolt_domain_get_id (BoltDomain *domain);
 const char *      bolt_domain_get_syspath (BoltDomain *domain);
 
 BoltSecurity      bolt_domain_get_security (BoltDomain *domain);
+
+char **           bolt_domain_get_bootacl (BoltDomain *domain);
+
 G_END_DECLS
