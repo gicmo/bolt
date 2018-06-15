@@ -23,8 +23,9 @@
 #include "bolt-sysfs.h"
 
 #include "bolt-error.h"
-#include "bolt-str.h"
+#include "bolt-io.h"
 #include "bolt-log.h"
+#include "bolt-str.h"
 
 #include <errno.h>
 #include <libudev.h>
@@ -253,4 +254,46 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
     info->parent = udev_device_get_sysattr_value (parent, "unique_id");
 
   return TRUE;
+}
+
+GStrv
+bolt_sysfs_read_boot_acl (struct udev_device *udev,
+                          GError            **error)
+{
+  const char *val;
+  GStrv acl;
+
+  val = udev_device_get_sysattr_value (udev, "boot_acl");
+
+  if (val == NULL)
+    {
+      int code = g_io_error_from_errno (errno);
+      g_set_error (error, G_IO_ERROR, code,
+                   "could not read 'boot_acl': %s",
+                   g_strerror (errno));
+      return NULL;
+    }
+
+  acl = g_strsplit (val, ",", 1024);
+  /* TODO: need to filter empty uuids? */
+
+  return acl;
+}
+
+gboolean
+bolt_sysfs_write_boot_acl (const char *device,
+                           GStrv       acl,
+                           GError    **error)
+{
+  g_autofree char *val = NULL;
+  g_autofree char *path = NULL;
+
+  g_return_val_if_fail (device != NULL, FALSE);
+  g_return_val_if_fail (acl != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  val = g_strjoinv (",", acl);
+  path = g_build_filename (device, "boot_acl", NULL);
+
+  return bolt_file_write_all (path, val, -1, error);
 }

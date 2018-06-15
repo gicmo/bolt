@@ -69,4 +69,12 @@ gboolean             bolt_sysfs_info_for_device (struct udev_device *udev,
                                                  BoltDevInfo        *info,
                                                  GError            **error);
 
+GStrv                bolt_sysfs_read_boot_acl (struct udev_device *udev,
+                                               GError            **error);
+
+gboolean             bolt_sysfs_write_boot_acl (const char *device,
+                                                GStrv       acl,
+                                                GError    **error);
+
+
 G_END_DECLS
