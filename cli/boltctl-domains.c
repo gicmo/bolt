@@ -28,8 +28,10 @@
 static void
 print_domain (BoltDomain *domain, gboolean verbose)
 {
+  g_auto(GStrv) bootacl = NULL;
   const char *tree_branch;
   const char *tree_right;
+  const char *tree_cont;
   const char *id;
   const char *syspath;
   const char *security;
@@ -37,18 +39,44 @@ print_domain (BoltDomain *domain, gboolean verbose)
 
   tree_branch = bolt_glyph (TREE_BRANCH);
   tree_right = bolt_glyph (TREE_RIGHT);
+  tree_cont = bolt_glyph (TREE_VERTICAL);
 
   id = bolt_domain_get_id (domain);
   sl = bolt_domain_get_security (domain);
 
   syspath = bolt_domain_get_syspath (domain);
   security = bolt_security_to_string (sl);
+  bootacl = bolt_domain_get_bootacl (domain);
 
   g_print (" %s\n", id);
   if (verbose)
-    g_print ("   %s syspath:       %s\n", tree_branch, syspath);
-  g_print ("   %s security:      %s\n", tree_right, security);
+    g_print ("   %s syspath:  %s\n", tree_branch, syspath);
 
+  if (bootacl)
+    {
+      guint acl_max = g_strv_length ((char **) bootacl);
+      guint used = 0;
+      guint i;
+
+      for (i = 0; i < acl_max; i++)
+        if (!bolt_strzero (bootacl[i]))
+          used++;
+
+      g_print ("   %s bootacl:  %u/%u\n", tree_branch, used, acl_max);
+
+      for (i = 0; i < acl_max; i++)
+        {
+          const char *tree_sym = used > 1 ? tree_branch : tree_right;
+
+          if (bolt_strzero (bootacl[i]))
+            continue;
+
+          g_print ("   %s  %s[%u] %s\n", tree_cont, tree_sym, i, bootacl[i]);
+          used--;
+        }
+    }
+
+  g_print ("   %s security: %s\n", tree_right, security);
   g_print ("\n");
 }
 
