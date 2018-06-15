@@ -171,7 +171,7 @@ test_udev_basic (TestUdev *tt, gconstpointer user)
   g_signal_connect (udev, "uevent", (GCallback) got_uevent, &ev);
 
   /* add a domain */
-  domain = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_NONE);
+  domain = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_NONE, NULL);
   n = wait_for_event (&ev, 2);
 
   g_assert_false (ev.timedout);

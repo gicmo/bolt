@@ -281,15 +281,22 @@ mock_sysfs_force_power_enabled (MockSysfs *ms)
 }
 
 /* public methods: domain */
+
+#define CONST_STRV(...) (char **) (const char *[]){ __VA_ARGS__}
+
 const char *
 mock_sysfs_domain_add (MockSysfs   *ms,
-                       BoltSecurity security)
+                       BoltSecurity security,
+                       GStrv        bootacl)
 {
+  g_autofree char *acl = NULL;
+  const char *props[5] = {NULL, };
   const char *secstr;
   MockDomain *domain;
   char *idstr = NULL;
   char *path;
   guint id;
+  guint i;
 
   g_return_val_if_fail (MOCK_IS_SYSFS (ms), NULL);
 
@@ -298,12 +305,23 @@ mock_sysfs_domain_add (MockSysfs   *ms,
   secstr = bolt_security_to_string (security);
   idstr = g_strdup_printf ("domain%u", id);
 
-  path = umockdev_testbed_add_device (ms->bed, "thunderbolt", idstr,
-                                      NULL,
-                                      "security", secstr,
-                                      NULL,
-                                      "DEVTYPE", "thunderbolt_domain",
-                                      NULL);
+  i = 0;
+  props[i++] = "security";
+  props[i++] = secstr;
+  if (bootacl != NULL)
+    {
+      acl = g_strjoinv (",", bootacl);
+      props[i++] = "boot_acl";
+      props[i++] = acl;
+    }
+  props[i++] = NULL;
+
+  g_assert (sizeof (props) >= i);
+
+  path = umockdev_testbed_add_devicev (ms->bed, "thunderbolt", idstr,
+                                       NULL, /* parent: domain has none */
+                                       (char **) props,
+                                       CONST_STRV ("DEVTYPE", "thunderbolt_domain", NULL));
 
   if (path == NULL)
     return path;

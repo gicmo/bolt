@@ -95,7 +95,7 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
       g_autoptr(BoltDomain) dom = NULL; /* the list will own reference */
       const char *syspath;
 
-      ids[i] = mock_sysfs_domain_add (tt->sysfs, sl[i]);
+      ids[i] = mock_sysfs_domain_add (tt->sysfs, sl[i], NULL);
 
       syspath = mock_sysfs_domain_get_syspath (tt->sysfs, ids[i]);
       udevice = udev_device_new_from_syspath (tt->udev, syspath);

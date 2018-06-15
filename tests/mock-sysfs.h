@@ -46,7 +46,8 @@ char *           mock_sysfs_force_power_read (MockSysfs *ms);
 gboolean         mock_sysfs_force_power_enabled (MockSysfs *ms);
 
 const char *     mock_sysfs_domain_add (MockSysfs   *ms,
-                                        BoltSecurity security);
+                                        BoltSecurity security,
+                                        GStrv        bootacl);
 
 const char *     mock_sysfs_domain_get_syspath (MockSysfs  *ms,
                                                 const char *id);
