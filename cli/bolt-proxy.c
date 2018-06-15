@@ -444,6 +444,21 @@ bolt_proxy_get_property_string (BoltProxy  *proxy,
   return val;
 }
 
+char **
+bolt_proxy_get_property_strv (BoltProxy  *proxy,
+                              const char *name)
+{
+  g_autoptr(GVariant) var = NULL;
+  char **val = NULL;
+
+  var = bolt_proxy_get_cached_property (proxy, name);
+
+  if (var != NULL)
+    val = g_variant_dup_strv (var, NULL);
+
+  return val;
+}
+
 gboolean
 bolt_proxy_set_property (BoltProxy    *proxy,
                          const char   *name,

@@ -81,6 +81,9 @@ gboolean          bolt_proxy_get_property_uint64 (BoltProxy  *proxy,
 const char *      bolt_proxy_get_property_string (BoltProxy  *proxy,
                                                   const char *name);
 
+char **           bolt_proxy_get_property_strv (BoltProxy  *proxy,
+                                                const char *name);
+
 gboolean          bolt_proxy_set_property (BoltProxy    *proxy,
                                            const char   *name,
                                            GVariant     *value,
