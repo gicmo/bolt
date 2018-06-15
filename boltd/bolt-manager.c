@@ -1021,6 +1021,20 @@ handle_udev_domain_event (BoltManager        *mgr,
        * ensure the domain exists
        */
     }
+  else if (g_str_equal (action, "change"))
+    {
+      domain = manager_find_domain_by_syspath (mgr, syspath);
+
+      if (domain == NULL)
+        {
+          bolt_warn (LOG_TOPIC ("domain"),
+                     "unregistered domain changed at %s",
+                     syspath);
+          return;
+        }
+
+      bolt_domain_update_from_udev (domain, device);
+    }
   else if (g_str_equal (action, "remove"))
     {
       domain = manager_find_domain_by_syspath (mgr, syspath);
