@@ -44,4 +44,26 @@ char *bolt_strstrip (char *string);
 gboolean bolt_str_parse_as_int (const char *str,
                                 gint       *ret);
 
+/* replacing string pointers, like g_set_object, g_set_error ... */
+static inline gboolean
+bolt_set_str (char **target, char *str)
+{
+  char *ptr;
+
+  g_return_val_if_fail (target != NULL, FALSE);
+
+  ptr = *target;
+
+  if (ptr == str)
+    return FALSE;
+
+  g_free (ptr);
+  *target = str;
+
+  return TRUE;
+}
+
+#define bolt_set_strdup(target, str) \
+  bolt_set_str (target, g_strdup (str))
+
 G_END_DECLS

@@ -656,6 +656,26 @@ test_str_erase (TestRng *tt, gconstpointer user_data)
 }
 
 static void
+test_str_set (TestRng *tt, gconstpointer user_data)
+{
+  g_autofree char *target = NULL;
+  g_autofree char *str = NULL;
+
+  bolt_set_str (&target, NULL);
+  g_assert_null (target);
+
+  str = g_strdup ("test");
+  bolt_set_str (&target, str);
+
+  g_assert_nonnull (target);
+  g_assert_true (str == target);
+  str = NULL; /* owned by target now */
+
+  bolt_set_strdup (&target, "foobar");
+  g_assert_cmpstr (target, ==, "foobar");
+}
+
+static void
 test_list_nh (TestRng *tt, gconstpointer user_data)
 {
   BoltList n[10];
@@ -768,6 +788,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_str_erase,
+              NULL);
+
+  g_test_add ("/common/str/set",
+              TestRng,
+              NULL,
+              NULL,
+              test_str_set,
               NULL);
 
   g_test_add ("/common/list/nh",
