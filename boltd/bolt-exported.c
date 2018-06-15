@@ -27,6 +27,9 @@
 
 #include "bolt-exported.h"
 
+/* Each element must only contain the ASCII characters "[A-Z][a-z][0-9]_" */
+#define DBUS_OPATH_VALID_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_"
+
 typedef struct _BoltExportedMethod BoltExportedMethod;
 typedef struct _BoltExportedProp   BoltExportedProp;
 
@@ -424,7 +427,7 @@ bolt_exported_make_object_path (BoltExported *exported)
   g_object_get (exported, "object-id", &id, NULL);
 
   if (id)
-    g_strdelimit (id, "<->@/\\.", '_');
+    g_strcanon (id, DBUS_OPATH_VALID_CHARS, '_');
 
   if (base && id)
     return g_build_path ("/", "/", base, id, NULL);

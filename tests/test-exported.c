@@ -647,6 +647,20 @@ test_exported_export (TestExported *unused, gconstpointer data)
 
   g_assert_true (ok);
   g_assert_false (bolt_exported_is_exported (BOLT_EXPORTED (obj)));
+
+  /* test we handle special chars in object id */
+  bolt_set_strdup (&obj->object_id, "object id-@$1");
+  ok = bolt_exported_export (BOLT_EXPORTED (obj),
+                             bus,
+                             NULL,
+                             &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  obj_path = bolt_exported_get_object_path (BOLT_EXPORTED (obj));
+
+  bolt_set_str (&want, g_build_path ("/", DBUS_OPATH_BASE, "object_id___1", NULL));
+  g_assert_cmpstr (want, ==, obj_path);
 }
 
 
