@@ -215,8 +215,6 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
                             GError            **error)
 {
   struct udev_device *parent;
-  struct udev_device *domain;
-  const char *str;
   int auth;
 
   g_return_val_if_fail (udev != NULL, FALSE);
@@ -226,7 +224,6 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
   info->ctim = -1;
   info->full = FALSE;
   info->parent = NULL;
-  info->security = BOLT_SECURITY_UNKNOWN;
 
   auth = sysfs_get_sysattr_value_as_int (udev, "authorized");
   info->authorized = auth;
@@ -252,26 +249,8 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
 
   parent = udev_device_get_parent (udev);
 
-  if (bolt_sysfs_device_is_domain (parent, NULL))
-    domain = g_steal_pointer (&parent);
-  else
-    domain = bolt_sysfs_domain_for_device (parent);
-
-  if (domain == NULL)
-    {
-      info->security = BOLT_SECURITY_UNKNOWN;
-      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                           "could not determine domain for device");
-      return FALSE;
-    }
-
   if (parent != NULL)
     info->parent = udev_device_get_sysattr_value (parent, "unique_id");
 
-  str = udev_device_get_sysattr_value (domain, "security");
-  if (str == NULL)
-    return TRUE;
-
-  info->security = bolt_enum_from_string (BOLT_TYPE_SECURITY, str, error);
-  return info->security != BOLT_SECURITY_UNKNOWN;
+  return TRUE;
 }

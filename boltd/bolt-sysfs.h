@@ -57,11 +57,10 @@ typedef struct _BoltDevInfo
   gint   boot;
 
   /* if 'full' is true the rest is valid */
-  gboolean     full;
-  gint64       ctim;
-  const char  *syspath;
-  const char  *parent;      /* the uid */
-  BoltSecurity security;
+  gboolean    full;
+  gint64      ctim;
+  const char *syspath;
+  const char *parent;       /* the uid */
 
 } BoltDevInfo;
 

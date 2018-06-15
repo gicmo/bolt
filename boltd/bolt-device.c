@@ -1244,7 +1244,6 @@ bolt_device_update_from_udev (BoltDevice         *dev,
       return dev->status;
     }
 
-  info.security = bolt_domain_get_security (dev->domain);
   status = bolt_status_from_info (&info);
   aflags = bolt_auth_flags_from_info (&info, dev->domain, &mask);
 
