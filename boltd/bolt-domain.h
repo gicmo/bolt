@@ -54,6 +54,9 @@ void              bolt_domain_update_from_udev (BoltDomain         *domain,
 /* boot acl related functions */
 gboolean          bolt_domain_supports_bootacl (BoltDomain *domain);
 
+gboolean          bolt_domain_bootacl_contains (BoltDomain *domain,
+                                                const char *uuid);
+
 /* domain list management */
 BoltDomain *      bolt_domain_insert (BoltDomain *list,
                                       BoltDomain *domain) G_GNUC_WARN_UNUSED_RESULT;

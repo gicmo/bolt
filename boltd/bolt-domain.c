@@ -381,6 +381,17 @@ bolt_domain_supports_bootacl (BoltDomain *domain)
   return domain->bootacl != NULL;
 }
 
+gboolean
+bolt_domain_bootacl_contains (BoltDomain *domain,
+                              const char *uuid)
+{
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+  g_return_val_if_fail (uuid != NULL, FALSE);
+
+  return domain->bootacl != NULL &&
+         g_strv_contains ((char const * const *) domain->bootacl, uuid);
+}
+
 /* domain list management */
 BoltDomain *
 bolt_domain_insert (BoltDomain *list, BoltDomain *domain)
