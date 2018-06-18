@@ -373,6 +373,15 @@ bolt_domain_update_from_udev (BoltDomain         *domain,
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
 }
 
+gboolean
+bolt_domain_supports_bootacl (BoltDomain *domain)
+{
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+
+  return domain->bootacl != NULL;
+}
+
+/* domain list management */
 BoltDomain *
 bolt_domain_insert (BoltDomain *list, BoltDomain *domain)
 {

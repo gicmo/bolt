@@ -51,8 +51,10 @@ void              bolt_domain_export (BoltDomain      *domain,
 void              bolt_domain_update_from_udev (BoltDomain         *domain,
                                                 struct udev_device *udev);
 
-/* domain list management */
+/* boot acl related functions */
+gboolean          bolt_domain_supports_bootacl (BoltDomain *domain);
 
+/* domain list management */
 BoltDomain *      bolt_domain_insert (BoltDomain *list,
                                       BoltDomain *domain) G_GNUC_WARN_UNUSED_RESULT;
 
