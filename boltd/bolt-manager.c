@@ -111,7 +111,7 @@ static void          handle_udev_device_changed (BoltManager        *mgr,
                                                  BoltDevice         *dev,
                                                  struct udev_device *udev);
 
-static void          hanlde_udev_device_removed (BoltManager *mgr,
+static void          handle_udev_device_removed (BoltManager *mgr,
                                                  BoltDevice  *dev);
 
 static void          handle_udev_device_attached (BoltManager        *mgr,
@@ -1198,7 +1198,7 @@ handle_udev_device_event (BoltManager        *mgr,
       if (bolt_device_get_stored (dev))
         handle_udev_device_detached (mgr, dev);
       else
-        hanlde_udev_device_removed (mgr, dev);
+        handle_udev_device_removed (mgr, dev);
     }
 }
 
@@ -1283,7 +1283,7 @@ handle_udev_device_changed (BoltManager        *mgr,
 }
 
 static void
-hanlde_udev_device_removed (BoltManager *mgr,
+handle_udev_device_removed (BoltManager *mgr,
                             BoltDevice  *dev)
 {
   const char *opath;
