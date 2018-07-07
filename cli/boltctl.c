@@ -37,7 +37,8 @@ usage_error (GError *error)
 {
   g_printerr ("%s:", g_get_application_name ());
   g_printerr ("%s error: %s", bolt_color (ANSI_RED), bolt_color (ANSI_NORMAL));
-  g_printerr ("%s", error->message);
+  if (error)
+    g_printerr ("%s", error->message);
   g_printerr ("\n");
   g_printerr ("Try \"%s --help\" for more information.", g_get_prgname ());
   g_printerr ("\n");
@@ -52,6 +53,16 @@ usage_error_need_arg (const char *arg)
 
   g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
                "missing argument '%s'", arg);
+  return usage_error (error);
+}
+
+static int
+usage_error_too_many_args (void)
+{
+  g_autoptr(GError) error = NULL;
+
+  g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+               "too many arguments");
   return usage_error (error);
 }
 
@@ -396,23 +407,60 @@ forget (BoltClient *client, int argc, char **argv)
   g_autoptr(GOptionContext) optctx = NULL;
   g_autoptr(GError) error = NULL;
   const char *uid;
-  gboolean ok;
+  gboolean ok, forget_all = FALSE;
+  GOptionEntry options[] = {
+    { "all", 'a', 0, G_OPTION_ARG_NONE, &forget_all, "Forget all devices", NULL },
+    { NULL }
+  };
 
-  optctx = g_option_context_new ("DEVICE - Remove a device form the store");
+  optctx = g_option_context_new ("DEVICE - Remove a device from the store");
+  g_option_context_add_main_entries (optctx, options, NULL);
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
     return usage_error (error);
 
-  if (argc < 2)
-    return usage_error_need_arg ("DEVICE");
+  if (forget_all)
+    {
+      g_autoptr(GPtrArray) devices = NULL;
 
-  uid = argv[1];
+      if (argc > 1)
+        return usage_error_too_many_args ();
 
-  ok = bolt_client_forget_device (client, uid, &error);
-  if (!ok)
-    g_printerr ("Failed to forget device: %s\n", error->message);
+      devices = bolt_client_list_devices (client, NULL, &error);
+      if (devices == NULL)
+        {
+          g_printerr ("Failed to list devices: %s",
+                      error->message);
+          return EXIT_FAILURE;
+        }
 
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+      for (guint i = 0; i < devices->len; i++)
+        {
+          BoltDevice *dev = g_ptr_array_index (devices, i);
+
+          uid = bolt_device_get_uid (dev);
+          ok = bolt_client_forget_device (client, uid, &error);
+          if (!ok)
+            {
+              g_printerr ("Failed to forget device: %s\n", error->message);
+              return EXIT_FAILURE;
+            }
+        }
+    }
+  else
+    {
+      if (argc < 2)
+        return usage_error_need_arg ("DEVICE");
+      uid = argv[1];
+      ok = bolt_client_forget_device (client, uid, &error);
+      if (!ok)
+        {
+          g_printerr ("Failed to forget device: %s\n", error->message);
+          return EXIT_FAILURE;
+        }
+    }
+
+  return EXIT_SUCCESS;
 }
 
 

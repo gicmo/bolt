@@ -53,7 +53,8 @@ forget 'DEVICE'
 
 Remove the information about the device with the unique id 'DEVICE'
 from the database. This includes the key, if one was previously
-generated.
+generated. If you pass '--all' instead of the 'DEVICE' all devices are
+removed instead of just one.
 
 info 'DEVICE'
 ~~~~~~~~~~~~
