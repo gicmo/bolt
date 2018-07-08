@@ -57,6 +57,9 @@ gboolean          bolt_domain_supports_bootacl (BoltDomain *domain);
 gboolean          bolt_domain_bootacl_contains (BoltDomain *domain,
                                                 const char *uuid);
 
+const char **     bolt_domain_bootacl_get_used (BoltDomain *domain,
+                                                guint      *n_used);
+
 /* domain list management */
 BoltDomain *      bolt_domain_insert (BoltDomain *list,
                                       BoltDomain *domain) G_GNUC_WARN_UNUSED_RESULT;

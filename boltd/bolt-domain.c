@@ -445,6 +445,33 @@ bolt_domain_remove (BoltDomain *list, BoltDomain *domain)
   return bolt_list_entry (head, BoltDomain, domains);
 }
 
+const char **
+bolt_domain_bootacl_get_used (BoltDomain *domain,
+                              guint      *n_used)
+{
+  GPtrArray *res;
+  guint used = 0;
+
+  res = g_ptr_array_new ();
+
+  for (char **iter = domain->bootacl; iter && *iter; iter++)
+    {
+      if (strlen (*iter))
+        {
+          g_ptr_array_add (res, *iter);
+          used++;
+        }
+    }
+
+  g_ptr_array_add (res, NULL);
+
+  if (n_used != NULL)
+    *n_used = used;
+
+  return (const char **) g_ptr_array_free (res, FALSE);
+}
+
+
 BoltDomain *
 bolt_domain_next (BoltDomain *domain)
 {
