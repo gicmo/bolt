@@ -54,6 +54,9 @@ void              bolt_domain_update_from_udev (BoltDomain         *domain,
 /* boot acl related functions */
 gboolean          bolt_domain_supports_bootacl (BoltDomain *domain);
 
+guint             bolt_domain_bootacl_slots (BoltDomain *domain,
+                                             guint      *n_free);
+
 gboolean          bolt_domain_bootacl_contains (BoltDomain *domain,
                                                 const char *uuid);
 

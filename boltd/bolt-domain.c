@@ -381,6 +381,35 @@ bolt_domain_supports_bootacl (BoltDomain *domain)
   return domain->bootacl != NULL;
 }
 
+guint
+bolt_domain_bootacl_slots (BoltDomain *domain,
+                           guint      *n_free)
+{
+  guint slots = 0;
+  guint unused = 0;
+
+  if (domain->bootacl == NULL)
+    {
+      if (n_free)
+        *n_free = 0;
+
+      return 0;
+    }
+
+  for (char **iter = domain->bootacl; *iter; iter++)
+    {
+      slots++;
+
+      if (bolt_strzero (*iter))
+        unused++;
+    }
+
+  if (n_free)
+    *n_free = unused;
+
+  return slots;
+}
+
 gboolean
 bolt_domain_bootacl_contains (BoltDomain *domain,
                               const char *uuid)
