@@ -734,6 +734,28 @@ test_list_nh (TestRng *tt, gconstpointer user_data)
   g_assert_cmpuint (c, ==, 10);
 }
 
+static void
+test_swap (TestRng *tt, gconstpointer user_data)
+{
+  int ia = 0, ib = 1;
+  int *pa = &ia, *pb = &ib;
+
+  g_assert_cmpint (ia, ==, 0);
+  g_assert_cmpint (ib, ==, 1);
+
+  bolt_swap (ia, ib);
+
+  g_assert_cmpint (ia, ==, 1);
+  g_assert_cmpint (ib, ==, 0);
+
+  bolt_swap (pa, pb);
+  g_assert_true (pa == &ib);
+  g_assert_true (pb == &ia);
+
+  bolt_swap (pa, pa);
+  g_assert_true (pa == &ib);
+  g_assert_cmpint (*pa, ==, ib);
+}
 
 int
 main (int argc, char **argv)
@@ -804,6 +826,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_list_nh,
+              NULL);
+
+  g_test_add ("/common/macro/swap",
+              TestRng,
+              NULL,
+              NULL,
+              test_swap,
               NULL);
 
   return g_test_run ();

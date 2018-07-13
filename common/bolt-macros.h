@@ -36,5 +36,14 @@ G_BEGIN_DECLS
   ({const typeof (((type *) 0)->member) * p__ = (ptr);               \
     (type *) ((void *) ((char *) p__ - offsetof (type, member))); })
 
+/* *INDENT-OFF* */
+
+#define bolt_swap(a, b) G_STMT_START {  \
+    typeof (a) t__ = (a);               \
+    (a) = (b);                          \
+    (b) = t__;                          \
+  } G_STMT_END
+
+/* *INDENT-ON* */
 
 G_END_DECLS
