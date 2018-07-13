@@ -158,6 +158,23 @@ bolt_strv_diff (const GStrv before,
   return changed;
 }
 
+void
+bolt_strv_rotate_left (char **strv)
+{
+  char *start;
+  char **prev;
+  char **iter;
+
+  if (strv == NULL || *strv == NULL)
+    return;
+
+  start = *strv; /* remember the first element */
+  for (prev = strv, iter = strv + 1; *iter; prev = iter, iter++)
+    *prev = *iter;
+
+  *prev = start;
+}
+
 char *
 bolt_strdup_validate (const char *string)
 {

@@ -39,6 +39,7 @@ gboolean bolt_strv_diff (const GStrv before,
                          const GStrv after,
                          GStrv      *added,
                          GStrv      *removed);
+void    bolt_strv_rotate_left (char **strv);
 
 #define bolt_strzero(str) (str == NULL || *str == '\0')
 
