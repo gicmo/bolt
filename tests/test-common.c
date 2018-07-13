@@ -776,6 +776,53 @@ test_strv_diff (TestRng *tt, gconstpointer user_data)
 }
 
 static void
+test_strv_rotate_left (TestRng *tt, gconstpointer user_data)
+{
+  g_auto(GStrv) a = NULL;
+
+  /* handle NULL */
+  bolt_strv_rotate_left (NULL);
+
+  /* single element */
+  a = g_strsplit ("a", ":", -1);
+  g_assert_cmpuint (g_strv_length (a), ==, 1);
+  g_assert_cmpstr (a[0], ==, "a");
+
+  bolt_strv_rotate_left (a);
+  g_assert_cmpuint (g_strv_length (a), ==, 1);
+  g_assert_cmpstr (a[0], ==, "a");
+
+  /* two elements */
+  g_strfreev (a);
+  a = g_strsplit ("a:b", ":", -1);
+
+  g_assert_cmpuint (g_strv_length (a), ==, 2);
+  g_assert_cmpstr (a[0], ==, "a");
+  g_assert_cmpstr (a[1], ==, "b");
+
+  bolt_strv_rotate_left (a);
+  g_assert_cmpuint (g_strv_length (a), ==, 2);
+  g_assert_cmpstr (a[1], ==, "a");
+  g_assert_cmpstr (a[0], ==, "b");
+
+  /* now > 2 */
+  g_strfreev (a);
+  a = g_strsplit ("a:b:c:d:e", ":", -1);
+
+  g_assert_cmpuint (g_strv_length (a), ==, 5);
+  g_assert_cmpstr (a[0], ==, "a");
+  g_assert_cmpstr (a[4], ==, "e");
+
+  bolt_strv_rotate_left (a);
+  g_assert_cmpuint (g_strv_length (a), ==, 5);
+  g_assert_cmpstr (a[0], ==, "b");
+  g_assert_cmpstr (a[1], ==, "c");
+  g_assert_cmpstr (a[2], ==, "d");
+  g_assert_cmpstr (a[3], ==, "e");
+  g_assert_cmpstr (a[4], ==, "a");
+}
+
+static void
 test_list_nh (TestRng *tt, gconstpointer user_data)
 {
   BoltList n[10];
@@ -938,6 +985,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_strv_diff,
+              NULL);
+
+  g_test_add ("/common/strv/rotate_left",
+              TestRng,
+              NULL,
+              NULL,
+              test_strv_rotate_left,
               NULL);
 
   g_test_add ("/common/list/nh",
