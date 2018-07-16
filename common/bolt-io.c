@@ -500,3 +500,27 @@ bolt_verify_uid (int         dirfd,
 
   return ok;
 }
+
+gboolean
+bolt_file_write_all (const char *fn,
+                     const void *data,
+                     gssize      n,
+                     GError    **error)
+{
+  int fd = -1;
+  gboolean ok;
+
+  fd = bolt_open (fn, O_CLOEXEC | O_WRONLY, 0666, error);
+
+  if (fd < 0)
+    return FALSE;
+
+  ok = bolt_write_all (fd, data, n, error);
+
+  if (ok)
+    ok = bolt_close (fd, error);
+  else
+    (void) close (fd);
+
+  return ok;
+}

@@ -95,5 +95,9 @@ gboolean   bolt_verify_uid (int         dirfd,
                             const char *uid,
                             GError    **error);
 
+gboolean   bolt_file_write_all (const char *fn,
+                                const void *data,
+                                gssize      n,
+                                GError    **error);
 
 G_END_DECLS
