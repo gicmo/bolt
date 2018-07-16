@@ -32,7 +32,9 @@ void bolt_str_erase_clear (char **str);
 
 #define bolt_streq(s1, s2) (g_strcmp0 (s1, s2) == 0)
 
-GStrv   bolt_strv_from_ptr_array (GPtrArray **array);
+GStrv    bolt_strv_from_ptr_array (GPtrArray **array);
+gboolean bolt_strv_equal (const GStrv a,
+                          const GStrv b);
 
 #define bolt_strzero(str) (str == NULL || *str == '\0')
 

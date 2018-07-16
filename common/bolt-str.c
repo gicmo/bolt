@@ -76,6 +76,27 @@ bolt_strv_from_ptr_array (GPtrArray **array)
   return (GStrv) g_ptr_array_free (a, FALSE);
 }
 
+gboolean
+bolt_strv_equal (const GStrv a, const GStrv b)
+{
+  guint na, nb;
+
+  if (a == b)
+    return TRUE;
+
+  na = a == NULL ? 0 : g_strv_length (a);
+  nb = b == NULL ? 0 : g_strv_length (b);
+
+  if (na != nb)
+    return FALSE;
+
+  for (guint i = 0; i < na; i++)
+    if (!bolt_streq (a[i], b[i]))
+      return FALSE;
+
+  return TRUE;
+}
+
 char *
 bolt_strdup_validate (const char *string)
 {
