@@ -677,6 +677,47 @@ test_str_set (TestRng *tt, gconstpointer user_data)
   g_assert_cmpstr (target, ==, "foobar");
 }
 
+typedef struct
+{
+
+  const GStrv a;
+  const GStrv b;
+  gboolean    result;
+
+} StrvEqualTest;
+
+#define MAKE_GSTRV(...) (GStrv) (const char *[]){ __VA_ARGS__}
+
+static void
+test_strv_equal (TestRng *tt, gconstpointer user_data)
+{
+  StrvEqualTest table[] = {
+    {NULL,                        NULL,                        TRUE},
+    {NULL,                        MAKE_GSTRV (NULL),           TRUE},
+    {MAKE_GSTRV (NULL),           NULL,                        TRUE},
+    {MAKE_GSTRV (NULL),           MAKE_GSTRV (NULL),           TRUE},
+    {MAKE_GSTRV ("a", NULL),      NULL,                        FALSE},
+    {MAKE_GSTRV ("a", NULL),      MAKE_GSTRV (NULL),           FALSE},
+    {MAKE_GSTRV ("a", NULL),      MAKE_GSTRV ("a", NULL),      TRUE},
+    {MAKE_GSTRV ("a", NULL),      MAKE_GSTRV ("b", NULL),      FALSE},
+    {MAKE_GSTRV ("a", NULL),      MAKE_GSTRV ("a", NULL),      TRUE},
+    {MAKE_GSTRV ("a", "b", NULL), MAKE_GSTRV ("a", NULL),      FALSE},
+    {MAKE_GSTRV ("a", "b", NULL), MAKE_GSTRV ("a", "b", NULL), TRUE},
+    {MAKE_GSTRV ("a", "a", NULL), MAKE_GSTRV ("a", "b", NULL), FALSE},
+    {MAKE_GSTRV ("a", "a", NULL), MAKE_GSTRV ("a", "b", NULL), FALSE},
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+    {
+      StrvEqualTest *t = &table[i];
+      gboolean res = bolt_strv_equal (t->a, t->b);
+
+      g_debug ("strv-equal[%2" G_GSIZE_FORMAT "] expected | got: %3s | %3s",
+               i, bolt_yesno (res), bolt_yesno (res));
+      g_assert_true (res == t->result);
+    }
+}
+
 static void
 test_list_nh (TestRng *tt, gconstpointer user_data)
 {
@@ -819,6 +860,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_str_set,
+              NULL);
+
+  g_test_add ("/common/strv/equal",
+              TestRng,
+              NULL,
+              NULL,
+              test_strv_equal,
               NULL);
 
   g_test_add ("/common/list/nh",
