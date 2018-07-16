@@ -185,13 +185,16 @@ test_sysfs_domain_bootacl (TestSysfs *tt, gconstpointer user)
   g_autoptr(BoltDomain) dom = NULL;
   g_autoptr(udev_device) udevice = NULL;
   g_autoptr(GError) err = NULL;
+  g_autofree char *str = NULL;
   const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
   const char *syspath;
   const char *d;
+  guint slots = 16;
 
-  acl = g_strsplit (",,,,,,,,,,,,,,,", ",", 1024);
+  str = g_strnfill (slots - 1, ',');
+  acl = g_strsplit (str, ",", 1024);
 
-  g_assert_cmpuint (g_strv_length (acl), ==, 16);
+  g_assert_cmpuint (g_strv_length (acl), ==, slots);
   d = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_USER, acl);
 
   syspath = mock_sysfs_domain_get_syspath (tt->sysfs, d);
