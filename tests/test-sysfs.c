@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "bolt-str.h"
 #include "bolt-sysfs.h"
 #include "bolt-domain.h"
 
@@ -185,11 +186,14 @@ test_sysfs_domain_bootacl (TestSysfs *tt, gconstpointer user)
   g_autoptr(BoltDomain) dom = NULL;
   g_autoptr(udev_device) udevice = NULL;
   g_autoptr(GError) err = NULL;
+  g_autofree const char **used = NULL;
   g_autofree char *str = NULL;
   const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
   const char *syspath;
   const char *d;
   guint slots = 16;
+  guint n, n_free;
+  guint n_used = 0;
 
   str = g_strnfill (slots - 1, ',');
   acl = g_strsplit (str, ",", 1024);
@@ -210,6 +214,17 @@ test_sysfs_domain_bootacl (TestSysfs *tt, gconstpointer user)
   g_assert_cmpuint (g_strv_length (acl),
                     ==,
                     g_strv_length (have));
+  g_assert_true (bolt_strv_equal (acl, have));
+
+  g_assert_true (bolt_domain_supports_bootacl (dom));
+
+  n = bolt_domain_bootacl_slots (dom, &n_free);
+  g_assert_cmpuint (n, ==, slots);
+  g_assert_cmpuint (n_free, ==, slots);
+
+  used = bolt_domain_bootacl_get_used (dom, &n_used);
+  g_assert_cmpuint (g_strv_length ((GStrv) used), ==, 0);
+  g_assert_cmpuint (n_used, ==, 0);
 }
 
 int
