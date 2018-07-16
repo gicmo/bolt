@@ -99,6 +99,8 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
       syspath = mock_sysfs_domain_get_syspath (tt->sysfs, ids[i]);
       udevice = udev_device_new_from_syspath (tt->udev, syspath);
 
+      g_assert_nonnull (udevice);
+
       dom = bolt_domain_new_for_udev (udevice, &err);
       g_assert_no_error (err);
       g_assert_nonnull (dom);
