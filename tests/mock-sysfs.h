@@ -55,6 +55,15 @@ const char *     mock_sysfs_domain_get_syspath (MockSysfs  *ms,
 gboolean         mock_sysfs_domain_remove (MockSysfs  *ms,
                                            const char *id);
 
+GStrv            mock_sysfs_domain_bootacl_get (MockSysfs  *ms,
+                                                const char *id,
+                                                GError    **error);
+
+gboolean         mock_sysfs_domain_bootacl_set (MockSysfs  *ms,
+                                                const char *id,
+                                                GStrv       acl,
+                                                GError    **error);
+
 /* helper macro */
 
 /* *INDENT-OFF* */

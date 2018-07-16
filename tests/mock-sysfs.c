@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "bolt-io.h"
 #include "bolt-str.h"
 
 #include "mock-sysfs.h"
@@ -372,6 +373,74 @@ mock_sysfs_domain_remove (MockSysfs  *ms,
   umockdev_testbed_remove_device (ms->bed, domain->path);
 
   g_hash_table_remove (ms->domains, id);
+  return TRUE;
+}
 
+GStrv
+mock_sysfs_domain_bootacl_get (MockSysfs  *ms,
+                               const char *id,
+                               GError    **error)
+{
+  g_autofree char *path = NULL;
+  g_autofree char *data = NULL;
+  GStrv acl;
+  MockDomain *domain;
+  gboolean ok;
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), NULL);
+  g_return_val_if_fail (id != NULL, NULL);
+
+  domain = g_hash_table_lookup (ms->domains, id);
+
+  if (domain == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "domain '%s' not found", id);
+      return NULL;
+    }
+
+  path = g_build_filename (domain->path, "boot_acl", NULL);
+
+  ok = g_file_get_contents (path, &data, NULL, error);
+  if (!ok)
+    return NULL;
+
+  acl = g_strsplit (data, ",", -1);
+  return acl;
+}
+
+gboolean
+mock_sysfs_domain_bootacl_set (MockSysfs  *ms,
+                               const char *id,
+                               GStrv       acl,
+                               GError    **error)
+{
+  g_autofree char *path = NULL;
+  g_autofree char *data = NULL;
+  MockDomain *domain;
+  gboolean ok;
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), FALSE);
+  g_return_val_if_fail (id != NULL, FALSE);
+  g_return_val_if_fail (acl != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  domain = g_hash_table_lookup (ms->domains, id);
+
+  if (domain == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "domain '%s' not found", id);
+      return FALSE;
+    }
+
+  data = g_strjoinv (",", acl);
+  path = g_build_filename (domain->path, "boot_acl", NULL);
+
+  ok = bolt_file_write_all (path, data, -1, error);
+  if (!ok)
+    return FALSE;
+
+  umockdev_testbed_uevent (ms->bed, domain->path, "change");
   return TRUE;
 }
