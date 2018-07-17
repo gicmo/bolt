@@ -97,6 +97,67 @@ bolt_strv_equal (const GStrv a, const GStrv b)
   return TRUE;
 }
 
+gboolean
+bolt_strv_diff (const GStrv before,
+                const GStrv after,
+                GStrv      *added,
+                GStrv      *removed)
+{
+  g_autoptr(GHashTable) idx = NULL;
+  g_autoptr(GPtrArray) add = NULL;
+  g_autoptr(GPtrArray) rem = NULL;
+  GHashTableIter hi;
+  gboolean changed;
+  gpointer k, v;
+
+  idx = g_hash_table_new (g_str_hash, g_str_equal);
+  add = g_ptr_array_new ();
+  rem = g_ptr_array_new ();
+
+  /* build an index of everything in 'before', a value of '0'
+   * means unseen and a value of '1' means seen
+   */
+  for (char **iter = before; iter && *iter; iter++)
+    g_hash_table_insert (idx, *iter, GUINT_TO_POINTER ('0'));
+
+  for (char **iter = after; iter && *iter; iter++)
+    {
+      gpointer val = g_hash_table_lookup (idx, *iter);
+
+      /* if the given string is not in the index, it is new;
+       * else, i.e if it is present, mark it as seen ('1').
+       */
+      if (val == NULL)
+        g_ptr_array_add (add, g_strdup (*iter));
+      else
+        g_hash_table_replace (idx, *iter, GUINT_TO_POINTER ('1'));
+    }
+
+  /* scan the hashtable, all unseen (i.e. unmarked) entries
+   * are not in 'after' and thus must have been removed
+   */
+  g_hash_table_iter_init (&hi, idx);
+  while (g_hash_table_iter_next (&hi, &k, &v))
+    if (GPOINTER_TO_UINT (v) != '1')
+      g_ptr_array_add (rem, g_strdup ((char *) k));
+
+  changed = add->len > 0 || rem->len > 0;
+
+  g_ptr_array_sort (add, bolt_comparefn_strcmp);
+  g_ptr_array_sort (rem, bolt_comparefn_strcmp);
+
+  g_ptr_array_add (add, NULL);
+  g_ptr_array_add (rem, NULL);
+
+  if (added)
+    *added = (GStrv) g_ptr_array_free (g_steal_pointer (&add), FALSE);
+
+  if (removed)
+    *removed = (GStrv) g_ptr_array_free (g_steal_pointer (&rem), FALSE);
+
+  return changed;
+}
+
 char *
 bolt_strdup_validate (const char *string)
 {

@@ -35,6 +35,10 @@ void bolt_str_erase_clear (char **str);
 GStrv    bolt_strv_from_ptr_array (GPtrArray **array);
 gboolean bolt_strv_equal (const GStrv a,
                           const GStrv b);
+gboolean bolt_strv_diff (const GStrv before,
+                         const GStrv after,
+                         GStrv      *added,
+                         GStrv      *removed);
 
 #define bolt_strzero(str) (str == NULL || *str == '\0')
 
