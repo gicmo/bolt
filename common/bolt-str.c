@@ -176,3 +176,13 @@ bolt_str_parse_as_int (const char *str,
 
   return TRUE;
 }
+
+gint
+bolt_comparefn_strcmp (gconstpointer a,
+                       gconstpointer b)
+{
+  const char * const *astrv = a;
+  const char * const *bstrv = b;
+
+  return g_strcmp0 (*astrv, *bstrv);
+}

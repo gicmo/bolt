@@ -70,4 +70,8 @@ bolt_set_str (char **target, char *str)
 #define bolt_set_strdup(target, str) \
   bolt_set_str (target, g_strdup (str))
 
+
+gint     bolt_comparefn_strcmp (gconstpointer a,
+                                gconstpointer b);
+
 G_END_DECLS
