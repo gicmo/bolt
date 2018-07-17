@@ -718,6 +718,56 @@ test_strv_equal (TestRng *tt, gconstpointer user_data)
     }
 }
 
+typedef struct
+{
+
+  const GStrv before;
+  const GStrv after;
+  gboolean    result;
+  const GStrv added;
+  const GStrv removed;
+} StrvDiffTest;
+
+#define MK_STRV0(...) (GStrv) (const char *[]){ __VA_ARGS__, NULL}
+
+static void
+test_strv_diff (TestRng *tt, gconstpointer user_data)
+{
+  StrvDiffTest table[] = {
+    {NULL,                      NULL,                     FALSE, NULL,                NULL               },
+    {MK_STRV0 ("a"),            MK_STRV0 ("a"),           FALSE, NULL,                NULL               },
+    {MK_STRV0 ("a", "b"),       MK_STRV0 ("a", "b"),      FALSE, NULL,                NULL               },
+    {NULL,                      MK_STRV0 ("a"),           TRUE,  MK_STRV0 ("a"),      NULL               },
+    {NULL,                      MK_STRV0 ("a", "b"),      TRUE,  MK_STRV0 ("a", "b"), NULL               },
+    {MK_STRV0 ("a"),            NULL,                     TRUE,  NULL,                MK_STRV0 ("a")     },
+    {MK_STRV0 ("a", "b"),       NULL,                     TRUE,  NULL,                MK_STRV0 ("a", "b")},
+    {MK_STRV0 ("a", "b", "d"),  MK_STRV0 ("a", "c", "d"), TRUE,  MK_STRV0 ("c"),      MK_STRV0 ("b")     },
+    {MK_STRV0 ("a", "b", "x"),  MK_STRV0 ("x", "c", "d"), TRUE,  MK_STRV0 ("c", "d"), MK_STRV0 ("a", "b")},
+    {MK_STRV0 ("b", "x", "a"),  MK_STRV0 ("d", "x", "c"), TRUE,  MK_STRV0 ("c", "d"), MK_STRV0 ("a", "b")},
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+    {
+      g_auto(GStrv) added = NULL;
+      g_auto(GStrv) removed = NULL;
+      StrvDiffTest *t = &table[i];
+      gboolean add_equal;
+      gboolean rem_equal;
+      gboolean res;
+
+      res = bolt_strv_diff (t->before, t->after, &added, &removed);
+      add_equal = bolt_strv_equal (added, t->added);
+      rem_equal = bolt_strv_equal (removed, t->removed);
+
+      g_debug ("strv-diff[%2" G_GSIZE_FORMAT "] expected | got: %3s | %3s add: %s, rem: %s",
+               i, bolt_yesno (res), bolt_yesno (res), bolt_yesno (add_equal), bolt_yesno (rem_equal));
+
+      g_assert_true (res == t->result);
+      g_assert_true (add_equal);
+      g_assert_true (rem_equal);
+    }
+}
+
 static void
 test_list_nh (TestRng *tt, gconstpointer user_data)
 {
@@ -867,6 +917,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_strv_equal,
+              NULL);
+
+  g_test_add ("/common/strv/diff",
+              TestRng,
+              NULL,
+              NULL,
+              test_strv_diff,
               NULL);
 
   g_test_add ("/common/list/nh",
