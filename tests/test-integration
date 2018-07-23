@@ -1125,6 +1125,18 @@ class BoltTest(dbusmock.DBusTestCase):
                                            ['DEVTYPE', 'thunderbolt_domain'])
             return name, path
 
+        # check we get a proper event if the security level changes
+        self.daemon_start()
+        self.assertEqual(self.client.security_level, 'unknown')
+        with self.client.record() as tape:
+            d, path = make_domain(0, 'user')
+            tape.wait_for_event('property', 'SecurityLevel', 'user')
+            self.assertEqual(self.client.security_level, 'user')
+        self.daemon_stop()
+        self.testbed.uevent(path, "remove")
+        self.testbed.remove_device(path)
+
+        # create more then one domain
         domains = [make_domain(d, '') for d in range(4)]
 
         for security in BoltDomain.security_levels():

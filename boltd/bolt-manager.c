@@ -693,6 +693,8 @@ manager_register_domain (BoltManager *mgr,
       bolt_info ("security level set to '%s'",
                  bolt_security_to_string (sl));
       mgr->security = sl;
+      g_object_notify_by_pspec (G_OBJECT (mgr),
+                                props[PROP_SECURITY]);
     }
   else if (mgr->security != sl)
     {
