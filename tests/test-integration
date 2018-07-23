@@ -1208,10 +1208,12 @@ class BoltTest(dbusmock.DBusTestCase):
 
         devs = [
             # name              vendor           label                         notes
-            ['GNOME.org Cable', 'GNOME.org',     'GNOME.org Cable'       ],  # duplicated vendor name
-            ['GNOME.org Cable', 'GNOME.org',     'GNOME.org Cable #2'    ],  # duplicated device
-            ['GNOME.org Cable', 'GNOME.org',     'GNOME.org Cable #3'    ],  # duplicated device, again
+            ['GNOME.org Cable', 'GNOME.org',     'GNOME.org Cable'     ''],  # duplicated vendor name
+            ['GNOME.org Cable', 'GNOME.org',     'GNOME.org Cable #2'  ''],  # duplicated device
+            ['GNOME.org Cable', 'GNOME.org',     'GNOME.org Cable #3'  ''],  # duplicated device, again
             ['⍾ Laptop',        'Evil Corp. ☢', 'Evil Corp. ☢ ⍾ Laptop'],  # utf-8 chars
+            ['HP TB3 Dock',     'HP Inc.',       'HP TB3 Dock'         ''],  # cleanup company names
+            ['TB Gadget',       'Apple, Inc.',   'Apple TB Gadget'     ''],  # cleanup company names
         ]
 
         devs = [{'name': d[0], 'vendor': d[1], 'label': d[2], 'id': i+1} for i, d in enumerate(devs)]
