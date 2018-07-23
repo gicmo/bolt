@@ -356,8 +356,8 @@ class BoltDevice(ProxyWrapper):
 
     NOPCIE = 1 << 0
     SECURE = 1 << 1
-    NOKEY  = 1 << 2
-    BOOT   = 1 << 3
+    NOKEY = 1 << 2
+    BOOT = 1 << 3
 
     def __init__(self, bus, path):
         super(BoltDevice, self).__init__(bus,
@@ -450,6 +450,7 @@ class BoltDomain(ProxyWrapper):
         super(BoltDomain, self).__init__(bus,
                                          DBUS_IFACE_DOMAIN,
                                          path)
+
 
 @Signal.enable
 class BoltClient(ProxyWrapper):
@@ -1082,7 +1083,6 @@ class BoltTest(dbusmock.DBusTestCase):
         with open(path, 'w') as f:
             f.write(key)
 
-
     # the actual tests
     def test_basic(self):
         self.daemon_start()
@@ -1152,7 +1152,7 @@ class BoltTest(dbusmock.DBusTestCase):
             for remote in remotes:
                 self.assertEqual(remote.security_level, security)
 
-            remote = self.client.domain_by_id (name)
+            remote = self.client.domain_by_id(name)
             self.assertEqual(remote.id, name)
 
             self.daemon_stop()
@@ -1213,8 +1213,6 @@ class BoltTest(dbusmock.DBusTestCase):
         self.daemon_stop()
 
     def test_basic_device_name(self):
-        security = 'secure'
-
         # prepare the basic setup
         dc, host = self.add_domain_host()
 
@@ -1232,7 +1230,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         for i, d in enumerate(devs):
             did, name, vendor = d['id'], d['name'], d['vendor']
-            path, uid = self.add_device(host, did, name, vendor);
+            path, uid = self.add_device(host, did, name, vendor)
             d['path'] = path
             d['uid'] = uid
 
@@ -1657,7 +1655,6 @@ class BoltTest(dbusmock.DBusTestCase):
         remote = client.enroll(local.unique_id, policy)
         local.reload_auth()
 
-        label = remote.label
         self.assertEqual(remote.label, "%s %s" % (local.vendor_name, local.device_name))
 
         self.assertDeviceEqual(local, remote)
