@@ -840,10 +840,19 @@ bolt_manager_label_device (BoltManager *mgr,
   const char *name;
   const char *vendor;
   guint count = 0;
+  static struct
+  {
+    const char *from;
+    const char *to;
+  } vendors[] = {
+    {"HP Inc.",     "HP"   },
+    {"Apple, Inc.", "Apple"}
+  };
 
   name = bolt_device_get_name (target);
   vendor = bolt_device_get_vendor (target);
 
+  /* we count how many duplicate devices we have */
   for (guint i = 0; i < mgr->devices->len; i++)
     {
       BoltDevice *dev = g_ptr_array_index (mgr->devices, i);
@@ -855,7 +864,12 @@ bolt_manager_label_device (BoltManager *mgr,
         count++;
     }
 
-  /* cleanup name */
+  /* cleanup name: nicer display names for vendors  */
+  for (guint i = 0; i < G_N_ELEMENTS (vendors); i++)
+    if (bolt_streq (vendor, vendors[i].from))
+      vendor = vendors[i].to;
+
+  /* cleanup name: Vendor Vendor Device -> Vendor Device */
   if (g_str_has_prefix (name, vendor))
     {
       name += strlen (vendor);
