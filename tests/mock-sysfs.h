@@ -39,6 +39,9 @@ const char *     mock_sysfs_domain_add (MockSysfs   *ms,
 const char *     mock_sysfs_domain_get_syspath (MockSysfs  *ms,
                                                 const char *id);
 
+gboolean         mock_sysfs_domain_remove (MockSysfs  *ms,
+                                           const char *id);
+
 /* helper macro */
 
 /* *INDENT-OFF* */

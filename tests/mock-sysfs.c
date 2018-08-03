@@ -221,3 +221,25 @@ mock_sysfs_domain_get_syspath (MockSysfs  *ms,
 
   return domain->idstr;
 }
+
+gboolean
+mock_sysfs_domain_remove (MockSysfs  *ms,
+                          const char *id)
+{
+  MockDomain *domain;
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), FALSE);
+  g_return_val_if_fail (id != NULL, FALSE);
+
+  domain = g_hash_table_lookup (ms->domains, id);
+
+  if (domain == NULL)
+    return FALSE;
+
+  umockdev_testbed_uevent (ms->bed, domain->path, "remove");
+  umockdev_testbed_remove_device (ms->bed, domain->path);
+
+  g_hash_table_remove (ms->domains, id);
+
+  return TRUE;
+}
