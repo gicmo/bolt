@@ -35,10 +35,9 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
 
 static void     udev_initable_iface_init (GInitableIface *iface);
 
-static gboolean
-bolt_udev_initialize (GInitable    *initable,
-                      GCancellable *cancellable,
-                      GError      **error);
+static gboolean bolt_udev_initialize (GInitable    *initable,
+                                      GCancellable *cancellable,
+                                      GError      **error);
 /*  */
 struct _BoltUdev
 {
@@ -65,8 +64,8 @@ enum {
 static GParamSpec *props[PROP_LAST] = { NULL, };
 
 enum {
-      SIGNAL_UEVENT,
-      SIGNAL_LAST,
+  SIGNAL_UEVENT,
+  SIGNAL_LAST,
 };
 
 static guint signals[SIGNAL_LAST] = { 0, };
@@ -232,10 +231,10 @@ monitor_add_filter (struct udev_monitor *monitor,
 }
 
 static gboolean
-setup_monitor (BoltUdev     *udev,
-               const char   *name,
-               const GStrv   filter,
-               GSourceFunc   callback,
+setup_monitor (BoltUdev      *udev,
+               const char    *name,
+               const GStrv    filter,
+               GSourceFunc    callback,
                udev_monitor **monitor_out,
                GSource      **watch_out,
                GError       **error)
@@ -349,9 +348,9 @@ bolt_udev_initialize (GInitable    *initable,
 
 /* public methods */
 BoltUdev  *
-bolt_udev_new (const char *name,
+bolt_udev_new (const char         *name,
                const char * const *filter,
-               GError     **error)
+               GError            **error)
 {
   BoltUdev *udev;
 

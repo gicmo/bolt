@@ -350,6 +350,9 @@ if mockdev.found()
   tests += [
     ['test-sysfs',
      [libdaemon, mockdev],
+     ['tests/mock-sysfs.c']],
+    ['test-udev',
+     [libdaemon, mockdev],
      ['tests/mock-sysfs.c']]
   ]
 endif
