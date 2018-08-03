@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <gio/gio.h>
+#include "bolt-udev.h"
 
 G_BEGIN_DECLS
 
@@ -30,7 +30,7 @@ struct udev;
 #define BOLT_TYPE_POWER bolt_power_get_type ()
 G_DECLARE_FINAL_TYPE (BoltPower, bolt_power, BOLT, POWER, GObject);
 
-BoltPower  *        bolt_power_new (struct udev *udev);
+BoltPower  *        bolt_power_new (BoltUdev *udev);
 
 gboolean            bolt_power_can_force (BoltPower *power);
 

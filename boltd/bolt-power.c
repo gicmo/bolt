@@ -114,7 +114,7 @@ bolt_power_class_init (BoltPowerClass *klass)
 }
 
 BoltPower *
-bolt_power_new (struct udev *udev)
+bolt_power_new (BoltUdev *udev)
 {
   struct udev_enumerate *e;
   struct udev_list_entry *l, *devices;
@@ -122,7 +122,7 @@ bolt_power_new (struct udev *udev)
 
   power = g_object_new (BOLT_TYPE_POWER, NULL);
 
-  e = udev_enumerate_new (udev);
+  e = bolt_udev_new_enumerate (udev, NULL);
   udev_enumerate_add_match_subsystem (e, "wmi");
   udev_enumerate_add_match_property (e, "DRIVER", "intel-wmi-thunderbolt");
 

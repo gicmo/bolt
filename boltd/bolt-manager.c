@@ -30,6 +30,7 @@
 #include "bolt-store.h"
 #include "bolt-str.h"
 #include "bolt-sysfs.h"
+#include "bolt-udev.h"
 
 #include "bolt-manager.h"
 
@@ -38,9 +39,6 @@
 
 #define MSEC_PER_USEC 1000LL
 #define PROBING_SETTLE_TIME_MS 2000 /* in milli-seconds */
-
-typedef struct udev_monitor udev_monitor;
-G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_monitor, udev_monitor_unref);
 
 typedef struct udev_device udev_device;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
@@ -86,9 +84,10 @@ static void          bolt_manager_label_device (BoltManager *mgr,
                                                 BoltDevice  *target);
 
 /* udev events */
-static gboolean      handle_uevent_udev (GIOChannel  *source,
-                                         GIOCondition condition,
-                                         gpointer     user_data);
+static void         handle_uevent_udev (BoltUdev           *udev,
+                                        const char         *action,
+                                        struct udev_device *device,
+                                        gpointer            user_data);
 
 static void          handle_udev_domain_event (BoltManager        *mgr,
                                                struct udev_device *device,
@@ -192,9 +191,7 @@ struct _BoltManager
   BoltExported object;
 
   /* udev */
-  struct udev         *udev;
-  struct udev_monitor *udev_monitor;
-  GSource             *udev_source;
+  BoltUdev *udev;
 
   /* state */
   BoltStore   *store;
@@ -246,21 +243,7 @@ bolt_manager_finalize (GObject *object)
 {
   BoltManager *mgr = BOLT_MANAGER (object);
 
-  if (mgr->udev_monitor)
-    {
-      udev_monitor_unref (mgr->udev_monitor);
-      mgr->udev_monitor = NULL;
-
-      g_source_destroy (mgr->udev_source);
-      g_source_unref (mgr->udev_source);
-      mgr->udev_source = NULL;
-    }
-
-  if (mgr->udev)
-    {
-      udev_unref (mgr->udev);
-      mgr->udev = NULL;
-    }
+  g_clear_object (&mgr->udev);
 
   if (mgr->probing_timeout)
     {
@@ -424,96 +407,6 @@ bolt_manager_initable_iface_init (GInitableIface *iface)
 }
 
 static gboolean
-monitor_add_filter (struct udev_monitor *monitor,
-                    const char          *subsystem_devtype,
-                    GError             **error)
-{
-  g_autofree char *subsystem = NULL;
-  char *devtype = NULL;
-  gboolean ok;
-  int r;
-
-  subsystem = g_strdup (subsystem_devtype);
-
-  devtype = strchr (subsystem, '/');
-  if (devtype != NULL)
-    *devtype++ = '\0';
-
-  r = udev_monitor_filter_add_match_subsystem_devtype (monitor,
-                                                       subsystem,
-                                                       devtype);
-  ok = r > -1;
-  if (!ok)
-    g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                 "udev: could not add match for '%s' (%s) to monitor",
-                 subsystem, devtype ? : "*");
-
-  return ok;
-}
-
-static gboolean
-setup_monitor (BoltManager        *mgr,
-               const char         *name,
-               const char * const *filter,
-               GSourceFunc         callback,
-               udev_monitor      **monitor_out,
-               GSource           **watch_out,
-               GError            **error)
-{
-  g_autoptr(udev_monitor) monitor = NULL;
-  g_autoptr(GIOChannel) channel = NULL;
-  GSource *watch;
-  gboolean ok;
-  int fd;
-  int res;
-
-  monitor = udev_monitor_new_from_netlink (mgr->udev, name);
-  if (monitor == NULL)
-    {
-      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                           "udev: could not create monitor");
-      return FALSE;
-    }
-
-  udev_monitor_set_receive_buffer_size (monitor, 128 * 1024 * 1024);
-
-  for (guint i = 0; filter && filter[i] != NULL; i++)
-    {
-      ok = monitor_add_filter (monitor, filter[i], error);
-      if (!ok)
-        return FALSE;
-    }
-
-  res = udev_monitor_enable_receiving (monitor);
-  if (res < 0)
-    {
-      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                           "udev: could not enable monitoring");
-      return FALSE;
-    }
-
-  fd = udev_monitor_get_fd (monitor);
-
-  if (fd < 0)
-    {
-      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                           "udev: could not obtain fd for monitoring");
-      return FALSE;
-    }
-
-  channel = g_io_channel_unix_new (fd);
-  watch   = g_io_create_watch (channel, G_IO_IN);
-
-  g_source_set_callback (watch, callback, mgr, NULL);
-  g_source_attach (watch, g_main_context_get_thread_default ());
-
-  *monitor_out = udev_monitor_ref (monitor);
-  *watch_out   = watch;
-
-  return TRUE;
-}
-
-static gboolean
 bolt_manager_initialize (GInitable    *initable,
                          GCancellable *cancellable,
                          GError      **error)
@@ -538,22 +431,14 @@ bolt_manager_initialize (GInitable    *initable,
   bolt_bouncer_add_client (mgr->bouncer, mgr);
 
   /* udev setup*/
-  mgr->udev = udev_new ();
+  mgr->udev = bolt_udev_new ("udev", NULL, error);
+
   if (mgr->udev == NULL)
-    {
-      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                           "udev: could not create udev handle");
-      return FALSE;
-    }
-
-  ok = setup_monitor (mgr, "udev",
-                      NULL,
-                      (GSourceFunc) handle_uevent_udev,
-                      &mgr->udev_monitor, &mgr->udev_source,
-                      error);
-
-  if (!ok)
     return FALSE;
+
+  g_signal_connect_object (mgr->udev, "uevent",
+                           (GCallback) handle_uevent_udev,
+                           mgr, 0);
 
   ids = bolt_store_list_uids (mgr->store, error);
   if (ids == NULL)
@@ -587,7 +472,7 @@ bolt_manager_initialize (GInitable    *initable,
   forced_power = manager_maybe_power_controller (mgr);
 
   /* TODO: error checking */
-  enumerate = udev_enumerate_new (mgr->udev);
+  enumerate =  bolt_udev_new_enumerate (mgr->udev, NULL);
   udev_enumerate_add_match_subsystem (enumerate, "thunderbolt");
   /* only devices (i.e. not the domain controller) */
 
@@ -597,6 +482,7 @@ bolt_manager_initialize (GInitable    *initable,
 
   udev_list_entry_foreach (l, devices)
     {
+      g_autoptr(GError) err = NULL;
       g_autoptr(udev_device) udevice = NULL;
       g_autoptr(BoltDevice) dev = NULL;
       const char *uid;
@@ -604,10 +490,15 @@ bolt_manager_initialize (GInitable    *initable,
       const char *devtype;
 
       syspath = udev_list_entry_get_name (l);
-      udevice = udev_device_new_from_syspath (mgr->udev, syspath);
+      udevice = bolt_udev_device_new_from_syspath (mgr->udev,
+                                                   syspath,
+                                                   &err);
 
       if (udevice == NULL)
-        continue;
+        {
+          bolt_warn_err (err, "enumerating devices");
+          continue;
+        }
 
       devtype = udev_device_get_devtype (udevice);
 
@@ -1012,34 +903,22 @@ manager_maybe_auto_import_device (BoltManager *mgr,
 }
 
 /* udev callbacks */
-static gboolean
-handle_uevent_udev (GIOChannel  *source,
-                    GIOCondition condition,
-                    gpointer     user_data)
+static void
+handle_uevent_udev (BoltUdev           *udev,
+                    const char         *action,
+                    struct udev_device *device,
+                    gpointer            user_data)
 {
-  g_autoptr(udev_device) device = NULL;
   BoltManager *mgr;
-  const char *action;
   const char *subsystem;
   const char *devtype;
   const char *syspath;
 
   mgr = BOLT_MANAGER (user_data);
-  device = udev_monitor_receive_device (mgr->udev_monitor);
-
-  if (device == NULL)
-    return G_SOURCE_CONTINUE;
-
-  action = udev_device_get_action (device);
-  if (action == NULL)
-    return G_SOURCE_CONTINUE;
-
-  syspath = udev_device_get_syspath (device);
-  if (syspath == NULL)
-    return G_SOURCE_CONTINUE;
 
   devtype = udev_device_get_devtype (device);
   subsystem = udev_device_get_subsystem (device);
+  syspath = udev_device_get_syspath (device);
 
   if (g_str_equal (action, "add"))
     manager_probing_device_added (mgr, device);
@@ -1049,7 +928,7 @@ handle_uevent_udev (GIOChannel  *source,
   /* beyond this point only udev device from the
    * thunderbolt are handled */
   if (!bolt_streq (subsystem, "thunderbolt"))
-    return G_SOURCE_CONTINUE;
+    return;
 
   bolt_debug (LOG_TOPIC ("udev"), "%s (%s%s%s) %s", action,
               subsystem, devtype ? "/" : "", devtype ? : "",
@@ -1059,8 +938,6 @@ handle_uevent_udev (GIOChannel  *source,
     handle_udev_device_event (mgr, device, action);
   else if (bolt_streq (devtype, "thunderbolt_domain"))
     handle_udev_domain_event (mgr, device, action);
-
-  return G_SOURCE_CONTINUE;
 }
 
 static void
@@ -1644,7 +1521,7 @@ manager_maybe_power_controller (BoltManager *mgr)
   if (can_force_power == FALSE)
     return FALSE;
 
-  n = bolt_sysfs_count_domains (mgr->udev, &err);
+  n = bolt_udev_count_domains (mgr->udev, &err);
   if (n < 0)
     {
       bolt_warn_err (err, LOG_TOPIC ("udev"),
@@ -1672,7 +1549,7 @@ manager_maybe_power_controller (BoltManager *mgr)
   for (int i = 0; i < 25 && n < 1; i++)
     {
       g_usleep (200000); /* 200 000 us = 0.2s */
-      n = bolt_sysfs_count_domains (mgr->udev, NULL);
+      n = bolt_udev_count_domains (mgr->udev, NULL);
     }
 
 out:
