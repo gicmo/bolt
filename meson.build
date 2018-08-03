@@ -211,7 +211,8 @@ daemon_sources = files([
   'boltd/bolt-key.c',
   'boltd/bolt-log.c',
   'boltd/bolt-store.c',
-  'boltd/bolt-sysfs.c'
+  'boltd/bolt-sysfs.c',
+  'boltd/bolt-udev.c'
 ])
 
 daemon_sources += gnome.compile_resources(
