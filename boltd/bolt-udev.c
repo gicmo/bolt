@@ -21,7 +21,9 @@
 #include "config.h"
 
 #include "bolt-udev.h"
+
 #include "bolt-error.h"
+#include "bolt-sysfs.h"
 
 #include <libudev.h>
 
@@ -400,4 +402,14 @@ bolt_udev_device_new_from_syspath (BoltUdev   *udev,
                  g_strerror (errno));
 
   return dev;
+}
+
+/* thunderbolt specific helpers */
+int
+bolt_udev_count_domains (BoltUdev *udev,
+                         GError  **error)
+{
+  g_return_val_if_fail (BOLT_IS_UDEV (udev), -1);
+
+  return bolt_sysfs_count_domains (udev->udev, error);
 }

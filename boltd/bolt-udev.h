@@ -44,4 +44,8 @@ struct udev_device * bolt_udev_device_new_from_syspath (BoltUdev   *udev,
                                                         const char *syspath,
                                                         GError    **error);
 
+/* thunderbolt specific helpers */
+int                  bolt_udev_count_domains (BoltUdev *udev,
+                                              GError  **error);
+
 G_END_DECLS
