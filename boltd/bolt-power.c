@@ -22,6 +22,7 @@
 
 #include "bolt-power.h"
 
+#include "bolt-enums.h"
 #include "bolt-log.h"
 #include "bolt-io.h"
 #include "bolt-str.h"
@@ -37,15 +38,17 @@ struct _BoltPower
 {
   GObject object;
 
-  /* the actual key plus the null char */
-  char *path;
-
+  /* the path to the sysfs device file,
+   * or NULL if force power is unavailable */
+  char          *path;
+  BoltPowerState state;
 };
 
 enum {
   PROP_0,
 
   PROP_SUPPORTED,
+  PROP_STATE,
 
   PROP_LAST
 };
@@ -71,6 +74,7 @@ bolt_power_finalize (GObject *object)
 static void
 bolt_power_init (BoltPower *power)
 {
+  power->state = BOLT_FORCE_POWER_UNSET;
 }
 
 static void
@@ -85,6 +89,10 @@ bolt_power_get_property (GObject    *object,
     {
     case PROP_SUPPORTED:
       g_value_set_boolean (value, power->path != NULL);
+      break;
+
+    case PROP_STATE:
+      g_value_set_enum (value, power->state);
       break;
 
     default:
@@ -108,11 +116,48 @@ bolt_power_class_init (BoltPowerClass *klass)
                           G_PARAM_READABLE |
                           G_PARAM_STATIC_NICK);
 
+  power_props[PROP_STATE] =
+    g_param_spec_enum ("state",
+                       NULL, NULL,
+                       BOLT_TYPE_POWER_STATE,
+                       BOLT_FORCE_POWER_UNSET,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_STRINGS);
+
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
                                      power_props);
 }
 
+/* internal methods */
+static gboolean
+bolt_power_switch_toggle (BoltPower *power,
+                          gboolean   on,
+                          GError   **error)
+{
+  gboolean ok;
+  int fd;
+
+  g_return_val_if_fail (BOLT_IS_POWER (power), FALSE);
+
+  if (power->path == NULL)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                           "force power not supported");
+      return FALSE;
+    }
+
+  fd = bolt_open (power->path, O_WRONLY, 0, error);
+  if (fd < 0)
+    return FALSE;
+
+  ok = bolt_write_all (fd, on ? "1" : "0", 1, error);
+  bolt_close (fd, NULL);
+
+  return ok;
+}
+
+/* public methods */
 BoltPower *
 bolt_power_new (BoltUdev *udev)
 {
@@ -159,24 +204,24 @@ bolt_power_force_switch (BoltPower *power,
                          gboolean   on,
                          GError   **error)
 {
-  gboolean ok;
-  int fd;
+  gboolean ok = TRUE;
+  BoltPowerState now;
 
   g_return_val_if_fail (BOLT_IS_POWER (power), FALSE);
 
-  if (power->path == NULL)
+  now = on ? BOLT_FORCE_POWER_ON : BOLT_FORCE_POWER_OFF;
+
+  if (now == power->state)
+    return TRUE;
+
+  ok = bolt_power_switch_toggle (power, on, error);
+
+  if (ok)
     {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                           "force power not supported");
-      return FALSE;
+      power->state = now;
+      g_object_notify_by_pspec (G_OBJECT (power),
+                                power_props[PROP_STATE]);
     }
-
-  fd = bolt_open (power->path, O_WRONLY, 0, error);
-  if (fd < 0)
-    return FALSE;
-
-  ok = bolt_write_all (fd, on ? "1" : "0", 1, error);
-  bolt_close (fd, NULL);
 
   return ok;
 }
