@@ -247,3 +247,18 @@ typedef enum { /*< flags >*/
 
 #define bolt_auth_mode_is_enabled(auth) ((auth & BOLT_AUTH_ENABLED) != 0)
 #define bolt_auth_mode_is_disabled(auth) (!bolt_auth_mode_is_enabled (auth))
+
+/**
+ * BoltPowerState:
+ * @BOLT_FORCE_POWER_UNSET: Force power was not set by bolt.
+ * @BOLT_FORCE_POWER_OFF: Force power is set to off.
+ * @BOLT_FORCE_POWER_ON: Force power is set to on.
+ *
+ * The force power state that bolt set on thunderbolt controller.
+ */
+typedef enum {
+
+  BOLT_FORCE_POWER_UNSET = -1,
+  BOLT_FORCE_POWER_OFF   =  0,
+  BOLT_FORCE_POWER_ON    =  1,
+} BoltPowerState;
