@@ -27,6 +27,13 @@ G_BEGIN_DECLS
 /* forward declaration */
 struct udev;
 
+/* BoltPowerGuard */
+
+#define BOLT_TYPE_POWER_GUARD bolt_power_guard_get_type ()
+G_DECLARE_FINAL_TYPE (BoltPowerGuard, bolt_power_guard, BOLT, POWER_GUARD, GObject);
+
+/* BoltPower */
+
 #define BOLT_TYPE_POWER bolt_power_get_type ()
 G_DECLARE_FINAL_TYPE (BoltPower, bolt_power, BOLT, POWER, GObject);
 
@@ -38,4 +45,6 @@ gboolean            bolt_power_force_switch (BoltPower *power,
                                              gboolean   on,
                                              GError   **error);
 
+BoltPowerGuard *    bolt_power_acquire (BoltPower *power,
+                                        GError   **error);
 G_END_DECLS
