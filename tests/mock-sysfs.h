@@ -33,6 +33,14 @@ G_DECLARE_FINAL_TYPE (MockSysfs, mock_sysfs, MOCK, SYSFS, GObject);
 
 MockSysfs *      mock_sysfs_new (void);
 
+const char *     mock_sysfs_force_power_add (MockSysfs *ms);
+
+gboolean         mock_sysfs_force_power_remove (MockSysfs *ms);
+
+char *           mock_sysfs_force_power_read (MockSysfs *ms);
+
+gboolean         mock_sysfs_force_power_enabled (MockSysfs *ms);
+
 const char *     mock_sysfs_domain_add (MockSysfs   *ms,
                                         BoltSecurity security);
 

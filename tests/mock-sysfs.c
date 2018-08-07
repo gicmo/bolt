@@ -58,6 +58,7 @@ struct _MockSysfs
   UMockdevTestbed *bed;
 
   /* state tracking */
+  char       *force_power;
   GHashTable *domains;
 };
 
@@ -157,6 +158,8 @@ mock_sysfs_class_init (MockSysfsClass *klass)
                                      sysfs_props);
 }
 
+/* public methods: generic */
+
 MockSysfs *
 mock_sysfs_new (void)
 {
@@ -167,6 +170,79 @@ mock_sysfs_new (void)
   return ms;
 }
 
+
+/* public methods: force-power */
+const char *
+mock_sysfs_force_power_add (MockSysfs *ms)
+{
+  char *path;
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), NULL);
+  g_return_val_if_fail (ms->force_power == NULL, NULL);
+
+  path = umockdev_testbed_add_device (ms->bed, "wmi", INTEL_WMI_THUNDERBOLT_GUID,
+                                      NULL,
+                                      "force_power", "",
+                                      NULL,
+                                      "WMI_GUID", INTEL_WMI_THUNDERBOLT_GUID,
+                                      "DRIVER", "intel-wmi-thunderbolt",
+                                      NULL);
+
+
+  ms->force_power = path;
+
+  return path;
+}
+
+gboolean
+mock_sysfs_force_power_remove (MockSysfs *ms)
+{
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), FALSE);
+  g_return_val_if_fail (ms->force_power != NULL, FALSE);
+
+  umockdev_testbed_uevent (ms->bed, ms->force_power, "remove");
+  umockdev_testbed_remove_device (ms->bed, ms->force_power);
+
+  return TRUE;
+}
+
+char *
+mock_sysfs_force_power_read (MockSysfs *ms)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *path = NULL;
+  char *data;
+  gboolean ok;
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), NULL);
+  g_return_val_if_fail (ms->force_power != NULL, NULL);
+
+  path = g_build_filename (ms->force_power, "force_power", NULL);
+  ok = g_file_get_contents (path, &data, NULL, &err);
+
+  if (!ok)
+    {
+      g_warning ("could not read force power file: %s",
+                 err->message);
+      return NULL;
+    }
+
+  return data;
+}
+
+gboolean
+mock_sysfs_force_power_enabled (MockSysfs *ms)
+{
+  g_autofree char *data = NULL;
+
+  data = mock_sysfs_force_power_read (ms);
+
+  data = g_strstrip (data);
+  return bolt_streq (data, "1");
+}
+
+/* public methods: domain */
 const char *
 mock_sysfs_domain_add (MockSysfs   *ms,
                        BoltSecurity security)
