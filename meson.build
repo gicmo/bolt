@@ -348,6 +348,9 @@ tests = [
 
 if mockdev.found()
   tests += [
+    ['test-power',
+     [libdaemon, mockdev],
+     ['tests/mock-sysfs.c']],
     ['test-sysfs',
      [libdaemon, mockdev],
      ['tests/mock-sysfs.c']],
