@@ -51,3 +51,6 @@
 
 #define BOLT_DBUS_DEVICE_INTERFACE "org.freedesktop.bolt1.Device"
 #define BOLT_DBUS_DOMAIN_INTERFACE "org.freedesktop.bolt1.Domain"
+
+/* other well known names */
+#define INTEL_WMI_THUNDERBOLT_GUID "86CCFD48-205E-4A77-9C48-2021CBEDE341"
