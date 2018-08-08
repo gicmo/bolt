@@ -143,7 +143,7 @@ static void          manager_probing_activity (BoltManager *mgr,
                                                gboolean     weak);
 
 /* force powering */
-static gboolean      manager_maybe_power_controller (BoltManager *mgr);
+static BoltPowerGuard *  manager_maybe_power_controller (BoltManager *mgr);
 
 /* config */
 static void          manager_load_user_config (BoltManager *mgr);
@@ -412,11 +412,10 @@ bolt_manager_initialize (GInitable    *initable,
                          GError      **error)
 {
   g_auto(GStrv) ids = NULL;
+  g_autoptr(BoltPowerGuard) power = NULL;
   BoltManager *mgr;
   struct udev_enumerate *enumerate;
   struct udev_list_entry *l, *devices;
-  gboolean forced_power;
-  gboolean ok;
 
   mgr = BOLT_MANAGER (initable);
 
@@ -469,7 +468,7 @@ bolt_manager_initialize (GInitable    *initable,
     }
 
   mgr->power = bolt_power_new (mgr->udev);
-  forced_power = manager_maybe_power_controller (mgr);
+  power = manager_maybe_power_controller (mgr);
 
   /* TODO: error checking */
   enumerate =  bolt_udev_new_enumerate (mgr->udev, NULL);
@@ -523,18 +522,6 @@ bolt_manager_initialize (GInitable    *initable,
     }
 
   udev_enumerate_unref (enumerate);
-
-  if (forced_power)
-    {
-      g_autoptr(GError) err = NULL;
-
-      ok = bolt_power_force_switch (mgr->power, FALSE, &err);
-
-      if (!ok)
-        bolt_warn_err (err, LOG_TOPIC ("power"), "failed undo force power");
-      else
-        bolt_info (LOG_TOPIC ("power"), "setting force_power to OFF");
-    }
 
   return TRUE;
 }
@@ -1506,12 +1493,12 @@ manager_probing_domain_added (BoltManager        *mgr,
   probing_add_root (mgr, p);
 }
 
-static gboolean
+static BoltPowerGuard *
 manager_maybe_power_controller (BoltManager *mgr)
 {
   g_autoptr(GError) err = NULL;
+  BoltPowerGuard *guard = NULL;
   gboolean can_force_power;
-  gboolean ok;
   int n;
 
   can_force_power = bolt_power_can_force (mgr->power);
@@ -1519,29 +1506,28 @@ manager_maybe_power_controller (BoltManager *mgr)
              bolt_yesno (can_force_power));
 
   if (can_force_power == FALSE)
-    return FALSE;
+    return NULL;
 
   n = bolt_udev_count_domains (mgr->udev, &err);
   if (n < 0)
     {
       bolt_warn_err (err, LOG_TOPIC ("udev"),
                      "failed to count domains");
-      return FALSE;
+      return NULL;
     }
   else if (n > 0)
     {
-      ok = FALSE;
       goto out;
     }
 
   bolt_info (LOG_TOPIC ("power"), "setting force_power to ON");
-  ok = bolt_power_force_switch (mgr->power, TRUE, &err);
+  guard = bolt_power_acquire (mgr->power, &err);
 
-  if (!ok)
+  if (guard == NULL)
     {
       bolt_warn_err (err, LOG_TOPIC ("power"),
                      "could not force power");
-      return ok;
+      return NULL;
     }
 
   /* we wait for a total of 5.0 seconds, should hopefully
@@ -1555,7 +1541,7 @@ manager_maybe_power_controller (BoltManager *mgr)
 out:
   bolt_info (LOG_TOPIC ("udev"), "found %d domain%s",
              n, n > 1 ? "s" : "");
-  return ok;
+  return guard;
 }
 
 
