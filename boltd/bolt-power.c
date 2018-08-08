@@ -310,6 +310,13 @@ bolt_power_switch_toggle (BoltPower *power,
   ok = bolt_write_all (fd, on ? "1" : "0", 1, error);
   bolt_close (fd, NULL);
 
+  if (ok)
+    {
+      power->state = on ? BOLT_FORCE_POWER_ON : BOLT_FORCE_POWER_OFF;
+      g_object_notify_by_pspec (G_OBJECT (power),
+                                power_props[PROP_STATE]);
+    }
+
   return ok;
 }
 
@@ -365,17 +372,10 @@ bolt_power_release (BoltPower *power, BoltPowerGuard *guard)
   ok = bolt_power_switch_toggle (power, FALSE, &err);
 
   if (!ok)
-    {
-      bolt_warn_err (err, LOG_TOPIC ("power"),
-                     "failed undo force power");
-      return;
-    }
-
-  bolt_info (LOG_TOPIC ("power"), "setting force_power to OFF");
-
-  power->state = BOLT_FORCE_POWER_OFF;
-  g_object_notify_by_pspec (G_OBJECT (power),
-                            power_props[PROP_STATE]);
+    bolt_warn_err (err, LOG_TOPIC ("power"),
+                   "failed to turn off force_power");
+  else
+    bolt_info (LOG_TOPIC ("power"), "setting force_power to OFF");
 }
 
 /* public methods */
@@ -473,13 +473,9 @@ bolt_power_acquire (BoltPower *power,
 
   if (power->state != BOLT_FORCE_POWER_ON)
     {
-      ok = bolt_power_force_switch (power, TRUE, error);
+      ok = bolt_power_switch_toggle (power, TRUE, error);
       if (!ok)
         return NULL;
-
-      power->state =  BOLT_FORCE_POWER_ON;
-      g_object_notify_by_pspec (G_OBJECT (power),
-                                power_props[PROP_STATE]);
     }
 
   guard = g_object_new (BOLT_TYPE_POWER_GUARD,
