@@ -184,9 +184,19 @@ bolt_power_guard_class_init (BoltPowerGuardClass *klass)
 
 /* ****************************************************************** */
 /* BoltPower */
+
+static void     power_initable_iface_init (GInitableIface *iface);
+
+static gboolean bolt_power_initialize (GInitable    *initable,
+                                       GCancellable *cancellable,
+                                       GError      **error);
+
 struct _BoltPower
 {
   GObject object;
+
+  /* connection to udev */
+  BoltUdev *udev;
 
   /* the path to the sysfs device file,
    * or NULL if force power is unavailable */
@@ -201,6 +211,7 @@ struct _BoltPower
 enum {
   PROP_0,
 
+  PROP_UDEV,
   PROP_SUPPORTED,
   PROP_STATE,
 
@@ -209,16 +220,18 @@ enum {
 
 static GParamSpec *power_props[PROP_LAST] = { NULL, };
 
-G_DEFINE_TYPE (BoltPower,
-               bolt_power,
-               G_TYPE_OBJECT);
-
+G_DEFINE_TYPE_WITH_CODE (BoltPower,
+                         bolt_power,
+                         G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
+                                                power_initable_iface_init));
 
 static void
 bolt_power_finalize (GObject *object)
 {
   BoltPower *power = BOLT_POWER (object);
 
+  g_clear_object (&power->udev);
   g_clear_pointer (&power->path, g_free);
   g_clear_pointer (&power->guards, g_hash_table_unref);
 
@@ -243,12 +256,35 @@ bolt_power_get_property (GObject    *object,
 
   switch (prop_id)
     {
+    case PROP_UDEV:
+      g_value_set_object (value, power->udev);
+      break;
+
     case PROP_SUPPORTED:
       g_value_set_boolean (value, power->path != NULL);
       break;
 
     case PROP_STATE:
       g_value_set_enum (value, power->state);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+    }
+}
+
+static void
+bolt_power_set_property (GObject      *object,
+                         guint         prop_id,
+                         const GValue *value,
+                         GParamSpec   *pspec)
+{
+  BoltPower *power = BOLT_POWER (object);
+
+  switch (prop_id)
+    {
+    case PROP_UDEV:
+      power->udev = g_value_dup_object (value);
       break;
 
     default:
@@ -264,6 +300,15 @@ bolt_power_class_init (BoltPowerClass *klass)
   gobject_class->finalize = bolt_power_finalize;
 
   gobject_class->get_property = bolt_power_get_property;
+  gobject_class->set_property = bolt_power_set_property;
+
+  power_props[PROP_UDEV] =
+    g_param_spec_object ("udev",
+                         NULL, NULL,
+                         BOLT_TYPE_UDEV,
+                         G_PARAM_READWRITE |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_STRINGS);
 
   power_props[PROP_SUPPORTED] =
     g_param_spec_boolean ("supported",
@@ -283,6 +328,47 @@ bolt_power_class_init (BoltPowerClass *klass)
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
                                      power_props);
+}
+
+static void
+power_initable_iface_init (GInitableIface *iface)
+{
+  iface->init = bolt_power_initialize;
+}
+
+static gboolean
+bolt_power_initialize (GInitable    *initable,
+                       GCancellable *cancellable,
+                       GError      **error)
+{
+  BoltPower *power = BOLT_POWER (initable);
+  struct udev_enumerate *e;
+  struct udev_list_entry *l, *devices;
+
+  e = bolt_udev_new_enumerate (power->udev, NULL);
+  udev_enumerate_add_match_subsystem (e, "wmi");
+  udev_enumerate_add_match_property (e, "DRIVER", "intel-wmi-thunderbolt");
+
+  udev_enumerate_scan_devices (e);
+  devices = udev_enumerate_get_list_entry (e);
+
+  udev_list_entry_foreach (l, devices)
+    {
+      g_autofree char *path = NULL;
+      const char *syspath;
+
+      syspath = udev_list_entry_get_name (l);
+      path = g_build_filename (syspath, "force_power", NULL);
+
+      if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
+        {
+          power->path = g_steal_pointer (&path);
+          break;
+        }
+    }
+
+  udev_enumerate_unref (e);
+  return TRUE;
 }
 
 /* internal methods */
@@ -382,35 +468,13 @@ bolt_power_release (BoltPower *power, BoltPowerGuard *guard)
 BoltPower *
 bolt_power_new (BoltUdev *udev)
 {
-  struct udev_enumerate *e;
-  struct udev_list_entry *l, *devices;
   BoltPower *power;
 
-  power = g_object_new (BOLT_TYPE_POWER, NULL);
+  power = g_initable_new (BOLT_TYPE_POWER,
+                          NULL, NULL,
+                          "udev", udev,
+                          NULL);
 
-  e = bolt_udev_new_enumerate (udev, NULL);
-  udev_enumerate_add_match_subsystem (e, "wmi");
-  udev_enumerate_add_match_property (e, "DRIVER", "intel-wmi-thunderbolt");
-
-  udev_enumerate_scan_devices (e);
-  devices = udev_enumerate_get_list_entry (e);
-
-  udev_list_entry_foreach (l, devices)
-    {
-      g_autofree char *path = NULL;
-      const char *syspath;
-
-      syspath = udev_list_entry_get_name (l);
-      path = g_build_filename (syspath, "force_power", NULL);
-
-      if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
-        {
-          power->path = g_steal_pointer (&path);
-          break;
-        }
-    }
-
-  udev_enumerate_unref (e);
   return power;
 }
 
