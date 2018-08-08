@@ -146,6 +146,102 @@ test_power_basic (TestPower *tt, gconstpointer user)
                 NULL);
 
   g_assert (state == BOLT_FORCE_POWER_OFF);
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_OFF);
+  on = mock_sysfs_force_power_enabled (tt->sysfs);
+  g_assert_false (on);
+}
+
+static void
+test_power_multiple (TestPower *tt, gconstpointer user)
+{
+  g_autoptr(BoltPower) power = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(BoltPowerGuard) guard = NULL;
+  GPtrArray *guards = NULL;
+  BoltPowerState state;
+  gboolean supported;
+  gboolean on;
+  const char *fp;
+
+  power = bolt_power_new (tt->udev);
+
+  fp = mock_sysfs_force_power_add (tt->sysfs);
+  g_assert_nonnull (fp);
+
+  power = bolt_power_new (tt->udev);
+  g_object_get (power,
+                "supported", &supported,
+                "state", &state,
+                NULL);
+
+  g_assert_true (supported);
+  g_assert (state == BOLT_FORCE_POWER_UNSET);
+
+  on = mock_sysfs_force_power_enabled (tt->sysfs);
+  g_assert_false (on);
+
+  /* set to ON via first guard */
+  guard = bolt_power_acquire (power, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (guard);
+
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_ON);
+  on = mock_sysfs_force_power_enabled (tt->sysfs);
+  g_assert_true (on);
+
+  /* add one and remove it, nothing should change */
+  for (guint i = 0; i < 5; i++)
+    {
+      g_autoptr(BoltPowerGuard) g = NULL;
+
+      state = bolt_power_get_state (power);
+      g_assert (state == BOLT_FORCE_POWER_ON);
+      on = mock_sysfs_force_power_enabled (tt->sysfs);
+      g_assert_true (on);
+
+      g = bolt_power_acquire (power, &err);
+
+      g_assert_no_error (err);
+      g_assert_nonnull (g);
+
+      /* nothing should change */
+      state = bolt_power_get_state (power);
+      g_assert (state == BOLT_FORCE_POWER_ON);
+      on = mock_sysfs_force_power_enabled (tt->sysfs);
+      g_assert_true (on);
+    }
+
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_ON);
+  on = mock_sysfs_force_power_enabled (tt->sysfs);
+  g_assert_true (on);
+
+  /* set of OFF */
+  g_clear_object (&guard);
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_OFF);
+  on = mock_sysfs_force_power_enabled (tt->sysfs);
+  g_assert_false (on);
+
+  /* now all at once */
+  guards = g_ptr_array_new_with_free_func (g_object_unref);
+  for (guint i = 0; i < 5; i++)
+    {
+      BoltPowerGuard *g = bolt_power_acquire (power, &err);
+      g_ptr_array_add (guards, g);
+    }
+
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_ON);
+  on = mock_sysfs_force_power_enabled (tt->sysfs);
+  g_assert_true (on);
+
+  /* release all of the guards at once */
+  g_clear_pointer (&guards, g_ptr_array_unref);
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_OFF);
   on = mock_sysfs_force_power_enabled (tt->sysfs);
   g_assert_false (on);
 }
@@ -165,6 +261,14 @@ main (int argc, char **argv)
               test_power_setup,
               test_power_basic,
               test_power_tear_down);
+
+  g_test_add ("/power/mutli-guards",
+              TestPower,
+              NULL,
+              test_power_setup,
+              test_power_multiple,
+              test_power_tear_down);
+
 
   return g_test_run ();
 }
