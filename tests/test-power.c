@@ -54,7 +54,7 @@ test_power_setup (TestPower *tt, gconstpointer data)
   tt->sysfs = mock_sysfs_new ();
   tt->udev = bolt_udev_new ("udev", NULL, &err);
 
-  g_assert_no_error(err);
+  g_assert_no_error (err);
   g_assert_nonnull (tt->udev);
 }
 
@@ -70,9 +70,11 @@ test_power_basic (TestPower *tt, gconstpointer user)
 {
   g_autoptr(BoltPower) power = NULL;
   g_autoptr(GError) err = NULL;
+  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autofree char *guard_id = NULL;
+  g_autofree char *guard_who = NULL;
   BoltPowerState state;
   gboolean supported;
-  gboolean ok;
   gboolean on;
   const char *fp;
 
@@ -103,9 +105,9 @@ test_power_basic (TestPower *tt, gconstpointer user)
   g_assert (state == BOLT_FORCE_POWER_UNSET);
 
   /* set of ON */
-  ok = bolt_power_force_switch (power, TRUE, &err);
+  guard = bolt_power_acquire (power, &err);
   g_assert_no_error (err);
-  g_assert_true (ok);
+  g_assert_nonnull (guard);
 
   g_object_get (power,
                 "state", &state,
@@ -115,10 +117,19 @@ test_power_basic (TestPower *tt, gconstpointer user)
   on = mock_sysfs_force_power_enabled (tt->sysfs);
   g_assert_true (on);
 
+  g_object_get (guard,
+                "id", &guard_id,
+                "who", &guard_who,
+                NULL);
+
+  g_assert_nonnull (guard_id);
+  g_assert_nonnull (guard_who);
+
+  g_assert_cmpstr (guard_id, ==, "1");
+  g_assert_cmpstr (guard_who, ==, "boltd");
+
   /* set of OFF */
-  ok = bolt_power_force_switch (power, FALSE, &err);
-  g_assert_no_error (err);
-  g_assert_true (ok);
+  g_clear_object (&guard);
 
   g_object_get (power,
                 "state", &state,
