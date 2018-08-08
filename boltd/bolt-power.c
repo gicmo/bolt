@@ -420,6 +420,15 @@ bolt_power_can_force (BoltPower *power)
   return power->path != NULL;
 }
 
+BoltPowerState
+bolt_power_get_state (BoltPower *power)
+{
+  g_return_val_if_fail (BOLT_IS_POWER (power), -1);
+
+  return power->state;
+}
+
+
 gboolean
 bolt_power_force_switch (BoltPower *power,
                          gboolean   on,

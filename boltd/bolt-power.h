@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "bolt-enums.h"
 #include "bolt-udev.h"
 
 G_BEGIN_DECLS
@@ -40,6 +41,8 @@ G_DECLARE_FINAL_TYPE (BoltPower, bolt_power, BOLT, POWER, GObject);
 BoltPower  *        bolt_power_new (BoltUdev *udev);
 
 gboolean            bolt_power_can_force (BoltPower *power);
+
+BoltPowerState      bolt_power_get_state (BoltPower *power);
 
 gboolean            bolt_power_force_switch (BoltPower *power,
                                              gboolean   on,
