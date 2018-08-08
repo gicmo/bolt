@@ -428,34 +428,6 @@ bolt_power_get_state (BoltPower *power)
   return power->state;
 }
 
-
-gboolean
-bolt_power_force_switch (BoltPower *power,
-                         gboolean   on,
-                         GError   **error)
-{
-  gboolean ok = TRUE;
-  BoltPowerState now;
-
-  g_return_val_if_fail (BOLT_IS_POWER (power), FALSE);
-
-  now = on ? BOLT_FORCE_POWER_ON : BOLT_FORCE_POWER_OFF;
-
-  if (now == power->state)
-    return TRUE;
-
-  ok = bolt_power_switch_toggle (power, on, error);
-
-  if (ok)
-    {
-      power->state = now;
-      g_object_notify_by_pspec (G_OBJECT (power),
-                                power_props[PROP_STATE]);
-    }
-
-  return ok;
-}
-
 BoltPowerGuard *
 bolt_power_acquire (BoltPower *power,
                     GError   **error)
