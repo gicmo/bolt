@@ -87,6 +87,8 @@ test_power_basic (TestPower *tt, gconstpointer user)
 
   g_assert_false (supported);
   g_assert (state == BOLT_FORCE_POWER_UNSET);
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_UNSET);
 
   /* add the force power sysfs device,
    * now it must be reported as supported */
@@ -103,6 +105,8 @@ test_power_basic (TestPower *tt, gconstpointer user)
 
   g_assert_true (supported);
   g_assert (state == BOLT_FORCE_POWER_UNSET);
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_UNSET);
 
   /* set of ON */
   guard = bolt_power_acquire (power, &err);
@@ -114,6 +118,12 @@ test_power_basic (TestPower *tt, gconstpointer user)
                 NULL);
 
   g_assert (state == BOLT_FORCE_POWER_ON);
+
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_ON);
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_ON);
+
   on = mock_sysfs_force_power_enabled (tt->sysfs);
   g_assert_true (on);
 
