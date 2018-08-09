@@ -253,6 +253,9 @@ typedef enum { /*< flags >*/
  * @BOLT_FORCE_POWER_UNSET: Force power was not set by bolt.
  * @BOLT_FORCE_POWER_OFF: Force power is set to off.
  * @BOLT_FORCE_POWER_ON: Force power is set to on.
+ * @BOLT_FORCE_POWER_WAIT: Force power is not requested anymore
+ *  but still active; so that code can process udev events
+ *  properly.
  *
  * The force power state that bolt set on thunderbolt controller.
  */
@@ -261,4 +264,6 @@ typedef enum {
   BOLT_FORCE_POWER_UNSET = -1,
   BOLT_FORCE_POWER_OFF   =  0,
   BOLT_FORCE_POWER_ON    =  1,
+  BOLT_FORCE_POWER_WAIT  =  2,
+
 } BoltPowerState;
