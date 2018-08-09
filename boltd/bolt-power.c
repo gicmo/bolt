@@ -29,7 +29,7 @@
 
 #include <libudev.h>
 
-#define POWER_WAIT_TIMEOUT 0 //0 is the old, direct behavior
+#define POWER_WAIT_TIMEOUT 20 * 1000 // 20 seconds
 
 typedef struct udev_device udev_device;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
