@@ -29,6 +29,8 @@
 
 #include <libudev.h>
 
+#define POWER_WAIT_TIMEOUT 0 //0 is the old, direct behavior
+
 typedef struct udev_device udev_device;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
 
@@ -47,7 +49,6 @@ struct _BoltPowerGuard
   /* properties */
   char *id;
   char *who;
-
 };
 
 enum {
@@ -206,6 +207,10 @@ struct _BoltPower
   /*  */
   guint16     guard_num;
   GHashTable *guards;
+
+  /* wait before off handling */
+  guint wait_id;
+  guint timeout; /* milliseconds */
 };
 
 enum {
@@ -214,6 +219,7 @@ enum {
   PROP_UDEV,
   PROP_SUPPORTED,
   PROP_STATE,
+  PROP_TIMEOUT,
 
   PROP_LAST
 };
@@ -230,6 +236,9 @@ static void
 bolt_power_finalize (GObject *object)
 {
   BoltPower *power = BOLT_POWER (object);
+
+  if (power->wait_id != 0)
+    g_source_remove (power->wait_id);
 
   g_clear_object (&power->udev);
   g_clear_pointer (&power->path, g_free);
@@ -268,6 +277,10 @@ bolt_power_get_property (GObject    *object,
       g_value_set_enum (value, power->state);
       break;
 
+    case PROP_TIMEOUT:
+      g_value_set_uint (value, power->timeout);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -287,10 +300,15 @@ bolt_power_set_property (GObject      *object,
       power->udev = g_value_dup_object (value);
       break;
 
+    case PROP_TIMEOUT:
+      power->timeout = g_value_get_uint (value);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
 }
+
 
 static void
 bolt_power_class_init (BoltPowerClass *klass)
@@ -323,6 +341,14 @@ bolt_power_class_init (BoltPowerClass *klass)
                        BOLT_TYPE_POWER_STATE,
                        BOLT_FORCE_POWER_UNSET,
                        G_PARAM_READABLE |
+                       G_PARAM_STATIC_STRINGS);
+
+  power_props[PROP_TIMEOUT] =
+    g_param_spec_uint ("timeout",
+                       NULL, NULL,
+                       0, G_MAXINT, POWER_WAIT_TIMEOUT,
+                       G_PARAM_READWRITE |
+                       G_PARAM_CONSTRUCT_ONLY |
                        G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (gobject_class,
@@ -432,10 +458,29 @@ bolt_power_gen_guard_id (BoltPower *power,
   return id;
 }
 
+static gboolean
+bolt_power_wait_timeout (gpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  BoltPower *power = user_data;
+  gboolean ok;
+
+  /* we just removed the last active guard */
+  ok = bolt_power_switch_toggle (power, FALSE, &err);
+
+  if (!ok)
+    bolt_warn_err (err, LOG_TOPIC ("power"),
+                   "failed to turn off force_power");
+  else
+    bolt_info (LOG_TOPIC ("power"), "setting force_power to OFF");
+
+  power->wait_id = 0;
+  return G_SOURCE_REMOVE;
+}
+
 static void
 bolt_power_release (BoltPower *power, BoltPowerGuard *guard)
 {
-  g_autoptr(GError) err = NULL;
   gboolean ok;
 
   ok = g_hash_table_remove (power->guards, guard->id);
@@ -454,14 +499,30 @@ bolt_power_release (BoltPower *power, BoltPowerGuard *guard)
   if (g_hash_table_size (power->guards) != 0)
     return;
 
-  /* we just removed the last active guard */
-  ok = bolt_power_switch_toggle (power, FALSE, &err);
+  /* go into WAIT (from ON) state */
+  if (power->wait_id != 0)
+    {
+      bolt_bug ("have active waiter already");
+      return;
+    }
 
-  if (!ok)
-    bolt_warn_err (err, LOG_TOPIC ("power"),
-                   "failed to turn off force_power");
-  else
-    bolt_info (LOG_TOPIC ("power"), "setting force_power to OFF");
+  if (power->timeout == 0)
+    {
+      bolt_info (LOG_TOPIC ("power"), "wait timeout is zero, skipping");
+      bolt_power_wait_timeout ((gpointer) power);
+      return;
+    }
+
+  bolt_info (LOG_TOPIC ("power"), "shutdown scheduled (T-%3.2fs)",
+             power->timeout / 1000.0);
+
+  power->wait_id = g_timeout_add (power->timeout,
+                                  bolt_power_wait_timeout,
+                                  power);
+
+  power->state = BOLT_FORCE_POWER_WAIT;
+  g_object_notify_by_pspec (G_OBJECT (power), power_props[PROP_STATE]);
+
 }
 
 /* public methods */
@@ -507,7 +568,15 @@ bolt_power_acquire (BoltPower *power,
   if (id == NULL)
     return NULL;
 
-  if (power->state != BOLT_FORCE_POWER_ON)
+  if (power->state == BOLT_FORCE_POWER_WAIT)
+    {
+      g_source_remove (power->wait_id);
+      power->wait_id = 0;
+      power->state = BOLT_FORCE_POWER_ON;
+      g_object_notify_by_pspec (G_OBJECT (power),
+                                power_props[PROP_STATE]);
+    }
+  else if (power->state != BOLT_FORCE_POWER_ON)
     {
       ok = bolt_power_switch_toggle (power, TRUE, error);
       if (!ok)
