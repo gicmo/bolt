@@ -65,6 +65,24 @@ test_power_tear_down (TestPower *tt, gconstpointer user)
   g_clear_object (&tt->udev);
 }
 
+static BoltPower *
+make_bolt_power_timeout (TestPower *tt, guint timeout)
+{
+  g_autoptr(GError) err = NULL;
+  BoltPower *power;
+
+  power =  g_initable_new (BOLT_TYPE_POWER,
+                           NULL, &err,
+                           "udev", tt->udev,
+                           "timeout", timeout,
+                           NULL);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (power);
+
+  return power;
+}
+
 static void
 test_power_basic (TestPower *tt, gconstpointer user)
 {
@@ -78,7 +96,7 @@ test_power_basic (TestPower *tt, gconstpointer user)
   gboolean on;
   const char *fp;
 
-  power = bolt_power_new (tt->udev);
+  power = make_bolt_power_timeout (tt, 0);
 
   g_object_get (power,
                 "supported", &supported,
@@ -97,7 +115,7 @@ test_power_basic (TestPower *tt, gconstpointer user)
   fp = mock_sysfs_force_power_add (tt->sysfs);
   g_assert_nonnull (fp);
 
-  power = bolt_power_new (tt->udev);
+  power = make_bolt_power_timeout (tt, 0);
   g_object_get (power,
                 "supported", &supported,
                 "state", &state,
@@ -164,12 +182,10 @@ test_power_multiple (TestPower *tt, gconstpointer user)
   gboolean on;
   const char *fp;
 
-  power = bolt_power_new (tt->udev);
-
   fp = mock_sysfs_force_power_add (tt->sysfs);
   g_assert_nonnull (fp);
 
-  power = bolt_power_new (tt->udev);
+  power = make_bolt_power_timeout (tt, 0);
   g_object_get (power,
                 "supported", &supported,
                 "state", &state,
