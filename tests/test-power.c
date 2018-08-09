@@ -262,6 +262,93 @@ test_power_multiple (TestPower *tt, gconstpointer user)
   g_assert_false (on);
 }
 
+static void
+on_notify_quit_loop (GObject    *gobject,
+                     GParamSpec *pspec,
+                     gpointer    user_data)
+{
+
+  GMainLoop *loop = user_data;
+
+  g_main_loop_quit (loop);
+}
+
+static gboolean
+on_timeout_warn_quit_loop (gpointer user_data)
+{
+  GMainLoop *loop = user_data;
+
+  g_main_loop_quit (loop);
+  g_warning ("timeout reached");
+  return G_SOURCE_CONTINUE;
+}
+
+static void
+test_power_timeout (TestPower *tt, gconstpointer user)
+{
+  g_autoptr(BoltPower) power = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(GMainLoop) loop = NULL;
+  BoltPowerState state;
+  gboolean supported;
+  gboolean on;
+  const char *fp;
+  guint timeout;
+  guint tid;
+
+  fp = mock_sysfs_force_power_add (tt->sysfs);
+  g_assert_nonnull (fp);
+
+  /* non-zero timeout */
+  power = make_bolt_power_timeout (tt, 10);
+
+  g_object_get (power,
+                "supported", &supported,
+                "state", &state,
+                "timeout", &timeout,
+                NULL);
+
+  g_assert_true (supported);
+  g_assert (state == BOLT_FORCE_POWER_UNSET);
+  g_assert_cmpuint (timeout, ==, 10);
+
+  on = mock_sysfs_force_power_enabled (tt->sysfs);
+  g_assert_false (on);
+
+  /* set to ON ... */
+  guard = bolt_power_acquire (power, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (guard);
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_ON);
+
+  /* .. and OFF*/
+  g_clear_object (&guard);
+
+  /* but with a timeout, so we should be on still */
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_WAIT);
+  on = mock_sysfs_force_power_enabled (tt->sysfs);
+  g_assert_true (on);
+
+  loop = g_main_loop_new (NULL, FALSE);
+  tid = g_timeout_add_seconds (5, on_timeout_warn_quit_loop, loop);
+  g_signal_connect (power, "notify::state",
+                    G_CALLBACK (on_notify_quit_loop),
+                    loop);
+
+  /* now we wait for a state change */
+  g_main_loop_run (loop);
+  g_source_remove (tid);
+
+  /* we should have one now */
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_OFF);
+  on = mock_sysfs_force_power_enabled (tt->sysfs);
+  g_assert_false (on);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -285,6 +372,12 @@ main (int argc, char **argv)
               test_power_multiple,
               test_power_tear_down);
 
+  g_test_add ("/power/timeout",
+              TestPower,
+              NULL,
+              test_power_setup,
+              test_power_timeout,
+              test_power_tear_down);
 
   return g_test_run ();
 }
