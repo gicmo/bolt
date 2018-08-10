@@ -399,6 +399,26 @@ bolt_power_initialize (GInitable    *initable,
 
 /* internal methods */
 static gboolean
+bolt_power_wait_timeout (gpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  BoltPower *power = user_data;
+  gboolean ok;
+
+  /* we just removed the last active guard */
+  ok = bolt_power_switch_toggle (power, FALSE, &err);
+
+  if (!ok)
+    bolt_warn_err (err, LOG_TOPIC ("power"),
+                   "failed to turn off force_power");
+  else
+    bolt_info (LOG_TOPIC ("power"), "setting force_power to OFF");
+
+  power->wait_id = 0;
+  return G_SOURCE_REMOVE;
+}
+
+static gboolean
 bolt_power_switch_toggle (BoltPower *power,
                           gboolean   on,
                           GError   **error)
@@ -456,26 +476,6 @@ bolt_power_gen_guard_id (BoltPower *power,
   while (g_hash_table_contains (power->guards, id));
 
   return id;
-}
-
-static gboolean
-bolt_power_wait_timeout (gpointer user_data)
-{
-  g_autoptr(GError) err = NULL;
-  BoltPower *power = user_data;
-  gboolean ok;
-
-  /* we just removed the last active guard */
-  ok = bolt_power_switch_toggle (power, FALSE, &err);
-
-  if (!ok)
-    bolt_warn_err (err, LOG_TOPIC ("power"),
-                   "failed to turn off force_power");
-  else
-    bolt_info (LOG_TOPIC ("power"), "setting force_power to OFF");
-
-  power->wait_id = 0;
-  return G_SOURCE_REMOVE;
 }
 
 static void
