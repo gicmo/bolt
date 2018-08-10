@@ -542,6 +542,8 @@ bolt_power_new (BoltUdev *udev)
 gboolean
 bolt_power_can_force (BoltPower *power)
 {
+  g_return_val_if_fail (BOLT_IS_POWER (power), FALSE);
+
   return power->path != NULL;
 }
 
