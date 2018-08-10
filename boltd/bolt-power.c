@@ -192,6 +192,11 @@ static gboolean bolt_power_initialize (GInitable    *initable,
                                        GCancellable *cancellable,
                                        GError      **error);
 
+
+static gboolean bolt_power_switch_toggle (BoltPower *power,
+                                          gboolean   on,
+                                          GError   **error);
+
 struct _BoltPower
 {
   GObject object;
