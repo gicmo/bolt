@@ -192,6 +192,10 @@ static gboolean bolt_power_initialize (GInitable    *initable,
                                        GCancellable *cancellable,
                                        GError      **error);
 
+static void     handle_uevent_udev (BoltUdev           *udev,
+                                    const char         *action,
+                                    struct udev_device *device,
+                                    gpointer            user_data);
 
 static gboolean bolt_power_switch_toggle (BoltPower *power,
                                           gboolean   on,
@@ -399,6 +403,11 @@ bolt_power_initialize (GInitable    *initable,
     }
 
   udev_enumerate_unref (e);
+
+  g_signal_connect_object (power->udev, "uevent",
+                           (GCallback) handle_uevent_udev,
+                           power, 0);
+
   return TRUE;
 }
 
@@ -421,6 +430,42 @@ bolt_power_wait_timeout (gpointer user_data)
 
   power->wait_id = 0;
   return G_SOURCE_REMOVE;
+}
+
+static void
+handle_uevent_udev (BoltUdev           *udev,
+                    const char         *action,
+                    struct udev_device *device,
+                    gpointer            user_data)
+{
+  BoltPower *power = BOLT_POWER (user_data);
+  const char *subsystem;
+
+  /* no callback scheduled, nothing to do */
+  if (power->wait_id == 0)
+    return;
+
+  /* only interested in added devices */
+  if (!bolt_streq (action, "add"))
+    return;
+
+  subsystem = udev_device_get_subsystem (device);
+  if (!bolt_streq (subsystem, "thunderbolt"))
+    return;
+
+  /* if we are not in WAIT state, we don't
+   * do anything, but if we are, we want
+   * to reset the timeout */
+  if (power->state != BOLT_FORCE_POWER_WAIT)
+    return;
+
+  bolt_info (LOG_TOPIC ("power"), "resetting timeout (uevent %s)",
+             udev_device_get_syspath (device));
+
+  g_source_remove (power->wait_id);
+  power->wait_id = g_timeout_add (power->timeout,
+                                  bolt_power_wait_timeout,
+                                  power);
 }
 
 static gboolean
@@ -527,7 +572,6 @@ bolt_power_release (BoltPower *power, BoltPowerGuard *guard)
 
   power->state = BOLT_FORCE_POWER_WAIT;
   g_object_notify_by_pspec (G_OBJECT (power), power_props[PROP_STATE]);
-
 }
 
 /* public methods */
