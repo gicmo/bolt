@@ -395,3 +395,9 @@ bolt_device_type_is_host (BoltDeviceType type)
 {
   return type == BOLT_DEVICE_HOST;
 }
+
+const char *
+bolt_power_state_to_string (BoltPowerState state)
+{
+  return bolt_enum_to_string (BOLT_TYPE_POWER_STATE, state, NULL);
+}

@@ -267,3 +267,5 @@ typedef enum {
   BOLT_FORCE_POWER_WAIT  =  2,
 
 } BoltPowerState;
+
+const char *     bolt_power_state_to_string (BoltPowerState state);
