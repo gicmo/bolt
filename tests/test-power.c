@@ -34,6 +34,7 @@
 
 #include <libudev.h>
 #include <locale.h>
+#include <stdlib.h>
 
 typedef struct udev_device udev_device;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
@@ -43,6 +44,7 @@ typedef struct
 {
   MockSysfs *sysfs;
   BoltUdev  *udev;
+  char      *rundir;
 } TestPower;
 
 
@@ -56,13 +58,30 @@ test_power_setup (TestPower *tt, gconstpointer data)
 
   g_assert_no_error (err);
   g_assert_nonnull (tt->udev);
+
+  tt->rundir = g_strdup (g_getenv ("BOLT_RUNDIR"));
+  if (tt->rundir == NULL)
+    tt->rundir = g_dir_make_tmp ("bolt.power.XXXXXX", &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (tt->rundir);
+
+  g_debug ("rundir at '%s'", tt->rundir);
 }
 
 static void
 test_power_tear_down (TestPower *tt, gconstpointer user)
 {
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+
+  ok = bolt_fs_cleanup_dir (tt->rundir, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
   g_clear_object (&tt->sysfs);
   g_clear_object (&tt->udev);
+  g_clear_pointer (&tt->rundir, g_free);
 }
 
 static BoltPower *
@@ -75,6 +94,7 @@ make_bolt_power_timeout (TestPower *tt, guint timeout)
                            NULL, &err,
                            "udev", tt->udev,
                            "timeout", timeout,
+                           "rundir", tt->rundir,
                            NULL);
 
   g_assert_no_error (err);
@@ -349,6 +369,65 @@ test_power_timeout (TestPower *tt, gconstpointer user)
   g_assert_false (on);
 }
 
+static void
+test_power_recover_state (TestPower *tt, gconstpointer user)
+{
+  g_autoptr(BoltPower) power = NULL;
+  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(GError) err = NULL;
+  BoltPowerState state;
+  GFile *guarddir;
+  const char *fp;
+
+  fp = mock_sysfs_force_power_add (tt->sysfs);
+  g_assert_nonnull (fp);
+
+  if (g_test_subprocess ())
+    {
+      /* we are the subprocess, create a BoltPower instance
+       * but simulate a non-clean shutdown */
+      power = make_bolt_power_timeout (tt, 20 * 1000);
+
+      g_assert_no_error (err);
+      g_assert_nonnull (power);
+
+      guard = bolt_power_acquire (power, &err);
+      g_assert_no_error (err);
+      g_assert_nonnull (guard);
+
+      state = bolt_power_get_state (power);
+      g_assert_cmpint (state, ==, BOLT_FORCE_POWER_ON);
+
+      g_clear_object (&guard);
+      state = bolt_power_get_state (power);
+      g_assert_cmpint (state, ==, BOLT_FORCE_POWER_WAIT);
+
+      g_debug ("simulating crashing boltd");
+      exit (EXIT_SUCCESS);
+    }
+
+  // the main test
+  g_setenv ("BOLT_RUNDIR", tt->rundir, TRUE);
+  g_test_trap_subprocess (NULL, 0,
+                          G_TEST_SUBPROCESS_INHERIT_STDOUT |
+                          G_TEST_SUBPROCESS_INHERIT_STDERR);
+
+  g_test_trap_assert_passed ();
+
+  power = make_bolt_power_timeout (tt, 10);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (power);
+
+  guarddir = bolt_power_get_statedir (power);
+  g_assert_nonnull (guarddir);
+
+  state = bolt_power_get_state (power);
+  g_assert_cmpint (state, ==, BOLT_FORCE_POWER_WAIT);
+
+  g_unsetenv ("BOLT_RUNDIR");
+}
+
 int
 main (int argc, char **argv)
 {
@@ -377,6 +456,13 @@ main (int argc, char **argv)
               NULL,
               test_power_setup,
               test_power_timeout,
+              test_power_tear_down);
+
+  g_test_add ("/power/recover",
+              TestPower,
+              NULL,
+              test_power_setup,
+              test_power_recover_state,
               test_power_tear_down);
 
   return g_test_run ();
