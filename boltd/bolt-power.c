@@ -189,20 +189,30 @@ bolt_power_guard_class_init (BoltPowerGuardClass *klass)
 /* ****************************************************************** */
 /* BoltPower */
 
-static void     power_initable_iface_init (GInitableIface *iface);
+/* gobject */
+static void      power_initable_iface_init (GInitableIface *iface);
 
-static gboolean bolt_power_initialize (GInitable    *initable,
-                                       GCancellable *cancellable,
-                                       GError      **error);
+static gboolean  bolt_power_initialize (GInitable    *initable,
+                                        GCancellable *cancellable,
+                                        GError      **error);
+/* utilities */
+static char *    bolt_power_gen_guard_id (BoltPower *power,
+                                          GError   **error);
+
+
+static gboolean  bolt_power_switch_toggle (BoltPower *power,
+                                           gboolean   on,
+                                           GError   **error);
+
+/* callbacks and signals */
+static gboolean bolt_power_wait_timeout (gpointer user_data);
+
 
 static void     handle_uevent_udev (BoltUdev           *udev,
                                     const char         *action,
                                     struct udev_device *device,
                                     gpointer            user_data);
 
-static gboolean bolt_power_switch_toggle (BoltPower *power,
-                                          gboolean   on,
-                                          GError   **error);
 
 struct _BoltPower
 {
