@@ -23,6 +23,7 @@
 #include "bolt-power.h"
 
 #include "bolt-enums.h"
+#include "bolt-fs.h"
 #include "bolt-log.h"
 #include "bolt-io.h"
 #include "bolt-str.h"
@@ -30,6 +31,8 @@
 #include <libudev.h>
 
 #define POWER_WAIT_TIMEOUT 20 * 1000 // 20 seconds
+#define DEFAULT_RUNDIR "/run/boltd/"
+#define DEFAULT_STATEDIR "power"
 
 typedef struct udev_device udev_device;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
@@ -205,6 +208,10 @@ struct _BoltPower
 {
   GObject object;
 
+  /* path to store run time data  */
+  char  *runpath;
+  GFile *statedir;
+
   /* connection to udev */
   BoltUdev *udev;
 
@@ -225,6 +232,8 @@ struct _BoltPower
 enum {
   PROP_0,
 
+  PROP_RUNDIR,
+  PROP_STATEDIR,
   PROP_UDEV,
   PROP_SUPPORTED,
   PROP_STATE,
@@ -249,6 +258,8 @@ bolt_power_finalize (GObject *object)
   if (power->wait_id != 0)
     g_source_remove (power->wait_id);
 
+  g_clear_pointer (&power->runpath, g_free);
+  g_clear_object (&power->statedir);
   g_clear_object (&power->udev);
   g_clear_pointer (&power->path, g_free);
   g_clear_pointer (&power->guards, g_hash_table_unref);
@@ -274,6 +285,15 @@ bolt_power_get_property (GObject    *object,
 
   switch (prop_id)
     {
+
+    case PROP_RUNDIR:
+      g_value_set_string (value, power->runpath);
+      break;
+
+    case PROP_STATEDIR:
+      g_value_set_object (value, power->statedir);
+      break;
+
     case PROP_UDEV:
       g_value_set_object (value, power->udev);
       break;
@@ -305,6 +325,10 @@ bolt_power_set_property (GObject      *object,
 
   switch (prop_id)
     {
+    case PROP_RUNDIR:
+      power->runpath = g_value_dup_string (value);
+      break;
+
     case PROP_UDEV:
       power->udev = g_value_dup_object (value);
       break;
@@ -328,6 +352,21 @@ bolt_power_class_init (BoltPowerClass *klass)
 
   gobject_class->get_property = bolt_power_get_property;
   gobject_class->set_property = bolt_power_set_property;
+
+  power_props[PROP_RUNDIR] =
+    g_param_spec_string ("rundir",
+                         NULL, NULL,
+                         DEFAULT_RUNDIR,
+                         G_PARAM_READWRITE |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_STRINGS);
+
+  power_props[PROP_STATEDIR] =
+    g_param_spec_string ("statedir",
+                         NULL, NULL,
+                         DEFAULT_RUNDIR,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_STRINGS);
 
   power_props[PROP_UDEV] =
     g_param_spec_object ("udev",
@@ -376,9 +415,21 @@ bolt_power_initialize (GInitable    *initable,
                        GCancellable *cancellable,
                        GError      **error)
 {
+  g_autoptr(GError) err = NULL;
+  g_autofree char *statedir = NULL;
   BoltPower *power = BOLT_POWER (initable);
   struct udev_enumerate *e;
   struct udev_list_entry *l, *devices;
+  gboolean ok;
+
+  statedir = g_build_filename (power->runpath, DEFAULT_STATEDIR, NULL);
+  power->statedir = g_file_new_for_path (statedir);
+
+  ok = g_file_make_directory_with_parents (power->statedir, NULL, &err);
+  if (!ok && !bolt_err_exists (err))
+    bolt_warn_err (err, LOG_TOPIC ("power"),
+                   "failed to create guarddir at %s", statedir);
+  g_clear_error (&err);
 
   e = bolt_udev_new_enumerate (power->udev, NULL);
   udev_enumerate_add_match_subsystem (e, "wmi");
@@ -586,6 +637,14 @@ bolt_power_new (BoltUdev *udev)
                           NULL);
 
   return power;
+}
+
+GFile *
+bolt_power_get_statedir (BoltPower *power)
+{
+  g_return_val_if_fail (BOLT_IS_POWER (power), FALSE);
+
+  return power->statedir;
 }
 
 gboolean

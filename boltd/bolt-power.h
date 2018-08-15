@@ -40,6 +40,8 @@ G_DECLARE_FINAL_TYPE (BoltPower, bolt_power, BOLT, POWER, GObject);
 
 BoltPower  *        bolt_power_new (BoltUdev *udev);
 
+GFile *             bolt_power_get_statedir (BoltPower *power);
+
 gboolean            bolt_power_can_force (BoltPower *power);
 
 BoltPowerState      bolt_power_get_state (BoltPower *power);
