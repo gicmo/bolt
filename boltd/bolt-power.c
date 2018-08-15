@@ -33,6 +33,7 @@
 #define POWER_WAIT_TIMEOUT 20 * 1000 // 20 seconds
 #define DEFAULT_RUNDIR "/run/boltd/"
 #define DEFAULT_STATEDIR "power"
+#define STATE_FILENAME "on"
 
 typedef struct udev_device udev_device;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
@@ -223,6 +224,7 @@ struct _BoltPower
   /* path to store run time data  */
   char  *runpath;
   GFile *statedir;
+  GFile *statefile;
 
   /* connection to udev */
   BoltUdev *udev;
@@ -275,6 +277,7 @@ bolt_power_finalize (GObject *object)
 
   g_clear_pointer (&power->runpath, g_free);
   g_clear_object (&power->statedir);
+  g_clear_object (&power->statefile);
   g_clear_object (&power->udev);
   g_clear_pointer (&power->path, g_free);
   g_clear_pointer (&power->guards, g_hash_table_unref);
@@ -431,14 +434,18 @@ bolt_power_initialize (GInitable    *initable,
                        GError      **error)
 {
   g_autoptr(GError) err = NULL;
+  g_autoptr(BoltPowerGuard) guard = NULL;
   g_autofree char *statedir = NULL;
   BoltPower *power = BOLT_POWER (initable);
   struct udev_enumerate *e;
   struct udev_list_entry *l, *devices;
+  gboolean on = FALSE;
   gboolean ok;
+  guint guards;
 
   statedir = g_build_filename (power->runpath, DEFAULT_STATEDIR, NULL);
   power->statedir = g_file_new_for_path (statedir);
+  power->statefile = g_file_get_child (power->statedir, STATE_FILENAME);
 
   ok = g_file_make_directory_with_parents (power->statedir, NULL, &err);
   if (!ok && !bolt_err_exists (err))
@@ -470,9 +477,34 @@ bolt_power_initialize (GInitable    *initable,
 
   udev_enumerate_unref (e);
 
+  bolt_msg (LOG_TOPIC ("power"), "force power support: %s",
+            bolt_yesno (power->path != NULL));
+
+  if (power->path == NULL)
+    return TRUE;
+
   g_signal_connect_object (power->udev, "uevent",
                            (GCallback) handle_uevent_udev,
                            power, 0);
+
+  /* recover force power state */
+  on = g_file_query_exists (power->statefile, NULL);
+
+  /* enforce that our ON state is actually true */
+  guards = g_hash_table_size (power->guards);
+  if (on || guards > 0)
+    {
+      bolt_msg (LOG_TOPIC ("power"), "recovered state, on: %s, guards: %u",
+                bolt_yesno (on), guards);
+
+      bolt_info (LOG_TOPIC ("power"), "creating temporary power guard");
+
+      guard = bolt_power_acquire (power, &err);
+      if (guard == NULL)
+        bolt_warn_err (err, LOG_TOPIC ("power"),
+                       "failed to force-power controller");
+      /* failures here are not critical */
+    }
 
   return TRUE;
 }
@@ -554,6 +586,9 @@ bolt_power_switch_toggle (BoltPower *power,
                           gboolean   on,
                           GError   **error)
 {
+  g_autoptr(GError) err = NULL;
+  g_autofree char *statepath = NULL;
+  BoltPowerState state;
   gboolean ok;
   int fd;
 
@@ -573,12 +608,35 @@ bolt_power_switch_toggle (BoltPower *power,
   ok = bolt_write_all (fd, on ? "1" : "0", 1, error);
   bolt_close (fd, NULL);
 
-  if (ok)
+  if (!ok)
+    return FALSE;
+
+  statepath = g_file_get_path (power->statefile);
+
+  if (on)
     {
-      power->state = on ? BOLT_FORCE_POWER_ON : BOLT_FORCE_POWER_OFF;
-      g_object_notify_by_pspec (G_OBJECT (power),
-                                power_props[PROP_STATE]);
+      state = BOLT_FORCE_POWER_ON;
+      fd = bolt_open (statepath, O_CREAT | O_TRUNC, 0666, &err);
+      ok = fd > -1;
+      if (ok)
+        (void) close (fd);
     }
+  else
+    {
+      state = BOLT_FORCE_POWER_OFF;
+      ok = bolt_unlink (statepath, &err);
+    }
+
+  if (!ok)
+    bolt_warn_err (err, "could not write force_power state-file");
+  else
+    bolt_debug (LOG_TOPIC ("power"), "wrote state %s to %s",
+                bolt_power_state_to_string (state),
+                statepath);
+
+  power->state = state;
+  g_object_notify_by_pspec (G_OBJECT (power),
+                            power_props[PROP_STATE]);
 
   return ok;
 }
