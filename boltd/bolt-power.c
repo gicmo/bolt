@@ -23,12 +23,14 @@
 #include "bolt-power.h"
 
 #include "bolt-enums.h"
+#include "bolt-error.h"
 #include "bolt-fs.h"
 #include "bolt-log.h"
 #include "bolt-io.h"
 #include "bolt-str.h"
 
 #include <libudev.h>
+#include <unistd.h>
 
 #define POWER_WAIT_TIMEOUT 20 * 1000 // 20 seconds
 #define DEFAULT_RUNDIR "/run/boltd/"
@@ -42,6 +44,7 @@ static void       bolt_power_release (BoltPower      *power,
                                       BoltPowerGuard *guard);
 
 /* BoltPowerGuard  */
+static void       bolt_power_guard_remove (BoltPowerGuard *guard);
 
 struct _BoltPowerGuard
 {
@@ -49,19 +52,23 @@ struct _BoltPowerGuard
 
   /* book-keeping */
   BoltPower *power;
+  char      *path;
 
   /* properties */
   char *id;
   char *who;
+
 };
 
 enum {
   PROP_GUARD_0,
 
   PROP_POWER,
+  PROP_PATH,
 
   PROP_ID,
   PROP_WHO,
+
 
   PROP_GUARD_LAST
 };
@@ -77,8 +84,11 @@ bolt_power_guard_finalize (GObject *object)
 {
   BoltPowerGuard *guard = BOLT_POWER_GUARD (object);
 
+  /* remove our state file */
+  bolt_power_guard_remove (guard);
+
   /* release the lock we have to force power,
-  * object must be intact for this to work */
+   * we must be intact for method call */
   bolt_power_release (guard->power, guard);
 
   g_clear_pointer (&guard->who, g_free);
@@ -100,6 +110,10 @@ bolt_power_guard_get_property (GObject    *object,
     {
     case PROP_POWER:
       g_value_set_object (value, guard->power);
+      break;
+
+    case PROP_PATH:
+      g_value_set_object (value, guard->path);
       break;
 
     case PROP_ID:
@@ -128,6 +142,10 @@ bolt_power_guard_set_property (GObject      *object,
     {
     case PROP_POWER:
       guard->power = g_value_dup_object (value);
+      break;
+
+    case PROP_PATH:
+      guard->path = g_value_dup_string (value);
       break;
 
     case PROP_ID:
@@ -166,6 +184,14 @@ bolt_power_guard_class_init (BoltPowerGuardClass *klass)
                          G_PARAM_CONSTRUCT_ONLY |
                          G_PARAM_STATIC_STRINGS);
 
+  guard_props[PROP_PATH] =
+    g_param_spec_string ("path",
+                         NULL, NULL,
+                         NULL,
+                         G_PARAM_READWRITE |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_STRINGS);
+
   guard_props[PROP_ID] =
     g_param_spec_string ("id",
                          NULL, NULL,
@@ -187,6 +213,117 @@ bolt_power_guard_class_init (BoltPowerGuardClass *klass)
                                      guard_props);
 }
 
+static gboolean
+bolt_power_guard_save (BoltPowerGuard *guard,
+                       GFile          *guarddir,
+                       GError        **error)
+{
+  g_autoptr(GFile) guardfile = NULL;
+  g_autoptr(GKeyFile) kf = NULL;
+  g_autofree char *path = NULL;
+  g_autofree char *name = NULL;
+  gboolean ok;
+
+  name = g_strdup_printf ("%s.guard", guard->id);
+  guardfile = g_file_get_child (guarddir, name);
+  path = g_file_get_path (guardfile);
+
+  kf = g_key_file_new ();
+
+  g_key_file_set_string (kf, "guard", "id", guard->id);
+  g_key_file_set_string (kf, "guard", "who", guard->who);
+
+  ok = g_key_file_save_to_file (kf, path, error);
+
+  if (ok)
+    {
+      guard->path = g_steal_pointer (&path);
+      g_object_notify_by_pspec (G_OBJECT (guard),
+                                guard_props[PROP_PATH]);
+    }
+
+  return ok;
+}
+
+static BoltPowerGuard *
+bolt_power_guard_load (BoltPower  *power,
+                       const char *name,
+                       GError    **error)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GFile) guardfile = NULL;
+  g_autoptr(GKeyFile) kf = NULL;
+  g_autofree char *path = NULL;
+  g_autofree char *who = NULL;
+  g_autofree char *id = NULL;
+  GFile *statedir;
+  gboolean ok;
+
+  statedir = bolt_power_get_statedir (power);
+  guardfile = g_file_get_child (statedir, name);
+  path = g_file_get_path (guardfile);
+
+  kf = g_key_file_new ();
+  ok = g_key_file_load_from_file (kf, path, 0, error);
+
+  if (!ok)
+    return NULL;
+
+  id = g_key_file_get_string (kf, "guard", "id", &err);
+
+  if (id == NULL)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "could not read 'id' field: %s", err->message);
+      return NULL;
+    }
+
+  who = g_key_file_get_string (kf, "guard", "who", &err);
+  if (who == NULL)
+    {
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                           "field missing ('who')");
+      return NULL;
+    }
+
+  return g_object_new (BOLT_TYPE_POWER_GUARD,
+                       "power", power,
+                       "path", path,
+                       "id", id,
+                       "who", who,
+                       NULL);
+}
+
+static void
+bolt_power_guard_remove (BoltPowerGuard *guard)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *parent = NULL;
+  gboolean ok;
+
+  if (guard->path == NULL)
+    return;
+
+  ok = bolt_unlink (guard->path, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, "Could not remove power guard: '%s' @ %s",
+                     guard->id, guard->path);
+      return;
+    }
+
+  /* we try to remove the parent dir, which will most
+   * likely fail, because it is not empty, but that we
+   * just ignore
+   */
+  parent = g_path_get_dirname (guard->path);
+  (void) rmdir (parent);
+
+  g_clear_pointer (&guard->path, g_free);
+  g_object_notify_by_pspec (G_OBJECT (guard),
+                            guard_props[PROP_PATH]);
+}
+
 /* ****************************************************************** */
 /* BoltPower */
 
@@ -200,6 +337,8 @@ static gboolean  bolt_power_initialize (GInitable    *initable,
 static char *    bolt_power_gen_guard_id (BoltPower *power,
                                           GError   **error);
 
+static gboolean  bolt_power_recover_guards (BoltPower *power,
+                                            GError   **error);
 
 static void      bolt_power_timeout_reset (BoltPower *power);
 
@@ -490,6 +629,16 @@ bolt_power_initialize (GInitable    *initable,
   /* recover force power state */
   on = g_file_query_exists (power->statefile, NULL);
 
+  /* recover saved power guards */
+  ok = bolt_power_recover_guards (power, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("power"),
+                     "failed to recover guards");
+      g_clear_error (&err);
+      /* NOT a critical failure */
+    }
+
   /* enforce that our ON state is actually true */
   guards = g_hash_table_size (power->guards);
   if (on || guards > 0)
@@ -510,6 +659,52 @@ bolt_power_initialize (GInitable    *initable,
 }
 
 /* internal methods */
+static gboolean
+bolt_power_recover_guards (BoltPower *power,
+                           GError   **error)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GDir) dir   = NULL;
+  g_autofree char *statedir = NULL;
+  const char *name;
+
+  statedir = g_file_get_path (power->statedir);
+
+  dir = g_dir_open (statedir, 0, &err);
+  if (dir == NULL)
+    return FALSE;
+
+  while ((name = g_dir_read_name (dir)) != NULL)
+    {
+      BoltPowerGuard *guard;
+
+      if (!g_str_has_suffix (name, ".guard"))
+        continue;
+
+      guard = bolt_power_guard_load (power, name, &err);
+
+      if (guard == NULL)
+        {
+          bolt_warn_err (err, LOG_TOPIC ("power"),
+                         "could not load guard '%s'", name);
+          g_clear_error (&err);
+          continue;
+        }
+
+      /* internal guards are discarded */
+      if (bolt_streq (guard->who, "boltd"))
+        continue;
+
+      bolt_info (LOG_TOPIC ("power"),
+                 "guard '%s' for '%s' recovered",
+                 guard->id, guard->who);
+
+      g_hash_table_insert (power->guards, guard->id, guard);
+    }
+
+  return TRUE;
+}
+
 static gboolean
 bolt_power_wait_timeout (gpointer user_data)
 {
@@ -750,6 +945,7 @@ BoltPowerGuard *
 bolt_power_acquire (BoltPower *power,
                     GError   **error)
 {
+  g_autoptr(GError) err = NULL;
   g_autofree char *id = NULL;
   BoltPowerGuard *guard;
   gboolean ok;
@@ -790,6 +986,13 @@ bolt_power_acquire (BoltPower *power,
 
   bolt_info (LOG_TOPIC ("power"), "guard '%s' for '%s' active",
              guard->id, guard->who);
+
+  /* guard is saved so we can recover our state if we
+   * were to crash or restarted */
+  ok = bolt_power_guard_save (guard, power->statedir, &err);
+  if (!ok)
+    bolt_warn_err (err, LOG_TOPIC ("power"),
+                   "could not save guard '%s'", guard->id);
 
   return guard;
 }
