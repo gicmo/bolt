@@ -268,7 +268,10 @@ bolt_power_finalize (GObject *object)
   BoltPower *power = BOLT_POWER (object);
 
   if (power->wait_id != 0)
-    g_source_remove (power->wait_id);
+    {
+      g_source_remove (power->wait_id);
+      bolt_power_wait_timeout (power);
+    }
 
   g_clear_pointer (&power->runpath, g_free);
   g_clear_object (&power->statedir);
