@@ -200,6 +200,8 @@ static char *    bolt_power_gen_guard_id (BoltPower *power,
                                           GError   **error);
 
 
+static void      bolt_power_timeout_reset (BoltPower *power);
+
 static gboolean  bolt_power_switch_toggle (BoltPower *power,
                                            gboolean   on,
                                            GError   **error);
@@ -523,10 +525,25 @@ handle_uevent_udev (BoltUdev           *udev,
   bolt_info (LOG_TOPIC ("power"), "resetting timeout (uevent %s)",
              udev_device_get_syspath (device));
 
-  g_source_remove (power->wait_id);
+  bolt_power_timeout_reset (power);
+}
+
+static void
+bolt_power_timeout_reset (BoltPower *power)
+{
+  if (power->wait_id > 0)
+    g_source_remove (power->wait_id);
+
   power->wait_id = g_timeout_add (power->timeout,
                                   bolt_power_wait_timeout,
                                   power);
+
+  if (power->state != BOLT_FORCE_POWER_WAIT)
+    {
+      power->state = BOLT_FORCE_POWER_WAIT;
+      g_object_notify_by_pspec (G_OBJECT (power),
+                                power_props[PROP_STATE]);
+    }
 }
 
 static gboolean
@@ -627,12 +644,7 @@ bolt_power_release (BoltPower *power, BoltPowerGuard *guard)
   bolt_info (LOG_TOPIC ("power"), "shutdown scheduled (T-%3.2fs)",
              power->timeout / 1000.0);
 
-  power->wait_id = g_timeout_add (power->timeout,
-                                  bolt_power_wait_timeout,
-                                  power);
-
-  power->state = BOLT_FORCE_POWER_WAIT;
-  g_object_notify_by_pspec (G_OBJECT (power), power_props[PROP_STATE]);
+  bolt_power_timeout_reset (power);
 }
 
 /* public methods */
