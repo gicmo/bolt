@@ -46,6 +46,10 @@ gboolean            bolt_power_can_force (BoltPower *power);
 
 BoltPowerState      bolt_power_get_state (BoltPower *power);
 
+BoltPowerGuard *    bolt_power_acquire_full (BoltPower  *power,
+                                             const char *who,
+                                             GError    **error);
+
 BoltPowerGuard *    bolt_power_acquire (BoltPower *power,
                                         GError   **error);
 G_END_DECLS

@@ -945,12 +945,23 @@ BoltPowerGuard *
 bolt_power_acquire (BoltPower *power,
                     GError   **error)
 {
+  const char *who = "boltd";
+
+  return bolt_power_acquire_full (power, who, error);
+}
+
+BoltPowerGuard *
+bolt_power_acquire_full (BoltPower  *power,
+                         const char *who,
+                         GError    **error)
+{
   g_autoptr(GError) err = NULL;
   g_autofree char *id = NULL;
   BoltPowerGuard *guard;
   gboolean ok;
 
   g_return_val_if_fail (BOLT_IS_POWER (power), NULL);
+  g_return_val_if_fail (who != NULL, NULL);
 
   id = bolt_power_gen_guard_id (power, error);
 
@@ -975,7 +986,7 @@ bolt_power_acquire (BoltPower *power,
   guard = g_object_new (BOLT_TYPE_POWER_GUARD,
                         "power", power,
                         "id", id,
-                        "who", "boltd",
+                        "who", who,
                         NULL);
 
   /* NB: we don't take a ref here, because we want the
