@@ -21,7 +21,11 @@
 #include "config.h"
 
 #include "bolt-error.h"
+#include "bolt-io.h"
 #include "bolt-fs.h"
+
+#include <dirent.h>
+#include <errno.h>
 
 gboolean
 bolt_fs_make_parent_dirs (GFile   *target,
@@ -41,4 +45,51 @@ bolt_fs_make_parent_dirs (GFile   *target,
     }
 
   return TRUE;
+}
+
+static void
+cleanup_dir (DIR *d)
+{
+  struct dirent *de = NULL;
+
+  while ((de = readdir (d)) != NULL)
+    {
+      g_autoptr(GError) error = NULL;
+      int uflag = 0;
+
+      if (!g_strcmp0 (de->d_name, ".") ||
+          !g_strcmp0 (de->d_name, ".."))
+        continue;
+
+      if (de->d_type == DT_DIR)
+        {
+          DIR *cd;
+
+          cd = bolt_opendir_at (dirfd (d), de->d_name, O_RDONLY, &error);
+          if (cd == NULL)
+            continue;
+
+          cleanup_dir (cd);
+          uflag = AT_REMOVEDIR;
+          closedir (cd);
+        }
+
+      bolt_unlink_at (dirfd (d), de->d_name, uflag, NULL);
+    }
+}
+
+gboolean
+bolt_fs_cleanup_dir (const char *target,
+                     GError    **error)
+{
+  DIR *d = NULL;
+
+  d = bolt_opendir (target, error);
+  if (d == NULL)
+    return FALSE;
+
+  cleanup_dir (d);
+  (void) bolt_closedir (d, NULL);
+
+  return bolt_rmdir (target, error);
 }
