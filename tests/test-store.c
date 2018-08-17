@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "bolt-error.h"
+#include "bolt-fs.h"
 #include "bolt-io.h"
 #include "bolt-store.h"
 
@@ -31,44 +32,11 @@
 #include <glib/gprintf.h>
 #include <glib/gstdio.h>
 
-#include <dirent.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <locale.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h> /* unlinkat, truncate */
-
-static void
-cleanup_dir (DIR *d)
-{
-  struct dirent *de = NULL;
-
-  for (errno = 0, de = readdir (d); de != NULL; errno = 0, de = readdir (d))
-    {
-      g_autoptr(GError) error = NULL;
-      int uflag               = 0;
-
-      if (!g_strcmp0 (de->d_name, ".") ||
-          !g_strcmp0 (de->d_name, ".."))
-        continue;
-
-      if (de->d_type == DT_DIR)
-        {
-          g_autoptr(DIR) cd = NULL;
-
-          cd = bolt_opendir_at (dirfd (d), de->d_name, O_RDONLY, &error);
-          if (cd == NULL)
-            continue;
-
-          cleanup_dir (cd);
-          uflag = AT_REMOVEDIR;
-        }
-
-      bolt_unlink_at (dirfd (d), de->d_name, uflag, NULL);
-    }
-}
-
 
 typedef struct
 {
@@ -108,23 +76,15 @@ test_store_setup (TestStore *tt, gconstpointer user_data)
 static void
 test_store_tear_down (TestStore *tt, gconstpointer user_data)
 {
-  DIR *d = NULL;
-
   g_autoptr(GError) error = NULL;
+  gboolean ok;
 
   if (tt->store)
     g_clear_object (&tt->store);
 
-  d = bolt_opendir (tt->path, &error);
-  if (d)
-    {
-      g_debug ("Cleaning up: %s", tt->path);
-      cleanup_dir (d);
-      bolt_closedir (d, NULL);
-      bolt_rmdir (tt->path, &error);
-    }
+  ok = bolt_fs_cleanup_dir (tt->path, &error);
 
-  if (error != NULL)
+  if (!ok)
     g_warning ("Could not clean up dir: %s", error->message);
 }
 

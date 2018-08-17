@@ -34,8 +34,6 @@
 #include <gio/gio.h>
 #include <glib/gprintf.h>
 
-#include <dirent.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <locale.h>
 #include <string.h>
@@ -47,36 +45,6 @@
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GFlagsClass, g_type_class_unref);
 #endif
-
-static void
-cleanup_dir (DIR *d)
-{
-  struct dirent *de = NULL;
-
-  for (errno = 0, de = readdir (d); de != NULL; errno = 0, de = readdir (d))
-    {
-      g_autoptr(GError) error = NULL;
-      int uflag               = 0;
-
-      if (!g_strcmp0 (de->d_name, ".") ||
-          !g_strcmp0 (de->d_name, ".."))
-        continue;
-
-      if (de->d_type == DT_DIR)
-        {
-          g_autoptr(DIR) cd = NULL;
-
-          cd = bolt_opendir_at (dirfd (d), de->d_name, O_RDONLY, &error);
-          if (cd == NULL)
-            continue;
-
-          cleanup_dir (cd);
-          uflag = AT_REMOVEDIR;
-        }
-
-      unlinkat (dirfd (d), de->d_name, uflag);
-    }
-}
 
 
 typedef struct
@@ -465,22 +433,12 @@ static void
 test_io_tear_down (TestIO *tt, gconstpointer user_data)
 {
   g_autoptr(GError) error = NULL;
-  DIR *d = NULL;
+  gboolean ok;
 
-  d = bolt_opendir (tt->path, &error);
+  ok = bolt_fs_cleanup_dir (tt->path, &error);
 
-  if (d)
-    {
-      g_debug ("Cleaning up: %s", tt->path);
-      cleanup_dir (d);
-      bolt_closedir (d, NULL);
-      bolt_rmdir (tt->path, &error);
-    }
-  else if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
-    {
-      g_warning ("Could not clean up dir: %s", error->message);
-    }
-
+  if (!ok && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
+    g_warning ("Could not clean up dir: %s", error->message);
 }
 
 
