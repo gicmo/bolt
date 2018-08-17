@@ -23,6 +23,8 @@
 #include "bolt-enums.h"
 #include "bolt-udev.h"
 
+#include <sys/types.h>
+
 G_BEGIN_DECLS
 
 /* forward declaration */
@@ -48,6 +50,7 @@ BoltPowerState      bolt_power_get_state (BoltPower *power);
 
 BoltPowerGuard *    bolt_power_acquire_full (BoltPower  *power,
                                              const char *who,
+                                             pid_t       pid,
                                              GError    **error);
 
 BoltPowerGuard *    bolt_power_acquire (BoltPower *power,

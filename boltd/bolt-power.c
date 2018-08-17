@@ -28,9 +28,11 @@
 #include "bolt-log.h"
 #include "bolt-io.h"
 #include "bolt-str.h"
+#include "bolt-unix.h"
 
 #include <libudev.h>
 #include <unistd.h>
+#include <sys/types.h>
 
 #define POWER_WAIT_TIMEOUT 20 * 1000 // 20 seconds
 #define DEFAULT_RUNDIR "/run/boltd/"
@@ -57,7 +59,7 @@ struct _BoltPowerGuard
   /* properties */
   char *id;
   char *who;
-
+  pid_t pid;
 };
 
 enum {
@@ -68,6 +70,7 @@ enum {
 
   PROP_ID,
   PROP_WHO,
+  PROP_PID,
 
 
   PROP_GUARD_LAST
@@ -124,6 +127,10 @@ bolt_power_guard_get_property (GObject    *object,
       g_value_set_string (value, guard->who);
       break;
 
+    case PROP_PID:
+      g_value_set_ulong (value, guard->pid);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -154,6 +161,10 @@ bolt_power_guard_set_property (GObject      *object,
 
     case PROP_WHO:
       guard->who = g_value_dup_string (value);
+      break;
+
+    case PROP_PID:
+      guard->pid = g_value_get_ulong (value);
       break;
 
     default:
@@ -208,6 +219,14 @@ bolt_power_guard_class_init (BoltPowerGuardClass *klass)
                          G_PARAM_CONSTRUCT_ONLY |
                          G_PARAM_STATIC_STRINGS);
 
+  guard_props[PROP_PID] =
+    g_param_spec_ulong ("pid",
+                        NULL, NULL,
+                        0, G_MAXULONG, 0,
+                        G_PARAM_READWRITE |
+                        G_PARAM_CONSTRUCT_ONLY |
+                        G_PARAM_STATIC_STRINGS);
+
   g_object_class_install_properties (gobject_class,
                                      PROP_GUARD_LAST,
                                      guard_props);
@@ -232,6 +251,7 @@ bolt_power_guard_save (BoltPowerGuard *guard,
 
   g_key_file_set_string (kf, "guard", "id", guard->id);
   g_key_file_set_string (kf, "guard", "who", guard->who);
+  g_key_file_set_uint64 (kf, "guard", "pid", guard->pid);
 
   ok = g_key_file_save_to_file (kf, path, error);
 
@@ -258,6 +278,7 @@ bolt_power_guard_load (BoltPower  *power,
   g_autofree char *id = NULL;
   GFile *statedir;
   gboolean ok;
+  gulong pid;
 
   statedir = bolt_power_get_statedir (power);
   guardfile = g_file_get_child (statedir, name);
@@ -286,11 +307,20 @@ bolt_power_guard_load (BoltPower  *power,
       return NULL;
     }
 
+  pid = (gulong) g_key_file_get_uint64 (kf, "guard", "pid", &err);
+  if (err != NULL)
+    {
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                           "field missing ('pid')");
+      return NULL;
+    }
+
   return g_object_new (BOLT_TYPE_POWER_GUARD,
                        "power", power,
                        "path", path,
                        "id", id,
                        "who", who,
+                       "pid", pid,
                        NULL);
 }
 
@@ -693,11 +723,21 @@ bolt_power_recover_guards (BoltPower *power,
 
       /* internal guards are discarded */
       if (bolt_streq (guard->who, "boltd"))
-        continue;
+        {
+          bolt_info (LOG_TOPIC ("power"), "ignoring boltd guard");
+          continue;
+        }
+      else if (!bolt_pid_is_alive (guard->pid))
+        {
+          bolt_info (LOG_TOPIC ("power"),
+                     "ignoring guard '%s for '%s': process dead",
+                     guard->id, guard->who);
+          continue;
+        }
 
       bolt_info (LOG_TOPIC ("power"),
-                 "guard '%s' for '%s' recovered",
-                 guard->id, guard->who);
+                 "guard '%s' for '%s' (pid %lu) recovered",
+                 guard->id, guard->who, (gulong) guard->pid);
 
       g_hash_table_insert (power->guards, guard->id, guard);
     }
@@ -947,12 +987,13 @@ bolt_power_acquire (BoltPower *power,
 {
   const char *who = "boltd";
 
-  return bolt_power_acquire_full (power, who, error);
+  return bolt_power_acquire_full (power, who, 0, error);
 }
 
 BoltPowerGuard *
 bolt_power_acquire_full (BoltPower  *power,
                          const char *who,
+                         pid_t       pid,
                          GError    **error)
 {
   g_autoptr(GError) err = NULL;
@@ -983,10 +1024,14 @@ bolt_power_acquire_full (BoltPower  *power,
         return NULL;
     }
 
+  if (pid == 0)
+    pid = getpid ();
+
   guard = g_object_new (BOLT_TYPE_POWER_GUARD,
                         "power", power,
                         "id", id,
                         "who", who,
+                        "pid", pid,
                         NULL);
 
   /* NB: we don't take a ref here, because we want the
