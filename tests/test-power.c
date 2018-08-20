@@ -541,6 +541,82 @@ test_power_recover_guards_fail (TestPower *tt, gconstpointer user)
   g_assert_cmpint (state, ==, BOLT_FORCE_POWER_WAIT);
 }
 
+static gboolean
+on_cb_close_fd (gpointer user_data)
+{
+  int fd = GPOINTER_TO_INT (user_data);
+  int r;
+
+  g_debug ("closing fd");
+  r = close (fd);
+
+  g_assert_cmpint (r, >, -1);
+  return FALSE;
+}
+
+static void
+test_power_guards_fifo (TestPower *tt, gconstpointer user)
+{
+  g_autoptr(BoltPower) power = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(GMainLoop) loop = NULL;
+  BoltPowerState state;
+  gboolean on;
+  const char *fp;
+  guint tid;
+  int fd;
+
+  fp = mock_sysfs_force_power_add (tt->sysfs);
+  g_assert_nonnull (fp);
+
+  /* non-zero timeout */
+  power = make_bolt_power_timeout (tt, 0);
+
+  on = mock_sysfs_force_power_enabled (tt->sysfs);
+  g_assert_false (on);
+
+  /* set to ON ... */
+  guard = bolt_power_acquire (power, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (guard);
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_ON);
+
+  fd = bolt_power_guard_monitor (guard, &err);
+  g_assert_no_error (err);
+  g_assert_cmpint (fd, >, -1);
+
+  /* we should still be ON and the guard still active,
+   * because the event watcher still owns a reference
+   */
+  g_clear_object (&guard);
+  state = bolt_power_get_state (power);
+  g_assert_cmpint (state, ==, BOLT_FORCE_POWER_ON);
+
+  loop = g_main_loop_new (NULL, FALSE);
+
+  /* fail if we don't have anything after n seconds */
+  tid = g_timeout_add_seconds (5, on_timeout_warn_quit_loop, loop);
+
+  /* schedule a closing of the fifo */
+  g_idle_add (on_cb_close_fd, GINT_TO_POINTER (fd));
+
+  g_signal_connect (power, "notify::state",
+                    G_CALLBACK (on_notify_quit_loop),
+                    loop);
+
+  /* now we wait for the fifo to be closed */
+  g_main_loop_run (loop);
+  g_source_remove (tid);
+
+  /* we should have one now */
+  state = bolt_power_get_state (power);
+  g_assert (state == BOLT_FORCE_POWER_OFF);
+  on = mock_sysfs_force_power_enabled (tt->sysfs);
+  g_assert_false (on);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -590,6 +666,13 @@ main (int argc, char **argv)
               NULL,
               test_power_setup,
               test_power_recover_guards_fail,
+              test_power_tear_down);
+
+  g_test_add ("/power/guards/fifo",
+              TestPower,
+              NULL,
+              test_power_setup,
+              test_power_guards_fifo,
               test_power_tear_down);
 
   return g_test_run ();
