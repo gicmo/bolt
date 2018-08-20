@@ -35,6 +35,9 @@ struct udev;
 #define BOLT_TYPE_POWER_GUARD bolt_power_guard_get_type ()
 G_DECLARE_FINAL_TYPE (BoltPowerGuard, bolt_power_guard, BOLT, POWER_GUARD, GObject);
 
+int                 bolt_power_guard_monitor (BoltPowerGuard *guard,
+                                              GError        **error);
+
 /* BoltPower */
 
 #define BOLT_TYPE_POWER bolt_power_get_type ()

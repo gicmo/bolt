@@ -56,6 +56,9 @@ struct _BoltPowerGuard
   BoltPower *power;
   char      *path;
 
+  char      *fifo;
+  guint      watch;
+
   /* properties */
   char *id;
   char *who;
@@ -67,6 +70,7 @@ enum {
 
   PROP_POWER,
   PROP_PATH,
+  PROP_FIFO,
 
   PROP_ID,
   PROP_WHO,
@@ -94,6 +98,10 @@ bolt_power_guard_finalize (GObject *object)
    * we must be intact for method call */
   bolt_power_release (guard->power, guard);
 
+  if (guard->watch)
+    g_source_remove (guard->watch);
+
+  g_clear_pointer (&guard->fifo, g_free);
   g_clear_pointer (&guard->who, g_free);
   g_clear_pointer (&guard->id, g_free);
   g_clear_object (&guard->power);
@@ -117,6 +125,10 @@ bolt_power_guard_get_property (GObject    *object,
 
     case PROP_PATH:
       g_value_set_object (value, guard->path);
+      break;
+
+    case PROP_FIFO:
+      g_value_set_object (value, guard->fifo);
       break;
 
     case PROP_ID:
@@ -153,6 +165,10 @@ bolt_power_guard_set_property (GObject      *object,
 
     case PROP_PATH:
       guard->path = g_value_dup_string (value);
+      break;
+
+    case PROP_FIFO:
+      guard->fifo = g_value_dup_string (value);
       break;
 
     case PROP_ID:
@@ -202,6 +218,15 @@ bolt_power_guard_class_init (BoltPowerGuardClass *klass)
                          G_PARAM_READWRITE |
                          G_PARAM_CONSTRUCT_ONLY |
                          G_PARAM_STATIC_STRINGS);
+
+  guard_props[PROP_FIFO] =
+    g_param_spec_string ("fifo",
+                         NULL, NULL,
+                         NULL,
+                         G_PARAM_READWRITE |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_STRINGS);
+
 
   guard_props[PROP_ID] =
     g_param_spec_string ("id",
@@ -253,6 +278,9 @@ bolt_power_guard_save (BoltPowerGuard *guard,
   g_key_file_set_string (kf, "guard", "who", guard->who);
   g_key_file_set_uint64 (kf, "guard", "pid", guard->pid);
 
+  if (guard->fifo)
+    g_key_file_set_string (kf, "guard", "fifo", guard->fifo);
+
   ok = g_key_file_save_to_file (kf, path, error);
 
   if (ok)
@@ -276,6 +304,7 @@ bolt_power_guard_load (BoltPower  *power,
   g_autofree char *path = NULL;
   g_autofree char *who = NULL;
   g_autofree char *id = NULL;
+  g_autofree char *fifo = NULL;
   GFile *statedir;
   gboolean ok;
   gulong pid;
@@ -315,9 +344,18 @@ bolt_power_guard_load (BoltPower  *power,
       return NULL;
     }
 
+  fifo = g_key_file_get_string (kf, "guard", "fifo", &err);
+  if (err != NULL && !bolt_err_notfound (err))
+    {
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                           "field missing ('pid')");
+      return NULL;
+    }
+
   return g_object_new (BOLT_TYPE_POWER_GUARD,
                        "power", power,
                        "path", path,
+                       "fifo", fifo,
                        "id", id,
                        "who", who,
                        "pid", pid,
@@ -337,7 +375,8 @@ bolt_power_guard_remove (BoltPowerGuard *guard)
   ok = bolt_unlink (guard->path, &err);
   if (!ok)
     {
-      bolt_warn_err (err, "Could not remove power guard: '%s' @ %s",
+      bolt_warn_err (err, LOG_TOPIC ("power"),
+                     "Could not remove power guard: '%s' @ %s",
                      guard->id, guard->path);
       return;
     }
@@ -352,6 +391,116 @@ bolt_power_guard_remove (BoltPowerGuard *guard)
   g_clear_pointer (&guard->path, g_free);
   g_object_notify_by_pspec (G_OBJECT (guard),
                             guard_props[PROP_PATH]);
+}
+
+static gboolean
+bolt_power_guard_mkfifo (BoltPowerGuard *guard,
+                         GError        **error)
+{
+  g_autoptr(GError) err = NULL;
+  int r;
+
+  g_return_val_if_fail (BOLT_IS_POWER_GUARD (guard), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  if (guard->fifo == NULL)
+    guard->fifo = g_strdup_printf ("%s.fifo", guard->path);
+
+  r = bolt_mkfifo (guard->fifo, 0600, &err);
+  if (r == -1 && !bolt_err_exists (err))
+    {
+      g_propagate_error (error, g_steal_pointer (&err));
+      return FALSE;
+    }
+
+  g_object_notify_by_pspec (G_OBJECT (guard),
+                            guard_props[PROP_FIFO]);
+
+  return TRUE;
+}
+
+static gboolean
+power_guard_has_event (GIOChannel  *source,
+                       GIOCondition condition,
+                       gpointer     data)
+{
+  BoltPowerGuard *guard = data;
+
+  bolt_info (LOG_TOPIC ("power"), "got event for guard '%s' (%x)",
+             guard->id, (guint) condition);
+  guard->watch = 0;
+  return FALSE;
+}
+
+static void
+guard_watch_release (gpointer data)
+{
+  g_autoptr(GError) err = NULL;
+  BoltPowerGuard *guard = data;
+  gboolean ok;
+
+  if (guard->fifo == NULL)
+    {
+      bolt_bug (LOG_TOPIC ("power"), "FIFO event but no FIFO");
+      return;
+    }
+
+  ok = bolt_unlink (guard->fifo, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("power"),
+                     "Could not remove FIFO for power guard: '%s' @ %s",
+                     guard->id, guard->fifo);
+    }
+
+  g_clear_pointer (&guard->fifo, g_free);
+  g_object_notify_by_pspec (G_OBJECT (guard), guard_props[PROP_FIFO]);
+
+  bolt_debug (LOG_TOPIC ("power"),
+              "released watch reference for guard '%s'",
+              guard->id);
+
+  g_object_unref (guard);
+}
+
+int
+bolt_power_guard_monitor (BoltPowerGuard *guard,
+                          GError        **error)
+{
+  g_autoptr(GIOChannel) ch = NULL;
+  gboolean ok;
+  int fd;
+
+  ok = bolt_power_guard_mkfifo (guard, error);
+  if (!ok)
+    return FALSE;
+
+  /* reader */
+  fd = bolt_open (guard->fifo, O_RDONLY | O_CLOEXEC | O_NONBLOCK, 0, error);
+  if (fd == -1)
+    return -1;
+
+  ch = g_io_channel_unix_new (fd);
+
+  /* writer */
+  fd = bolt_open (guard->fifo, O_WRONLY | O_CLOEXEC | O_NONBLOCK, 0, error);
+  if (fd < 1)
+    return -1;
+
+  g_io_channel_set_close_on_unref (ch, TRUE);
+  g_io_channel_set_encoding (ch, NULL, NULL);
+  g_io_channel_set_buffered (ch, FALSE);
+  g_io_channel_set_flags (ch, G_IO_FLAG_NONBLOCK, NULL);
+
+  /* NB: we take a ref to the guard here */
+  guard->watch = g_io_add_watch_full (ch,
+                                      G_PRIORITY_DEFAULT,
+                                      G_IO_HUP | G_IO_ERR,
+                                      power_guard_has_event,
+                                      g_object_ref (guard),
+                                      guard_watch_release);
+
+  return fd;
 }
 
 /* ****************************************************************** */
@@ -733,6 +882,26 @@ bolt_power_recover_guards (BoltPower *power,
                      "ignoring guard '%s for '%s': process dead",
                      guard->id, guard->who);
           continue;
+        }
+
+      if (guard->fifo)
+        {
+          int fd;
+          fd = bolt_power_guard_monitor (guard, &err);
+
+          if (fd < 0)
+            {
+              bolt_warn_err (err, "could not monitor guard '%d'",
+                             guard->id);
+              g_clear_error (&err);
+            }
+          else
+            {
+              (void) close (fd);
+
+              /* monitoring adds a reference that we don't want */
+              g_object_unref (guard);
+            }
         }
 
       bolt_info (LOG_TOPIC ("power"),
