@@ -100,4 +100,8 @@ gboolean   bolt_file_write_all (const char *fn,
                                 gssize      n,
                                 GError    **error);
 
+int        bolt_mkfifo (const char *path,
+                        mode_t      mode,
+                        GError    **error);
+
 G_END_DECLS

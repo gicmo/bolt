@@ -524,3 +524,27 @@ bolt_file_write_all (const char *fn,
 
   return ok;
 }
+
+int
+bolt_mkfifo (const char *path,
+             mode_t      mode,
+             GError    **error)
+{
+  int r;
+
+  g_return_val_if_fail (path != NULL, -1);
+  g_return_val_if_fail (error == NULL || *error == NULL, -1);
+
+  r = mkfifo (path, mode);
+
+  if (r == -1)
+    {
+      gint code = g_io_error_from_errno (errno);
+      g_set_error (error, G_IO_ERROR, code,
+                   "could not create FIFO at '%s': %s",
+                   path, g_strerror (errno));
+      return -1;
+    }
+
+  return r;
+}
