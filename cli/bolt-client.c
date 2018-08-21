@@ -25,6 +25,7 @@
 #include "bolt-names.h"
 
 #include <gio/gio.h>
+#include <gio/gunixfdlist.h>
 
 static void         handle_dbus_device_added (GObject    *self,
                                               GDBusProxy *bus_proxy,
@@ -651,6 +652,52 @@ bolt_client_forget_device_finish (BoltClient   *client,
     }
 
   return TRUE;
+}
+
+int
+bolt_client_force_power (BoltClient *client,
+                         GError    **error)
+{
+  g_autoptr(GUnixFDList) fds = NULL;
+  g_autoptr(GVariant) val = NULL;
+  g_autoptr(GError) err = NULL;
+  GVariant *input;
+  int fd = -1;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), -1);
+
+  input = g_variant_new ("(ss)",
+                         "boltctl", /* who */
+                         "");       /* flags */
+
+  val = g_dbus_proxy_call_with_unix_fd_list_sync (G_DBUS_PROXY (client),
+                                                  "ForcePower",
+                                                  input,
+                                                  G_DBUS_CALL_FLAGS_NONE,
+                                                  -1,
+                                                  NULL,
+                                                  &fds,
+                                                  NULL,
+                                                  &err);
+
+  if (val == NULL)
+    {
+      bolt_error_propagate_stripped (error, &err);
+      return -1;
+    }
+
+  if (g_unix_fd_list_get_length (fds) != 1)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "invalid number of file descriptors returned: %d",
+                   g_unix_fd_list_get_length (fds));
+
+      return -1;
+    }
+
+  fd = g_unix_fd_list_get (fds, 0, NULL);
+
+  return fd;
 }
 
 /* getter */

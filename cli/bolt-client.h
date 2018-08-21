@@ -84,6 +84,9 @@ gboolean        bolt_client_forget_device_finish (BoltClient   *client,
                                                   GAsyncResult *res,
                                                   GError      **error);
 
+int             bolt_client_force_power (BoltClient *client,
+                                         GError    **error);
+
 /* getter */
 guint           bolt_client_get_version (BoltClient *client);
 
