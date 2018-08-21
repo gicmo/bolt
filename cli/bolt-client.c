@@ -52,6 +52,7 @@ enum {
   PROP_PROBING,
   PROP_SECURITY,
   PROP_AUTHMODE,
+  PROP_POWERSTATE,
 
   PROP_LAST
 };
@@ -140,6 +141,14 @@ bolt_client_class_init (BoltClientClass *klass)
                         BOLT_AUTH_ENABLED,
                         G_PARAM_READABLE |
                         G_PARAM_STATIC_STRINGS);
+
+  props[PROP_POWERSTATE] =
+    g_param_spec_enum ("power-state",
+                       "PowerState", NULL,
+                       BOLT_TYPE_POWER_STATE,
+                       BOLT_FORCE_POWER_UNSET,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_NAME);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
@@ -710,6 +719,24 @@ bolt_client_get_authmode (BoltClient *client)
 
   key = g_param_spec_get_name (props[PROP_AUTHMODE]);
   ok = bolt_proxy_get_property_flags (BOLT_PROXY (client), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+BoltPowerState
+bolt_client_get_power_state (BoltClient *client)
+{
+  const char *key;
+  gboolean ok;
+  gint val = BOLT_FORCE_POWER_UNSET;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
+
+  key = g_param_spec_get_name (props[PROP_POWERSTATE]);
+  ok = bolt_proxy_get_property_enum (BOLT_PROXY (client), key, &val);
 
   if (!ok)
     g_warning ("failed to get enum property '%s'", key);

@@ -93,6 +93,8 @@ BoltSecurity    bolt_client_get_security (BoltClient *client);
 
 BoltAuthMode    bolt_client_get_authmode (BoltClient *client);
 
+BoltPowerState  bolt_client_get_power_state (BoltClient *client);
+
 /* setter */
 
 void            bolt_client_set_authmode_async (BoltClient         *client,
