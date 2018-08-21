@@ -34,6 +34,8 @@
 
 #include "bolt-manager.h"
 
+#include <gio/gunixfdlist.h>
+
 #include <libudev.h>
 #include <string.h>
 
@@ -159,6 +161,11 @@ static gboolean handle_set_authmode (BoltExported *obj,
                                      GError      **error);
 
 /* dbus method calls */
+static GVariant *  handle_force_power (BoltExported          *object,
+                                       GVariant              *params,
+                                       GDBusMethodInvocation *invocation,
+                                       GError               **error);
+
 static GVariant *  handle_list_domains (BoltExported          *object,
                                         GVariant              *params,
                                         GDBusMethodInvocation *invocation,
@@ -389,6 +396,9 @@ bolt_manager_class_init (BoltManagerClass *klass)
   bolt_exported_class_property_setter (exported_class,
                                        props[PROP_AUTHMODE],
                                        handle_set_authmode);
+  bolt_exported_class_export_method (exported_class,
+                                     "ForcePower",
+                                     handle_force_power);
 
   bolt_exported_class_export_method (exported_class,
                                      "ListDomains",
@@ -413,6 +423,7 @@ bolt_manager_class_init (BoltManagerClass *klass)
   bolt_exported_class_export_method (exported_class,
                                      "ForgetDevice",
                                      handle_forget_device);
+
 
 }
 
@@ -484,6 +495,9 @@ bolt_manager_initialize (GInitable    *initable,
     }
 
   mgr->power = bolt_power_new (mgr->udev);
+  g_signal_connect_object (mgr->power, "notify::state",
+                           G_CALLBACK (handle_power_state_changed),
+                           mgr, 0);
   power = manager_maybe_power_controller (mgr);
 
   /* TODO: error checking */
@@ -1671,6 +1685,65 @@ handle_set_authmode (BoltExported *obj,
 }
 
 /* dbus methods: domain related */
+static GVariant *
+handle_force_power (BoltExported          *object,
+                    GVariant              *params,
+                    GDBusMethodInvocation *invocation,
+                    GError               **error)
+{
+  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(GUnixFDList) fds = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GVariant) res = NULL;
+  GDBusConnection *con;
+  BoltManager *mgr = BOLT_MANAGER (object);
+  const char *sender;
+  const char *flags;
+  const char *who;
+  guint pid;
+  int fd;
+
+  con = g_dbus_method_invocation_get_connection (invocation);
+  sender = g_dbus_method_invocation_get_sender (invocation);
+
+  res = g_dbus_connection_call_sync (con,
+                                     "org.freedesktop.DBus",
+                                     "/",
+                                     "org.freedesktop.DBus",
+                                     "GetConnectionUnixProcessID",
+                                     g_variant_new ("(s)", sender),
+                                     G_VARIANT_TYPE ("(u)"),
+                                     G_DBUS_CALL_FLAGS_NONE,
+                                     -1, NULL,
+                                     &err);
+
+  if (res == NULL)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "could not get pid of caller: %s",
+                   err->message);
+      return NULL;
+    }
+
+  g_variant_get (res, "(u)", &pid);
+
+  g_variant_get (params, "(&s&s)", &who, &flags);
+
+  guard = bolt_power_acquire_full (mgr->power, who, (pid_t) pid, error);
+  if (guard == NULL)
+    return NULL;
+
+  fd = bolt_power_guard_monitor (guard, error);
+  if (fd == -1)
+    return NULL;
+
+  fds = g_unix_fd_list_new_from_array (&fd, 1);
+  g_dbus_method_invocation_return_value_with_unix_fd_list (invocation,
+                                                           g_variant_new ("(h)"),
+                                                           fds);
+  return NULL;
+}
+
 static GVariant *
 handle_list_domains (BoltExported          *object,
                      GVariant              *params,

@@ -159,6 +159,8 @@ handle_authorize_method (BoltExported          *exported,
     action = "org.freedesktop.bolt.authorize";
   else if (bolt_streq (method_name, "ForgetDevice"))
     action = "org.freedesktop.bolt.manage";
+  else if (bolt_streq (method_name, "ForcePower"))
+    action = "org.freedesktop.bolt.manage";
   else if (bolt_streq (method_name, "ListDomains"))
     authorized = TRUE;
   else if (bolt_streq (method_name, "DomainById"))

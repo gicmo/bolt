@@ -57,6 +57,27 @@
     </property>
 
     <!-- methods -->
+    <method name="ForcePower">
+      <arg type='s' name='who' direction='in'>
+        <doc:doc><doc:summary>Who is requesting the force power op.</doc:summary>
+        </doc:doc>
+      </arg>
+      <arg type='s' name='flags' direction='in'>
+        <doc:doc><doc:summary>Control aspects of the force power operation.</doc:summary>
+        </doc:doc>
+      </arg>
+      <arg name="guard_fd" direction="out" type="h">
+	<doc:doc><doc:summary>File descriptor reference to the guard.</doc:summary></doc:doc>
+      </arg>
+
+      <doc:doc>
+        <doc:description>
+          <doc:para>
+            Force power the thunderbolt controller, if supported.
+          </doc:para>
+        </doc:description>
+      </doc:doc>
+    </method>
 
     <method name="ListDomains">
       <arg name="domains" direction="out" type="ao">
