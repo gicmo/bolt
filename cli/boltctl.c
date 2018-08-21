@@ -793,6 +793,53 @@ list_devices (BoltClient *client, int argc, char **argv)
   return EXIT_SUCCESS;
 }
 
+static int
+power (BoltClient *client, int argc, char **argv)
+{
+  g_autoptr(GOptionContext) optctx = NULL;
+  g_autoptr(GMainLoop) main_loop = NULL;
+  g_autoptr(GError) error = NULL;
+  BoltPowerState state;
+  gboolean do_query = FALSE;
+  int fd;
+  GOptionEntry options[] = {
+    { "query", 'q', 0, G_OPTION_ARG_NONE, &do_query, "Query the status", NULL },
+    { NULL }
+  };
+
+  optctx = g_option_context_new ("- Force power configuration");
+  g_option_context_add_main_entries (optctx, options, NULL);
+
+  if (!g_option_context_parse (optctx, &argc, &argv, &error))
+    return usage_error (error);
+
+  if (do_query)
+    {
+      const char *str;
+
+      state = bolt_client_get_power_state (client);
+      str = bolt_power_state_to_string (state);
+      g_print ("power state: %s", str);
+
+      return EXIT_SUCCESS;
+    }
+
+  fd = bolt_client_force_power (client, &error);
+  if (fd == -1)
+    {
+      g_warning ("Could force power controller: %s", error->message);
+      return EXIT_SUCCESS;
+    }
+
+  g_print ("acquired power guard (%d)\n", fd);
+
+  main_loop = g_main_loop_new (NULL, FALSE);
+  g_main_loop_run (main_loop);
+
+  (void) close (fd);
+  return EXIT_SUCCESS;
+}
+
 /* ****  */
 
 typedef int (*run_t)(BoltClient *client,
@@ -813,7 +860,8 @@ static SubCommand subcommands[] = {
   {"forget",       forget,        "Remove a stored device from the database"},
   {"info",         info,          "Show information about a device"},
   {"list",         list_devices,  "List connected and stored devices"},
-  {"monitor",      monitor,       "Listen and print changes"}
+  {"monitor",      monitor,       "Listen and print changes"},
+  {"power",        power,         "Force power configuration of the controller"}
 };
 
 #define SUMMARY_SPACING 17
