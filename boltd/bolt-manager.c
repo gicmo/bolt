@@ -129,6 +129,10 @@ static void          handle_device_status_changed (BoltDevice  *dev,
                                                    BoltStatus   old,
                                                    BoltManager *mgr);
 
+static void          handle_power_state_changed (GObject    *gobject,
+                                                 GParamSpec *pspec,
+                                                 gpointer    user_data);
+
 /* acquiring indicator  */
 static void          manager_probing_device_added (BoltManager        *mgr,
                                                    struct udev_device *dev);
@@ -224,6 +228,7 @@ enum {
   PROP_POLICY,
   PROP_SECURITY,
   PROP_AUTHMODE,
+  PROP_POWERSTATE,
 
   PROP_LAST,
   PROP_EXPORTED = PROP_VERSION
@@ -289,6 +294,10 @@ bolt_manager_get_property (GObject    *object,
 
     case PROP_AUTHMODE:
       g_value_set_flags (value, mgr->authmode);
+      break;
+
+    case PROP_POWERSTATE:
+      g_value_set_enum (value, bolt_power_get_state (mgr->power));
       break;
 
     default:
@@ -357,6 +366,13 @@ bolt_manager_class_init (BoltManagerClass *klass)
                         BOLT_AUTH_ENABLED,
                         G_PARAM_READABLE |
                         G_PARAM_STATIC_STRINGS);
+
+  props[PROP_POWERSTATE] =
+    g_param_spec_enum ("power-state", "PowerState", NULL,
+                       BOLT_TYPE_POWER_STATE,
+                       BOLT_FORCE_POWER_UNSET,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (gobject_class, PROP_LAST, props);
 
@@ -1328,6 +1344,18 @@ handle_device_status_changed (BoltDevice  *dev,
       maybe_authorize_device (mgr, child);
     }
 }
+
+
+static void
+handle_power_state_changed (GObject    *gobject,
+                            GParamSpec *pspec,
+                            gpointer    user_data)
+{
+  BoltManager *mgr = BOLT_MANAGER (user_data);
+
+  g_object_notify_by_pspec (G_OBJECT (mgr), props[PROP_POWERSTATE]);
+}
+
 
 static gboolean
 probing_timeout (gpointer user_data)

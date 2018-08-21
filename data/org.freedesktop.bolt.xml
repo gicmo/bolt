@@ -49,6 +49,13 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+
+    <property name="PowerState" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+        State of the ForcePower setting of the bolt daemon.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <!-- methods -->
 
     <method name="ListDomains">
