@@ -793,6 +793,15 @@ list_devices (BoltClient *client, int argc, char **argv)
   return EXIT_SUCCESS;
 }
 
+static gboolean
+quit_main_loop (gpointer user_data)
+{
+  GMainLoop *loop = user_data;
+
+  g_main_loop_quit (loop);
+  return FALSE;
+}
+
 static int
 power (BoltClient *client, int argc, char **argv)
 {
@@ -802,8 +811,10 @@ power (BoltClient *client, int argc, char **argv)
   BoltPowerState state;
   gboolean do_query = FALSE;
   int fd;
+  double timeout = 0;
   GOptionEntry options[] = {
     { "query", 'q', 0, G_OPTION_ARG_NONE, &do_query, "Query the status", NULL },
+    { "timeout", 't', 0, G_OPTION_ARG_DOUBLE, &timeout, "Quit after N seconds", NULL },
     { NULL }
   };
 
@@ -834,6 +845,13 @@ power (BoltClient *client, int argc, char **argv)
   g_print ("acquired power guard (%d)\n", fd);
 
   main_loop = g_main_loop_new (NULL, FALSE);
+
+  if (timeout > 0.)
+    {
+      guint tout = (guint) timeout * 1000;
+      g_timeout_add (tout, quit_main_loop, main_loop);
+    }
+
   g_main_loop_run (main_loop);
 
   (void) close (fd);
