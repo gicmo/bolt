@@ -393,6 +393,27 @@ bolt_power_guard_remove (BoltPowerGuard *guard)
                             guard_props[PROP_PATH]);
 }
 
+static void
+bolt_power_guard_fifo_cleanup (BoltPowerGuard *guard)
+{
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+
+  if (guard->fifo == NULL)
+    return;
+
+  ok = bolt_unlink (guard->fifo, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("power"),
+                     "Could not remove FIFO for power guard: '%s' @ %s",
+                     guard->id, guard->fifo);
+    }
+
+  g_clear_pointer (&guard->fifo, g_free);
+  g_object_notify_by_pspec (G_OBJECT (guard), guard_props[PROP_FIFO]);
+}
+
 static gboolean
 bolt_power_guard_mkfifo (BoltPowerGuard *guard,
                          GError        **error)
@@ -435,9 +456,7 @@ power_guard_has_event (GIOChannel  *source,
 static void
 guard_watch_release (gpointer data)
 {
-  g_autoptr(GError) err = NULL;
   BoltPowerGuard *guard = data;
-  gboolean ok;
 
   if (guard->fifo == NULL)
     {
@@ -445,16 +464,7 @@ guard_watch_release (gpointer data)
       return;
     }
 
-  ok = bolt_unlink (guard->fifo, &err);
-  if (!ok)
-    {
-      bolt_warn_err (err, LOG_TOPIC ("power"),
-                     "Could not remove FIFO for power guard: '%s' @ %s",
-                     guard->id, guard->fifo);
-    }
-
-  g_clear_pointer (&guard->fifo, g_free);
-  g_object_notify_by_pspec (G_OBJECT (guard), guard_props[PROP_FIFO]);
+  bolt_power_guard_fifo_cleanup (guard);
 
   bolt_debug (LOG_TOPIC ("power"),
               "released watch reference for guard '%s'",
@@ -881,6 +891,7 @@ bolt_power_recover_guards (BoltPower *power,
           bolt_info (LOG_TOPIC ("power"),
                      "ignoring guard '%s for '%s': process dead",
                      guard->id, guard->who);
+          bolt_power_guard_fifo_cleanup (guard);
           continue;
         }
 
