@@ -279,9 +279,6 @@ bolt_power_guard_save (BoltPowerGuard *guard,
   g_key_file_set_string (kf, "guard", "who", guard->who);
   g_key_file_set_uint64 (kf, "guard", "pid", guard->pid);
 
-  if (guard->fifo)
-    g_key_file_set_string (kf, "guard", "fifo", guard->fifo);
-
   ok = g_key_file_save_to_file (kf, path, error);
 
   if (ok)
@@ -345,13 +342,10 @@ bolt_power_guard_load (BoltPower  *power,
       return NULL;
     }
 
-  fifo = g_key_file_get_string (kf, "guard", "fifo", &err);
-  if (err != NULL && !bolt_err_notfound (err))
-    {
-      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_FAILED,
-                           "field missing ('pid')");
-      return NULL;
-    }
+  fifo = g_strdup_printf ("%s.fifo", path);
+
+  if (!g_file_test (fifo, G_FILE_TEST_EXISTS))
+    g_clear_pointer (&fifo, g_free);
 
   return g_object_new (BOLT_TYPE_POWER_GUARD,
                        "power", power,
