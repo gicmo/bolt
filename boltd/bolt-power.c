@@ -35,6 +35,7 @@
 #include <sys/types.h>
 
 #define POWER_WAIT_TIMEOUT 20 * 1000 // 20 seconds
+#define POWER_REAPER_TIMEOUT 20 // seconds
 #define DEFAULT_RUNDIR "/run/boltd/"
 #define DEFAULT_STATEDIR "power"
 #define STATE_FILENAME "on"
@@ -538,6 +539,8 @@ static gboolean  bolt_power_switch_toggle (BoltPower *power,
 /* callbacks and signals */
 static gboolean bolt_power_wait_timeout (gpointer user_data);
 
+static gboolean bolt_power_reaper_timeout (gpointer user_data);
+
 
 static void     handle_uevent_udev (BoltUdev           *udev,
                                     const char         *action,
@@ -561,6 +564,7 @@ struct _BoltPower
    * or NULL if force power is unavailable */
   char          *path;
   BoltPowerState state;
+  guint          reaper;
 
   /*  */
   guint16     guard_num;
@@ -602,6 +606,9 @@ bolt_power_finalize (GObject *object)
       g_source_remove (power->wait_id);
       bolt_power_wait_timeout (power);
     }
+
+  if (power->reaper != 0)
+    g_source_remove (power->reaper);
 
   g_clear_pointer (&power->runpath, g_free);
   g_clear_object (&power->statedir);
@@ -945,6 +952,42 @@ bolt_power_wait_timeout (gpointer user_data)
   return G_SOURCE_REMOVE;
 }
 
+static gboolean
+bolt_power_reaper_timeout (gpointer user_data)
+{
+  g_autoptr(GList) keys = NULL;
+  BoltPower *power = user_data;
+
+  bolt_debug (LOG_TOPIC ("power"), "looking for dead processes");
+
+  if (g_hash_table_size (power->guards) == 0)
+    {
+      bolt_debug (LOG_TOPIC ("power"), "reaper done");
+      power->reaper = 0;
+      return FALSE;
+    }
+
+  keys = g_hash_table_get_keys (power->guards);
+
+  for (GList *l = keys; l != NULL; l = l->next)
+    {
+      gpointer id = l->data;
+      BoltPowerGuard *g = g_hash_table_lookup (power->guards, id);
+
+      if (bolt_pid_is_alive (g->pid))
+        continue;
+
+      bolt_info (LOG_TOPIC ("power"),
+                 "process '%lu' is dead, "
+                 "releasing the guard '%s' for '%s'",
+                 (gulong) g->pid, g->id, g->who);
+
+      g_object_unref (g);
+    }
+
+  return TRUE;
+}
+
 static void
 handle_uevent_udev (BoltUdev           *udev,
                     const char         *action,
@@ -1222,6 +1265,11 @@ bolt_power_acquire_full (BoltPower  *power,
 
   bolt_info (LOG_TOPIC ("power"), "guard '%s' for '%s' active",
              guard->id, guard->who);
+
+  if (power->reaper == 0)
+    power->reaper = g_timeout_add_seconds (POWER_REAPER_TIMEOUT,
+                                           bolt_power_reaper_timeout,
+                                           power);
 
   /* guard is saved so we can recover our state if we
    * were to crash or restarted */
