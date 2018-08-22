@@ -58,4 +58,7 @@ BoltPowerGuard *    bolt_power_acquire_full (BoltPower  *power,
 
 BoltPowerGuard *    bolt_power_acquire (BoltPower *power,
                                         GError   **error);
+
+GList *             bolt_power_list_guards (BoltPower *power);
+
 G_END_DECLS

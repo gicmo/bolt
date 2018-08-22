@@ -1284,3 +1284,11 @@ bolt_power_acquire_full (BoltPower  *power,
 
   return guard;
 }
+
+GList *
+bolt_power_list_guards (BoltPower *power)
+{
+  g_return_val_if_fail (BOLT_IS_POWER (power), NULL);
+
+  return g_hash_table_get_values (power->guards);
+}
