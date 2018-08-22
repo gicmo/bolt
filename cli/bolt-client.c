@@ -700,6 +700,46 @@ bolt_client_force_power (BoltClient *client,
   return fd;
 }
 
+GPtrArray *
+bolt_client_list_guards (BoltClient *client,
+                         GCancellable *cancel,
+                         GError    **error)
+{
+  g_autoptr(GVariant) val = NULL;
+  g_autoptr(GVariantIter) iter = NULL;
+  GPtrArray *res;
+  const char *id;
+  const char *who;
+  guint pid;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
+
+  val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
+                                "ListGuards",
+                                NULL,
+                                G_DBUS_CALL_FLAGS_NONE,
+                                -1,
+                                cancel,
+                                error);
+  if (val == NULL)
+    return NULL;
+
+  res = g_ptr_array_new_with_free_func ((GDestroyNotify) bolt_power_guard_free);
+  g_variant_get (val, "(a(ssu))", &iter);
+  while (g_variant_iter_loop (iter, "(ssu)", &id, &who, &pid))
+    {
+      BoltPowerGuard *g = g_new (BoltPowerGuard, 1);
+
+      g->id = g_strdup (id);
+      g->who = g_strdup (who);
+      g->pid = pid;
+
+      g_ptr_array_add (res, g);
+    }
+
+  return res;
+}
+
 /* getter */
 guint
 bolt_client_get_version (BoltClient *client)
@@ -861,4 +901,13 @@ bolt_devices_sort_by_syspath (GPtrArray *devices,
   g_ptr_array_sort_with_data (devices,
                               device_sort_by_syspath,
                               sort_order);
+}
+
+/* bolt power guard functions */
+void
+bolt_power_guard_free (BoltPowerGuard *guard)
+{
+  g_free (guard->id);
+  g_free (guard->who);
+  g_free (guard);
 }
