@@ -364,8 +364,18 @@ bolt_power_guard_remove (BoltPowerGuard *guard)
   g_autofree char *parent = NULL;
   gboolean ok;
 
+  /* we are not saved */
   if (guard->path == NULL)
     return;
+
+  /*  */
+  if (guard->fifo != NULL)
+    {
+      bolt_debug (LOG_TOPIC ("power"),
+                  "not removing guard '%s' with active fifo",
+                  guard->id);
+      return;
+    }
 
   ok = bolt_unlink (guard->path, &err);
   if (!ok)
