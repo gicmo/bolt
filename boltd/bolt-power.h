@@ -38,6 +38,12 @@ G_DECLARE_FINAL_TYPE (BoltPowerGuard, bolt_power_guard, BOLT, POWER_GUARD, GObje
 int                 bolt_power_guard_monitor (BoltPowerGuard *guard,
                                               GError        **error);
 
+const char *        bolt_power_guard_get_id (BoltPowerGuard *guard);
+
+const char *        bolt_power_guard_get_who (BoltPowerGuard *guard);
+
+guint               bolt_power_guard_get_pid (BoltPowerGuard *guard);
+
 /* BoltPower */
 
 #define BOLT_TYPE_POWER bolt_power_get_type ()

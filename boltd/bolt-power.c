@@ -518,6 +518,30 @@ bolt_power_guard_monitor (BoltPowerGuard *guard,
   return fd;
 }
 
+const char *
+bolt_power_guard_get_id (BoltPowerGuard *guard)
+{
+  g_return_val_if_fail (BOLT_IS_POWER_GUARD (guard), NULL);
+
+  return guard->id;
+}
+
+const char *
+bolt_power_guard_get_who (BoltPowerGuard *guard)
+{
+  g_return_val_if_fail (BOLT_IS_POWER_GUARD (guard), NULL);
+
+  return guard->who;
+}
+
+guint
+bolt_power_guard_get_pid (BoltPowerGuard *guard)
+{
+  g_return_val_if_fail (BOLT_IS_POWER_GUARD (guard), 0);
+
+  return (guint) guard->pid;
+}
+
 /* ****************************************************************** */
 /* BoltPower */
 
