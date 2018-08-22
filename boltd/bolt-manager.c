@@ -196,6 +196,11 @@ static GVariant *  handle_forget_device (BoltExported          *object,
                                          GDBusMethodInvocation *invocation,
                                          GError               **error);
 
+static GVariant *  handle_list_guards (BoltExported          *object,
+                                       GVariant              *params,
+                                       GDBusMethodInvocation *invocation,
+                                       GError               **error);
+
 /*  */
 struct _BoltManager
 {
@@ -424,7 +429,9 @@ bolt_manager_class_init (BoltManagerClass *klass)
                                      "ForgetDevice",
                                      handle_forget_device);
 
-
+  bolt_exported_class_export_method (exported_class,
+                                     "ListGuards",
+                                     handle_list_guards);
 }
 
 static void
@@ -2092,4 +2099,31 @@ bolt_manager_got_the_name (BoltManager *mgr)
                                  g_variant_new ("(o)", opath),
                                  NULL);
     }
+}
+
+static GVariant *
+handle_list_guards (BoltExported          *object,
+                    GVariant              *params,
+                    GDBusMethodInvocation *invocation,
+                    GError               **error)
+{
+  g_autoptr(GList) guards = NULL;
+  GVariantBuilder b;
+  BoltManager *mgr;
+
+  mgr = BOLT_MANAGER (object);
+  guards = bolt_power_list_guards (mgr->power);
+
+  g_variant_builder_init (&b, G_VARIANT_TYPE ("a(ssu)"));
+
+  for (GList *l = guards; l != NULL; l = l->next)
+    {
+      BoltPowerGuard *g = BOLT_POWER_GUARD (l->data);
+      g_variant_builder_add (&b, "(ssu)",
+                             bolt_power_guard_get_id (g),
+                             bolt_power_guard_get_who (g),
+                             bolt_power_guard_get_pid (g));
+    }
+
+  return g_variant_new ("(a(ssu))", &b);
 }

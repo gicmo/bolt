@@ -169,6 +169,8 @@ handle_authorize_method (BoltExported          *exported,
     authorized = TRUE;
   else if (bolt_streq (method_name, "DeviceByUid"))
     authorized = TRUE;
+  else if (bolt_streq (method_name, "ListGuards"))
+    authorized = TRUE;
 
   if (!authorized && action)
     {

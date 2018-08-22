@@ -186,6 +186,28 @@
       </doc:doc>
     </method>
 
+    <method name="ListGuards">
+
+      <arg type='a(ssu)' name='guards' direction='out'>
+        <doc:doc>
+          <doc:summary>
+            <doc:para>
+	      Array of guard information, containing the "id", "who" and the pid
+	      of the guard.
+            </doc:para>
+          </doc:summary>
+        </doc:doc>
+      </arg>
+
+      <doc:doc>
+        <doc:description>
+          <doc:para>
+	    List active internal and external power guards.
+          </doc:para>
+        </doc:description>
+      </doc:doc>
+    </method>
+
     <!-- signals -->
 
     <signal name="DeviceAdded">
