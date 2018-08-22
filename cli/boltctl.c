@@ -826,11 +826,37 @@ power (BoltClient *client, int argc, char **argv)
 
   if (do_query)
     {
+      g_autoptr(GPtrArray) guards = NULL;
+      const char *tree_branch;
+      const char *tree_right;
       const char *str;
 
       state = bolt_client_get_power_state (client);
       str = bolt_power_state_to_string (state);
-      g_print ("power state: %s", str);
+      g_print ("power state: %s\n", str);
+
+      guards = bolt_client_list_guards (client, NULL, &error);
+
+      if (guards == NULL)
+        {
+          g_warning ("Could not list guards: %s", error->message);
+          return EXIT_FAILURE;
+        }
+
+      tree_branch = bolt_glyph (TREE_BRANCH);
+      tree_right = bolt_glyph (TREE_RIGHT);
+
+      g_print ("%u active power guards%s\n", guards->len,
+               guards->len > 0 ? ":" : "");
+
+      for (guint i = 0; i < guards->len; i++)
+        {
+          BoltPowerGuard *g = g_ptr_array_index (guards, 0);
+          g_print ("  guard '%s'\n", g->id);
+          g_print ("   %s who: %s\n", tree_branch, g->who);
+          g_print ("   %s pid: %u\n", tree_right, g->pid);
+          g_print ("\n");
+        }
 
       return EXIT_SUCCESS;
     }
