@@ -21,6 +21,7 @@
 #pragma once
 
 #include "bolt-enums.h"
+#include "bolt-exported.h"
 #include "bolt-udev.h"
 
 #include <sys/types.h>
@@ -47,7 +48,7 @@ guint               bolt_power_guard_get_pid (BoltPowerGuard *guard);
 /* BoltPower */
 
 #define BOLT_TYPE_POWER bolt_power_get_type ()
-G_DECLARE_FINAL_TYPE (BoltPower, bolt_power, BOLT, POWER, GObject);
+G_DECLARE_FINAL_TYPE (BoltPower, bolt_power, BOLT, POWER, BoltExported);
 
 BoltPower  *        bolt_power_new (BoltUdev *udev);
 

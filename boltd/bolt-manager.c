@@ -2037,11 +2037,26 @@ bolt_manager_export (BoltManager     *mgr,
                      GDBusConnection *connection,
                      GError         **error)
 {
+  g_autoptr(GError) err  = NULL;
+  gboolean ok;
+
   if (!bolt_exported_export (BOLT_EXPORTED (mgr),
                              connection,
                              BOLT_DBUS_PATH,
                              error))
     return FALSE;
+
+  ok = bolt_exported_export (BOLT_EXPORTED (mgr->power),
+                             connection,
+                             BOLT_DBUS_PATH,
+                             error);
+
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("dbus"),
+                     "failed to export power object");
+      g_clear_error (&err);
+    }
 
   bolt_domain_foreach (mgr->domains,
                        (GFunc) bolt_domain_export,
@@ -2049,7 +2064,7 @@ bolt_manager_export (BoltManager     *mgr,
 
   for (guint i = 0; i < mgr->devices->len; i++)
     {
-      g_autoptr(GError) err  = NULL;
+
       BoltDevice *dev = g_ptr_array_index (mgr->devices, i);
       const char *opath;
 
@@ -2058,6 +2073,7 @@ bolt_manager_export (BoltManager     *mgr,
         {
           bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("dbus"),
                          "error exporting a device");
+          g_clear_error (&err);
           continue;
         }
 

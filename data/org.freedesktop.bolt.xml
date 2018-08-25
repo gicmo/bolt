@@ -252,6 +252,39 @@
 
   </interface>
 
+  <interface name="org.freedesktop.bolt1.Power">
+
+    <doc:doc>
+      <doc:description>
+        <doc:para>
+          Thunderbolt force power management.
+        </doc:para>
+      </doc:description>
+    </doc:doc>
+
+    <property name="Supported" type="b" access="read">
+      <doc:doc><doc:description><doc:para>
+	Is there system level support for force powering the
+	thunderbolt controller.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+    <property name="State" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+        State of the ForcePower setting of the bolt daemon.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+    <property name="Timeout" type="u" access="read">
+      <doc:doc><doc:description><doc:para>
+	The minimum amout of time the controller will be powered.
+	This timeout will get reset with every new activity on the
+	thundrbolt bus while the controller is being force powered.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
+  </interface>
+
   <interface name="org.freedesktop.bolt1.Device">
 
     <doc:doc>

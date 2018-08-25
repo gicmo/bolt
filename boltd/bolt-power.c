@@ -578,7 +578,7 @@ static void     handle_uevent_udev (BoltUdev           *udev,
 
 struct _BoltPower
 {
-  GObject object;
+  BoltExported object;
 
   /* path to store run time data  */
   char  *runpath;
@@ -620,7 +620,7 @@ static GParamSpec *power_props[PROP_LAST] = { NULL, };
 
 G_DEFINE_TYPE_WITH_CODE (BoltPower,
                          bolt_power,
-                         G_TYPE_OBJECT,
+                         BOLT_TYPE_EXPORTED,
                          G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
                                                 power_initable_iface_init));
 
@@ -728,6 +728,7 @@ static void
 bolt_power_class_init (BoltPowerClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  BoltExportedClass *exported_class = BOLT_EXPORTED_CLASS (klass);
 
   gobject_class->finalize = bolt_power_finalize;
 
@@ -759,14 +760,14 @@ bolt_power_class_init (BoltPowerClass *klass)
 
   power_props[PROP_SUPPORTED] =
     g_param_spec_boolean ("supported",
-                          NULL, NULL,
+                          "Supported", NULL,
                           FALSE,
                           G_PARAM_READABLE |
                           G_PARAM_STATIC_NICK);
 
   power_props[PROP_STATE] =
     g_param_spec_enum ("state",
-                       NULL, NULL,
+                       "State", NULL,
                        BOLT_TYPE_POWER_STATE,
                        BOLT_FORCE_POWER_UNSET,
                        G_PARAM_READABLE |
@@ -774,7 +775,7 @@ bolt_power_class_init (BoltPowerClass *klass)
 
   power_props[PROP_TIMEOUT] =
     g_param_spec_uint ("timeout",
-                       NULL, NULL,
+                       "Timeout", NULL,
                        0, G_MAXINT, POWER_WAIT_TIMEOUT,
                        G_PARAM_READWRITE |
                        G_PARAM_CONSTRUCT_ONLY |
@@ -783,6 +784,16 @@ bolt_power_class_init (BoltPowerClass *klass)
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
                                      power_props);
+
+  bolt_exported_class_set_interface_info (exported_class,
+                                          BOLT_DBUS_POWER_INTERFACE,
+                                          "/boltd/org.freedesktop.bolt.xml");
+
+  bolt_exported_class_export_properties (exported_class,
+                                         PROP_SUPPORTED,
+                                         PROP_LAST,
+                                         power_props);
+
 }
 
 static void
