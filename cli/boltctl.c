@@ -807,6 +807,7 @@ power (BoltClient *client, int argc, char **argv)
 {
   g_autoptr(GOptionContext) optctx = NULL;
   g_autoptr(GMainLoop) main_loop = NULL;
+  g_autoptr(BoltPower) power = NULL;
   g_autoptr(GError) error = NULL;
   BoltPowerState state;
   gboolean do_query = FALSE;
@@ -824,6 +825,15 @@ power (BoltClient *client, int argc, char **argv)
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
     return usage_error (error);
 
+  power = bolt_client_new_power_client (client, NULL, &error);
+
+  if (power == NULL)
+    {
+      g_warning ("Could get proxy for power interface: %s",
+                 error->message);
+      return EXIT_FAILURE;
+    }
+
   if (do_query)
     {
       g_autoptr(GPtrArray) guards = NULL;
@@ -831,7 +841,7 @@ power (BoltClient *client, int argc, char **argv)
       const char *tree_right;
       const char *str;
 
-      state = bolt_client_get_power_state (client);
+      state = bolt_power_get_state (power);
       str = bolt_power_state_to_string (state);
       g_print ("power state: %s\n", str);
 
