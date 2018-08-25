@@ -57,27 +57,6 @@
     </property>
 
     <!-- methods -->
-    <method name="ForcePower">
-      <arg type='s' name='who' direction='in'>
-        <doc:doc><doc:summary>Who is requesting the force power op.</doc:summary>
-        </doc:doc>
-      </arg>
-      <arg type='s' name='flags' direction='in'>
-        <doc:doc><doc:summary>Control aspects of the force power operation.</doc:summary>
-        </doc:doc>
-      </arg>
-      <arg name="guard_fd" direction="out" type="h">
-	<doc:doc><doc:summary>File descriptor reference to the guard.</doc:summary></doc:doc>
-      </arg>
-
-      <doc:doc>
-        <doc:description>
-          <doc:para>
-            Force power the thunderbolt controller, if supported.
-          </doc:para>
-        </doc:description>
-      </doc:doc>
-    </method>
 
     <method name="ListDomains">
       <arg name="domains" direction="out" type="ao">
@@ -181,28 +160,6 @@
           <doc:para>
             Remove the device and any associated inforamtion,
             such as the policy and its key, from the store.
-          </doc:para>
-        </doc:description>
-      </doc:doc>
-    </method>
-
-    <method name="ListGuards">
-
-      <arg type='a(ssu)' name='guards' direction='out'>
-        <doc:doc>
-          <doc:summary>
-            <doc:para>
-	      Array of guard information, containing the "id", "who" and the pid
-	      of the guard.
-            </doc:para>
-          </doc:summary>
-        </doc:doc>
-      </arg>
-
-      <doc:doc>
-        <doc:description>
-          <doc:para>
-	    List active internal and external power guards.
           </doc:para>
         </doc:description>
       </doc:doc>
