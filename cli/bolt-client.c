@@ -740,6 +740,17 @@ bolt_client_list_guards (BoltClient *client,
   return res;
 }
 
+BoltPower *
+bolt_client_new_power_client (BoltClient   *client,
+                             GCancellable *cancellable,
+                             GError      **error)
+{
+  GDBusConnection *bus = NULL;
+
+  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
+  return bolt_power_new_for_object_path (bus, cancellable, error);
+}
+
 /* getter */
 guint
 bolt_client_get_version (BoltClient *client)

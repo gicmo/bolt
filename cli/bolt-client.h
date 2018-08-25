@@ -23,6 +23,7 @@
 #include "bolt-enums.h"
 #include "bolt-device.h"
 #include "bolt-domain.h"
+#include "bolt-power.h"
 #include "bolt-proxy.h"
 
 G_BEGIN_DECLS
@@ -98,6 +99,10 @@ int             bolt_client_force_power (BoltClient *client,
 GPtrArray *     bolt_client_list_guards (BoltClient   *client,
                                          GCancellable *cancellable,
                                          GError      **error);
+
+BoltPower *     bolt_client_new_power_client (BoltClient   *client,
+                                              GCancellable *cancellable,
+                                              GError      **error);
 
 /* getter */
 guint           bolt_client_get_version (BoltClient *client);
