@@ -501,10 +501,15 @@ bolt_manager_initialize (GInitable    *initable,
       manager_register_device (mgr, dev);
     }
 
+  /* setup the power controller */
   mgr->power = bolt_power_new (mgr->udev);
+  bolt_bouncer_add_client (mgr->bouncer, mgr->power);
+
   g_signal_connect_object (mgr->power, "notify::state",
                            G_CALLBACK (handle_power_state_changed),
                            mgr, 0);
+
+  /* if we don't see any tb device, we try to force power */
   power = manager_maybe_power_controller (mgr);
 
   /* TODO: error checking */

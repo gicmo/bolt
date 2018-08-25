@@ -30,6 +30,8 @@
 #include "bolt-str.h"
 #include "bolt-unix.h"
 
+#include <gio/gunixfdlist.h>
+
 #include <libudev.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -575,6 +577,16 @@ static void     handle_uevent_udev (BoltUdev           *udev,
                                     struct udev_device *device,
                                     gpointer            user_data);
 
+/* dbus methods */
+static GVariant *  handle_list_guards (BoltExported          *object,
+                                       GVariant              *params,
+                                       GDBusMethodInvocation *invocation,
+                                       GError               **error);
+
+static GVariant *  handle_force_power (BoltExported          *object,
+                                       GVariant              *params,
+                                       GDBusMethodInvocation *invocation,
+                                       GError               **error);
 
 struct _BoltPower
 {
@@ -794,6 +806,13 @@ bolt_power_class_init (BoltPowerClass *klass)
                                          PROP_LAST,
                                          power_props);
 
+  bolt_exported_class_export_method (exported_class,
+                                     "ForcePower",
+                                     handle_force_power);
+
+  bolt_exported_class_export_method (exported_class,
+                                     "ListGuards",
+                                     handle_list_guards);
 }
 
 static void
@@ -1203,6 +1222,95 @@ bolt_power_release (BoltPower *power, BoltPowerGuard *guard)
              power->timeout / 1000.0);
 
   bolt_power_timeout_reset (power);
+}
+
+/* dbus methods */
+static GVariant *
+handle_force_power (BoltExported          *object,
+                    GVariant              *params,
+                    GDBusMethodInvocation *invocation,
+                    GError               **error)
+{
+  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(GUnixFDList) fds = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GVariant) res = NULL;
+  GDBusConnection *con;
+  BoltPower *power;
+  const char *sender;
+  const char *flags;
+  const char *who;
+  guint pid;
+  int fd;
+
+  power = BOLT_POWER (object);
+
+  con = g_dbus_method_invocation_get_connection (invocation);
+  sender = g_dbus_method_invocation_get_sender (invocation);
+
+  res = g_dbus_connection_call_sync (con,
+                                     "org.freedesktop.DBus",
+                                     "/",
+                                     "org.freedesktop.DBus",
+                                     "GetConnectionUnixProcessID",
+                                     g_variant_new ("(s)", sender),
+                                     G_VARIANT_TYPE ("(u)"),
+                                     G_DBUS_CALL_FLAGS_NONE,
+                                     -1, NULL,
+                                     &err);
+
+  if (res == NULL)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "could not get pid of caller: %s",
+                   err->message);
+      return NULL;
+    }
+
+  g_variant_get (res, "(u)", &pid);
+
+  g_variant_get (params, "(&s&s)", &who, &flags);
+
+  guard = bolt_power_acquire_full (power, who, (pid_t) pid, error);
+  if (guard == NULL)
+    return NULL;
+
+  fd = bolt_power_guard_monitor (guard, error);
+  if (fd == -1)
+    return NULL;
+
+  fds = g_unix_fd_list_new_from_array (&fd, 1);
+  g_dbus_method_invocation_return_value_with_unix_fd_list (invocation,
+                                                           g_variant_new ("(h)"),
+                                                           fds);
+  return NULL;
+}
+
+static GVariant *
+handle_list_guards (BoltExported          *object,
+                    GVariant              *params,
+                    GDBusMethodInvocation *invocation,
+                    GError               **error)
+{
+  g_autoptr(GList) guards = NULL;
+  BoltPower *power;
+  GVariantBuilder b;
+
+  power = BOLT_POWER (object);
+  guards = bolt_power_list_guards (power);
+
+  g_variant_builder_init (&b, G_VARIANT_TYPE ("a(ssu)"));
+
+  for (GList *l = guards; l != NULL; l = l->next)
+    {
+      BoltPowerGuard *g = BOLT_POWER_GUARD (l->data);
+      g_variant_builder_add (&b, "(ssu)",
+                             bolt_power_guard_get_id (g),
+                             bolt_power_guard_get_who (g),
+                             bolt_power_guard_get_pid (g));
+    }
+
+  return g_variant_new ("(a(ssu))", &b);
 }
 
 /* public methods */
