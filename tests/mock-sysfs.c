@@ -27,6 +27,8 @@
 #include <umockdev.h>
 
 #include <glib/gstdio.h>
+
+#include <errno.h>
 #include <sys/stat.h>
 
 typedef struct _MockDomain MockDomain;
@@ -205,6 +207,42 @@ mock_sysfs_force_power_remove (MockSysfs *ms)
   umockdev_testbed_remove_device (ms->bed, ms->force_power);
 
   return TRUE;
+}
+
+void
+mock_sysfs_force_power_load (MockSysfs *ms)
+{
+  g_return_if_fail (MOCK_IS_SYSFS (ms));
+  g_return_if_fail (ms->force_power != NULL);
+
+  umockdev_testbed_set_attribute (ms->bed, ms->force_power,
+                                  "force_power", "");
+  umockdev_testbed_set_property (ms->bed, ms->force_power,
+                                 "DRIVER", "intel-wmi-thunderbolt");
+  umockdev_testbed_uevent (ms->bed, ms->force_power, "change");
+  umockdev_testbed_uevent (ms->bed, ms->force_power, "bind");
+}
+
+void
+mock_sysfs_force_power_unload (MockSysfs *ms)
+{
+  g_autofree char *root = NULL;
+  g_autofree char *path = NULL;
+  int r;
+
+  g_return_if_fail (MOCK_IS_SYSFS (ms));
+  g_return_if_fail (ms->force_power != NULL);
+
+  root = umockdev_testbed_get_root_dir (ms->bed);
+  path = g_build_filename (root, ms->force_power, "force_power", NULL);
+  r = g_unlink (path);
+
+  if (r == -1)
+    g_warning ("could not unlink %s: %s", path, g_strerror (errno));
+
+  umockdev_testbed_set_property (ms->bed, ms->force_power, "DRIVER", "");
+  umockdev_testbed_uevent (ms->bed, ms->force_power, "change");
+  umockdev_testbed_uevent (ms->bed, ms->force_power, "unbind");
 }
 
 char *

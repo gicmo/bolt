@@ -37,6 +37,10 @@ const char *     mock_sysfs_force_power_add (MockSysfs *ms);
 
 gboolean         mock_sysfs_force_power_remove (MockSysfs *ms);
 
+void             mock_sysfs_force_power_load (MockSysfs *ms);
+
+void             mock_sysfs_force_power_unload (MockSysfs *ms);
+
 char *           mock_sysfs_force_power_read (MockSysfs *ms);
 
 gboolean         mock_sysfs_force_power_enabled (MockSysfs *ms);
