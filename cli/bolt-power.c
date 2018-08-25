@@ -20,9 +20,11 @@
 
 #include "config.h"
 
+#include "bolt-error.h"
 #include "bolt-power.h"
 
 #include <gio/gio.h>
+#include <gio/gunixfdlist.h>
 
 struct _BoltPower
 {
@@ -118,6 +120,94 @@ bolt_power_new_for_object_path (GDBusConnection *bus,
   return pwr;
 }
 
+
+int
+bolt_power_force_power (BoltPower *power,
+                        GError   **error)
+{
+  g_autoptr(GUnixFDList) fds = NULL;
+  g_autoptr(GVariant) val = NULL;
+  g_autoptr(GError) err = NULL;
+  GVariant *input;
+  int fd = -1;
+
+  g_return_val_if_fail (BOLT_IS_POWER (power), -1);
+
+  input = g_variant_new ("(ss)",
+                         "boltctl", /* who */
+                         "");       /* flags */
+
+  val = g_dbus_proxy_call_with_unix_fd_list_sync (G_DBUS_PROXY (power),
+                                                  "ForcePower",
+                                                  input,
+                                                  G_DBUS_CALL_FLAGS_NONE,
+                                                  -1,
+                                                  NULL,
+                                                  &fds,
+                                                  NULL,
+                                                  &err);
+
+  if (val == NULL)
+    {
+      bolt_error_propagate_stripped (error, &err);
+      return -1;
+    }
+
+  if (g_unix_fd_list_get_length (fds) != 1)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "invalid number of file descriptors returned: %d",
+                   g_unix_fd_list_get_length (fds));
+
+      return -1;
+    }
+
+  fd = g_unix_fd_list_get (fds, 0, NULL);
+
+  return fd;
+}
+
+GPtrArray *
+bolt_power_list_guards (BoltPower    *power,
+                        GCancellable *cancel,
+                        GError      **error)
+{
+  g_autoptr(GVariant) val = NULL;
+  g_autoptr(GVariantIter) iter = NULL;
+  GPtrArray *res;
+  const char *id;
+  const char *who;
+  guint pid;
+
+  g_return_val_if_fail (BOLT_IS_POWER (power), NULL);
+
+  val = g_dbus_proxy_call_sync (G_DBUS_PROXY (power),
+                                "ListGuards",
+                                NULL,
+                                G_DBUS_CALL_FLAGS_NONE,
+                                -1,
+                                cancel,
+                                error);
+  if (val == NULL)
+    return NULL;
+
+  res = g_ptr_array_new_with_free_func ((GDestroyNotify) bolt_power_guard_free);
+  g_variant_get (val, "(a(ssu))", &iter);
+  while (g_variant_iter_loop (iter, "(ssu)", &id, &who, &pid))
+    {
+      BoltPowerGuard *g = g_new (BoltPowerGuard, 1);
+
+      g->id = g_strdup (id);
+      g->who = g_strdup (who);
+      g->pid = pid;
+
+      g_ptr_array_add (res, g);
+    }
+
+  return res;
+}
+
+/* getter */
 gboolean
 bolt_power_is_supported (BoltPower *power)
 {
@@ -152,4 +242,13 @@ bolt_power_get_state (BoltPower *power)
     g_warning ("failed to get enum property '%s'", key);
 
   return val;
+}
+
+/* bolt power guard functions */
+void
+bolt_power_guard_free (BoltPowerGuard *guard)
+{
+  g_free (guard->id);
+  g_free (guard->who);
+  g_free (guard);
 }

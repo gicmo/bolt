@@ -32,10 +32,31 @@ G_DECLARE_FINAL_TYPE (BoltPower, bolt_power, BOLT, POWER, BoltProxy);
 BoltPower *         bolt_power_new_for_object_path (GDBusConnection *bus,
                                                     GCancellable    *cancellable,
                                                     GError         **error);
+
+/* methods */
+
+int                 bolt_power_force_power (BoltPower *power,
+                                            GError   **error);
+
+GPtrArray *         bolt_power_list_guards (BoltPower    *power,
+                                            GCancellable *cancellable,
+                                            GError      **error);
+
 /* getter */
 gboolean            bolt_power_is_supported (BoltPower *power);
 
 BoltPowerState      bolt_power_get_state (BoltPower *power);
+
+/*  */
+
+typedef struct BoltPowerGuard_
+{
+  char *id;
+  char *who;
+  guint pid;
+} BoltPowerGuard;
+
+void bolt_power_guard_free (BoltPowerGuard *guard);
 
 
 G_END_DECLS

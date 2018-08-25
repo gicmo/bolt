@@ -28,14 +28,6 @@
 
 G_BEGIN_DECLS
 
-typedef struct BoltPowerGuard_ {
-  char *id;
-  char *who;
-  guint pid;
-} BoltPowerGuard;
-
-void bolt_power_guard_free (BoltPowerGuard *guard);
-
 #define BOLT_TYPE_CLIENT bolt_client_get_type ()
 G_DECLARE_FINAL_TYPE (BoltClient, bolt_client, BOLT, CLIENT, BoltProxy);
 
@@ -92,13 +84,6 @@ void            bolt_client_forget_device_async (BoltClient         *client,
 gboolean        bolt_client_forget_device_finish (BoltClient   *client,
                                                   GAsyncResult *res,
                                                   GError      **error);
-
-int             bolt_client_force_power (BoltClient *client,
-                                         GError    **error);
-
-GPtrArray *     bolt_client_list_guards (BoltClient   *client,
-                                         GCancellable *cancellable,
-                                         GError      **error);
 
 BoltPower *     bolt_client_new_power_client (BoltClient   *client,
                                               GCancellable *cancellable,

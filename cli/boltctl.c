@@ -852,7 +852,7 @@ power (BoltClient *client, int argc, char **argv)
       str = bolt_power_state_to_string (state);
       g_print ("power state: %s\n", str);
 
-      guards = bolt_client_list_guards (client, NULL, &error);
+      guards = bolt_power_list_guards (power, NULL, &error);
 
       if (guards == NULL)
         {
@@ -878,7 +878,7 @@ power (BoltClient *client, int argc, char **argv)
       return EXIT_SUCCESS;
     }
 
-  fd = bolt_client_force_power (client, &error);
+  fd = bolt_power_force_power (power, &error);
   if (fd == -1)
     {
       g_warning ("Could force power controller: %s", error->message);
