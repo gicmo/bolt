@@ -617,6 +617,80 @@ test_power_guards_fifo (TestPower *tt, gconstpointer user)
   g_assert_false (on);
 }
 
+static void
+test_power_wmi_uevent (TestPower *tt, gconstpointer user)
+{
+  g_autoptr(BoltPower) power = NULL;
+  g_autoptr(GMainLoop) loop = NULL;
+  BoltPowerState state;
+  gboolean supported;
+  const char *fp;
+  guint tid;
+
+  /* now we add the wmi module */
+  fp = mock_sysfs_force_power_add (tt->sysfs);
+  g_assert_nonnull (fp);
+  loop = g_main_loop_new (NULL, FALSE);
+  power = make_bolt_power_timeout (tt, 0);
+
+  g_object_get (power,
+                "supported", &supported,
+                "state", &state,
+                NULL);
+
+  g_assert_true (supported);
+  g_assert_cmpint (state, ==, BOLT_FORCE_POWER_UNSET);
+  state = bolt_power_get_state (power);
+  g_assert_cmpint (state, ==, BOLT_FORCE_POWER_UNSET);
+
+
+  /* UNLOAD */
+  g_debug ("UNLOAD");
+  mock_sysfs_force_power_unload (tt->sysfs);
+
+  tid = g_timeout_add_seconds (5, on_timeout_warn_quit_loop, loop);
+  g_signal_connect (power, "notify::supported",
+                    G_CALLBACK (on_notify_quit_loop),
+                    loop);
+
+  /* we wait for a change in the state*/
+  g_main_loop_run (loop);
+  g_source_remove (tid);
+
+  g_object_get (power,
+                "supported", &supported,
+                "state", &state,
+                NULL);
+
+  g_assert_false (supported);
+  g_assert_cmpint (state, ==, BOLT_FORCE_POWER_UNSET);
+  state = bolt_power_get_state (power);
+  g_assert_cmpint (state, ==, BOLT_FORCE_POWER_UNSET);
+
+  /* LOAD */
+  g_debug ("LOAD");
+  mock_sysfs_force_power_load (tt->sysfs);
+
+  tid = g_timeout_add_seconds (5, on_timeout_warn_quit_loop, loop);
+  g_signal_connect (power, "notify::state",
+                    G_CALLBACK (on_notify_quit_loop),
+                    loop);
+
+  /* we wait for a change in the state*/
+  g_main_loop_run (loop);
+  g_source_remove (tid);
+
+  g_object_get (power,
+                "supported", &supported,
+                "state", &state,
+                NULL);
+
+  g_assert_true (supported);
+  g_assert_cmpint (state, ==, BOLT_FORCE_POWER_UNSET);
+  state = bolt_power_get_state (power);
+  g_assert_cmpint (state, ==, BOLT_FORCE_POWER_UNSET);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -673,6 +747,13 @@ main (int argc, char **argv)
               NULL,
               test_power_setup,
               test_power_guards_fifo,
+              test_power_tear_down);
+
+  g_test_add ("/power/wmi-uevent",
+              TestPower,
+              NULL,
+              test_power_setup,
+              test_power_wmi_uevent,
               test_power_tear_down);
 
   return g_test_run ();
