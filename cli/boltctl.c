@@ -840,6 +840,13 @@ power (BoltClient *client, int argc, char **argv)
       const char *tree_branch;
       const char *tree_right;
       const char *str;
+      gboolean supported;
+
+      supported = bolt_power_is_supported (power);
+      g_print ("supported: %s\n", bolt_yesno (supported));
+
+      if (!supported)
+        return EXIT_SUCCESS;
 
       state = bolt_power_get_state (power);
       str = bolt_power_state_to_string (state);
