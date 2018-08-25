@@ -846,6 +846,10 @@ bolt_power_initialize (GInitable    *initable,
                    "failed to create guarddir at %s", statedir);
   g_clear_error (&err);
 
+  g_signal_connect_object (power->udev, "uevent",
+                           (GCallback) handle_uevent_udev,
+                           power, 0);
+
   e = bolt_udev_new_enumerate (power->udev, NULL);
   udev_enumerate_add_match_subsystem (e, "wmi");
   udev_enumerate_add_match_property (e, "DRIVER", "intel-wmi-thunderbolt");
@@ -875,10 +879,6 @@ bolt_power_initialize (GInitable    *initable,
 
   if (power->path == NULL)
     return TRUE;
-
-  g_signal_connect_object (power->udev, "uevent",
-                           (GCallback) handle_uevent_udev,
-                           power, 0);
 
   /* recover force power state */
   on = g_file_query_exists (power->statefile, NULL);
@@ -1047,24 +1047,16 @@ bolt_power_reaper_timeout (gpointer user_data)
 }
 
 static void
-handle_uevent_udev (BoltUdev           *udev,
-                    const char         *action,
-                    struct udev_device *device,
-                    gpointer            user_data)
+handle_uevent_thunderbolt (BoltPower          *power,
+                           const char         *action,
+                           struct udev_device *device)
 {
-  BoltPower *power = BOLT_POWER (user_data);
-  const char *subsystem;
-
-  /* no callback scheduled, nothing to do */
+/* no callback scheduled, nothing to do */
   if (power->wait_id == 0)
     return;
 
   /* only interested in added devices */
   if (!bolt_streq (action, "add"))
-    return;
-
-  subsystem = udev_device_get_subsystem (device);
-  if (!bolt_streq (subsystem, "thunderbolt"))
     return;
 
   /* if we are not in WAIT state, we don't
@@ -1077,6 +1069,73 @@ handle_uevent_udev (BoltUdev           *udev,
              udev_device_get_syspath (device));
 
   bolt_power_timeout_reset (power);
+}
+
+static void
+handle_uevent_wmi (BoltPower          *power,
+                   const char         *action,
+                   struct udev_device *device)
+{
+  g_autofree char *path = NULL;
+  const char *name;
+  const char *syspath;
+  gboolean changed = FALSE;
+
+  syspath = udev_device_get_syspath (device);
+  name = udev_device_get_sysname (device);
+
+  bolt_debug (LOG_TOPIC ("power"), "uevent: wmi %s [%s %s]",
+              name, syspath, power->path ? : "<unset>");
+
+  path = g_build_filename (syspath, "force_power", NULL);
+
+  if (bolt_streq (action, "bind") &&
+      bolt_streq (name, INTEL_WMI_THUNDERBOLT_GUID))
+    {
+
+      if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
+        {
+          bolt_set_str (&power->path, g_steal_pointer (&path));
+          power->state = BOLT_FORCE_POWER_UNSET;
+          changed = TRUE;
+        }
+    }
+  else if (bolt_streq (action, "unbind") &&
+           bolt_streq (path, power->path))
+    {
+      if (power->state > BOLT_FORCE_POWER_OFF)
+        bolt_warn (LOG_TOPIC ("power"),
+                   "force power supported removed while active");
+
+      g_clear_pointer (&power->path, g_free);
+      power->state = BOLT_FORCE_POWER_UNSET;
+      changed = TRUE;
+    }
+
+  if (changed)
+    {
+      g_object_notify_by_pspec (G_OBJECT (power),
+                                power_props[PROP_STATE]);
+      g_object_notify_by_pspec (G_OBJECT (power),
+                                power_props[PROP_SUPPORTED]);
+    }
+}
+
+static void
+handle_uevent_udev (BoltUdev           *udev,
+                    const char         *action,
+                    struct udev_device *device,
+                    gpointer            user_data)
+{
+  BoltPower *power = BOLT_POWER (user_data);
+  const char *subsystem;
+
+  subsystem = udev_device_get_subsystem (device);
+
+  if (bolt_streq (subsystem, "thunderbolt"))
+    handle_uevent_thunderbolt (power, action, device);
+  else if (bolt_streq (subsystem, "wmi"))
+    handle_uevent_wmi (power, action, device);
 }
 
 static void
