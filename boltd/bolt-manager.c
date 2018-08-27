@@ -1537,8 +1537,6 @@ manager_maybe_power_controller (BoltManager *mgr)
   int n;
 
   can_force_power = bolt_power_can_force (mgr->power);
-  bolt_info (LOG_TOPIC ("power"), "force_power support: %s",
-             bolt_yesno (can_force_power));
 
   if (can_force_power == FALSE)
     return NULL;
@@ -1555,7 +1553,6 @@ manager_maybe_power_controller (BoltManager *mgr)
       goto out;
     }
 
-  bolt_info (LOG_TOPIC ("power"), "setting force_power to ON");
   guard = bolt_power_acquire (mgr->power, &err);
 
   if (guard == NULL)
