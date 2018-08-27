@@ -493,6 +493,10 @@ bolt_manager_initialize (GInitable    *initable,
   /* if we don't see any tb device, we try to force power */
   power = manager_maybe_power_controller (mgr);
 
+  if (power != NULL)
+    bolt_info (LOG_TOPIC ("manager"), "acquired power guard '%s'",
+               bolt_power_guard_get_id (power));
+
   /* TODO: error checking */
   enumerate =  bolt_udev_new_enumerate (mgr->udev, NULL);
   udev_enumerate_add_match_subsystem (enumerate, "thunderbolt");
