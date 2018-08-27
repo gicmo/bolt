@@ -698,7 +698,7 @@ monitor (BoltClient *client, int argc, char **argv)
   if (domains == NULL)
     {
       g_warning ("Could not list domains: %s", error->message);
-      devices = g_ptr_array_new_with_free_func (g_object_unref);
+      domains = g_ptr_array_new_with_free_func (g_object_unref);
       g_clear_error (&error);
     }
 
