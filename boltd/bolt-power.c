@@ -1003,8 +1003,6 @@ bolt_power_wait_timeout (gpointer user_data)
   if (!ok)
     bolt_warn_err (err, LOG_TOPIC ("power"),
                    "failed to turn off force_power");
-  else
-    bolt_info (LOG_TOPIC ("power"), "setting force_power to OFF");
 
   power->wait_id = 0;
   return G_SOURCE_REMOVE;
@@ -1175,6 +1173,9 @@ bolt_power_switch_toggle (BoltPower *power,
                            "force power not supported");
       return FALSE;
     }
+
+  bolt_info (LOG_TOPIC ("power"), "setting force_power to %s",
+             on ? "ON" : "OFF");
 
   fd = bolt_open (power->path, O_WRONLY, 0, error);
   if (fd < 0)
@@ -1448,9 +1449,15 @@ bolt_power_acquire_full (BoltPower  *power,
     }
   else if (power->state != BOLT_FORCE_POWER_ON)
     {
-      ok = bolt_power_switch_toggle (power, TRUE, error);
+      ok = bolt_power_switch_toggle (power, TRUE, &err);
+
       if (!ok)
-        return NULL;
+        {
+          bolt_warn_err (err, LOG_TOPIC ("power"),
+                         "failed to toggle force_power");
+          g_propagate_error (error, g_steal_pointer (&err));
+          return NULL;
+        }
     }
 
   if (pid == 0)
