@@ -60,8 +60,6 @@ struct _BoltDevice
   BoltExported object;
 
   /* device props */
-  char          *dbus_path;
-
   char          *uid;
   char          *name;
   char          *vendor;
@@ -90,6 +88,9 @@ struct _BoltDevice
 
 enum {
   PROP_0,
+
+  /* internal properties */
+  PROP_OBJECT_ID,
 
   PROP_STORE,
   PROP_SECURITY,
@@ -138,8 +139,6 @@ bolt_device_finalize (GObject *object)
 
   g_clear_object (&dev->store);
 
-  g_free (dev->dbus_path);
-
   g_free (dev->uid);
   g_free (dev->name);
   g_free (dev->vendor);
@@ -183,6 +182,7 @@ bolt_device_get_property (GObject    *object,
       }
       break;
 
+    case PROP_OBJECT_ID:
     case PROP_UID:
       g_value_set_string (value, dev->uid);
       break;
@@ -354,6 +354,9 @@ bolt_device_class_init (BoltDeviceClass *klass)
   gobject_class->get_property = bolt_device_get_property;
   gobject_class->set_property = bolt_device_set_property;
 
+  props[PROP_OBJECT_ID] =
+    bolt_param_spec_override (gobject_class, "object-id");
+
   props[PROP_STORE] =
     g_param_spec_object ("store",
                          NULL, NULL,
@@ -507,6 +510,9 @@ bolt_device_class_init (BoltDeviceClass *klass)
   bolt_exported_class_set_interface_info (exported_class,
                                           BOLT_DBUS_DEVICE_INTERFACE,
                                           "/boltd/org.freedesktop.bolt.xml");
+
+  bolt_exported_class_set_object_path (exported_class,
+                                       BOLT_DBUS_PATH_DEVICES);
 
   bolt_exported_class_export_properties (exported_class,
                                          PROP_EXPORTED,
@@ -1086,19 +1092,16 @@ bolt_device_export (BoltDevice      *device,
                     GDBusConnection *connection,
                     GError         **error)
 {
-  const char *path;
   gboolean ok;
 
   g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
 
-  path = bolt_device_get_object_path (device);
-
   ok = bolt_exported_export (BOLT_EXPORTED (device),
                              connection,
-                             path,
+                             NULL,
                              error);
 
-  return ok ? path : NULL;
+  return ok ? bolt_device_get_object_path (device) : NULL;
 }
 
 void
@@ -1284,17 +1287,10 @@ bolt_device_get_object_path (BoltDevice *device)
 {
   g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
 
-  if (device->dbus_path == NULL)
-    {
-      char *path = NULL;
+  if (!bolt_exported_is_exported (BOLT_EXPORTED (device)))
+      return NULL;
 
-      path = g_strdup_printf (BOLT_DBUS_PATH "/devices/%s", device->uid);
-      g_strdelimit (path, "-", '_');
-
-      device->dbus_path = path;
-    }
-
-  return device->dbus_path;
+  return bolt_exported_get_object_path (BOLT_EXPORTED (device));
 }
 
 BoltPolicy
