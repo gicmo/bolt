@@ -93,3 +93,60 @@ bolt_fs_cleanup_dir (const char *target,
 
   return bolt_rmdir (target, error);
 }
+
+#define TOUCH_FLAGS O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC
+
+static inline void
+timespec_set_from_uint64 (struct timespec *to,
+                          guint64          from)
+{
+  if (from > 0)
+    {
+      to->tv_sec = (time_t) from;
+      to->tv_nsec = 0;
+    }
+  else
+    {
+      to->tv_sec = 0;
+      to->tv_nsec = UTIME_OMIT;
+    }
+}
+
+gboolean
+bolt_fs_touch (GFile   *target,
+               guint64  atime,
+               guint64  mtime,
+               GError **error)
+{
+  g_autofree char *path = NULL;
+  struct timespec times[2];
+  gboolean ok;
+  int fd;
+  int r;
+
+  path = g_file_get_path (target);
+
+  fd = bolt_open (path, TOUCH_FLAGS, 0664, error);
+
+  if (fd < 0)
+    return FALSE;
+
+  /* times[0] is the "last access time" (atime) */
+  timespec_set_from_uint64 (&times[0], atime);
+
+  /* times[1] is the "last modification time" (mtime). */
+  timespec_set_from_uint64 (&times[1], mtime);
+
+  r = futimens (fd, times);
+
+  if (r == -1)
+    {
+      int errsave = errno;
+      g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errsave),
+                   "could not touch file: %s", g_strerror (errsave));
+    }
+
+  ok = bolt_close (fd, error);
+
+  return r != -1 && ok;
+}
