@@ -537,6 +537,55 @@ test_fs (TestIO *tt, gconstpointer user_data)
   g_assert_true (ok);
 }
 
+#define TIME_QI "time::*"
+static void
+touch_and_compare (GFile *target, guint64 tp)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GFileInfo) info = NULL;
+  gboolean ok;
+  guint64 ts;
+
+  ok = bolt_fs_touch (target, tp, tp + 1, &error);
+
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  info = g_file_query_info (target, TIME_QI, 0, NULL, &error);
+
+  g_assert_no_error (error);
+  g_assert_nonnull (info);
+
+  ts = g_file_info_get_attribute_uint64 (info, "time::modified");
+  g_assert_cmpuint (ts, ==, tp + 1);
+
+  ts = g_file_info_get_attribute_uint64 (info, "time::access");
+  g_assert_cmpuint (ts, ==, tp);
+}
+
+
+static void
+test_fs_touch (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GFile) base = NULL;
+  g_autoptr(GFile) target = NULL;
+  gboolean ok;
+  guint64 now;
+  guint64 tp;
+
+  base = g_file_new_for_path (tt->path);
+  target = g_file_get_child (base, "this");
+
+  ok = g_file_query_exists (target, NULL);
+  g_assert_false (ok);
+
+  now = (guint64) g_get_real_time () / G_USEC_PER_SEC;
+  touch_and_compare (target, now);
+
+  tp = 626648700;
+  touch_and_compare (target, tp);
+}
+
 static void
 test_str (TestRng *tt, gconstpointer user_data)
 {
@@ -847,6 +896,13 @@ main (int argc, char **argv)
               NULL,
               test_io_setup,
               test_fs,
+              test_io_tear_down);
+
+  g_test_add ("/common/fs/touch",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_fs_touch,
               test_io_tear_down);
 
   g_test_add ("/common/str",
