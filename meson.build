@@ -76,7 +76,6 @@ libudev = dependency('libudev')
 unix    = dependency('gio-unix-2.0')
 udev    = dependency('udev')
 polkit  = dependency('polkit-gobject-1')
-systemd = dependency('systemd')
 mockdev = dependency('umockdev-1.0', required: false)
 
 git     = find_program('git', required: false)
@@ -95,7 +94,12 @@ mandir = get_option('mandir')
 
 dbdir = get_option('db-path')
 udevdir = udev.get_pkgconfig_variable('udevdir')
-unitdir = systemd.get_pkgconfig_variable('systemdsystemunitdir')
+
+unitdir = ''
+if get_option('systemd')
+  systemd = dependency('systemd')
+  unitdir = systemd.get_pkgconfig_variable('systemdsystemunitdir')
+endif
 
 version_split = meson.project_version().split('.')
 version_major = version_split[0]
@@ -265,9 +269,11 @@ unit_file = configure_file(
   configuration: subs
 )
 
-install_data(unit_file,
-  install_dir: unitdir
-)
+if unitdir != ''
+  install_data(unit_file,
+    install_dir: unitdir
+  )
+endif
 
 install_data('data/90-bolt.rules',
   install_dir: join_paths(udevdir, 'rules.d')

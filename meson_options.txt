@@ -1,3 +1,4 @@
 option('db-path', type: 'string', value: '/var/lib/boltd', description: 'Directory for the device database')
 option('man', type: 'combo', choices: ['auto', 'true', 'false'], value: 'auto', description: 'Build man pages')
 option('privileged-group', type: 'string', value: 'wheel', description: 'Name of privileged group')
+option('systemd', type: 'boolean', value: 'true', description: 'Whether or not to install the systemd unit')
