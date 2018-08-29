@@ -50,7 +50,7 @@ boltctl - command line client
 -----------------------------
 The `boltctl` command line can be used to manage thunderbolt devices
 via `boltd`.  It can list devices, monitor changes and initiate
-auhtorization of devices.
+authorization of devices.
 
 
 Installation
