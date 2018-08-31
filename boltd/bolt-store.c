@@ -41,6 +41,7 @@ struct _BoltStore
   GFile  *root;
   GFile  *devices;
   GFile  *keys;
+  GFile  *times;
 };
 
 
@@ -82,6 +83,8 @@ bolt_store_finalize (GObject *object)
 
   if (store->keys)
     g_clear_object (&store->keys);
+
+  g_clear_object (&store->times);
 
   G_OBJECT_CLASS (bolt_store_parent_class)->finalize (object);
 }
@@ -136,6 +139,7 @@ bolt_store_constructed (GObject *obj)
 
   store->devices = g_file_get_child (store->root, "devices");
   store->keys = g_file_get_child (store->root, "keys");
+  store->times = g_file_get_child (store->root, "times");
 }
 
 static void
@@ -516,6 +520,136 @@ bolt_store_del_device (BoltStore  *store,
 
   if (ok)
     g_signal_emit (store, signals[SIGNAL_DEVICE_REMOVED], 0, uid);
+
+  return ok;
+}
+
+gboolean
+bolt_store_get_time (BoltStore  *store,
+                     const char *uid,
+                     const char *timesel,
+                     guint64    *outval,
+                     GError    **error)
+{
+  g_autoptr(GFile) gf = NULL;
+  g_autoptr(GFileInfo) info = NULL;
+  g_autofree char *fn = NULL;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (timesel != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  fn = g_strdup_printf ("%s.%s", uid, timesel);
+  gf = g_file_get_child (store->times, fn);
+
+  info = g_file_query_info (gf, "time::modified",
+                            G_FILE_QUERY_INFO_NONE,
+                            NULL, error);
+
+  ok = info != NULL;
+  if (ok && outval != NULL)
+    *outval = g_file_info_get_attribute_uint64 (info, "time::modified");
+
+  return ok;
+}
+
+gboolean
+bolt_store_put_time (BoltStore  *store,
+                     const char *uid,
+                     const char *timesel,
+                     guint64     val,
+                     GError    **error)
+{
+  g_autoptr(GFile) gf = NULL;
+  g_autofree char *fn = NULL;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (timesel != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  fn = g_strdup_printf ("%s.%s", uid, timesel);
+  gf = g_file_get_child (store->times, fn);
+
+  ok = bolt_fs_make_parent_dirs (gf, error);
+  if (!ok)
+    return FALSE;
+
+  ok = bolt_fs_touch (gf, val, val, error);
+
+  return ok;
+}
+
+gboolean
+bolt_store_put_times (BoltStore  *store,
+                      const char *uid,
+                      GError    **error,
+                      ...)
+{
+  gboolean ok = TRUE;
+  const char *ts;
+  va_list args;
+
+  if (store == NULL)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "device '%s' is not stored", uid);
+      return FALSE;
+    }
+
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  va_start (args, error);
+  while ((ts = va_arg (args, const char *)) != NULL)
+    {
+      g_autoptr(GError) err = NULL;
+      guint64 val = va_arg (args, guint64);
+
+      if (val == 0)
+        continue;
+
+      ok = bolt_store_put_time (store,
+                                uid,
+                                ts,
+                                val,
+                                &err);
+
+      if (!ok)
+        {
+          if (error != NULL)
+            {
+              g_propagate_error (error, g_steal_pointer (&err));
+              return FALSE;
+            }
+
+          /* error variable NULL, caller doesn't care, we keep going */
+          bolt_warn_err (err, LOG_DEV_UID (uid), LOG_TOPIC ("store"),
+                         "failed to update timestamp '%s'", ts);
+        }
+    }
+  va_end (args);
+
+  return TRUE;
+}
+
+gboolean
+bolt_store_del_time (BoltStore  *store,
+                     const char *uid,
+                     const char *timesel,
+                     GError    **error)
+{
+  g_autoptr(GFile) pathfile = NULL;
+  g_autofree char *name = NULL;
+  gboolean ok;
+
+  name = g_strdup_printf ("%s.%s", uid, timesel);
+  pathfile = g_file_get_child (store->times, name);
+  ok = g_file_delete (pathfile, NULL, error);
 
   return ok;
 }

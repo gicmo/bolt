@@ -63,6 +63,28 @@ gboolean          bolt_store_del_device (BoltStore  *store,
                                          const char *uid,
                                          GError    **error);
 
+gboolean          bolt_store_put_time (BoltStore  *store,
+                                       const char *uid,
+                                       const char *timesel,
+                                       guint64     val,
+                                       GError    **error);
+
+gboolean          bolt_store_put_times (BoltStore  *store,
+                                        const char *uid,
+                                        GError    **error,
+                                        ...) G_GNUC_NULL_TERMINATED;
+
+gboolean          bolt_store_get_time (BoltStore  *store,
+                                       const char *uid,
+                                       const char *timesel,
+                                       guint64    *outval,
+                                       GError    **error);
+
+gboolean          bolt_store_del_time (BoltStore  *store,
+                                       const char *uid,
+                                       const char *timesel,
+                                       GError    **error);
+
 BoltKeyState      bolt_store_have_key (BoltStore  *store,
                                        const char *uid);
 
