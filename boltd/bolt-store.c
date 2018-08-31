@@ -579,6 +579,47 @@ bolt_store_get_time (BoltStore  *store,
 }
 
 gboolean
+bolt_store_get_times (BoltStore  *store,
+                      const char *uid,
+                      GError    **error,
+                      ...)
+{
+  gboolean ok = TRUE;
+  const char *ts;
+  va_list args;
+
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  va_start (args, error);
+  while ((ts = va_arg (args, const char *)) != NULL)
+    {
+      g_autoptr(GError) err = NULL;
+      guint64 *val = va_arg (args, guint64 *);
+
+      *val = 0;
+      ok = bolt_store_get_time (store, uid, ts, val, &err);
+
+      if (!ok && !bolt_err_notfound (err))
+        {
+          if (error != NULL)
+            {
+              g_propagate_error (error, g_steal_pointer (&err));
+              return FALSE;
+            }
+
+          /* error variable NULL, caller doesn't care, we keep going */
+          bolt_warn_err (err, LOG_DEV_UID (uid), LOG_TOPIC ("store"),
+                         "failed to read timestamp '%s'", ts);
+        }
+    }
+  va_end (args);
+
+  return TRUE;
+}
+
+gboolean
 bolt_store_put_time (BoltStore  *store,
                      const char *uid,
                      const char *timesel,
@@ -675,6 +716,45 @@ bolt_store_del_time (BoltStore  *store,
   ok = g_file_delete (pathfile, NULL, error);
 
   return ok;
+}
+
+gboolean
+bolt_store_del_times (BoltStore  *store,
+                      const char *uid,
+                      GError    **error,
+                      ...)
+{
+  gboolean ok = TRUE;
+  const char *ts;
+  va_list args;
+
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  va_start (args, error);
+  while ((ts = va_arg (args, const char *)) != NULL)
+    {
+      g_autoptr(GError) err = NULL;
+
+      ok = bolt_store_del_time (store, uid, ts, &err);
+
+      if (!ok && !bolt_err_notfound (err))
+        {
+          if (error != NULL)
+            {
+              g_propagate_error (error, g_steal_pointer (&err));
+              return FALSE;
+            }
+
+          /* error variable NULL, caller doesn't care, we keep going */
+          bolt_warn_err (err, LOG_DEV_UID (uid), LOG_TOPIC ("store"),
+                         "failed to delete timestamp '%s'", ts);
+        }
+    }
+  va_end (args);
+
+  return TRUE;
 }
 
 BoltKeyState
