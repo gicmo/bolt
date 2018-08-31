@@ -313,6 +313,8 @@ bolt_store_put_device (BoltStore  *store,
   const char *uid;
   const char *label;
   gboolean ok;
+  guint64 ctime;
+  guint64 atime;
   gint64 stime;
   gsize len;
   guint keystate = 0;
@@ -382,19 +384,26 @@ bolt_store_put_device (BoltStore  *store,
                                 NULL,
                                 NULL, error);
 
-  if (ok)
-    {
-      g_object_set (device,
-                    "store", store,
-                    "policy", policy,
-                    "key", keystate,
-                    "storetime", stime,
-                    NULL);
+  if (!ok)
+    return FALSE;
 
-      g_signal_emit (store, signals[SIGNAL_DEVICE_ADDED], 0, uid);
-    }
+  g_object_set (device,
+                "store", store,
+                "policy", policy,
+                "key", keystate,
+                "storetime", stime,
+                NULL);
 
-  return ok;
+  g_signal_emit (store, signals[SIGNAL_DEVICE_ADDED], 0, uid);
+
+  ctime = bolt_device_get_conntime (device);
+  atime = bolt_device_get_authtime (device);
+
+  bolt_store_put_times (store, uid, NULL,
+                        "conntime", ctime,
+                        "authtime", atime,
+                        NULL);
+  return TRUE;
 }
 
 BoltDevice *
@@ -414,6 +423,8 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
   BoltKeyState key;
   gboolean ok;
   guint64 stime;
+  guint64 atime = 0;
+  guint64 ctime = 0;
   gsize len;
 
   g_return_val_if_fail (store != NULL, FALSE);
@@ -493,6 +504,16 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
       return NULL;
     }
 
+  ok = bolt_store_get_time (store, uid, "conntime", &ctime, &err);
+  if (!ok && !bolt_err_notfound (err))
+    bolt_warn_err (err, LOG_TOPIC (store), "failed to read ctime");
+  g_clear_error (&err);
+
+  ok = bolt_store_get_time (store, uid, "authtime", &atime, &err);
+  if (!ok && !bolt_err_notfound (err))
+    bolt_warn_err (err, LOG_TOPIC (store), "failed to read atime");
+  g_clear_error (&err);
+
   return g_object_new (BOLT_TYPE_DEVICE,
                        "uid", uid,
                        "name", name,
@@ -503,6 +524,8 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
                        "policy", policy,
                        "key", key,
                        "storetime", stime,
+                       "conntime", ctime,
+                       "authtime", atime,
                        "label", label,
                        NULL);
 }
@@ -725,14 +748,24 @@ bolt_store_del (BoltStore  *store,
 
   ok = bolt_store_del_device (store, uid, error);
 
-  if (ok)
-    {
-      g_object_set (dev,
-                    "store", NULL,
-                    "key", BOLT_KEY_MISSING,
-                    "policy", BOLT_POLICY_DEFAULT,
-                    NULL);
-    }
+  if (!ok)
+    return FALSE;
+
+  ok = bolt_store_del_time (store, uid, "conntime", &err);
+  if (!ok && !bolt_err_notfound (err))
+    bolt_warn_err (err, LOG_TOPIC (store), "failed to delete ctime");
+  g_clear_error (&err);
+
+  ok = bolt_store_del_time (store, uid, "authtime", &err);
+  if (!ok && !bolt_err_notfound (err))
+    bolt_warn_err (err, LOG_TOPIC (store), "failed to delete authtime");
+  g_clear_error (&err);
+
+  g_object_set (dev,
+                "store", NULL,
+                "key", BOLT_KEY_MISSING,
+                "policy", BOLT_POLICY_DEFAULT,
+                NULL);
 
   return ok;
 }
