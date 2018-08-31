@@ -1356,6 +1356,18 @@ bolt_device_get_label (const BoltDevice *dev)
   return dev->label;
 }
 
+guint64
+bolt_device_get_authtime (const BoltDevice *dev)
+{
+  return dev->authtime;
+}
+
+guint64
+bolt_device_get_conntime (const BoltDevice *dev)
+{
+  return dev->conntime;
+}
+
 gint64
 bolt_device_get_storetime (const BoltDevice *dev)
 {

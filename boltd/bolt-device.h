@@ -92,6 +92,10 @@ BoltDeviceType    bolt_device_get_device_type (const BoltDevice *dev);
 
 const char *      bolt_device_get_label (const BoltDevice *dev);
 
+guint64           bolt_device_get_authtime (const BoltDevice *dev);
+
+guint64           bolt_device_get_conntime (const BoltDevice *dev);
+
 gint64            bolt_device_get_storetime (const BoltDevice *dev);
 
 gboolean          bolt_device_supports_secure_mode (const BoltDevice *dev);
