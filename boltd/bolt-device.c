@@ -852,6 +852,11 @@ authorize_thread_done (GObject      *object,
 
   g_object_thaw_notify (object);
 
+  if (dev->store)
+    bolt_store_put_times (dev->store, dev->uid, NULL,
+                          "authtime", now,
+                          NULL);
+
   if (auth_data->callback)
     auth_data->callback (G_OBJECT (dev),
                          G_ASYNC_RESULT (auth),
@@ -1180,6 +1185,10 @@ bolt_device_connected (BoltDevice         *dev,
 
   bolt_info (LOG_DEV (dev), "parent is %.13s...", dev->parent);
 
+  bolt_store_put_times (dev->store, dev->uid, NULL,
+                        "conntime", ct,
+                        "authtime", at,
+                        NULL);
   return status;
 }
 
@@ -1191,8 +1200,6 @@ bolt_device_disconnected (BoltDevice *dev)
                 "sysfs-path", NULL,
                 "domain", NULL,
                 "status", BOLT_STATUS_DISCONNECTED,
-                "conntime", 0,
-                "authtime", 0,
                 NULL);
 
   /* check if we have a new key for the device, and
@@ -1257,6 +1264,10 @@ bolt_device_update_from_udev (BoltDevice         *dev,
     {
       dev->authtime = bolt_now_in_seconds ();
       g_object_notify_by_pspec (G_OBJECT (dev), props[PROP_AUTHTIME]);
+
+      bolt_store_put_times (dev->store, dev->uid, NULL,
+                            "authtime", dev->authtime,
+                            NULL);
     }
 
   chg = bolt_flags_update (aflags, &dev->aflags, mask);
