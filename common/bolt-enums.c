@@ -25,7 +25,7 @@
 
 #include <gio/gio.h>
 
-#if !GLIB_CHECK_VERSION(2, 57, 0)
+#if !GLIB_CHECK_VERSION (2, 57, 0)
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GFlagsClass, g_type_class_unref);
 #endif

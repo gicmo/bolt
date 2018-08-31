@@ -1299,7 +1299,7 @@ bolt_device_get_object_path (BoltDevice *device)
   g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
 
   if (!bolt_exported_is_exported (BOLT_EXPORTED (device)))
-      return NULL;
+    return NULL;
 
   return bolt_exported_get_object_path (BOLT_EXPORTED (device));
 }

@@ -29,7 +29,9 @@
 
 G_BEGIN_DECLS
 
+/* *INDENT-OFF* */
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (DIR, closedir);
+/* *INDENT-ON* */
 
 int        bolt_open (const char *path,
                       int         flags,
