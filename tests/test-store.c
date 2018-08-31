@@ -417,6 +417,18 @@ test_store_times (TestStore *tt, gconstpointer user_data)
   g_assert_true (ok);
   g_assert_cmpuint (connout, ==, connin);
 
+  authout = connout = 0;
+
+  bolt_store_get_times (tt->store, uid, &error,
+                        "authtime", &authout,
+                        "conntime", &connout,
+                        NULL);
+
+  g_assert_no_error (error);
+  g_assert_true (ok);
+  g_assert_cmpuint (connout, ==, connin);
+  g_assert_cmpuint (authout, ==, authin);
+
   /* via the device loading */
   g_clear_object (&stored);
   stored = bolt_store_get_device (tt->store, uid, &error);
@@ -452,6 +464,24 @@ test_store_times (TestStore *tt, gconstpointer user_data)
   connout = 0;
   ok = bolt_store_get_time (tt->store, uid,
                             "conntime", &connout,
+                            &error);
+
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_error (&error);
+
+  /* the multiple timestamp version of del is
+   * ignoring not found errors */
+  ok = bolt_store_del_times (tt->store, uid, &error,
+                             "authtime", "conntime",
+                             NULL);
+
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  connout = 0;
+  ok = bolt_store_get_time (tt->store, uid,
+                            "authtime", &connout,
                             &error);
 
   g_assert_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
