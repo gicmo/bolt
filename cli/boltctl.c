@@ -130,6 +130,30 @@ list_domains (BoltClient *client, int argc, char **argv)
 }
 
 /* device related commands */
+static gboolean
+format_timestamp (BoltDevice *dev,
+                  char       *buffer,
+                  gsize       n,
+                  const char *timesel)
+{
+  g_autofree char *str = NULL;
+  guint64 ts;
+
+  g_object_get (dev, timesel, &ts, NULL);
+
+  if (ts > 0)
+    {
+      str = bolt_epoch_format (ts, "%c");
+      g_utf8_strncpy (buffer, str, n);
+    }
+  else
+    {
+      g_utf8_strncpy (buffer, "no", n);
+    }
+
+  return ts > 0;
+}
+
 static void
 print_device (BoltDevice *dev, gboolean verbose)
 {
@@ -154,7 +178,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   const char *tree_space;
   gboolean stored;
   gboolean pcie;
-  guint64 ct, at, st;
+  char buf[256];
 
   path = g_dbus_proxy_get_object_path (G_DBUS_PROXY (dev));
   uid = bolt_device_get_uid (dev);
@@ -165,12 +189,9 @@ print_device (BoltDevice *dev, gboolean verbose)
   aflags = bolt_device_get_authflags (dev);
   parent = bolt_device_get_parent (dev);
   syspath = bolt_device_get_syspath (dev);
-  ct = bolt_device_get_conntime (dev);
-  at = bolt_device_get_authtime (dev);
   stored = bolt_device_is_stored (dev);
   policy = bolt_device_get_policy (dev);
   keystate = bolt_device_get_keystate (dev);
-  st = bolt_device_get_storetime (dev);
 
   pcie = bolt_flag_isclear (aflags, BOLT_AUTH_NOPCIE);
 
@@ -244,7 +265,6 @@ print_device (BoltDevice *dev, gboolean verbose)
 
   if (bolt_status_is_connected (status))
     {
-      g_autofree char *ctstr = NULL;
       g_autofree char *flags = NULL;
       const char *domain;
 
@@ -253,14 +273,6 @@ print_device (BoltDevice *dev, gboolean verbose)
                bolt_glyph (TREE_VERTICAL),
                tree_branch,
                domain);
-
-      flags = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, aflags, NULL);
-      g_print ("   %s %s authflags:  %s\n",
-               bolt_glyph (TREE_VERTICAL),
-               tree_branch,
-               flags);
-
-      ctstr = bolt_epoch_format (ct, "%c");
 
       if (verbose)
         {
@@ -274,29 +286,24 @@ print_device (BoltDevice *dev, gboolean verbose)
                    syspath);
         }
 
-      if (bolt_status_is_authorized (status))
-        {
-          g_autofree char *atstr = NULL;
-
-          atstr = bolt_epoch_format (at, "%c");
-          g_print ("   %s %s authorized: %s\n",
-                   bolt_glyph (TREE_VERTICAL),
-                   tree_branch,
-                   atstr);
-        }
-
-      g_print ("   %s %s connected:  %s\n",
+      flags = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, aflags, NULL);
+      g_print ("   %s %s authflags:  %s\n",
                bolt_glyph (TREE_VERTICAL),
                tree_right,
-               ctstr);
-
+               flags);
     }
 
-  g_print ("   %s stored:        %s\n", tree_right, bolt_yesno (stored));
+  if (format_timestamp (dev, buf, sizeof (buf), "authtime"))
+    g_print ("   %s authorized:    %s\n", tree_branch, buf);
+
+  if (format_timestamp (dev, buf, sizeof (buf), "conntime"))
+    g_print ("   %s connected:     %s\n", tree_branch, buf);
+
+  format_timestamp (dev, buf, sizeof (buf), "storetime");
+  g_print ("   %s stored:        %s\n", tree_right, buf);
 
   if (stored)
     {
-      g_autofree char *etstr = NULL;
       const char *pstr = bolt_policy_to_string (policy);
       const char *kstr;
 
@@ -309,9 +316,6 @@ print_device (BoltDevice *dev, gboolean verbose)
       else
         kstr = "unknown";
 
-      etstr = bolt_epoch_format (st, "%c");
-
-      g_print ("   %s %s when:       %s\n", tree_space, tree_branch, etstr);
       g_print ("   %s %s policy:     %s\n", tree_space, tree_branch, pstr);
       g_print ("   %s %s key:        %s\n", tree_space, tree_right, kstr);
 
