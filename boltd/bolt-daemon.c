@@ -28,8 +28,6 @@
 
 #include "bolt-daemon-resource.h"
 
-#include <systemd/sd-id128.h>
-
 #include <gio/gio.h>
 
 #include <locale.h>
@@ -145,7 +143,6 @@ main (int argc, char **argv)
   GBusType bus_type = G_BUS_TYPE_SYSTEM;
   GBusNameOwnerFlags flags;
   LogCfg log = { FALSE, };
-  sd_id128_t logid;
   const GOptionEntry options[] = {
     { "replace", 'r', 0, G_OPTION_ARG_NONE, &replace,  "Replace old daemon.", NULL },
     { "session-bus", 0, 0, G_OPTION_ARG_NONE, &session_bus, "Use the session bus.", NULL},
@@ -189,14 +186,15 @@ main (int argc, char **argv)
       log.debug = bolt_streq (domains, "all");
     }
 
-  sd_id128_randomize (&logid);
-  sd_id128_to_string (logid, log.session_id);
+  bolt_log_gen_id (log.session_id);
 
   g_resources_register (bolt_daemon_get_resource ());
 
   bolt_msg (LOG_DIRECT (BOLT_LOG_VERSION, PACKAGE_VERSION),
             LOG_ID (STARTUP),
             PACKAGE_NAME " " PACKAGE_VERSION " starting up.");
+
+  bolt_debug ("session id is %s", log.session_id);
 
   /* hop on the bus, Gus */
   flags = G_BUS_NAME_OWNER_FLAGS_ALLOW_REPLACEMENT;
