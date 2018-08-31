@@ -22,6 +22,7 @@
 
 #include "bolt-device.h"
 #include "bolt-error.h"
+#include "bolt-rnd.h"
 #include "bolt-str.h"
 #include "bolt-term.h"
 
@@ -631,4 +632,25 @@ const char *
 blot_log_ctx_get_domain (BoltLogCtx *ctx)
 {
   return ctx->domain ? ctx->domain->value : NULL;
+}
+
+void
+bolt_log_gen_id (char id[BOLT_LOG_MSG_IDLEN])
+{
+  guint8 data[16] = {0, };
+  static const char ch[16] = "0123456789abcdef";
+
+  bolt_get_random_data (&data, sizeof (data));
+
+  for (guint i = 0; i < 16; i++)
+    {
+      const guint8 b = data[i];
+
+      g_assert_cmpint ((b >> 4),  <, sizeof (ch));
+
+      id[i * 2]     = ch[b >> 4];
+      id[i * 2 + 1] = ch[b & 15];
+    }
+
+  id[32] = '\0';
 }

@@ -134,6 +134,8 @@ GLogWriterOutput    bolt_log_journal (const BoltLogCtx *ctx,
                                       GLogLevelFlags    log_level,
                                       guint             flags);
 
+void               bolt_log_gen_id (char id[BOLT_LOG_MSG_IDLEN]);
+
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (BoltLogCtx, bolt_log_ctx_free);
 
 G_END_DECLS
