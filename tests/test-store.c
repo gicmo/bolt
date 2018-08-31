@@ -320,6 +320,155 @@ test_store_invalid_data (TestStore *tt, gconstpointer user_data)
   g_assert_error (err, BOLT_ERROR, BOLT_ERROR_FAILED);
 }
 
+static void
+test_store_times (TestStore *tt, gconstpointer user_data)
+{
+  g_autoptr(BoltDevice) dev = NULL;
+  g_autoptr(BoltDevice) stored = NULL;
+  g_autoptr(GError) error = NULL;
+  char uid[] = "fbc83890-e9bf-45e5-a777-b3728490989c";
+  guint64 authin = 574423871;
+  guint64 connin = 574416000;
+  guint64 authout;
+  guint64 connout;
+  gboolean ok;
+
+  dev = g_object_new (BOLT_TYPE_DEVICE,
+                      "uid", uid,
+                      "name", "Laptop",
+                      "vendor", "GNOME.org",
+                      "status", BOLT_STATUS_DISCONNECTED,
+                      "authtime", authin,
+                      "conntime", connin,
+                      NULL);
+
+  stored = bolt_store_get_device (tt->store, uid, &error);
+  g_assert_nonnull (error);
+  g_assert_true (bolt_err_notfound (error));
+  g_assert_null (stored);
+  g_clear_error (&error);
+
+  /* store the device with times */
+  ok = bolt_store_put_device (tt->store, dev,
+                              BOLT_POLICY_AUTO, NULL,
+                              &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  /* verify the store has recorded the times */
+  ok = bolt_store_get_time (tt->store,
+                            uid,
+                            "authtime",
+                            &authout,
+                            &error);
+
+  g_assert_no_error (error);
+  g_assert_true (ok);
+  g_assert_cmpuint (authout, ==, authin);
+
+  ok = bolt_store_get_time (tt->store,
+                            uid,
+                            "conntime",
+                            &connout,
+                            &error);
+
+  g_assert_no_error (error);
+  g_assert_true (ok);
+  g_assert_cmpuint (connout, ==, connin);
+
+  /* check a newly loaded device has the times */
+  stored = bolt_store_get_device (tt->store, uid, &error);
+  g_assert_no_error (error);
+  g_assert_nonnull (stored);
+
+  connout = bolt_device_get_conntime (stored);
+  authout = bolt_device_get_authtime (stored);
+
+  g_assert_cmpuint (connout, ==, connin);
+  g_assert_cmpuint (authout, ==, authin);
+
+  /* update the times */
+  connin = 8688720;
+  authin = 9207120;
+
+  ok = bolt_store_put_times (tt->store, uid, &error,
+                             "conntime", connin,
+                             "authtime", authin,
+                             NULL);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+
+
+  /* verify via store */
+  ok = bolt_store_get_time (tt->store, uid,
+                            "authtime", &authout,
+                            &error);
+
+  g_assert_no_error (error);
+  g_assert_true (ok);
+  g_assert_cmpuint (authout, ==, authin);
+
+  ok = bolt_store_get_time (tt->store, uid,
+                            "conntime", &connout,
+                            &error);
+
+  g_assert_no_error (error);
+  g_assert_true (ok);
+  g_assert_cmpuint (connout, ==, connin);
+
+  /* via the device loading */
+  g_clear_object (&stored);
+  stored = bolt_store_get_device (tt->store, uid, &error);
+  g_assert_no_error (error);
+  g_assert_nonnull (stored);
+
+  connout = bolt_device_get_conntime (stored);
+  authout = bolt_device_get_authtime (stored);
+
+  g_assert_cmpuint (connout, ==, connin);
+  g_assert_cmpuint (authout, ==, authin);
+
+
+  /* check property access */
+  connout = authout = 0;
+
+  g_object_get (stored,
+                "conntime", &connout,
+                "authtime", &authout,
+                NULL);
+
+  g_assert_cmpuint (connout, ==, connin);
+  g_assert_cmpuint (authout, ==, authin);
+
+  /* lets remove them again */
+  ok = bolt_store_del_time (tt->store, uid,
+                            "conntime",
+                            &error);
+
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  connout = 0;
+  ok = bolt_store_get_time (tt->store, uid,
+                            "conntime", &connout,
+                            &error);
+
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_error (&error);
+
+  /* check the time is not there, via the device loading */
+  g_clear_object (&stored);
+  stored = bolt_store_get_device (tt->store, uid, &error);
+  g_assert_no_error (error);
+  g_assert_nonnull (stored);
+
+  connout = bolt_device_get_conntime (stored);
+
+  g_assert_cmpuint (connout, ==, 0);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -349,6 +498,13 @@ main (int argc, char **argv)
               NULL,
               test_store_setup,
               test_store_invalid_data,
+              test_store_tear_down);
+
+  g_test_add ("/daemon/store/times",
+              TestStore,
+              NULL,
+              test_store_setup,
+              test_store_times,
               test_store_tear_down);
 
   return g_test_run ();
