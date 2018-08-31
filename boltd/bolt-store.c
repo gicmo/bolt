@@ -504,15 +504,11 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
       return NULL;
     }
 
-  ok = bolt_store_get_time (store, uid, "conntime", &ctime, &err);
-  if (!ok && !bolt_err_notfound (err))
-    bolt_warn_err (err, LOG_TOPIC (store), "failed to read ctime");
-  g_clear_error (&err);
-
-  ok = bolt_store_get_time (store, uid, "authtime", &atime, &err);
-  if (!ok && !bolt_err_notfound (err))
-    bolt_warn_err (err, LOG_TOPIC (store), "failed to read atime");
-  g_clear_error (&err);
+  /* read timestamps, but failing is not fatal */
+  bolt_store_get_times (store, uid, NULL,
+                        "conntime", &ctime,
+                        "authtime", &atime,
+                        NULL);
 
   return g_object_new (BOLT_TYPE_DEVICE,
                        "uid", uid,
@@ -831,15 +827,9 @@ bolt_store_del (BoltStore  *store,
   if (!ok)
     return FALSE;
 
-  ok = bolt_store_del_time (store, uid, "conntime", &err);
-  if (!ok && !bolt_err_notfound (err))
-    bolt_warn_err (err, LOG_TOPIC (store), "failed to delete ctime");
-  g_clear_error (&err);
-
-  ok = bolt_store_del_time (store, uid, "authtime", &err);
-  if (!ok && !bolt_err_notfound (err))
-    bolt_warn_err (err, LOG_TOPIC (store), "failed to delete authtime");
-  g_clear_error (&err);
+  bolt_store_del_times (store, uid, NULL,
+                        "conntime", "authtime",
+                        NULL);
 
   g_object_set (dev,
                 "store", NULL,
