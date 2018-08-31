@@ -77,7 +77,6 @@ unix    = dependency('gio-unix-2.0')
 udev    = dependency('udev')
 polkit  = dependency('polkit-gobject-1')
 systemd = dependency('systemd')
-libsysd = dependency('libsystemd')
 mockdev = dependency('umockdev-1.0', required: false)
 
 git     = find_program('git', required: false)
@@ -278,7 +277,6 @@ daemon_deps = [
   glib,
   gio,
   libudev,
-  libsysd,
   polkit,
   unix,
   common
