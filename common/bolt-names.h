@@ -39,6 +39,7 @@
 #define BOLT_LOG_BUG_MARK "BOLT_LOG_BUG"
 
 /* logging - message ids */
+#define BOLT_LOG_MSG_IDLEN 33
 #define BOLT_LOG_MSG_ID_STARTUP "dd11929c788e48bdbb6276fb5f26b08a"
 
 
