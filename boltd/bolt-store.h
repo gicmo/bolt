@@ -95,6 +95,11 @@ gboolean          bolt_store_del_times (BoltStore  *store,
                                         GError    **error,
                                         ...) G_GNUC_NULL_TERMINATED;
 
+gboolean          bolt_store_put_key (BoltStore  *store,
+                                      const char *uid,
+                                      BoltKey    *key,
+                                      GError    **error);
+
 BoltKeyState      bolt_store_have_key (BoltStore  *store,
                                        const char *uid);
 

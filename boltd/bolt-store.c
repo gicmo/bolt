@@ -365,11 +365,8 @@ bolt_store_put_device (BoltStore  *store,
   if (key)
     {
       g_autoptr(GError) err  = NULL;
-      g_autoptr(GFile) keypath = g_file_get_child (store->keys, uid);
-      ok = bolt_fs_make_parent_dirs (keypath, &err);
 
-      if (ok)
-        ok = bolt_key_save_file (key, keypath, &err);
+      ok = bolt_store_put_key (store, uid, key, &err);
 
       if (!ok)
         bolt_warn_err (err, "failed to store key");
@@ -751,6 +748,25 @@ bolt_store_del_times (BoltStore  *store,
   va_end (args);
 
   return TRUE;
+}
+
+
+gboolean
+bolt_store_put_key (BoltStore  *store,
+                    const char *uid,
+                    BoltKey    *key,
+                    GError    **error)
+{
+  g_autoptr(GFile) keypath = NULL;
+  gboolean ok;
+
+  keypath = g_file_get_child (store->keys, uid);
+  ok = bolt_fs_make_parent_dirs (keypath, error);
+
+  if (ok)
+    ok = bolt_key_save_file (key, keypath, error);
+
+  return ok;
 }
 
 BoltKeyState
