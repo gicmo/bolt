@@ -1591,6 +1591,44 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.daemon_stop()
 
+    def test_device_key_upgrade(self):
+        dock = TbDevice('Dock',)
+        ssd1 = TbDevice('SSD1',)
+        tree = TbDomain(security=TbDomain.SECURITY_SECURE,
+                        host=TbHost([
+                            dock,
+                            ssd1
+                        ]))
+
+        tree.connect_tree(self.testbed)
+        self.store_device(dock)
+
+        self.daemon_start()
+        self.polkitd_start()
+        client = self.client
+
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), len(tree.devices))
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.authorize'])
+
+        remote_dock = self.find_device_by_uid(devices, dock.unique_id)
+        remote_ssd1 = self.find_device_by_uid(devices, ssd1.unique_id)
+
+        self.assertEqual(remote_dock.key, BoltDevice.KEY_MISSING)
+        self.assertEqual(remote_ssd1.key, BoltDevice.KEY_MISSING)
+
+        with remote_dock.record() as tape:
+            remote_dock.authorize()
+            res = tape.wait_for_event('property', 'Key', 'new')
+            self.assertTrue(res)
+        self.assertEqual(remote_dock.key, BoltDevice.KEY_NEW)
+
+        with remote_ssd1.record() as tape:
+            remote_ssd1.authorize()
+            res = tape.wait_for_event('property', 'Status', 'authorized')
+            self.assertTrue(res)
+        self.assertEqual(remote_ssd1.key, BoltDevice.KEY_MISSING)
+
     def test_device_forget(self):
         self.daemon_start()
         tree = self.default_mock_tree()
