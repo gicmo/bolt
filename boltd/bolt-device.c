@@ -976,7 +976,9 @@ handle_authorize_done (GObject      *device,
                        GAsyncResult *res,
                        gpointer      user_data)
 {
+  BoltDevice *dev = BOLT_DEVICE (device);
   GDBusMethodInvocation *inv;
+  BoltKeyState ks;
   GError *error = NULL;
   BoltAuth *auth;
   gboolean ok;
@@ -985,10 +987,46 @@ handle_authorize_done (GObject      *device,
   auth = BOLT_AUTH (res);
 
   ok = bolt_auth_check (auth, &error);
-  if (ok)
-    g_dbus_method_invocation_return_value (inv, g_variant_new ("()"));
+  if (!ok)
+    {
+      g_dbus_method_invocation_take_error (inv, error);
+      return;
+    }
+
+  ks = bolt_auth_get_keystate (auth);
+  if (ks == BOLT_KEY_NEW)
+    {
+      g_autoptr(GError) err  = NULL;
+      BoltKey *key = bolt_auth_get_key (auth);
+
+      ok = bolt_store_put_key (dev->store, dev->uid, key, &err);
+
+      if (!ok)
+        bolt_warn_err (err, "failed to store key");
+      else
+        g_object_set (dev, "key", ks, NULL);
+    }
+
+  g_dbus_method_invocation_return_value (inv, g_variant_new ("()"));
+}
+
+static gboolean
+device_should_uprade_key (BoltDevice *dev)
+{
+  gboolean upgrade = FALSE;
+  const char *reason = NULL;
+
+  if (dev->store == NULL)
+    reason = " (device not stored)";
+  else if (bolt_flag_isset (dev->aflags, BOLT_AUTH_NOKEY))
+    reason = " (device cannot use keys)";
   else
-    g_dbus_method_invocation_take_error (inv, error);
+    upgrade = TRUE;
+
+  bolt_msg (LOG_DEV (dev), "performing key upgrade: %s%s",
+            bolt_yesno (upgrade), reason ? : "");
+
+  return upgrade;
 }
 
 static GVariant *
@@ -1009,6 +1047,8 @@ handle_authorize (BoltExported          *object,
     {
       if (dev->key)
         key = bolt_store_get_key (dev->store, dev->uid, error);
+      else if (device_should_uprade_key (dev))
+        key = bolt_key_new ();
       else
         level = BOLT_SECURITY_USER;
     }
