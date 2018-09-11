@@ -156,7 +156,7 @@ format_timestamp (BoltDevice *dev,
   return ts > 0;
 }
 
-static void
+void
 print_device (BoltDevice *dev, gboolean verbose)
 {
   const char *path;

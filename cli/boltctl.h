@@ -29,4 +29,6 @@ int      usage_error (GError *error);
 int      usage_error_need_arg (const char *arg);
 int      usage_error_too_many_args (void);
 
+void     print_device (BoltDevice *dev,
+                       gboolean    verbose);
 G_END_DECLS
