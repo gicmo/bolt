@@ -31,7 +31,9 @@ typedef int (*BoltctlCommand) (BoltClient *client,
 int authorize (BoltClient *client,
                int         argc,
                char      **argv);
-
+int enroll (BoltClient *client,
+            int         argc,
+            char      **argv);
 int monitor (BoltClient *client,
              int         argc,
              char      **argv);
