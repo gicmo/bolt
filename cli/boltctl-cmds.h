@@ -20,13 +20,16 @@
 
 #pragma once
 
-#include "bolt-client.h"
-#include "bolt-term.h"
+#include "boltctl.h"
 
 G_BEGIN_DECLS
 
-int      usage_error (GError *error);
-int      usage_error_need_arg (const char *arg);
-int      usage_error_too_many_args (void);
+typedef int (*BoltctlCommand) (BoltClient *client,
+                               int         argc,
+                               char      **argv);
+
+int monitor (BoltClient *client,
+             int         argc,
+             char      **argv);
 
 G_END_DECLS
