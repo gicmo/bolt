@@ -40,6 +40,9 @@ int forget (BoltClient *client,
 int info (BoltClient *client,
           int         argc,
           char      **argv);
+int list_devices (BoltClient *client,
+                  int         argc,
+                  char      **argv);
 int monitor (BoltClient *client,
              int         argc,
              char      **argv);
