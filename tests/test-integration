@@ -538,7 +538,11 @@ class Device(object):
         return device
 
     def _get_own(self, items):
-        i = chain.from_iterable([a, str(getattr(self, a.lower()))] for a in items)
+        def get_pair(a):
+            v = getattr(self, a.lower())
+            return [a, str(v) if v is not None else v]
+        x = [get_pair(a) for a in items]
+        i = chain.from_iterable(filter(lambda x: x[1] is not None, x))
         return list(i)
 
     def collect(self, predicate):
