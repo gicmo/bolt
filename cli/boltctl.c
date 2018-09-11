@@ -327,41 +327,6 @@ print_device (BoltDevice *dev, gboolean verbose)
 }
 
 static int
-authorize (BoltClient *client, int argc, char **argv)
-{
-  g_autoptr(GOptionContext) optctx = NULL;
-  g_autoptr(BoltDevice) dev = NULL;
-  g_autoptr(GError) error = NULL;
-  BoltAuthCtrl flags = BOLT_AUTHCTRL_NONE;
-  const char *uid;
-  gboolean ok;
-
-  optctx = g_option_context_new ("DEVICE - Authorize a device");
-
-  if (!g_option_context_parse (optctx, &argc, &argv, &error))
-    return usage_error (error);
-
-  if (argc < 2)
-    return usage_error_need_arg ("DEVICE");
-
-  uid = argv[1];
-
-  dev = bolt_client_get_device (client, uid, NULL, &error);
-  if (dev == NULL)
-    {
-      g_printerr ("%s\n", error->message);
-      return EXIT_FAILURE;
-    }
-
-  ok = bolt_device_authorize (dev, flags, NULL, &error);
-  if (!ok)
-    g_printerr ("Authorization error: %s\n", error->message);
-
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
-}
-
-
-static int
 enroll (BoltClient *client, int argc, char **argv)
 {
   g_autoptr(GOptionContext) optctx = NULL;

@@ -28,6 +28,10 @@ typedef int (*BoltctlCommand) (BoltClient *client,
                                int         argc,
                                char      **argv);
 
+int authorize (BoltClient *client,
+               int         argc,
+               char      **argv);
+
 int monitor (BoltClient *client,
              int         argc,
              char      **argv);
