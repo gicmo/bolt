@@ -37,6 +37,9 @@ int enroll (BoltClient *client,
 int forget (BoltClient *client,
             int         argc,
             char      **argv);
+int info (BoltClient *client,
+          int         argc,
+          char      **argv);
 int monitor (BoltClient *client,
              int         argc,
              char      **argv);
