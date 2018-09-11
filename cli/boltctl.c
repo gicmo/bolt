@@ -68,68 +68,6 @@ usage_error_too_many_args (void)
   return usage_error (error);
 }
 
-/* domain related commands */
-static void
-print_domain (BoltDomain *domain, gboolean verbose)
-{
-  const char *tree_branch;
-  const char *tree_right;
-  const char *id;
-  const char *syspath;
-  const char *security;
-  BoltSecurity sl;
-
-  tree_branch = bolt_glyph (TREE_BRANCH);
-  tree_right = bolt_glyph (TREE_RIGHT);
-
-  id = bolt_domain_get_id (domain);
-  sl = bolt_domain_get_security (domain);
-
-  syspath = bolt_domain_get_syspath (domain);
-  security = bolt_security_to_string (sl);
-
-  g_print (" %s\n", id);
-  if (verbose)
-    g_print ("   %s syspath:       %s\n", tree_branch, syspath);
-  g_print ("   %s security:      %s\n", tree_right, security);
-
-  g_print ("\n");
-}
-
-static int
-list_domains (BoltClient *client, int argc, char **argv)
-{
-  g_autoptr(GOptionContext) optctx = NULL;
-  g_autoptr(GError) err = NULL;
-  g_autoptr(GPtrArray) domains = NULL;
-  gboolean details = FALSE;
-  GOptionEntry options[] = {
-    { "verbose", 'v', 0, G_OPTION_ARG_NONE, &details, "Show more details", NULL },
-    { NULL }
-  };
-
-  optctx = g_option_context_new ("- List thunderbolt domains");
-  g_option_context_add_main_entries (optctx, options, NULL);
-
-  if (!g_option_context_parse (optctx, &argc, &argv, &err))
-    return usage_error (err);
-
-  domains = bolt_client_list_domains (client, NULL, &err);
-
-  if (domains == NULL)
-    {
-      g_warning ("Could not list domains: %s", err->message);
-      domains = g_ptr_array_new_with_free_func (g_object_unref);
-    }
-
-  for (guint i = 0; i < domains->len; i++)
-    {
-      BoltDomain *dom = g_ptr_array_index (domains, i);
-      print_domain (dom, details);
-    }
-
-  return EXIT_SUCCESS;
-}
 
 /* device related commands */
 static gboolean
