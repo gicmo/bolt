@@ -31,5 +31,8 @@ typedef int (*BoltctlCommand) (BoltClient *client,
 int monitor (BoltClient *client,
              int         argc,
              char      **argv);
+int power (BoltClient *client,
+           int         argc,
+           char      **argv);
 
 G_END_DECLS
