@@ -20,6 +20,8 @@
 
 #include "config.h"
 
+#include "boltctl.h"
+
 #include "bolt-client.h"
 #include "bolt-enums.h"
 #include "bolt-error.h"
@@ -32,7 +34,7 @@
 #include <locale.h>
 #include <stdlib.h>
 
-static int
+int
 usage_error (GError *error)
 {
   g_printerr ("%s:", g_get_application_name ());
@@ -46,7 +48,7 @@ usage_error (GError *error)
   return EXIT_FAILURE;
 }
 
-static int
+int
 usage_error_need_arg (const char *arg)
 {
   g_autoptr(GError) error = NULL;
@@ -56,7 +58,7 @@ usage_error_need_arg (const char *arg)
   return usage_error (error);
 }
 
-static int
+int
 usage_error_too_many_args (void)
 {
   g_autoptr(GError) error = NULL;
