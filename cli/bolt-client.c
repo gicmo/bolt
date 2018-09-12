@@ -50,6 +50,7 @@ enum {
   /* D-Bus Props */
   PROP_VERSION,
   PROP_PROBING,
+  PROP_POLICY,
   PROP_SECURITY,
   PROP_AUTHMODE,
   PROP_POWERSTATE,
@@ -126,6 +127,14 @@ bolt_client_class_init (BoltClientClass *klass)
                             FALSE,
                             G_PARAM_READABLE |
                             G_PARAM_STATIC_NAME);
+
+  props[PROP_POLICY]
+    = g_param_spec_enum ("default-policy",
+                         "DefaultPolicy", NULL,
+                         BOLT_TYPE_POLICY,
+                         BOLT_POLICY_UNKNOWN,
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_NAME);
 
   props[PROP_SECURITY]
     = g_param_spec_enum ("security-level",
@@ -694,6 +703,24 @@ bolt_client_is_probing (BoltClient *client)
 
   key = g_param_spec_get_name (props[PROP_PROBING]);
   ok = bolt_proxy_get_property_bool (BOLT_PROXY (client), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get enum property '%s'", key);
+
+  return val;
+}
+
+BoltPolicy
+bolt_client_get_policy (BoltClient *client)
+{
+  const char *key;
+  gboolean ok;
+  gint val = BOLT_POLICY_UNKNOWN;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
+
+  key = g_param_spec_get_name (props[PROP_POLICY]);
+  ok = bolt_proxy_get_property_enum (BOLT_PROXY (client), key, &val);
 
   if (!ok)
     g_warning ("failed to get enum property '%s'", key);

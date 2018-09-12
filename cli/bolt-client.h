@@ -94,6 +94,8 @@ guint           bolt_client_get_version (BoltClient *client);
 
 gboolean        bolt_client_is_probing (BoltClient *client);
 
+BoltPolicy      bolt_client_get_policy (BoltClient *client);
+
 BoltSecurity    bolt_client_get_security (BoltClient *client);
 
 BoltAuthMode    bolt_client_get_authmode (BoltClient *client);
