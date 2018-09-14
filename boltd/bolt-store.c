@@ -577,6 +577,7 @@ bolt_store_get_times (BoltStore  *store,
                       GError    **error,
                       ...)
 {
+  gboolean res = TRUE;
   gboolean ok = TRUE;
   const char *ts;
   va_list args;
@@ -599,7 +600,8 @@ bolt_store_get_times (BoltStore  *store,
           if (error != NULL)
             {
               g_propagate_error (error, g_steal_pointer (&err));
-              return FALSE;
+              res = FALSE;
+              break;
             }
 
           /* error variable NULL, caller doesn't care, we keep going */
@@ -609,7 +611,7 @@ bolt_store_get_times (BoltStore  *store,
     }
   va_end (args);
 
-  return TRUE;
+  return res;
 }
 
 gboolean
@@ -646,6 +648,7 @@ bolt_store_put_times (BoltStore  *store,
                       GError    **error,
                       ...)
 {
+  gboolean res = TRUE;
   gboolean ok = TRUE;
   const char *ts;
   va_list args;
@@ -681,7 +684,8 @@ bolt_store_put_times (BoltStore  *store,
           if (error != NULL)
             {
               g_propagate_error (error, g_steal_pointer (&err));
-              return FALSE;
+              res = FALSE;
+              break;
             }
 
           /* error variable NULL, caller doesn't care, we keep going */
@@ -691,7 +695,7 @@ bolt_store_put_times (BoltStore  *store,
     }
   va_end (args);
 
-  return TRUE;
+  return res;
 }
 
 gboolean
@@ -717,6 +721,7 @@ bolt_store_del_times (BoltStore  *store,
                       GError    **error,
                       ...)
 {
+  gboolean res = TRUE;
   gboolean ok = TRUE;
   const char *ts;
   va_list args;
@@ -737,7 +742,8 @@ bolt_store_del_times (BoltStore  *store,
           if (error != NULL)
             {
               g_propagate_error (error, g_steal_pointer (&err));
-              return FALSE;
+              res = FALSE;
+              break;
             }
 
           /* error variable NULL, caller doesn't care, we keep going */
@@ -747,7 +753,7 @@ bolt_store_del_times (BoltStore  *store,
     }
   va_end (args);
 
-  return TRUE;
+  return res;
 }
 
 
