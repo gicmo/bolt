@@ -499,15 +499,16 @@ bolt_power_guard_monitor (BoltPowerGuard *guard,
 
   ch = g_io_channel_unix_new (fd);
 
-  /* writer */
-  fd = bolt_open (guard->fifo, O_WRONLY | O_CLOEXEC | O_NONBLOCK, 0, error);
-  if (fd == -1)
-    return -1;
-
   g_io_channel_set_close_on_unref (ch, TRUE);
   g_io_channel_set_encoding (ch, NULL, NULL);
   g_io_channel_set_buffered (ch, FALSE);
   g_io_channel_set_flags (ch, G_IO_FLAG_NONBLOCK, NULL);
+  fd = -1; /* the GIOChannel owns the fd, via _close_on_unref () */
+
+  /* writer */
+  fd = bolt_open (guard->fifo, O_WRONLY | O_CLOEXEC | O_NONBLOCK, 0, error);
+  if (fd == -1)
+    return -1;
 
   /* NB: we take a ref to the guard here */
   guard->watch = g_io_add_watch_full (ch,
