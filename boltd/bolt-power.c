@@ -501,7 +501,7 @@ bolt_power_guard_monitor (BoltPowerGuard *guard,
 
   /* writer */
   fd = bolt_open (guard->fifo, O_WRONLY | O_CLOEXEC | O_NONBLOCK, 0, error);
-  if (fd < 1)
+  if (fd == -1)
     return -1;
 
   g_io_channel_set_close_on_unref (ch, TRUE);
