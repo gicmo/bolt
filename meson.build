@@ -130,6 +130,8 @@ if polkit.version().version_compare('>= 0.114')
   conf.set('HAVE_POLKIT_AUTOPTR', '1')
 endif
 
+conf.set('IS_COVERITY_BUILD', get_option('coverity'))
+
 config_h = configure_file(
   input: 'config.h.in',
   output: 'config.h',

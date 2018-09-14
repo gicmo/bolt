@@ -38,3 +38,9 @@
 
 /* constants */
 #mesondefine _GNU_SOURCE
+
+/* fixup coverity build issues */
+#mesondefine IS_COVERITY_BUILD
+#ifdef IS_COVERITY_BUILD
+#include "fix-coverity.h"
+#endif

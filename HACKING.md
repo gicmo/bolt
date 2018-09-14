@@ -41,7 +41,7 @@ Bolt is registerd with [coverity][coverity]. To submit a local build,
 execute the following commands (the `cov-build` [build tool][cov-build]
 must be in `PATH`) from the source directory:
 
-	meson coverity
+	CC=gcc CXX=gcc meson -Dcoverity=true coverity
 	cov-build --dir cov-int ninja -C coverity
 	tar caf bolt.xz cov-int
 
