@@ -544,13 +544,14 @@ test_power_recover_guards_fail (TestPower *tt, gconstpointer user)
 static gboolean
 on_cb_close_fd (gpointer user_data)
 {
-  int fd = GPOINTER_TO_INT (user_data);
+  int *fd = user_data;
   int r;
 
   g_debug ("closing fd");
-  r = close (fd);
+  r = close (*fd);
 
   g_assert_cmpint (r, >, -1);
+  *fd = -1;
   return FALSE;
 }
 
@@ -600,7 +601,7 @@ test_power_guards_fifo (TestPower *tt, gconstpointer user)
   tid = g_timeout_add_seconds (5, on_timeout_warn_quit_loop, loop);
 
   /* schedule a closing of the fifo */
-  g_idle_add (on_cb_close_fd, GINT_TO_POINTER (fd));
+  g_idle_add (on_cb_close_fd, (gpointer) &fd);
 
   g_signal_connect (power, "notify::state",
                     G_CALLBACK (on_notify_quit_loop),
