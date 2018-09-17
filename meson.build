@@ -2,7 +2,7 @@ project('bolt',
   'c',
   version: '0.5',
   license : 'LGPL-2.1+',
-  meson_version: '>= 0.42.0',
+  meson_version: '>= 0.44.0',
   default_options: ['warning_level=1',
                     'c_std=gnu99',
                     'buildtype=debugoptimized'])
@@ -406,11 +406,7 @@ if res.returncode() == 0
   endforeach
 else
   msg = '@0@'.format(res.stderr().strip())
-  if meson.version().version_compare('<0.44.0')
-    message(msg)
-  else
-    warning(msg)
-  endif
+  warning(msg)
 endif
 
 # contrib
