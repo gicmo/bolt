@@ -22,6 +22,7 @@
 
 #include "boltctl-cmds.h"
 
+#include "bolt-error.h"
 #include "bolt-str.h"
 
 int
@@ -31,10 +32,17 @@ authorize (BoltClient *client, int argc, char **argv)
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(GError) error = NULL;
   BoltAuthCtrl flags = BOLT_AUTHCTRL_NONE;
+  BoltStatus status;
   const char *uid;
   gboolean ok;
+  gboolean first_time = FALSE;
+  GOptionEntry options[] = {
+    { "first-time", 'F', 0, G_OPTION_ARG_NONE, &first_time, "Fail if device is already authorized", NULL },
+    { NULL }
+  };
 
   optctx = g_option_context_new ("DEVICE - Authorize a device");
+  g_option_context_add_main_entries (optctx, options, NULL);
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
     return usage_error (error);
@@ -51,9 +59,18 @@ authorize (BoltClient *client, int argc, char **argv)
       return EXIT_FAILURE;
     }
 
+  status = bolt_device_get_status (dev);
+
   ok = bolt_device_authorize (dev, flags, NULL, &error);
   if (!ok)
-    g_printerr ("Authorization error: %s\n", error->message);
+    {
+      if (bolt_err_badstate (error) &&
+          bolt_status_is_authorized (status) &&
+          !first_time)
+        ok = TRUE;
+      else
+        g_printerr ("Authorization error: %s\n", error->message);
+    }
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
