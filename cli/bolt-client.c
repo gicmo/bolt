@@ -209,6 +209,13 @@ bolt_client_class_init (BoltClientClass *klass)
 static void
 bolt_client_init (BoltClient *cli)
 {
+  /* we don't want this to be optimized away */
+  volatile GQuark error_domain;
+
+  /* initialize error mapping */
+  error_domain = BOLT_ERROR;
+  (error_domain); /* To avoid -Wunused-but-set-variable */
+
 }
 
 /* dbus signals */
