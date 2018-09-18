@@ -93,7 +93,12 @@ sysconfdir = join_paths(prefixdir, get_option('sysconfdir'))
 statedir = get_option('localstatedir')
 mandir = get_option('mandir')
 
-dbdir = get_option('db-path')
+if get_option('db-path') != ''
+  warning('db-path option is set, but will be ignored')
+endif
+
+dbname = get_option('db-name')
+dbdir = join_paths(statedir, 'lib', dbname)
 udevdir = udev.get_pkgconfig_variable('udevdir')
 
 unitdir = ''
@@ -111,6 +116,7 @@ conf.set_quoted('VERSION', meson.project_version())
 conf.set_quoted('PACKAGE_NAME', meson.project_name())
 conf.set_quoted('PACKAGE_VERSION', meson.project_version())
 conf.set_quoted('DATADIR', datadir)
+conf.set_quoted('BOLT_DBNAME', dbname)
 conf.set_quoted('BOLT_DBDIR', dbdir)
 
 conf.set('VERSION_MAJOR', version_major)
@@ -142,6 +148,7 @@ cargs = ['-DG_LOG_DOMAIN="bolt"']
 
 privileged_group = get_option('privileged-group')
 subs = configuration_data()
+subs.set('dbname', dbname)
 subs.set('dbdir', dbdir)
 subs.set('libexecdir', libexecdir)
 subs.set('privileged_group', privileged_group)
@@ -473,6 +480,7 @@ msg = ['',
   'version:             @0@'.format(meson.project_version()),
   'sysconfdir:          @0@'.format(sysconfdir),
   'statedir:            @0@'.format(statedir),
+  'db name:             @0@'.format(dbname),
   'database path:       @0@'.format(dbdir),
   'privileged group:    @0@'.format(privileged_group),
   '',
