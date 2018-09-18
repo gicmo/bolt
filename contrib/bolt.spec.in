@@ -74,7 +74,7 @@ mentioned tasks.
 %{_datadir}/dbus-1/system-services/org.freedesktop.bolt.service
 %{_mandir}/man1/boltctl.1*
 %{_mandir}/man8/boltd.8*
-%dir @dbdir@
+%ghost %dir @dbdir@
 
 %changelog
 * @longdate@ Christian Kellner <ckellner@redhat.com> - @version@-@reltag@
