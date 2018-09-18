@@ -90,6 +90,7 @@ bindir = join_paths(prefixdir, get_option('bindir'))
 libexecdir = join_paths(prefixdir, get_option('libexecdir'))
 datadir = join_paths(prefixdir, get_option('datadir'))
 sysconfdir = join_paths(prefixdir, get_option('sysconfdir'))
+statedir = get_option('localstatedir')
 mandir = get_option('mandir')
 
 dbdir = get_option('db-path')
@@ -471,6 +472,7 @@ run_target('uncrustify',
 msg = ['',
   'version:             @0@'.format(meson.project_version()),
   'sysconfdir:          @0@'.format(sysconfdir),
+  'statedir:            @0@'.format(statedir),
   'database path:       @0@'.format(dbdir),
   'privileged group:    @0@'.format(privileged_group),
   '',
