@@ -19,3 +19,8 @@ RestrictRealtime=yes
 ReadWritePaths=@dbdir@
 SystemCallFilter=~@mount
 CapabilityBoundingSet=CAP_NET_ADMIN
+
+#directory management
+RuntimeDirectory=@dbname@
+RuntimeDirectoryPreserve=yes
+StateDirectory=@dbname@
