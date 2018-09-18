@@ -445,6 +445,7 @@ bolt_manager_initialize (GInitable    *initable,
   bolt_bouncer_add_client (mgr->bouncer, mgr);
 
   /* udev setup*/
+  bolt_info (LOG_TOPIC ("udev"), "initializing udev");
   mgr->udev = bolt_udev_new ("udev", NULL, error);
 
   if (mgr->udev == NULL)

@@ -93,7 +93,9 @@ bouncer_initialize (GInitable    *initable,
 {
   BoltBouncer *bnc = BOLT_BOUNCER (initable);
 
+  bolt_info (LOG_TOPIC ("bouncer"), "initializing polkit");
   bnc->authority = polkit_authority_get_sync (cancellable, error);
+
   return bnc->authority != NULL;
 }
 
