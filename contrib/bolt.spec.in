@@ -4,7 +4,7 @@ Release: 0.@reltag@%{?dist}
 Summary: Thunderbolt device manager
 License: LGPLv2+
 URL:     https://gitlab.freedesktop.org/bolt/bolt
-Source0: %{url}/-/archive/%{version}/%{name}-%{version}.tar.bz2
+Source0: %{url}/-/archive/%{version}/%{name}-%{version}.tar.xz
 
 BuildRequires: gcc
 BuildRequires: asciidoc
