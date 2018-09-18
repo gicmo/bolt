@@ -42,7 +42,7 @@ mentioned tasks.
 %setup -q
 
 %build
-%meson -Ddb-path=@dbdir@
+%meson -Ddb-name=@dbname@
 %meson_build
 
 %check
