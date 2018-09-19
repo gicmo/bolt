@@ -9,6 +9,7 @@ SYNOPSIS
 --------
 [verse]
 *boltctl* 'authorize' 'DEVICE'
+*boltctl* 'domains'
 *boltctl* 'enroll' 'DEVICE'
 *boltctl* 'forget' 'DEVICE'
 *boltctl* 'info' 'DEVICE'
@@ -52,6 +53,15 @@ Normally, when attempting to authorize an already authorized device
 using this option, the attempt will fail and result in a negative
 exit code if the device is already authorized.
 
+domains [-v | --verbose]
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+List all currently active Thunderbolt domains. A Thunderbolt domain
+represents the Thunderbolt controller hardware. There will be one
+domain (and host device) for each Thunderbolt controller present
+in the system.
+NB: The Thunderbolt controllers might be powered down by the
+firmware and my not be visible.
 
 enroll [--policy 'policy'] 'DEVICE'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
