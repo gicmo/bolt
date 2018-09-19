@@ -28,25 +28,50 @@ unique id.
 
 If no command is given, it is equivalent to 'boltctl list'.
 
+OPTIONS
+-------
+
+*--version*::
+        Print version information and exit.
+
+
 COMMANDS
 --------
 
-authorize 'DEVICE'
-~~~~~~~~~~~~~~~~~~
+authorize [-F | --first-time] 'DEVICE'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Authorize a currently unauthorized device identified via its unique id
 (uuid) 'DEVICE'. If a key is stored in the database it will be used,
 given the security level of the domain supports secure device
 connection. Use 'boltctl list' to find out the uuid of a device.
 
-enroll 'DEVICE'
-~~~~~~~~~~~~~~~
+*-F | --first-time*::
+Normally, when attempting to authorize an already authorized device
+*boltctl* will do nothing and return a successful status code. When
+using this option, the attempt will fail and result in a negative
+exit code if the device is already authorized.
+
+
+enroll [--policy 'policy'] 'DEVICE'
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Authorize and record the device with the unique id 'DEVICE' in the
 database. If the domain supports secure connection a new key will be
 generated and stored in the database alongside the device name and
 vendor name. The key, if created, will be used in the future to
 securely authorize the device.
+
+*--policy {'default' | 'auto' | 'manual'}*::
+Specify the policy to be used for the newly enrolled device.
+	'default';;
+	Use the global default policy of the daemon; this can be changed,
+	but is normally also 'auto'.
+	'auto';;
+	Automatically authorize this device whenever it is connected.
+	'manual';;
+	Do *not* automatically authorize the device; instead require
+	manual authorization via *boltctl authorize*.
 
 forget 'DEVICE'
 ~~~~~~~~~~~~~~~
@@ -61,10 +86,15 @@ info 'DEVICE'
 
 Display information about the device with the unique id 'DEVICE'.
 
-list
-~~~~
+list [-a | --all]
+~~~~~~~~~~~~~~~~~
 
 List and print information about all connected and stored devices.
+
+*-a | --all*::
+Normally, the only the device type that will be shown is peripherals.
+Therefore the device that represents the host itself will be omitted.
+Using this option will instead include all device types in the list.
 
 monitor
 ~~~~~~~
