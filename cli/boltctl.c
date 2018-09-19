@@ -279,8 +279,8 @@ typedef struct SubCommand
 
 static SubCommand subcommands[] = {
   {"authorize",    authorize,     "Authorize a device"},
-  {"enroll",       enroll,        "Authorize and store a device in the database"},
   {"domains",      list_domains,  "List the active thunderbolt domains"},
+  {"enroll",       enroll,        "Authorize and store a device in the database"},
   {"forget",       forget,        "Remove a stored device from the database"},
   {"info",         info,          "Show information about a device"},
   {"list",         list_devices,  "List connected and stored devices"},
