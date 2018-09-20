@@ -15,6 +15,7 @@ SYNOPSIS
 *boltctl* 'info' 'DEVICE'
 *boltctl* 'list'
 *boltctl* 'monitor'
+*boltctl* 'power'
 
 DESCRIPTION
 ------------
@@ -110,6 +111,25 @@ monitor
 ~~~~~~~
 
 Listen for and show changes in connected devices.
+
+power [-t | --timeout 'seconds'] [-q | --query]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Power up the Thunderbolt controller. If the Thunderbolt controller
+is not in "native enumeration mode" it can be completely powered down
+by the host firmware/BIOS. On supported systems there is an interface
+to "force" power the thunderbolt controller. If supported this command
+will request the daemon to do so. The daemon will keep track of all
+client requests and will release the force power override when the last
+request is released.
+
+*-t | --timeout 'seconds'*::
+Release the force power request after the specified amount of 'seconds'
+and exit.
+
+*-q | --query*::
+Query the current force power status of the daemon.
+
 
 Author
 ------
