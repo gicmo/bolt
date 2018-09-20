@@ -1,6 +1,7 @@
 [Unit]
 Description=Thunderbolt system service
 After=polkit.service
+Documentation=man:boltd(8)
 
 [Service]
 Type=dbus
