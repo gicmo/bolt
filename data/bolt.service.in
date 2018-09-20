@@ -1,5 +1,6 @@
 [Unit]
 Description=Thunderbolt system service
+After=polkit.service
 
 [Service]
 Type=dbus
