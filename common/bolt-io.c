@@ -510,7 +510,7 @@ bolt_file_write_all (const char *fn,
   int fd = -1;
   gboolean ok;
 
-  fd = bolt_open (fn, O_CLOEXEC | O_WRONLY | O_TRUNC, 0666, error);
+  fd = bolt_open (fn, O_CLOEXEC | O_WRONLY | O_TRUNC | O_CREAT, 0666, error);
 
   if (fd < 0)
     return FALSE;
