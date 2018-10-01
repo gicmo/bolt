@@ -79,8 +79,7 @@ test_store_tear_down (TestStore *tt, gconstpointer user_data)
   g_autoptr(GError) error = NULL;
   gboolean ok;
 
-  if (tt->store)
-    g_clear_object (&tt->store);
+  g_clear_object (&tt->store);
 
   ok = bolt_fs_cleanup_dir (tt->path, &error);
 

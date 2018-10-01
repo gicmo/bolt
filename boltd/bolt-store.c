@@ -75,15 +75,9 @@ bolt_store_finalize (GObject *object)
 {
   BoltStore *store = BOLT_STORE (object);
 
-  if (store->root)
-    g_clear_object (&store->root);
-
-  if (store->devices)
-    g_clear_object (&store->devices);
-
-  if (store->keys)
-    g_clear_object (&store->keys);
-
+  g_clear_object (&store->root);
+  g_clear_object (&store->devices);
+  g_clear_object (&store->keys);
   g_clear_object (&store->times);
 
   G_OBJECT_CLASS (bolt_store_parent_class)->finalize (object);
