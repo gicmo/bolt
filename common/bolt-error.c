@@ -87,6 +87,22 @@ gboolean
 bolt_err_badstate (const GError *error)
 {
 return g_error_matches (error, BOLT_ERROR, BOLT_ERROR_BADSTATE);
+
+gboolean
+bolt_error_propagate (GError **dest,
+                      GError **source)
+{
+  GError *src;
+
+  g_return_val_if_fail (source != NULL, FALSE);
+
+  src = *source;
+
+  if (src == NULL)
+    return TRUE;
+
+  g_propagate_error (dest, g_steal_pointer (source));
+  return FALSE;
 }
 
 gboolean

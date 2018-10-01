@@ -57,6 +57,8 @@ gboolean bolt_err_inval (const GError *error);
 gboolean bolt_err_cancelled (const GError *error);
 gboolean bolt_err_badstate (const GError *error);
 
+gboolean bolt_error_propagate (GError **dest,
+                               GError **source);
 gboolean bolt_error_propagate_stripped (GError **dest,
                                         GError **source);
 
