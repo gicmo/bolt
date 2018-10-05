@@ -71,11 +71,11 @@
  * how _Complex is defined, so we cheat a bit here.  Be prepared to vomit.
  */
 #ifdef __x86_64__
-#if __COVERITY_GCC_VERSION_AT_LEAST(7, 0)
+#if __COVERITY_GCC_VERSION_AT_LEAST (7, 0)
 #if 0
-typedef float _Float128 __attribute__((__mode__(__TF__)));
-typedef __complex__ float __cfloat128 __attribute__ ((__mode__ (__TC__)));
-typedef _Complex float __cfloat128 __attribute__ ((__mode__ (__TC__)));
+typedef float             _Float128 __attribute__((__mode__ (__TF__)));
+typedef __complex__ float __cfloat128 __attribute__((__mode__ (__TC__)));
+typedef _Complex float    __cfloat128 __attribute__((__mode__ (__TC__)));
 #else
 #include <unistd.h>
 #define __cplusplus 201103L

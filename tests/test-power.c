@@ -601,7 +601,7 @@ test_power_guards_fifo (TestPower *tt, gconstpointer user)
   tid = g_timeout_add_seconds (5, on_timeout_warn_quit_loop, loop);
 
   /* schedule a closing of the fifo */
-  g_idle_add (on_cb_close_fd, (gpointer) &fd);
+  g_idle_add (on_cb_close_fd, (gpointer) & fd);
 
   g_signal_connect (power, "notify::state",
                     G_CALLBACK (on_notify_quit_loop),
