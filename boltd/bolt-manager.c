@@ -51,6 +51,9 @@ static gboolean bolt_manager_initialize (GInitable    *initable,
                                          GCancellable *cancellable,
                                          GError      **error);
 /* domain related functions */
+static BoltDomain *  manager_domain_ensure (BoltManager        *mgr,
+                                            struct udev_device *dev);
+
 static BoltDomain *  manager_find_domain_by_syspath (BoltManager *mgr,
                                                      const char  *syspath);
 
@@ -93,7 +96,7 @@ static void          handle_udev_domain_event (BoltManager        *mgr,
                                                struct udev_device *device,
                                                const char         *action);
 
-static void          handle_udev_domain_added (BoltManager        *mgr,
+static BoltDomain *  handle_udev_domain_added (BoltManager        *mgr,
                                                struct udev_device *udev);
 
 static void          handle_udev_domain_removed (BoltManager *mgr,
@@ -545,6 +548,31 @@ bolt_manager_initialize (GInitable    *initable,
 
 /* domain related function */
 static BoltDomain *
+manager_domain_ensure (BoltManager        *mgr,
+                       struct udev_device *dev)
+{
+  struct udev_device *dom;
+  BoltDomain *domain;
+  const char *syspath;
+
+  syspath = udev_device_get_syspath (dev);
+  domain = manager_find_domain_by_syspath (mgr, syspath);
+
+  if (domain != NULL)
+    return domain;
+
+  /* dev is very likely the host, i.e. root switch device,
+   * but we might as well make sure we can get the domain
+   * from any */
+  dom = bolt_sysfs_domain_for_device (dev);
+  if (dom == NULL)
+    return NULL;
+
+  domain = handle_udev_domain_added (mgr, dom);
+  return domain;
+}
+
+static BoltDomain *
 manager_find_domain_by_syspath (BoltManager *mgr,
                                 const char  *syspath)
 {
@@ -954,15 +982,16 @@ handle_udev_domain_event (BoltManager        *mgr,
 
   syspath = udev_device_get_syspath (device);
 
-  if (g_str_equal (action, "add") ||
-      g_str_equal (action, "change"))
+  if (g_str_equal (action, "add"))
     {
-      domain = manager_find_domain_by_syspath (mgr, syspath);
+      manager_probing_domain_added (mgr, device);
 
-      if (domain != NULL)
-        return; /*change event, ignore for now */
-
-      handle_udev_domain_added (mgr, device);
+      /* the creation of the actual domain object and
+       * its registration is handled on-demand: only
+       * when the host device appears, the uevent
+       * handler for the thunderbolt devices will
+       * ensure the domain exists
+       */
     }
   else if (g_str_equal (action, "remove"))
     {
@@ -977,7 +1006,7 @@ handle_udev_domain_event (BoltManager        *mgr,
     }
 }
 
-static void
+static BoltDomain *
 handle_udev_domain_added (BoltManager        *mgr,
                           struct udev_device *device)
 {
@@ -986,22 +1015,20 @@ handle_udev_domain_added (BoltManager        *mgr,
   GDBusConnection *bus;
   const char *op;
 
-  manager_probing_domain_added (mgr, device);
-
   domain = bolt_domain_new_for_udev (device, &err);
 
   if (domain == NULL)
     {
       bolt_warn_err (err, LOG_TOPIC ("udev"),
                      "failed to create domain: %s");
-      return;
+      return NULL;
     }
 
   manager_register_domain (mgr, domain);
 
   bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
   if (bus == NULL)
-    return;
+    return domain;
 
   bolt_domain_export (domain, bus);
 
@@ -1010,6 +1037,8 @@ handle_udev_domain_added (BoltManager        *mgr,
                              "DomainAdded",
                              g_variant_new ("(o)", op),
                              NULL);
+
+  return domain;
 }
 
 static void
@@ -1063,7 +1092,8 @@ handle_udev_device_event (BoltManager        *mgr,
       if (uid == NULL)
         return;
 
-      dom = manager_find_domain_by_syspath (mgr, syspath);
+      dom = manager_domain_ensure (mgr, device);
+
       if (dom == NULL)
         {
           bolt_warn (LOG_TOPIC ("domain"),

@@ -1039,6 +1039,12 @@ class BoltTest(dbusmock.DBusTestCase):
                                        ['DEVTYPE', 'thunderbolt_device'])
         return dc, host
 
+    def remove_domain_host(self, domain, host):
+        self.testbed.uevent(host, "remove")
+        self.testbed.remove_device(host)
+        self.testbed.uevent(domain, "remove")
+        self.testbed.remove_device(domain)
+
     def add_device(self, parent, devid, name, vendor, domain=0, authorized=1, key='', boot=None):
         uid = str(uuid.uuid4())
         props = ['device_name', name,
@@ -1132,30 +1138,25 @@ class BoltTest(dbusmock.DBusTestCase):
 
         def make_domain(domain, security):
             name = 'domain%d' % domain
-            path = self.testbed.add_device('thunderbolt',
-                                           name,
-                                           None,
-                                           ['security', security],
-                                           ['DEVTYPE', 'thunderbolt_domain'])
-            return name, path
+            dom, host = self.add_domain_host(domain, security=security)
+            return name, dom, host
 
         # check we get a proper event if the security level changes
         self.daemon_start()
         self.assertEqual(self.client.security_level, 'unknown')
         with self.client.record() as tape:
-            d, path = make_domain(0, 'user')
+            d, dom, host = make_domain(0, 'user')
             tape.wait_for_event('property', 'SecurityLevel', 'user')
             self.assertEqual(self.client.security_level, 'user')
         self.daemon_stop()
-        self.testbed.uevent(path, "remove")
-        self.testbed.remove_device(path)
+        self.remove_domain_host(dom, host)
 
         # create more then one domain
         domains = [make_domain(d, '') for d in range(4)]
 
         for security in BoltDomain.security_levels():
 
-            for name, domain in domains:
+            for name, domain, host in domains:
                 self.testbed.set_attribute(domain, 'security', security)
 
             self.daemon_start()
@@ -1179,13 +1180,12 @@ class BoltTest(dbusmock.DBusTestCase):
         with self.assertRaises(GLib.GError):
             self.client.device_by_uid("nonexistant")
 
-        for name, path in domains:
+        for name, domain, host in domains:
             remote = self.client.domain_by_id(name)
             self.assertIsNotNone(remote)
 
             with self.client.record() as tape:
-                self.testbed.uevent(path, "remove")
-                self.testbed.remove_device(path)
+                self.remove_domain_host(domain, host)
                 res = tape.wait_for_event('signal',
                                           'DomainRemoved',
                                           None)
@@ -1196,7 +1196,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         for d in range(4):
             with self.client.record() as tape:
-                name, path = make_domain(d, 'secure')
+                name, domain, host = make_domain(d, 'secure')
                 res = tape.wait_for_event('signal',
                                           'DomainAdded',
                                           None)
