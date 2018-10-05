@@ -511,8 +511,6 @@ bolt_manager_initialize (GInitable    *initable,
     {
       g_autoptr(GError) err = NULL;
       g_autoptr(udev_device) udevice = NULL;
-      g_autoptr(BoltDevice) dev = NULL;
-      const char *uid;
       const char *syspath;
       const char *devtype;
 
@@ -530,23 +528,12 @@ bolt_manager_initialize (GInitable    *initable,
       devtype = udev_device_get_devtype (udevice);
 
       if (bolt_streq (devtype, "thunderbolt_domain"))
-        handle_udev_domain_added (mgr, udevice);
+        handle_udev_domain_event (mgr, udevice, "add");
 
       if (!bolt_streq (devtype, "thunderbolt_device"))
         continue;
 
-      uid = udev_device_get_sysattr_value (udevice, "unique_id");
-      if (uid == NULL)
-        {
-          bolt_warn ("thunderbolt device without uid");
-          continue;
-        }
-
-      dev = manager_find_device_by_uid (mgr, uid, NULL);
-      if (dev)
-        handle_udev_device_attached (mgr, dev, udevice);
-      else
-        handle_udev_device_added (mgr, udevice);
+      handle_udev_device_event (mgr, udevice, "add");
     }
 
   udev_enumerate_unref (enumerate);
