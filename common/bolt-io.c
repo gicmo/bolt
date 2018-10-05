@@ -208,11 +208,11 @@ bolt_opendir (const char *path,
 }
 
 int
-bolt_openat (int dirfd, const char *path, int oflag, GError **error)
+bolt_openat (int dirfd, const char *path, int oflag, int mode, GError **error)
 {
   int fd = -1;
 
-  fd = openat (dirfd, path, oflag);
+  fd = openat (dirfd, path, oflag, mode);
 
   if (fd < 0)
     {
@@ -237,7 +237,7 @@ bolt_opendir_at (int         dirfd,
   int fd = -1;
   DIR *cd;
 
-  fd = bolt_openat (dirfd, name, oflag, error);
+  fd = bolt_openat (dirfd, name, oflag, 0, error);
   if (fd < 0)
     return NULL;
 
@@ -356,7 +356,11 @@ bolt_read_value_at (int         dirfd,
   char line[LINE_MAX], *l;
   int fd;
 
-  fd = bolt_openat (dirfd, name, O_NOFOLLOW | O_CLOEXEC | O_RDONLY, error);
+  fd = bolt_openat (dirfd,
+                    name,
+                    O_NOFOLLOW | O_CLOEXEC | O_RDONLY,
+                    0,
+                    error);
 
   if (fd < 0)
     return NULL;
@@ -402,7 +406,7 @@ bolt_write_char_at (int         dirfd,
   int fd;
   ssize_t n;
 
-  fd = bolt_openat (dirfd, name, O_WRONLY | O_CLOEXEC, error);
+  fd = bolt_openat (dirfd, name, O_WRONLY | O_CLOEXEC, 0, error);
   if (fd < 0)
     return FALSE;
 

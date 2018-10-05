@@ -69,6 +69,7 @@ gboolean   bolt_rmdir (const char *name,
 int        bolt_openat (int         dirfd,
                         const char *path,
                         int         oflag,
+                        int         mode,
                         GError    **error);
 
 gboolean   bolt_unlink (const char *name,

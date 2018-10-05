@@ -760,7 +760,12 @@ authorize_device_internal (BoltDevice *dev,
       int keyfd;
 
       bolt_debug (LOG_DEV (dev), LOG_TOPIC ("authorize"), "writing key");
-      keyfd = bolt_openat (dirfd (devdir), "key", O_WRONLY | O_CLOEXEC, error);
+
+      keyfd = bolt_openat (dirfd (devdir),
+                           "key",
+                           O_WRONLY | O_CLOEXEC,
+                           0,
+                           error);
       if (keyfd < 0)
         return FALSE;
 
