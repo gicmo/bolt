@@ -521,8 +521,29 @@ test_io_file_write_all (TestIO *tt, gconstpointer user_data)
   g_assert_true (ok);
   g_assert_cmpuint (len, ==, 5);
   g_assert_true (strncmp (data, ref, 5) == 0);
+}
 
+static void
+test_autoclose (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *path = NULL;
+  gboolean ok;
 
+  {
+    bolt_autoclose int fd = -1;
+
+    fd = bolt_open ("/dev/null", O_RDONLY, 0, &err);
+    g_assert_no_error (err);
+    g_assert_cmpint (fd, >, -1);
+
+    path = g_strdup_printf ("/proc/self/fd/%d", fd);
+    ok = g_file_test (path, G_FILE_TEST_EXISTS);
+    g_assert_true (ok);
+  }
+
+  ok = g_file_test (path, G_FILE_TEST_EXISTS);
+  g_assert_false (ok);
 }
 
 static void
@@ -981,6 +1002,13 @@ main (int argc, char **argv)
               test_io_setup,
               test_io_file_write_all,
               test_io_tear_down);
+
+  g_test_add ("/common/io/autoclose",
+              TestIO,
+              NULL,
+              NULL,
+              test_autoclose,
+              NULL);
 
   g_test_add ("/common/fs",
               TestIO,
