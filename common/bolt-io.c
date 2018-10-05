@@ -606,3 +606,21 @@ bolt_fstatat (int          dirfd,
 
   return FALSE;
 }
+
+/* auto cleanup helpers */
+void
+bolt_cleanup_close_intpr (int *fd)
+{
+  if (*fd > -1)
+    {
+      int errsave = errno;
+      int r;
+
+      r = close (*fd);
+
+      if (r != 0 && errno == EBADF)
+        g_warning ("invalid fd passed to auto cleanup");
+
+      errno = errsave;
+    }
+}

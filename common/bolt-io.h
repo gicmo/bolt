@@ -118,4 +118,8 @@ gboolean   bolt_fstatat (int          dirfd,
                          int          flags,
                          GError     **error);
 
+/* auto cleanup for I/O handles */
+void       bolt_cleanup_close_intpr (int *fd);
+#define    bolt_autoclose __attribute__((cleanup (bolt_cleanup_close_intpr)))
+
 G_END_DECLS
