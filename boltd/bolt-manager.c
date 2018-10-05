@@ -104,6 +104,7 @@ static void          handle_udev_device_event (BoltManager        *mgr,
                                                const char         *action);
 
 static void          handle_udev_device_added (BoltManager        *mgr,
+                                               BoltDomain         *domain,
                                                struct udev_device *udev);
 
 static void          handle_udev_device_changed (BoltManager        *mgr,
@@ -114,6 +115,7 @@ static void          handle_udev_device_removed (BoltManager *mgr,
                                                  BoltDevice  *dev);
 
 static void          handle_udev_device_attached (BoltManager        *mgr,
+                                                  BoltDomain         *domain,
                                                   BoltDevice         *dev,
                                                   struct udev_device *udev);
 
@@ -1045,10 +1047,14 @@ handle_udev_device_event (BoltManager        *mgr,
                           const char         *action)
 {
   g_autoptr(BoltDevice) dev = NULL;
+  const char *syspath;
+
+  syspath = udev_device_get_syspath (device);
 
   if (g_str_equal (action, "add") ||
       g_str_equal (action, "change"))
     {
+      BoltDomain *dom;
       const char *uid;
 
       /* filter sysfs devices (e.g. the domain) that don't have
@@ -1057,26 +1063,27 @@ handle_udev_device_event (BoltManager        *mgr,
       if (uid == NULL)
         return;
 
+      dom = manager_find_domain_by_syspath (mgr, syspath);
+      if (dom == NULL)
+        {
+          bolt_warn (LOG_TOPIC ("domain"),
+                     "could not find domain for device at '%s'",
+                     syspath);
+          return;
+        }
+
       dev = manager_find_device_by_uid (mgr, uid, NULL);
 
       if (!dev)
-        handle_udev_device_added (mgr, device);
+        handle_udev_device_added (mgr, dom, device);
       else if (!bolt_device_is_connected (dev))
-        handle_udev_device_attached (mgr, dev, device);
+        handle_udev_device_attached (mgr, dom, dev, device);
       else
         handle_udev_device_changed (mgr, dev, device);
     }
   else if (g_str_equal (action, "remove"))
     {
-      const char *syspath;
       const char *name;
-
-      syspath = udev_device_get_syspath (device);
-      if (syspath == NULL)
-        {
-          bolt_warn (LOG_TOPIC ("udev"), "device without syspath");
-          return;
-        }
 
       /* filter out the domain controller */
       name = udev_device_get_sysname (device);
@@ -1099,26 +1106,17 @@ handle_udev_device_event (BoltManager        *mgr,
 
 static void
 handle_udev_device_added (BoltManager        *mgr,
+                          BoltDomain         *domain,
                           struct udev_device *udev)
 {
   g_autoptr(GError) err = NULL;
   GDBusConnection *bus;
   BoltDevice *dev;
   BoltStatus status;
-  BoltDomain *domain;
   const char *opath;
   const char *syspath;
 
   syspath = udev_device_get_syspath (udev);
-  domain = manager_find_domain_by_syspath (mgr, syspath);
-
-  if (domain == NULL)
-    {
-      bolt_warn (LOG_TOPIC ("domain"),
-                 "could not find domain for device at '%s'",
-                 syspath);
-      return;
-    }
 
   dev = bolt_device_new_for_udev (udev, domain, &err);
   if (dev == NULL)
@@ -1205,25 +1203,15 @@ handle_udev_device_removed (BoltManager *mgr,
 
 static void
 handle_udev_device_attached (BoltManager        *mgr,
+                             BoltDomain         *domain,
                              BoltDevice         *dev,
                              struct udev_device *udev)
 {
   g_autoptr(BoltDevice) parent = NULL;
-  BoltDomain *domain;
   const char *syspath;
   BoltStatus status;
 
   syspath = udev_device_get_syspath (udev);
-  domain = manager_find_domain_by_syspath (mgr, syspath);
-
-  if (domain == NULL)
-    {
-      bolt_warn (LOG_TOPIC ("domain"),
-                 "could not find domain for device at '%s'",
-                 syspath);
-      return;
-    }
-
   status = bolt_device_connected (dev, domain, udev);
 
   bolt_msg (LOG_DEV (dev), "connected: %s (%s)",
