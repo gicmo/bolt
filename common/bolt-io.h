@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 G_BEGIN_DECLS
 
@@ -106,5 +107,15 @@ gboolean   bolt_file_write_all (const char *fn,
 int        bolt_mkfifo (const char *path,
                         mode_t      mode,
                         GError    **error);
+
+gboolean   bolt_fstat (int          fd,
+                       struct stat *statbuf,
+                       GError     **error);
+
+gboolean   bolt_fstatat (int          dirfd,
+                         const char  *pathname,
+                         struct stat *statbuf,
+                         int          flags,
+                         GError     **error);
 
 G_END_DECLS

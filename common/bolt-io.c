@@ -552,3 +552,57 @@ bolt_mkfifo (const char *path,
 
   return r;
 }
+
+gboolean
+bolt_fstat (int          fd,
+            struct stat *statbuf,
+            GError     **error)
+{
+  int code;
+  int r;
+
+  g_return_val_if_fail (fd > -1, FALSE);
+  g_return_val_if_fail (statbuf != NULL, FALSE);
+
+  r = fstat (fd, statbuf);
+
+  if (r == 0)
+    return TRUE;
+
+  code = errno;
+  g_set_error (error, G_IO_ERROR,
+               g_io_error_from_errno (code),
+               "could not stat file: %s",
+               g_strerror (code));
+
+  return FALSE;
+}
+
+gboolean
+bolt_fstatat (int          dirfd,
+              const char  *pathname,
+              struct stat *statbuf,
+              int          flags,
+              GError     **error)
+{
+  int code;
+  int r;
+
+  g_return_val_if_fail (dirfd > -1, FALSE);
+  g_return_val_if_fail (pathname != NULL, FALSE);
+  g_return_val_if_fail (statbuf != NULL, FALSE);
+
+  r = fstatat (dirfd, pathname, statbuf, flags);
+
+  if (r == 0)
+    return TRUE;
+
+  code = errno;
+  g_set_error (error, G_IO_ERROR,
+               g_io_error_from_errno (code),
+               "could not stat file '%s': %s",
+               pathname,
+               g_strerror (code));
+
+  return FALSE;
+}
