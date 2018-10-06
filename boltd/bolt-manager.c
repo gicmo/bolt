@@ -96,9 +96,6 @@ static void          handle_udev_domain_event (BoltManager        *mgr,
                                                struct udev_device *device,
                                                const char         *action);
 
-static BoltDomain *  handle_udev_domain_added (BoltManager        *mgr,
-                                               struct udev_device *udev);
-
 static void          handle_udev_domain_removed (BoltManager *mgr,
                                                  BoltDomain  *domain);
 
@@ -551,9 +548,12 @@ static BoltDomain *
 manager_domain_ensure (BoltManager        *mgr,
                        struct udev_device *dev)
 {
+  g_autoptr(GError) err = NULL;
+  BoltDomain *domain = NULL;
+  GDBusConnection *bus;
   struct udev_device *dom;
-  BoltDomain *domain;
   const char *syspath;
+  const char *op;
 
   syspath = udev_device_get_syspath (dev);
   domain = manager_find_domain_by_syspath (mgr, syspath);
@@ -568,7 +568,32 @@ manager_domain_ensure (BoltManager        *mgr,
   if (dom == NULL)
     return NULL;
 
-  domain = handle_udev_domain_added (mgr, dom);
+  domain = bolt_domain_new_for_udev (dom, &err);
+
+  if (domain == NULL)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("udev"),
+                     "failed to create domain: %s");
+      return NULL;
+    }
+
+  manager_register_domain (mgr, domain);
+
+  /* registering the domain will add one reference */
+  g_object_unref (domain);
+
+  bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
+  if (bus == NULL)
+    return domain;
+
+  bolt_domain_export (domain, bus);
+
+  op = bolt_exported_get_object_path (BOLT_EXPORTED (domain));
+  bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
+                             "DomainAdded",
+                             g_variant_new ("(o)", op),
+                             NULL);
+
   return domain;
 }
 
@@ -1004,41 +1029,6 @@ handle_udev_domain_event (BoltManager        *mgr,
                    "unregistered domain removed at %s",
                    syspath);
     }
-}
-
-static BoltDomain *
-handle_udev_domain_added (BoltManager        *mgr,
-                          struct udev_device *device)
-{
-  g_autoptr(GError) err = NULL;
-  g_autoptr(BoltDomain) domain = NULL;
-  GDBusConnection *bus;
-  const char *op;
-
-  domain = bolt_domain_new_for_udev (device, &err);
-
-  if (domain == NULL)
-    {
-      bolt_warn_err (err, LOG_TOPIC ("udev"),
-                     "failed to create domain: %s");
-      return NULL;
-    }
-
-  manager_register_domain (mgr, domain);
-
-  bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
-  if (bus == NULL)
-    return domain;
-
-  bolt_domain_export (domain, bus);
-
-  op = bolt_exported_get_object_path (BOLT_EXPORTED (domain));
-  bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
-                             "DomainAdded",
-                             g_variant_new ("(o)", op),
-                             NULL);
-
-  return domain;
 }
 
 static void
