@@ -40,6 +40,9 @@ struct _BoltDomain
   BoltList domains;
   gint     sort;
 
+  /* persistent */
+  char *uid;
+
   /* sysfs */
   char        *id;
   char        *syspath;
@@ -54,6 +57,7 @@ enum {
   PROP_OBJECT_ID,
 
   /* exported properties */
+  PROP_UID,
   PROP_ID,
   PROP_SYSPATH,
   PROP_SECURITY,
@@ -73,6 +77,7 @@ bolt_domain_finalize (GObject *object)
 {
   BoltDomain *dom = BOLT_DOMAIN (object);
 
+  g_free (dom->uid);
   g_free (dom->id);
   g_free (dom->syspath);
 
@@ -95,6 +100,11 @@ bolt_domain_get_property (GObject    *object,
 
   switch (prop_id)
     {
+
+    case PROP_UID:
+      g_value_set_string (value, dom->uid);
+      break;
+
     case PROP_OBJECT_ID:
     case PROP_ID:
       g_value_set_string (value, dom->id);
@@ -123,6 +133,11 @@ bolt_domain_set_property (GObject      *object,
 
   switch (prop_id)
     {
+
+    case PROP_UID:
+      dom->uid = g_value_dup_string (value);
+      break;
+
     case PROP_ID:
       dom->id = g_value_dup_string (value);
       break;
@@ -154,6 +169,14 @@ bolt_domain_class_init (BoltDomainClass *klass)
 
   props[PROP_OBJECT_ID] =
     bolt_param_spec_override (gobject_class, "object-id");
+
+  props[PROP_UID] =
+    g_param_spec_string ("uid",
+                         "Uid", NULL,
+                         NULL,
+                         G_PARAM_READWRITE |
+                         G_PARAM_CONSTRUCT_ONLY |
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_ID] =
     g_param_spec_string ("id",
@@ -242,6 +265,14 @@ bolt_domain_new_for_udev (struct udev_device *udev,
                       NULL);
 
   return dom;
+}
+
+const char *
+bolt_domain_get_uid (BoltDomain *domain)
+{
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), NULL);
+
+  return domain->uid;
 }
 
 const char *
