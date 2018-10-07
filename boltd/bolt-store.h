@@ -42,8 +42,9 @@ gboolean          bolt_store_config_save (BoltStore *store,
                                           GKeyFile  *config,
                                           GError   **error);
 
-GStrv             bolt_store_list_uids (BoltStore *store,
-                                        GError   **error);
+GStrv             bolt_store_list_uids (BoltStore  *store,
+                                        const char *type,
+                                        GError    **error);
 
 gboolean          bolt_store_del (BoltStore  *store,
                                   BoltDevice *dev,

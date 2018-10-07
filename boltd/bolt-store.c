@@ -260,8 +260,9 @@ bolt_store_config_save (BoltStore *store,
 }
 
 GStrv
-bolt_store_list_uids (BoltStore *store,
-                      GError   **error)
+bolt_store_list_uids (BoltStore  *store,
+                      const char *type,
+                      GError    **error)
 {
   g_autoptr(GError) err = NULL;
   g_autoptr(GDir) dir   = NULL;
@@ -269,9 +270,22 @@ bolt_store_list_uids (BoltStore *store,
   g_autoptr(GPtrArray) ids = NULL;
   const char *name;
 
+  g_return_val_if_fail (BOLT_IS_STORE (store), NULL);
+  g_return_val_if_fail (type != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  if (bolt_streq (type, "devices"))
+    path = g_file_get_path (store->devices);
+
+  if (path == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "unknown stored typed '%s'", type);
+      return NULL;
+    }
+
   ids = g_ptr_array_new ();
 
-  path = g_file_get_path (store->devices);
   dir = g_dir_open (path, 0, &err);
   if (dir == NULL)
     {

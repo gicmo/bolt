@@ -457,7 +457,7 @@ bolt_manager_initialize (GInitable    *initable,
                            (GCallback) handle_uevent_udev,
                            mgr, 0);
 
-  ids = bolt_store_list_uids (mgr->store, error);
+  ids = bolt_store_list_uids (mgr->store, "devices", error);
   if (ids == NULL)
     {
       g_prefix_error (error, "failed to list devices in store");
