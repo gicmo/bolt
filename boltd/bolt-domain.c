@@ -100,12 +100,11 @@ bolt_domain_get_property (GObject    *object,
 
   switch (prop_id)
     {
-
+    case PROP_OBJECT_ID:
     case PROP_UID:
       g_value_set_string (value, dom->uid);
       break;
 
-    case PROP_OBJECT_ID:
     case PROP_ID:
       g_value_set_string (value, dom->id);
       break;
