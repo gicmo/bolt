@@ -223,6 +223,7 @@ bolt_domain_class_init (BoltDomainClass *klass)
 /*  */
 BoltDomain *
 bolt_domain_new_for_udev (struct udev_device *udev,
+                          const char         *uid,
                           GError            **error)
 {
   BoltDomain *dom = NULL;
@@ -232,6 +233,7 @@ bolt_domain_new_for_udev (struct udev_device *udev,
   gint sort = -1;
 
   g_return_val_if_fail (udev != NULL, NULL);
+  g_return_val_if_fail (uid != NULL, NULL);
   g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   if (!bolt_sysfs_device_is_domain (udev, error))
@@ -259,6 +261,7 @@ bolt_domain_new_for_udev (struct udev_device *udev,
     return NULL;
 
   dom = g_object_new (BOLT_TYPE_DOMAIN,
+                      "uid", uid,
                       "id", sysname,
                       "syspath", syspath,
                       "security", security,

@@ -72,6 +72,7 @@ static void
 test_sysfs_domains (TestSysfs *tt, gconstpointer user)
 {
   g_autoptr(GError) err = NULL;
+  const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
   const char *ids[5];
   BoltSecurity sl[5] = {BOLT_SECURITY_NONE,
                         BOLT_SECURITY_DPONLY,
@@ -101,11 +102,12 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
 
       g_assert_nonnull (udevice);
 
-      dom = bolt_domain_new_for_udev (udevice, &err);
+      dom = bolt_domain_new_for_udev (udevice, uid, &err);
       g_assert_no_error (err);
       g_assert_nonnull (dom);
 
       g_assert_cmpstr (syspath, ==, bolt_domain_get_syspath (dom));
+      g_assert_cmpstr (uid, ==, bolt_domain_get_uid (dom));
       g_assert_cmpstr (ids[i], ==, bolt_domain_get_id (dom));
 
       domains = bolt_domain_insert (domains, dom);

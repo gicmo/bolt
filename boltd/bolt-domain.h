@@ -34,7 +34,10 @@ struct udev_device;
 G_DECLARE_FINAL_TYPE (BoltDomain, bolt_domain, BOLT, DOMAIN, BoltExported);
 
 BoltDomain *      bolt_domain_new_for_udev (struct udev_device *udev,
+                                            const char         *uid,
                                             GError            **error) G_GNUC_WARN_UNUSED_RESULT;
+
+const char *      bolt_domain_get_uid (BoltDomain *domain);
 
 const char *      bolt_domain_get_id (BoltDomain *domain);
 

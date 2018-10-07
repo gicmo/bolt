@@ -554,6 +554,7 @@ manager_domain_ensure (BoltManager        *mgr,
   struct udev_device *dom;
   const char *syspath;
   const char *op;
+  const char *uid;
 
   syspath = udev_device_get_syspath (dev);
   domain = manager_find_domain_by_syspath (mgr, syspath);
@@ -568,7 +569,9 @@ manager_domain_ensure (BoltManager        *mgr,
   if (dom == NULL)
     return NULL;
 
-  domain = bolt_domain_new_for_udev (dom, &err);
+
+  uid = udev_device_get_sysattr_value (dev, "unique_id");
+  domain = bolt_domain_new_for_udev (dom, uid, &err);
 
   if (domain == NULL)
     {
