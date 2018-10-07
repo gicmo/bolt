@@ -63,7 +63,7 @@ enum {
   PROP_SECURITY,
 
   PROP_LAST,
-  PROP_EXPORTED = PROP_ID
+  PROP_EXPORTED = PROP_UID
 };
 
 static GParamSpec *props[PROP_LAST] = { NULL, };

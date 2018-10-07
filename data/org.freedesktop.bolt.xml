@@ -438,9 +438,15 @@
       </doc:description>
     </doc:doc>
 
+    <property name="Uid" type="s" access="read">
+      <doc:doc><doc:description><doc:para>
+        The unique-id of the domain.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <property name="Id" type="s" access="read">
       <doc:doc><doc:description><doc:para>
-        The id of the domain.
+        The (sysfs) id of the domain.
       </doc:para></doc:description></doc:doc>
     </property>
 
