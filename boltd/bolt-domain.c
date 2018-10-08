@@ -356,7 +356,7 @@ bolt_domain_update_from_udev (BoltDomain         *domain,
 {
   g_autoptr(GError) err = NULL;
   g_auto(GStrv) acl = NULL;
-  GStrv tmp;
+  gboolean same;
 
   acl = bolt_sysfs_read_boot_acl (udev, &err);
   if (acl == NULL && !bolt_err_notfound (err))
@@ -365,10 +365,11 @@ bolt_domain_update_from_udev (BoltDomain         *domain,
       return;
     }
 
-  /* TODO: check if something really has changed */
-  tmp = domain->bootacl;
-  domain->bootacl = acl;
-  acl = tmp;
+  same = bolt_strv_equal (domain->bootacl, acl);
+  if (same)
+    return;
+
+  bolt_swap (domain->bootacl, acl);
 
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
 }
