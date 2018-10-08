@@ -76,6 +76,20 @@ bolt_strv_from_ptr_array (GPtrArray **array)
   return (GStrv) g_ptr_array_free (a, FALSE);
 }
 
+gsize
+bolt_strv_length (char * const *strv)
+{
+  gsize l = 0;
+
+  if (strv == NULL)
+    return 0;
+
+  while (*strv++ != NULL)
+    l++;
+
+  return l;
+}
+
 gboolean
 bolt_strv_equal (const GStrv a, const GStrv b)
 {

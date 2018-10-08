@@ -742,6 +742,26 @@ test_str_set (TestRng *tt, gconstpointer user_data)
   g_assert_cmpstr (target, ==, "foobar");
 }
 
+#define MAKE_GSTRV(...) (GStrv) (const char *[]){ __VA_ARGS__}
+
+static void
+test_strv_length (TestRng *tt, gconstpointer user_data)
+{
+  struct
+  {
+    const GStrv strv;
+    gsize       l;
+  } table[] = {
+    {NULL, 0},
+    {MAKE_GSTRV (NULL), 0},
+    {MAKE_GSTRV ("a", NULL), 1},
+    {MAKE_GSTRV ("a", "b", "c", "d", NULL), 4},
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+    g_assert_cmpuint (bolt_strv_length (table[i].strv), ==, table[i].l);
+}
+
 typedef struct
 {
 
@@ -750,8 +770,6 @@ typedef struct
   gboolean    result;
 
 } StrvEqualTest;
-
-#define MAKE_GSTRV(...) (GStrv) (const char *[]){ __VA_ARGS__}
 
 static void
 test_strv_equal (TestRng *tt, gconstpointer user_data)
@@ -1050,6 +1068,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_strv_equal,
+              NULL);
+
+  g_test_add ("/common/strv/length",
+              TestRng,
+              NULL,
+              NULL,
+              test_strv_length,
               NULL);
 
   g_test_add ("/common/strv/diff",

@@ -33,6 +33,7 @@ void bolt_str_erase_clear (char **str);
 #define bolt_streq(s1, s2) (g_strcmp0 (s1, s2) == 0)
 
 GStrv    bolt_strv_from_ptr_array (GPtrArray **array);
+gsize    bolt_strv_length (char * const *strv);
 gboolean bolt_strv_equal (const GStrv a,
                           const GStrv b);
 gboolean bolt_strv_diff (const GStrv before,
