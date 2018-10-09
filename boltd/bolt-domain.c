@@ -23,6 +23,7 @@
 #include "bolt-error.h"
 #include "bolt-log.h"
 #include "bolt-str.h"
+#include "bolt-store.h"
 #include "bolt-sysfs.h"
 
 #include "bolt-list.h"
@@ -37,8 +38,10 @@ struct _BoltDomain
   BoltExported object;
 
   /* internal list  */
-  BoltList domains;
-  gint     sort;
+  BoltList   domains;
+  gint       sort;
+
+  BoltStore *store;
 
   /* persistent */
   char *uid;
@@ -55,6 +58,7 @@ enum {
   PROP_0,
 
   /* internal properties */
+  PROP_STORE,
   PROP_OBJECT_ID,
 
   /* exported properties */
@@ -78,6 +82,8 @@ static void
 bolt_domain_finalize (GObject *object)
 {
   BoltDomain *dom = BOLT_DOMAIN (object);
+
+  g_clear_object (&dom->store);
 
   g_free (dom->uid);
   g_free (dom->id);
@@ -103,6 +109,10 @@ bolt_domain_get_property (GObject    *object,
 
   switch (prop_id)
     {
+    case PROP_STORE:
+      g_value_set_object (value, dom->store);
+      break;
+
     case PROP_OBJECT_ID:
     case PROP_UID:
       g_value_set_string (value, dom->uid);
@@ -139,6 +149,13 @@ bolt_domain_set_property (GObject      *object,
 
   switch (prop_id)
     {
+    case PROP_STORE:
+      if (dom->store == g_value_get_object (value))
+        return;
+
+      g_clear_object (&dom->store);
+      dom->store = g_value_dup_object (value);
+      break;
 
     case PROP_UID:
       dom->uid = g_value_dup_string (value);
@@ -177,6 +194,13 @@ bolt_domain_class_init (BoltDomainClass *klass)
 
   gobject_class->get_property = bolt_domain_get_property;
   gobject_class->set_property = bolt_domain_set_property;
+
+  props[PROP_STORE] =
+    g_param_spec_object ("store",
+                         NULL, NULL,
+                         BOLT_TYPE_STORE,
+                         G_PARAM_READWRITE |
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_OBJECT_ID] =
     bolt_param_spec_override (gobject_class, "object-id");
@@ -333,6 +357,14 @@ bolt_domain_get_bootacl (BoltDomain *domain)
   g_return_val_if_fail (BOLT_IS_DOMAIN (domain), NULL);
 
   return domain->bootacl;
+}
+
+gboolean
+bolt_domain_is_stored (BoltDomain *domain)
+{
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+
+  return domain->store != NULL;
 }
 
 void
