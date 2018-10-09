@@ -28,6 +28,19 @@
 
 G_BEGIN_DECLS
 
+typedef struct MockDevId
+{
+
+  gint        vendor_id;
+  const char *vendor_name;
+
+  gint        device_id;
+  const char *device_name;
+
+  const char *unique_id;
+
+} MockDevId;
+
 #define MOCK_TYPE_SYSFS mock_sysfs_get_type ()
 G_DECLARE_FINAL_TYPE (MockSysfs, mock_sysfs, MOCK, SYSFS, GObject);
 
@@ -63,6 +76,26 @@ gboolean         mock_sysfs_domain_bootacl_set (MockSysfs  *ms,
                                                 const char *id,
                                                 GStrv       acl,
                                                 GError    **error);
+
+const char *     mock_sysfs_host_add (MockSysfs  *ms,
+                                      const char *domain,
+                                      MockDevId  *id);
+
+const char *     mock_sysfs_device_add (MockSysfs  *ms,
+                                        const char *parent,
+                                        MockDevId  *id,
+                                        guint       authorized,
+                                        const char *key,
+                                        gint        boot);
+
+const char *     mock_sysfs_device_get_syspath (MockSysfs  *ms,
+                                                const char *id);
+
+const char *     mock_sysfs_device_get_parent (MockSysfs  *ms,
+                                               const char *id);
+
+gboolean         mock_sysfs_device_remove (MockSysfs  *ms,
+                                           const char *id);
 
 /* helper macro */
 

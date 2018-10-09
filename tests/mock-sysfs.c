@@ -32,16 +32,43 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+typedef struct _MockDevice MockDevice;
+struct _MockDevice
+{
+  char *idstr;
+  char *path;
+
+  gint  serial;
+
+  /*  */
+  GHashTable *devices;
+};
+
+static void
+mock_device_destroy (gpointer data)
+{
+  MockDevice *device = data;
+
+  if (device == NULL)
+    return;
+
+  g_clear_pointer (&device->devices, g_hash_table_unref);
+  g_free (device->path);
+  g_free (device);
+}
+
 typedef struct _MockDomain MockDomain;
 
 struct _MockDomain
 {
-  guint id;
+  guint       id;
 
-  char *idstr;
-  char *path;
+  char       *idstr;
+  char       *path;
 
-  gint  devices;
+  gint        serial;
+
+  MockDevice *host;
 };
 
 static void
@@ -49,9 +76,25 @@ mock_domain_destory (gpointer data)
 {
   MockDomain *domain = data;
 
+  mock_device_destroy (domain->host);
+
   g_free (domain->path);
   g_free (domain);
 }
+
+/* prototypes */
+
+static MockDevice *    mock_sysfs_device_plug (MockSysfs  *ms,
+                                               MockDomain *domain,
+                                               char       *parent,
+                                               MockDevId  *id,
+                                               guint       authorized,
+                                               const char *key,
+                                               gint        boot);
+
+static void            mock_sysfs_device_unplug (MockSysfs  *ms,
+                                                 MockDevice *dev);
+
 
 struct _MockSysfs
 {
@@ -63,6 +106,7 @@ struct _MockSysfs
   /* state tracking */
   char       *force_power;
   GHashTable *domains;
+  GHashTable *devices;
 };
 
 
@@ -88,6 +132,7 @@ mock_sysfs_finalize (GObject *object)
 
   g_clear_object (&ms->bed);
   g_clear_pointer (&ms->domains, g_hash_table_unref);
+  g_clear_pointer (&ms->devices, g_hash_table_unref);
 
   G_OBJECT_CLASS (mock_sysfs_parent_class)->finalize (object);
 }
@@ -103,6 +148,8 @@ mock_sysfs_init (MockSysfs *ms)
   ms->bed = umockdev_testbed_new ();
   ms->domains = g_hash_table_new_full (g_str_hash, g_str_equal,
                                        NULL, mock_domain_destory);
+
+  ms->devices = g_hash_table_new (g_str_hash, g_str_equal);
 
   /* udev_enumerate_scan_devices() will return -ENOENT, if
    * sys/bus or sys/class directories can not be found
@@ -159,6 +206,113 @@ mock_sysfs_class_init (MockSysfsClass *klass)
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
                                      sysfs_props);
+}
+
+/* internal */
+#define CONST_STRV(...) (char **) (const char *[]){ __VA_ARGS__}
+
+static MockDevice *
+mock_sysfs_device_plug (MockSysfs  *ms,
+                        MockDomain *domain,
+                        char       *parent,
+                        MockDevId  *id,
+                        guint       authorized,
+                        const char *key,
+                        gint        boot)
+{
+  g_autofree char *idstr = NULL;
+  g_autofree char *vendor_id = NULL;
+  g_autofree char *device_id = NULL;
+  g_autofree char *authstr = NULL;
+  g_autofree char *bootstr = NULL;
+  const char *props[17] = {NULL, };
+  MockDevice *device;
+  guint serial;
+  char *path;
+  guint i;
+
+  serial = (domain->serial)++;
+  idstr = g_strdup_printf ("%u-%u", domain->id, serial);
+
+  vendor_id = g_strdup_printf ("%d", id->vendor_id);
+  device_id = g_strdup_printf ("%d", id->device_id);
+  authstr = g_strdup_printf ("%u", authorized);
+
+  i = 0;
+  props[i++] = "vendor";
+  props[i++] = vendor_id;
+  props[i++] = "vendor_name";
+  props[i++] = id->vendor_name;
+  props[i++] = "device";
+  props[i++] = device_id;
+  props[i++] = "device_name";
+  props[i++] = id->device_name;
+  props[i++] = "unique_id";
+  props[i++] = id->unique_id;
+  props[i++] = "authorized";
+  props[i++] = authstr;
+
+  if (key != NULL)
+    {
+      props[i++] = "key";
+      props[i++] = key;
+    }
+
+  if (boot > 0)
+    {
+      bootstr = g_strdup_printf ("%d", boot);
+      props[i++] = "boot";
+      props[i++] = bootstr;
+    }
+
+  props[i++] = NULL;
+  g_assert (sizeof (props) >= i);
+
+
+  path = umockdev_testbed_add_devicev (ms->bed, "thunderbolt", idstr,
+                                       parent,
+                                       (char **) props,
+                                       CONST_STRV ("DEVTYPE", "thunderbolt_device", NULL));
+
+  if (path == NULL)
+    return NULL;
+
+  g_debug ("M [A] %s (%s) @ %s", idstr, authstr, path);
+
+  device = g_new0 (MockDevice, 1);
+  device->idstr = g_steal_pointer (&idstr);
+  device->path = path;
+  device->devices = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                           NULL, mock_device_destroy);
+
+  g_hash_table_replace (ms->devices, device->idstr, device);
+
+  return device;
+}
+
+static void
+mock_sysfs_device_unplug (MockSysfs  *ms,
+                          MockDevice *dev)
+{
+
+  GHashTableIter iter;
+  gpointer k, v;
+
+  g_hash_table_iter_init (&iter, dev->devices);
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      MockDevice *child = v;
+      mock_sysfs_device_unplug (ms, child);
+
+      g_hash_table_iter_remove (&iter);
+    }
+
+  g_clear_pointer (&dev->devices, g_hash_table_unref);
+
+  g_debug ("M [R] %s @ %s", dev->idstr, dev->path);
+
+  umockdev_testbed_uevent (ms->bed, dev->path, "remove");
+  umockdev_testbed_remove_device (ms->bed, dev->path);
 }
 
 /* public methods: generic */
@@ -283,8 +437,6 @@ mock_sysfs_force_power_enabled (MockSysfs *ms)
 
 /* public methods: domain */
 
-#define CONST_STRV(...) (char **) (const char *[]){ __VA_ARGS__}
-
 const char *
 mock_sysfs_domain_add (MockSysfs   *ms,
                        BoltSecurity security,
@@ -371,6 +523,14 @@ mock_sysfs_domain_remove (MockSysfs  *ms,
   if (domain == NULL)
     return FALSE;
 
+  if (domain->host)
+    {
+      mock_sysfs_device_unplug (ms, domain->host);
+      g_clear_pointer (&domain->host, mock_device_destroy);
+    }
+
+  g_debug ("M [R] %s @ %s", domain->idstr, domain->path);
+
   umockdev_testbed_uevent (ms->bed, domain->path, "remove");
   umockdev_testbed_remove_device (ms->bed, domain->path);
 
@@ -444,5 +604,180 @@ mock_sysfs_domain_bootacl_set (MockSysfs  *ms,
     return FALSE;
 
   umockdev_testbed_uevent (ms->bed, domain->path, "change");
+  return TRUE;
+}
+
+const char *
+mock_sysfs_host_add (MockSysfs  *ms,
+                     const char *dom,
+                     MockDevId  *id)
+{
+  MockDomain *domain;
+  MockDevice *device;
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), NULL);
+  g_return_val_if_fail (dom != NULL, NULL);
+
+  domain = g_hash_table_lookup (ms->domains, dom);
+
+  if (domain == NULL)
+    {
+      g_warning ("domain '%s' not found", dom);
+      return NULL;
+    }
+
+  if (domain->host != NULL)
+    {
+      g_warning ("domain '%s' already has a host", dom);
+      return NULL;
+    }
+
+  device = mock_sysfs_device_plug (ms,
+                                   domain,
+                                   domain->path,
+                                   id,
+                                   1,
+                                   NULL, /* no key for the host */
+                                   -1);  /* no boot file either */
+  domain->host = device;
+
+  return device->idstr;
+}
+
+const char *
+mock_sysfs_device_add (MockSysfs  *ms,
+                       const char *parent,
+                       MockDevId  *id,
+                       guint       authorized,
+                       const char *key,
+                       gint        boot)
+{
+  MockDevice *pdev;
+  MockDomain *domain = NULL;
+  MockDevice *device;
+  GHashTableIter iter;
+  gpointer k, v;
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), NULL);
+  g_return_val_if_fail (parent != NULL, NULL);
+
+  pdev = g_hash_table_lookup (ms->devices, parent);
+  if (pdev == NULL)
+    {
+      g_warning ("parent device '%s' not found", parent);
+      return NULL;
+    }
+
+  /* look up the domain for the device */
+  g_hash_table_iter_init (&iter, ms->domains);
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      MockDomain *d = v;
+
+      if (g_str_has_prefix (pdev->path, d->path))
+        {
+          domain = d;
+          break;
+        }
+    }
+
+  if (domain == NULL)
+    {
+      g_warning ("domain not found for device '%s'", parent);
+      return NULL;
+    }
+
+  device = mock_sysfs_device_plug (ms,
+                                   domain,
+                                   pdev->path,
+                                   id,
+                                   1,
+                                   key,
+                                   boot);
+
+  g_hash_table_insert (pdev->devices, device->idstr, device);
+
+  return device->idstr;
+}
+
+
+const char *
+mock_sysfs_device_get_syspath (MockSysfs  *ms,
+                               const char *id)
+{
+  MockDevice *dev;
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), NULL);
+  g_return_val_if_fail (id != NULL, NULL);
+
+  dev = g_hash_table_lookup (ms->devices, id);
+
+  if (dev == NULL)
+    return NULL;
+
+  return dev->path;
+}
+
+const char *
+mock_sysfs_device_get_parent (MockSysfs  *ms,
+                              const char *id)
+{
+  MockDevice *dev;
+  GHashTableIter iter;
+  gpointer k, v;
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), FALSE);
+  g_return_val_if_fail (id != NULL, FALSE);
+
+  dev = g_hash_table_lookup (ms->devices, id);
+
+  if (dev == NULL)
+    return FALSE;
+
+  /* we look for the device that contains 'dev'
+   * in its devices table, because that will be
+   * the parent */
+  g_hash_table_iter_init (&iter, ms->devices);
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      MockDevice *d = v;
+      gpointer p;
+
+      p = g_hash_table_lookup (d->devices, dev->path);
+      if (p != NULL)
+        return d->idstr;
+    }
+
+  return NULL;
+}
+
+gboolean
+mock_sysfs_device_remove (MockSysfs  *ms,
+                          const char *id)
+{
+  const char *mom;
+  MockDevice *m;
+  MockDevice *dev;
+
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), FALSE);
+  g_return_val_if_fail (id != NULL, FALSE);
+
+  dev = g_hash_table_lookup (ms->devices, id);
+
+  if (dev == NULL)
+    return FALSE;
+
+  mom = mock_sysfs_device_get_parent (ms, id);
+  if (mom == NULL)
+    return FALSE;
+
+  m =  g_hash_table_lookup (ms->devices, mom);
+  g_assert_nonnull (m);
+
+  mock_sysfs_device_unplug (ms, dev);
+  g_hash_table_remove (m->devices, id);
+  mock_device_destroy (dev);
+
   return TRUE;
 }
