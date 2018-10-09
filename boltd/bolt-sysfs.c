@@ -94,16 +94,19 @@ bolt_sysfs_device_is_domain (struct udev_device *udev,
 }
 
 struct udev_device *
-bolt_sysfs_domain_for_device (struct udev_device *udev)
+bolt_sysfs_domain_for_device (struct udev_device  *udev,
+                              struct udev_device **host_out)
 {
   struct udev_device *parent;
+  struct udev_device *host;
   gboolean found;
 
   found = FALSE;
   parent = udev;
   do
     {
-      parent = udev_device_get_parent (parent);
+      host = parent;
+      parent = udev_device_get_parent (host);
       if (!parent)
         break;
 
@@ -111,7 +114,13 @@ bolt_sysfs_domain_for_device (struct udev_device *udev)
     }
   while (!found);
 
-  return found ? parent : NULL;
+  if (!found)
+    return NULL;
+
+  if (host_out)
+    *host_out = host;
+
+  return parent;
 }
 
 BoltSecurity
@@ -125,7 +134,7 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
   if (bolt_sysfs_device_is_domain (udev, NULL))
     parent = udev;
   else
-    parent = bolt_sysfs_domain_for_device (udev);
+    parent = bolt_sysfs_domain_for_device (udev, NULL);
 
   if (parent == NULL)
     {

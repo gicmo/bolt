@@ -41,7 +41,8 @@ gint64               bolt_sysfs_device_get_time (struct udev_device *udev,
 gboolean             bolt_sysfs_device_is_domain (struct udev_device *udev,
                                                   GError            **error);
 
-struct udev_device * bolt_sysfs_domain_for_device (struct udev_device *udev);
+struct udev_device * bolt_sysfs_domain_for_device (struct udev_device  *udev,
+                                                   struct udev_device **host);
 
 BoltSecurity         bolt_sysfs_security_for_device (struct udev_device *udev,
                                                      GError            **error);

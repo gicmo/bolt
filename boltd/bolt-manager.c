@@ -565,7 +565,7 @@ manager_domain_ensure (BoltManager        *mgr,
   /* dev is very likely the host, i.e. root switch device,
    * but we might as well make sure we can get the domain
    * from any */
-  dom = bolt_sysfs_domain_for_device (dev);
+  dom = bolt_sysfs_domain_for_device (dev, NULL);
   if (dom == NULL)
     return NULL;
 
