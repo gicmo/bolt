@@ -327,6 +327,14 @@ bolt_domain_get_security (BoltDomain *domain)
   return domain->security;
 }
 
+GStrv
+bolt_domain_get_bootacl (BoltDomain *domain)
+{
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), NULL);
+
+  return domain->bootacl;
+}
+
 void
 bolt_domain_export (BoltDomain      *domain,
                     GDBusConnection *bus)

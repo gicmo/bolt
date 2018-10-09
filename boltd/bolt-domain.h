@@ -45,6 +45,8 @@ const char *      bolt_domain_get_syspath (BoltDomain *domain);
 
 BoltSecurity      bolt_domain_get_security (BoltDomain *domain);
 
+GStrv             bolt_domain_get_bootacl (BoltDomain *domain);
+
 void              bolt_domain_export (BoltDomain      *domain,
                                       GDBusConnection *connection);
 
