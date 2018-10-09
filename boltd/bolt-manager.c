@@ -551,6 +551,7 @@ manager_domain_ensure (BoltManager        *mgr,
   g_autoptr(GError) err = NULL;
   BoltDomain *domain = NULL;
   GDBusConnection *bus;
+  struct udev_device *host;
   struct udev_device *dom;
   const char *syspath;
   const char *op;
@@ -564,13 +565,14 @@ manager_domain_ensure (BoltManager        *mgr,
 
   /* dev is very likely the host, i.e. root switch device,
    * but we might as well make sure we can get the domain
-   * from any */
-  dom = bolt_sysfs_domain_for_device (dev, NULL);
+   * from any; also we make sure that we have indeed the
+   * host device via this lookup.
+   */
+  dom = bolt_sysfs_domain_for_device (dev, &host);
   if (dom == NULL)
     return NULL;
 
-
-  uid = udev_device_get_sysattr_value (dev, "unique_id");
+  uid = udev_device_get_sysattr_value (host, "unique_id");
   domain = bolt_domain_new_for_udev (dom, uid, &err);
 
   if (domain == NULL)
