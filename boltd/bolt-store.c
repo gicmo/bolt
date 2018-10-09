@@ -39,6 +39,7 @@ struct _BoltStore
   GObject object;
 
   GFile  *root;
+  GFile  *domains;
   GFile  *devices;
   GFile  *keys;
   GFile  *times;
@@ -76,6 +77,7 @@ bolt_store_finalize (GObject *object)
   BoltStore *store = BOLT_STORE (object);
 
   g_clear_object (&store->root);
+  g_clear_object (&store->domains);
   g_clear_object (&store->devices);
   g_clear_object (&store->keys);
   g_clear_object (&store->times);
@@ -132,6 +134,7 @@ bolt_store_constructed (GObject *obj)
   BoltStore *store = BOLT_STORE (obj);
 
   store->devices = g_file_get_child (store->root, "devices");
+  store->domains = g_file_get_child (store->root, "domains");
   store->keys = g_file_get_child (store->root, "keys");
   store->times = g_file_get_child (store->root, "times");
 }
@@ -181,7 +184,7 @@ bolt_store_class_init (BoltStoreClass *klass)
 }
 
 /* internal methods */
-
+#define DOMAIN_GROUP "domain"
 #define DEVICE_GROUP "device"
 #define USER_GROUP "user"
 
@@ -276,6 +279,8 @@ bolt_store_list_uids (BoltStore  *store,
 
   if (bolt_streq (type, "devices"))
     path = g_file_get_path (store->devices);
+  if (bolt_streq (type, "domains"))
+    path = g_file_get_path (store->domains);
 
   if (path == NULL)
     {
@@ -305,6 +310,146 @@ bolt_store_list_uids (BoltStore  *store,
     }
 
   return bolt_strv_from_ptr_array (&ids);
+}
+
+gboolean
+bolt_store_put_domain (BoltStore  *store,
+                       BoltDomain *domain,
+                       GError    **error)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GFile) entry = NULL;
+  g_autoptr(GKeyFile) kf = NULL;
+  g_autofree char *path = NULL;
+  char * const * bootacl = NULL;
+  const char *uid;
+  gboolean ok;
+  gsize len;
+
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  uid = bolt_domain_get_uid (domain);
+  g_assert (uid);
+
+  entry = g_file_get_child (store->domains, uid);
+
+  ok = bolt_fs_make_parent_dirs (entry, error);
+  if (!ok)
+    return FALSE;
+
+  kf = g_key_file_new ();
+  path = g_file_get_path (entry);
+  ok = g_key_file_load_from_file (kf,
+                                  path,
+                                  G_KEY_FILE_KEEP_COMMENTS,
+                                  &err);
+
+  if (!ok && !bolt_err_notfound (err))
+    {
+      bolt_warn_err (err, LOG_TOPIC ("store"),
+                     "error loading existing domain");
+      g_clear_error (&err);
+      /* not fatal, keep going */
+    }
+
+  bootacl = bolt_domain_get_bootacl (domain);
+  len = bolt_strv_length (bootacl);
+
+  g_key_file_set_string_list (kf,
+                              DOMAIN_GROUP,
+                              "bootacl",
+                              (const char * const *) bootacl,
+                              len);
+
+  ok = g_key_file_save_to_file (kf, path, error);
+
+  if (!ok)
+    return FALSE;
+
+  g_object_set (G_OBJECT (domain),
+                "store", store,
+                NULL);
+
+  return ok;
+}
+
+BoltDomain *
+bolt_store_get_domain (BoltStore  *store,
+                       const char *uid,
+                       GError    **error)
+{
+  g_autoptr(GKeyFile) kf = NULL;
+  g_autoptr(GFile) db = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autofree char *path = NULL;
+  g_auto(GStrv) bootacl = NULL;
+  BoltDomain *domain = NULL;
+  gboolean ok;
+
+  g_return_val_if_fail (store != NULL, FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+
+  db = g_file_get_child (store->domains, uid);
+  path = g_file_get_path (db);
+
+  kf = g_key_file_new ();
+  ok = g_key_file_load_from_file (kf, path, G_KEY_FILE_NONE, error);
+
+  if (!ok)
+    return NULL;
+
+  bootacl = g_key_file_get_string_list (kf,
+                                        DOMAIN_GROUP,
+                                        "bootacl",
+                                        NULL,
+                                        &err);
+
+  if (bootacl == NULL && !bolt_err_notfound (err))
+    {
+      bolt_warn_err (err, LOG_DOM_UID (uid), LOG_TOPIC ("store"),
+                     "failed to parse bootacl for domain '%s'",
+                     uid);
+
+      g_clear_error (&err);
+    }
+
+  domain = g_object_new (BOLT_TYPE_DOMAIN,
+                         "store", store,
+                         "uid", uid,
+                         "bootacl", bootacl,
+                         NULL);
+
+  return domain;
+}
+
+gboolean
+bolt_store_del_domain (BoltStore  *store,
+                       BoltDomain *domain,
+                       GError    **error)
+{
+  g_autoptr(GFile) path = NULL;
+  const char *uid;
+  gboolean ok;
+
+  g_return_val_if_fail (store != NULL, FALSE);
+  g_return_val_if_fail (domain != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  uid = bolt_domain_get_uid (domain);
+
+  path = g_file_get_child (store->domains, uid);
+  ok = g_file_delete (path, NULL, error);
+
+  if (!ok)
+    return FALSE;
+
+  g_object_set (domain,
+                "store", NULL,
+                NULL);
+
+  return TRUE;
 }
 
 gboolean

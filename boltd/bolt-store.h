@@ -23,6 +23,7 @@
 #include <glib-object.h>
 
 #include "bolt-device.h"
+#include "bolt-domain.h"
 #include "bolt-key.h"
 #include "bolt-enums.h"
 
@@ -45,6 +46,18 @@ gboolean          bolt_store_config_save (BoltStore *store,
 GStrv             bolt_store_list_uids (BoltStore  *store,
                                         const char *type,
                                         GError    **error);
+
+gboolean          bolt_store_put_domain (BoltStore  *store,
+                                         BoltDomain *domain,
+                                         GError    **error);
+
+BoltDomain *      bolt_store_get_domain (BoltStore  *store,
+                                         const char *uid,
+                                         GError    **error);
+
+gboolean          bolt_store_del_domain (BoltStore  *store,
+                                         BoltDomain *domain,
+                                         GError    **error);
 
 gboolean          bolt_store_del (BoltStore  *store,
                                   BoltDevice *dev,
