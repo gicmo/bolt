@@ -70,6 +70,79 @@ count_domains (gpointer data,
 }
 
 static void
+test_sysfs_domain_for_device (TestSysfs *tt, gconstpointer user)
+{
+  g_autoptr(udev_device) udevice = NULL;
+  udev_device *dh;
+  udev_device *dd;
+  const char *domain;
+  const char *host;
+  const char *dock;
+  const char *syspath;
+  MockDevId hostid = {
+    .vendor_id = 0x42,
+    .vendor_name = "GNOME.org",
+    .device_id = 0x42,
+    .device_name = "Laptop",
+    .unique_id = "884c6edd-7118-4b21-b186-b02d396ecca0",
+  };
+  MockDevId dockid = {
+    .vendor_id = 0x42,
+    .vendor_name = "GNOME.org",
+    .device_id = 0x42,
+    .device_name = "Thunderbolt Dock",
+    .unique_id = "884c6edd-7118-4b21-b186-b02d396ecca1",
+  };
+
+  domain = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_SECURE, NULL);
+  g_assert_nonnull (domain);
+
+  host = mock_sysfs_host_add (tt->sysfs, domain, &hostid);
+  g_assert_nonnull (host);
+
+  dock = mock_sysfs_device_add (tt->sysfs,
+                                host,
+                                &dockid,
+                                0,
+                                NULL,
+                                0);
+
+  g_assert_nonnull (dock);
+
+  syspath = mock_sysfs_device_get_syspath (tt->sysfs, dock);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+  g_assert_nonnull (udevice);
+
+  /* for the dock */
+  dd = bolt_sysfs_domain_for_device (udevice, &dh);
+  g_assert_nonnull (dd);
+  g_assert_nonnull (dh);
+
+  g_assert_cmpstr (udev_device_get_syspath (dd),
+                   ==,
+                   mock_sysfs_domain_get_syspath (tt->sysfs, domain));
+
+  g_assert_cmpstr (udev_device_get_syspath (dh),
+                   ==,
+                   mock_sysfs_device_get_syspath (tt->sysfs, host));
+
+  /* for the host itself */
+  dd = bolt_sysfs_domain_for_device (dh, &dh);
+  g_assert_nonnull (dd);
+  g_assert_nonnull (dh);
+
+  g_assert_cmpstr (udev_device_get_syspath (dd),
+                   ==,
+                   mock_sysfs_domain_get_syspath (tt->sysfs, domain));
+
+  g_assert_cmpstr (udev_device_get_syspath (dh),
+                   ==,
+                   mock_sysfs_device_get_syspath (tt->sysfs, host));
+
+  mock_sysfs_domain_remove (tt->sysfs, domain);
+}
+
+static void
 test_sysfs_domains (TestSysfs *tt, gconstpointer user)
 {
   g_autoptr(GError) err = NULL;
@@ -236,6 +309,13 @@ main (int argc, char **argv)
   g_test_init (&argc, &argv, NULL);
 
   g_resources_register (bolt_daemon_get_resource ());
+
+  g_test_add ("/sysfs/domain_for_device",
+              TestSysfs,
+              NULL,
+              test_sysfs_setup,
+              test_sysfs_domain_for_device,
+              test_sysfs_tear_down);
 
   g_test_add ("/sysfs/domain/basic",
               TestSysfs,
