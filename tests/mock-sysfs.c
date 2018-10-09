@@ -327,10 +327,12 @@ mock_sysfs_domain_add (MockSysfs   *ms,
   if (path == NULL)
     return path;
 
+  g_debug ("M [A] %s (%s) @ %s", idstr, secstr, path);
+
   domain = g_new0 (MockDomain, 1);
 
   domain->id = 0;
-  domain->idstr = path;
+  domain->idstr = idstr;
   domain->path = path;
 
   g_hash_table_insert (ms->domains, idstr, domain);
@@ -352,7 +354,7 @@ mock_sysfs_domain_get_syspath (MockSysfs  *ms,
   if (domain == NULL)
     return NULL;
 
-  return domain->idstr;
+  return domain->path;
 }
 
 gboolean
