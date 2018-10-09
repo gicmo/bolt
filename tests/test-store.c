@@ -23,9 +23,12 @@
 #include "bolt-error.h"
 #include "bolt-fs.h"
 #include "bolt-io.h"
+#include "bolt-str.h"
+
 #include "bolt-store.h"
 
 #include "bolt-daemon-resource.h"
+#include "mock-sysfs.h"
 
 #include <glib.h>
 #include <gio/gio.h>
@@ -498,6 +501,88 @@ test_store_times (TestStore *tt, gconstpointer user_data)
   g_assert_cmpuint (connout, ==, 0);
 }
 
+static void
+test_store_domain (TestStore *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  g_auto(GStrv) uids = NULL;
+  g_autoptr(BoltDomain) d1 = NULL;
+  g_autoptr(BoltDomain) s1 = NULL;
+  const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
+  gboolean ok;
+  GStrv bootacl = NULL;
+  const char *acl[16] = {
+    "884c6edd-7118-4b21-b186-b02d396ecca1",
+    "884c6edd-7118-4b21-b186-b02d396ecca2",
+    "",
+    "884c6edd-7118-4b21-b186-b02d396ecca3",
+    NULL,
+  };
+
+  uids = bolt_store_list_uids (tt->store, "domains", &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (uids);
+  g_assert_cmpuint (g_strv_length (uids), ==, 0);
+
+  d1 = g_object_new (BOLT_TYPE_DOMAIN,
+                     "uid", uid,
+                     "bootacl", NULL,
+                     NULL);
+
+  g_assert_false (bolt_domain_is_stored (d1));
+
+  /* store */
+  ok = bolt_store_put_domain (tt->store, d1, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (bolt_domain_is_stored (d1));
+
+  g_clear_pointer (&uids, g_strfreev);
+
+  /* list */
+  uids = bolt_store_list_uids (tt->store, "domains", &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (uids);
+  g_assert_cmpuint (g_strv_length (uids), ==, 1);
+
+  g_assert_cmpstr (uids[0], ==, uid);
+
+  /* get */
+  s1 = bolt_store_get_domain (tt->store, uid, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (s1);
+  g_assert_true (bolt_domain_is_stored (s1));
+
+  g_assert_cmpstr (uid, ==, bolt_domain_get_uid (s1));
+  bootacl = bolt_domain_get_bootacl (s1);
+  g_assert_cmpuint (g_strv_length (bootacl), ==, 0);
+
+  /* update the bootacl */
+  g_object_set (d1, "bootacl", acl, NULL);
+
+  ok = bolt_store_put_domain (tt->store, d1, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  /* update: get again after update */
+  g_clear_object (&s1);
+  s1 = bolt_store_get_domain (tt->store, uid, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (s1);
+  g_assert_true (bolt_domain_is_stored (s1));
+
+  bootacl = bolt_domain_get_bootacl (s1);
+  bolt_assert_strv_equal ((GStrv) acl, bootacl, 0);
+
+  /* delete */
+  g_assert_true (bolt_domain_is_stored (s1));
+  ok = bolt_store_del_domain (tt->store, s1, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_false (bolt_domain_is_stored (s1));
+}
+
 int
 main (int argc, char **argv)
 {
@@ -534,6 +619,13 @@ main (int argc, char **argv)
               NULL,
               test_store_setup,
               test_store_times,
+              test_store_tear_down);
+
+  g_test_add ("/daemon/store/domain",
+              TestStore,
+              NULL,
+              test_store_setup,
+              test_store_domain,
               test_store_tear_down);
 
   return g_test_run ();
