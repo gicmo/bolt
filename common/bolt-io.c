@@ -529,6 +529,27 @@ bolt_file_write_all (const char *fn,
   return ok;
 }
 
+gboolean
+bolt_ftruncate (int      fd,
+                off_t    size,
+                GError **error)
+{
+  int r;
+
+  r = ftruncate (fd, size);
+
+  if (r == -1)
+    {
+      g_set_error (error, G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "could not truncate file: %s",
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 int
 bolt_mkfifo (const char *path,
              mode_t      mode,

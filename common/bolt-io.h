@@ -55,6 +55,10 @@ gboolean   bolt_write_all (int         fd,
                            gssize      nbytes,
                            GError    **error);
 
+gboolean   bolt_ftruncate (int      fd,
+                           off_t    size,
+                           GError **error);
+
 DIR *      bolt_opendir (const char *path,
                          GError    **error);
 
