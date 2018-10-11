@@ -233,7 +233,7 @@ bolt_domain_class_init (BoltDomainClass *klass)
     g_param_spec_enum ("security",
                        "SecurityLevel", NULL,
                        BOLT_TYPE_SECURITY,
-                       BOLT_SECURITY_NONE,
+                       BOLT_SECURITY_UNKNOWN,
                        G_PARAM_READWRITE |
                        G_PARAM_CONSTRUCT_ONLY |
                        G_PARAM_STATIC_STRINGS);
