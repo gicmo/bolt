@@ -1023,7 +1023,10 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(local.bolt_authflags, remote.authflags)
         return True
 
-    def add_domain_host(self, domain=0, security='secure'):
+    def add_domain_host(self, domain=0, security='secure', uid=None):
+
+        if uid is None:
+            uid = str(uuid.uuid4())
 
         dc = self.testbed.add_device('thunderbolt', 'domain%d' % domain, None,
                                      ['security', security],
@@ -1035,7 +1038,7 @@ class BoltTest(dbusmock.DBusTestCase):
                                         'vendor_name', 'GNOME.org',
                                         'vendor', '0x23',
                                         'authorized', '1',
-                                        'unique_id', str(uuid.uuid4())],
+                                        'unique_id', uid],
                                        ['DEVTYPE', 'thunderbolt_device'])
         return dc, host
 
