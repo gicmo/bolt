@@ -438,6 +438,16 @@ bolt_domain_connected (BoltDomain         *domain,
   id = udev_device_get_sysname (dev);
   syspath = udev_device_get_syspath (dev);
 
+  if (domain->syspath != NULL && !bolt_streq (domain->syspath, syspath))
+    {
+      bolt_warn (LOG_TOPIC ("domain"), LOG_DOM_UID (domain->uid),
+                 "already connected domain at '%s'"
+                 "reconnected at '%s'", domain->syspath, syspath);
+
+      g_free (domain->syspath);
+      g_free (domain->id);
+    }
+
   security = bolt_sysfs_security_for_device (dev, &err);
 
   if (security == BOLT_SECURITY_UNKNOWN)
