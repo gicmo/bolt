@@ -372,7 +372,8 @@ tests = [
   ['test-common', [], test_enums],
   ['test-exported', [libdaemon], [test_resources]],
   ['test-logging', [libdaemon]],
-  ['test-store', [libdaemon]]
+  ['test-store', [libdaemon]],
+  ['test-journal', [libdaemon]]
 ]
 
 if mockdev.found()
