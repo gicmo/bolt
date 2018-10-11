@@ -603,7 +603,7 @@ bolt_domain_find_id (BoltDomain *list,
   while ((n = bolt_nhlist_iter_next (&iter)))
     {
       BoltDomain *d = bolt_list_entry (n, BoltDomain, domains);
-      if (bolt_streq (d->id, id))
+      if (bolt_streq (d->id, id) || bolt_streq (d->uid, id))
         return d;
     }
 
