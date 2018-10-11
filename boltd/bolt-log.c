@@ -450,6 +450,12 @@ bolt_log_stdstream (const BoltLogCtx *ctx,
       format_device_id (ctx->device, name, sizeof (name), 30);
       g_fprintf (out, "[%s%s%s] ", blue, name, normal);
     }
+  else if (bolt_log_ctx_find_field (ctx, BOLT_LOG_DOMAIN_UID, &f))
+    {
+      const char *uid = f->value;
+
+      g_fprintf (out, "[%s%.13s %17s%s] ", blue, uid, "domain", fg);
+    }
   else if (bolt_log_ctx_find_field (ctx, BOLT_LOG_DEVICE_UID, &f))
     {
       const char *uid = f->value;
