@@ -1141,7 +1141,8 @@ class BoltTest(dbusmock.DBusTestCase):
 
         def make_domain(domain, security):
             name = 'domain%d' % domain
-            dom, host = self.add_domain_host(domain, security=security)
+            uid = '884c6edd-7118-4b21-b186-b02d396ecca%d' % domain
+            dom, host = self.add_domain_host(domain, security=security, uid=uid)
             return name, dom, host
 
         # check we get a proper event if the security level changes
