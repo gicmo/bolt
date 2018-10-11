@@ -1139,9 +1139,12 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def test_domain_basic(self):
 
+        def make_uid(domain):
+            return '884c6edd-7118-4b21-b186-b02d396ecca%d' % domain
+
         def make_domain(domain, security):
             name = 'domain%d' % domain
-            uid = '884c6edd-7118-4b21-b186-b02d396ecca%d' % domain
+            uid = make_uid(domain)
             dom, host = self.add_domain_host(domain, security=security, uid=uid)
             return name, dom, host
 
@@ -1188,26 +1191,23 @@ class BoltTest(dbusmock.DBusTestCase):
             remote = self.client.domain_by_id(name)
             self.assertIsNotNone(remote)
 
-            with self.client.record() as tape:
+            with remote.record() as tape:
                 self.remove_domain_host(domain, host)
-                res = tape.wait_for_event('signal',
-                                          'DomainRemoved',
-                                          None)
+                res = tape.wait_for_event('property',
+                                          'SysfsPath',
+                                          '')
                 self.assertTrue(res)
-
-            with self.assertRaises(GLib.GError):
-                self.client.device_by_uid(name)
 
         for d in range(4):
-            with self.client.record() as tape:
-                name, domain, host = make_domain(d, 'secure')
-                res = tape.wait_for_event('signal',
-                                          'DomainAdded',
-                                          None)
-                self.assertTrue(res)
-
-            remote = self.client.domain_by_id(name)
+            remote = self.client.domain_by_id(make_uid(d))
             self.assertIsNotNone(remote)
+
+            with remote.record() as tape:
+                name, domain, host = make_domain(d, 'secure')
+                res = tape.wait_for_event('property',
+                                          'SysfsPath',
+                                          domain)
+                self.assertTrue(res)
 
         remotes = self.client.list_domains()
         self.assertEqual(len(remotes), 4)

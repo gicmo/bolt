@@ -51,6 +51,9 @@ static gboolean bolt_manager_initialize (GInitable    *initable,
                                          GCancellable *cancellable,
                                          GError      **error);
 /* domain related functions */
+static gboolean      manager_load_domains (BoltManager *mgr,
+                                           GError     **error);
+
 static BoltDomain *  manager_domain_ensure (BoltManager        *mgr,
                                             struct udev_device *dev);
 
@@ -433,6 +436,7 @@ bolt_manager_initialize (GInitable    *initable,
   BoltManager *mgr;
   struct udev_enumerate *enumerate;
   struct udev_list_entry *l, *devices;
+  gboolean ok;
 
   mgr = BOLT_MANAGER (initable);
 
@@ -456,6 +460,10 @@ bolt_manager_initialize (GInitable    *initable,
   g_signal_connect_object (mgr->udev, "uevent",
                            (GCallback) handle_uevent_udev,
                            mgr, 0);
+
+  ok = manager_load_domains (mgr, error);
+  if (!ok)
+    return FALSE;
 
   ids = bolt_store_list_uids (mgr->store, "devices", error);
   if (ids == NULL)
@@ -544,6 +552,44 @@ bolt_manager_initialize (GInitable    *initable,
 }
 
 /* domain related function */
+static gboolean
+manager_load_domains (BoltManager *mgr,
+                      GError     **error)
+{
+  g_auto(GStrv) ids = NULL;
+
+  ids = bolt_store_list_uids (mgr->store, "domains", error);
+  if (ids == NULL)
+    {
+      g_prefix_error (error, "failed to list domains in store");
+      return FALSE;
+    }
+
+  bolt_info (LOG_TOPIC ("store"), "loading domains");
+
+  for (guint i = 0; i < g_strv_length (ids); i++)
+    {
+      g_autoptr(GError) err = NULL;
+      BoltDomain *dom = NULL;
+      const char *uid = ids[i];
+
+      bolt_info (LOG_TOPIC ("store"), LOG_DOM_UID (uid),
+                 "loading domain");
+
+      dom = bolt_store_get_domain (mgr->store, uid, &err);
+      if (dom == NULL)
+        {
+          bolt_warn_err (err, LOG_DOM_UID (uid), LOG_TOPIC ("store"),
+                         "failed to load domain", uid);
+          continue;
+        }
+
+      manager_register_domain (mgr, dom);
+    }
+
+  return TRUE;
+}
+
 static BoltDomain *
 manager_domain_ensure (BoltManager        *mgr,
                        struct udev_device *dev)
@@ -556,7 +602,12 @@ manager_domain_ensure (BoltManager        *mgr,
   const char *syspath;
   const char *op;
   const char *uid;
+  gboolean ok;
 
+  /* check if we already know a domain that is the parent
+   * of the device (dev); if not then 'dev' is very likely
+   * the host device.
+   */
   syspath = udev_device_get_syspath (dev);
   domain = manager_find_domain_by_syspath (mgr, syspath);
 
@@ -573,6 +624,21 @@ manager_domain_ensure (BoltManager        *mgr,
     return NULL;
 
   uid = udev_device_get_sysattr_value (host, "unique_id");
+
+  /* check if we have a stored domain with a matching uid
+   * of the host device, if so then we have just connected
+   * the corresponding domain controller, represented by
+   * the 'dom' udev_device.
+   */
+  domain = bolt_domain_find_id (mgr->domains, uid, NULL);
+
+  if (domain != NULL)
+    {
+      bolt_domain_connected (domain, dom);
+      return domain;
+    }
+
+  /* this is an unknown, unstored domain controller */
   domain = bolt_domain_new_for_udev (dom, uid, &err);
 
   if (domain == NULL)
@@ -586,6 +652,14 @@ manager_domain_ensure (BoltManager        *mgr,
 
   /* registering the domain will add one reference */
   g_object_unref (domain);
+
+  bolt_info (LOG_TOPIC ("store"), LOG_DOM_UID (uid),
+             "storing newly connected domain");
+
+  ok = bolt_store_put_domain (mgr->store, domain, &err);
+  if (!ok)
+    bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DOM_UID (uid),
+                   "could not store domain");
 
   bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
   if (bus == NULL)
@@ -617,7 +691,7 @@ manager_find_domain_by_syspath (BoltManager *mgr,
       /* we get a perfect match, if we search for the domain
        * itself, or if we are looking for the domain that
        * is the parent of the device in @syspath */
-      if (g_str_has_prefix (syspath, prefix))
+      if (prefix && g_str_has_prefix (syspath, prefix))
         return iter;
 
       iter = bolt_domain_next (iter);
@@ -630,16 +704,22 @@ static void
 manager_register_domain (BoltManager *mgr,
                          BoltDomain  *domain)
 {
-  const char *name;
+  const char *uid;
   BoltSecurity sl;
+  gboolean online;
 
   mgr->domains = bolt_domain_insert (mgr->domains, domain);
 
-  name = bolt_domain_get_id (domain);
+  uid = bolt_domain_get_uid (domain);
+  online = bolt_domain_is_connected (domain);
   sl = bolt_domain_get_security (domain);
 
-  bolt_info (LOG_TOPIC ("domain"), "'%s' (security: %s) added",
-             name, bolt_security_to_string (sl));
+  bolt_info (LOG_TOPIC ("domain"), LOG_DOM_UID (uid),
+             "domain (security: %s) added",
+             bolt_security_to_string (sl));
+
+  if (!online)
+    return;
 
   if (mgr->security == BOLT_SECURITY_UNKNOWN)
     {
@@ -1041,12 +1121,18 @@ handle_udev_domain_event (BoltManager        *mgr,
     {
       domain = manager_find_domain_by_syspath (mgr, syspath);
 
-      if (domain)
-        handle_udev_domain_removed (mgr, domain);
+      if (!domain)
+        {
+          bolt_warn (LOG_TOPIC ("domain"),
+                     "unregistered domain removed at %s",
+                     syspath);
+          return;
+        }
+
+      if (bolt_domain_is_stored (domain))
+        bolt_domain_disconnected (domain);
       else
-        bolt_warn (LOG_TOPIC ("domain"),
-                   "unregistered domain removed at %s",
-                   syspath);
+        handle_udev_domain_removed (mgr, domain);
     }
 }
 
