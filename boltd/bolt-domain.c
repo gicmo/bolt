@@ -263,6 +263,31 @@ bolt_domain_class_init (BoltDomainClass *klass)
 }
 
 /*  */
+static void
+bolt_domain_update_bootacl (BoltDomain         *domain,
+                            struct udev_device *dev)
+{
+  g_autoptr(GError) err = NULL;
+  g_auto(GStrv) acl = NULL;
+  gboolean same;
+
+  acl = bolt_sysfs_read_boot_acl (dev, &err);
+  if (acl == NULL && !bolt_err_notfound (err))
+    {
+      bolt_warn_err (err, "failed to get boot_acl");
+      return;
+    }
+
+  same = bolt_strv_equal (domain->bootacl, acl);
+  if (same)
+    return;
+
+  bolt_swap (domain->bootacl, acl);
+
+  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
+}
+
+/*  */
 BoltDomain *
 bolt_domain_new_for_udev (struct udev_device *udev,
                           const char         *uid,
@@ -367,6 +392,14 @@ bolt_domain_is_stored (BoltDomain *domain)
   return domain->store != NULL;
 }
 
+gboolean
+bolt_domain_is_connected (BoltDomain *domain)
+{
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+
+  return domain->syspath != NULL;
+}
+
 void
 bolt_domain_export (BoltDomain      *domain,
                     GDBusConnection *bus)
@@ -391,27 +424,71 @@ bolt_domain_export (BoltDomain      *domain,
 }
 
 void
+bolt_domain_connected (BoltDomain         *domain,
+                       struct udev_device *dev)
+{
+  g_autoptr(GError) err = NULL;
+  BoltSecurity security;
+  const char *syspath;
+  const char *id;
+
+  g_return_if_fail (domain != NULL);
+  g_return_if_fail (dev != NULL);
+
+  id = udev_device_get_sysname (dev);
+  syspath = udev_device_get_syspath (dev);
+
+  security = bolt_sysfs_security_for_device (dev, &err);
+
+  if (security == BOLT_SECURITY_UNKNOWN)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("udev"),
+                     "error getting security from sysfs");
+      g_clear_error (&err);
+    }
+
+  g_object_freeze_notify (G_OBJECT (domain));
+
+  domain->id = g_strdup (id);
+  domain->syspath = g_strdup (syspath);
+  domain->security = security;
+
+  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_ID]);
+  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_SYSPATH]);
+  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_SECURITY]);
+
+  bolt_domain_update_bootacl (domain, dev);
+
+  g_object_thaw_notify (G_OBJECT (domain));
+
+  bolt_msg (LOG_DOM_UID (domain->uid), "connected: as %s [%s] (%s)",
+            id, bolt_security_to_string (security), syspath);
+}
+
+void
+bolt_domain_disconnected (BoltDomain *domain)
+{
+  g_return_if_fail (domain != NULL);
+
+  bolt_msg (LOG_DOM_UID (domain->uid), "disconnected from %s",
+            domain->syspath);
+
+  g_object_freeze_notify (G_OBJECT (domain));
+
+  g_clear_pointer (&domain->id, g_free);
+  g_clear_pointer (&domain->syspath, g_free);
+
+  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_ID]);
+  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_SYSPATH]);
+
+  g_object_thaw_notify (G_OBJECT (domain));
+}
+
+void
 bolt_domain_update_from_udev (BoltDomain         *domain,
                               struct udev_device *udev)
 {
-  g_autoptr(GError) err = NULL;
-  g_auto(GStrv) acl = NULL;
-  gboolean same;
-
-  acl = bolt_sysfs_read_boot_acl (udev, &err);
-  if (acl == NULL && !bolt_err_notfound (err))
-    {
-      bolt_warn_err (err, "failed to get boot_acl");
-      return;
-    }
-
-  same = bolt_strv_equal (domain->bootacl, acl);
-  if (same)
-    return;
-
-  bolt_swap (domain->bootacl, acl);
-
-  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
+  bolt_domain_update_bootacl (domain, udev);
 }
 
 gboolean

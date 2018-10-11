@@ -49,8 +49,15 @@ GStrv             bolt_domain_get_bootacl (BoltDomain *domain);
 
 gboolean          bolt_domain_is_stored (BoltDomain *domain);
 
+gboolean          bolt_domain_is_connected (BoltDomain *domain);
+
 void              bolt_domain_export (BoltDomain      *domain,
                                       GDBusConnection *connection);
+
+void              bolt_domain_connected (BoltDomain         *domain,
+                                         struct udev_device *udev);
+
+void              bolt_domain_disconnected (BoltDomain *domain);
 
 void              bolt_domain_update_from_udev (BoltDomain         *domain,
                                                 struct udev_device *udev);
