@@ -251,45 +251,77 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
     g_assert_null (all[i]);
 }
 
-static void
-test_sysfs_domain_bootacl (TestSysfs *tt, gconstpointer user)
+typedef struct
 {
-  g_auto(GStrv) acl = NULL;
-  g_auto(GStrv) have = NULL;
-  g_autoptr(BoltDomain) dom = NULL;
-  g_autoptr(udev_device) udevice = NULL;
+  MockSysfs   *sysfs;
+  struct udev *udev;
+
+  GStrv        acl;
+  guint        slots;
+
+  const char  *dom_sysid;
+  const char  *dom_uid;
+
+  BoltDomain  *dom;
+} TestBootacl;
+
+
+static void
+test_bootacl_setup (TestBootacl *tt, gconstpointer data)
+{
   g_autoptr(GError) err = NULL;
-  g_autofree const char **used = NULL;
+  g_autoptr(udev_device) udevice = NULL;
+  g_auto(GStrv) have = NULL;
   g_autofree char *str = NULL;
-  const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
   const char *syspath;
-  const char *d;
-  guint slots = 16;
-  guint n, n_free;
-  guint n_used = 0;
+  static const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
 
-  str = g_strnfill (slots - 1, ',');
-  acl = g_strsplit (str, ",", 1024);
+  tt->sysfs = mock_sysfs_new ();
+  tt->udev = udev_new ();
 
-  g_assert_cmpuint (g_strv_length (acl), ==, slots);
-  d = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_USER, acl);
+  tt->slots = 16;
 
-  syspath = mock_sysfs_domain_get_syspath (tt->sysfs, d);
+  str = g_strnfill (tt->slots - 1, ',');
+  tt->acl = g_strsplit (str, ",", 1024);
+
+  tt->dom_sysid = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_USER, tt->acl);
+
+  syspath = mock_sysfs_domain_get_syspath (tt->sysfs, tt->dom_sysid);
   udevice = udev_device_new_from_syspath (tt->udev, syspath);
 
-  dom = bolt_domain_new_for_udev (udevice, uid, &err);
+  tt->dom_uid = uid;
+  tt->dom = bolt_domain_new_for_udev (udevice, tt->dom_uid, &err);
   g_assert_no_error (err);
-  g_assert_nonnull (dom);
+  g_assert_nonnull (tt->dom);
 
-  g_object_get (dom, "bootacl", &have, NULL);
+  g_assert_cmpstr (bolt_domain_get_uid (tt->dom), ==, uid);
+
+  g_assert_true (bolt_domain_supports_bootacl (tt->dom));
+  g_object_get (tt->dom, "bootacl", &have, NULL);
   g_assert_nonnull (have);
 
-  g_assert_cmpuint (g_strv_length (acl),
-                    ==,
-                    g_strv_length (have));
-  g_assert_true (bolt_strv_equal (acl, have));
+  bolt_assert_strv_equal (have, tt->acl, -1);
+}
 
-  g_assert_true (bolt_domain_supports_bootacl (dom));
+static void
+test_bootacl_tear_down (TestBootacl *tt, gconstpointer user)
+{
+
+  g_clear_pointer (&tt->acl, g_free);
+  g_clear_object (&tt->dom);
+
+  g_clear_object (&tt->sysfs);
+  g_clear_pointer (&tt->udev, udev_unref);
+}
+
+
+static void
+test_bootacl_basic (TestBootacl *tt, gconstpointer user)
+{
+  BoltDomain *dom = tt->dom;
+  const char **used;
+  guint slots = tt->slots;
+  guint n, n_free, n_used;
 
   n = bolt_domain_bootacl_slots (dom, &n_free);
   g_assert_cmpuint (n, ==, slots);
@@ -311,37 +343,20 @@ on_bootacl_notify (GObject    *object,
 }
 
 static void
-test_sysfs_domain_bootacl_update_udev (TestSysfs *tt, gconstpointer user)
+test_bootacl_update_udev (TestBootacl *tt, gconstpointer user)
 {
-  g_auto(GStrv) acl = NULL;
-  g_autoptr(BoltDomain) dom = NULL;
-  g_autoptr(udev_device) udevice = NULL;
   g_autoptr(GError) err = NULL;
-  g_autofree char *str = NULL;
-  const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
+  GStrv acl = tt->acl;
+  BoltDomain *dom = tt->dom;
+  guint slots = tt->slots;
   const char *syspath;
-  const char *d;
-  guint slots = 16;
-  guint n_free;
-  guint n_used = 0;
+  guint n_free, n_used;
   guint n_signals = 0;
   gboolean ok;
 
-  str = g_strnfill (slots - 1, ',');
-  acl = g_strsplit (str, ",", 1024);
+  syspath = mock_sysfs_domain_get_syspath (tt->sysfs, tt->dom_sysid);
 
-  g_assert_cmpuint (g_strv_length (acl), ==, slots);
-  d = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_USER, acl);
-
-  syspath = mock_sysfs_domain_get_syspath (tt->sysfs, d);
-  udevice = udev_device_new_from_syspath (tt->udev, syspath);
-
-  dom = bolt_domain_new_for_udev (udevice, uid, &err);
-  g_assert_no_error (err);
-  g_assert_nonnull (dom);
-  g_assert_true (bolt_domain_supports_bootacl (dom));
-
-    /* fill in some uuids via sysfs */
+  /* fill in some uuids via sysfs */
   g_signal_connect (dom, "notify::bootacl",
                     G_CALLBACK (on_bootacl_notify),
                     &n_signals);
@@ -358,7 +373,7 @@ test_sysfs_domain_bootacl_update_udev (TestSysfs *tt, gconstpointer user)
       uuid = g_strdup_printf ("deadbab%x-0200-0100-ffff-ffffffffffff", i);
       bolt_set_str (&acl[i], uuid);
 
-      ok = mock_sysfs_domain_bootacl_set (tt->sysfs, d, acl, &err);
+      ok = mock_sysfs_domain_bootacl_set (tt->sysfs, tt->dom_sysid, acl, &err);
       g_assert_no_error (err);
       g_assert_true (ok);
 
@@ -382,7 +397,6 @@ test_sysfs_domain_bootacl_update_udev (TestSysfs *tt, gconstpointer user)
       udev_unref (udev);
     }
 }
-
 
 int
 main (int argc, char **argv)
@@ -409,19 +423,18 @@ main (int argc, char **argv)
               test_sysfs_tear_down);
 
   g_test_add ("/sysfs/domain/bootacl/basic",
-              TestSysfs,
+              TestBootacl,
               NULL,
-              test_sysfs_setup,
-              test_sysfs_domain_bootacl,
-              test_sysfs_tear_down);
+              test_bootacl_setup,
+              test_bootacl_basic,
+              test_bootacl_tear_down);
 
   g_test_add ("/sysfs/domain/bootacl/update_udev",
-              TestSysfs,
+              TestBootacl,
               NULL,
-              test_sysfs_setup,
-              test_sysfs_domain_bootacl_update_udev,
-              test_sysfs_tear_down);
-
+              test_bootacl_setup,
+              test_bootacl_update_udev,
+              test_bootacl_tear_down);
 
   return g_test_run ();
 }
