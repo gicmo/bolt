@@ -531,12 +531,14 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
                      NULL);
 
   g_assert_false (bolt_domain_is_stored (d1));
+  g_assert_false (bolt_domain_supports_bootacl (d1));
 
   /* store */
   ok = bolt_store_put_domain (tt->store, d1, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
   g_assert_true (bolt_domain_is_stored (d1));
+  g_assert_false (bolt_domain_supports_bootacl (d1));
 
   g_clear_pointer (&uids, g_strfreev);
 
@@ -553,6 +555,7 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
   g_assert_no_error (err);
   g_assert_nonnull (s1);
   g_assert_true (bolt_domain_is_stored (s1));
+  g_assert_false (bolt_domain_supports_bootacl (d1));
 
   g_assert_cmpstr (uid, ==, bolt_domain_get_uid (s1));
   bootacl = bolt_domain_get_bootacl (s1);
@@ -560,6 +563,7 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
 
   /* update the bootacl */
   g_object_set (d1, "bootacl", acl, NULL);
+  g_assert_true (bolt_domain_supports_bootacl (d1));
 
   ok = bolt_store_put_domain (tt->store, d1, &err);
   g_assert_no_error (err);
@@ -571,6 +575,7 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
   g_assert_no_error (err);
   g_assert_nonnull (s1);
   g_assert_true (bolt_domain_is_stored (s1));
+  g_assert_true (bolt_domain_supports_bootacl (d1));
 
   bootacl = bolt_domain_get_bootacl (s1);
   bolt_assert_strv_equal ((GStrv) acl, bootacl, 0);
