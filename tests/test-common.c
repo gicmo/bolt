@@ -896,6 +896,21 @@ test_strv_rotate_left (TestRng *tt, gconstpointer user_data)
   g_assert_cmpstr (a[2], ==, "d");
   g_assert_cmpstr (a[3], ==, "e");
   g_assert_cmpstr (a[4], ==, "a");
+
+  /* now with empty strings in between */
+  g_strfreev (a);
+  a = g_strsplit ("a:::d:e", ":", -1);
+  g_assert_cmpuint (g_strv_length (a), ==, 5);
+  g_assert_cmpstr (a[0], ==, "a");
+  g_assert_cmpstr (a[3], ==, "d");
+  g_assert_cmpstr (a[4], ==, "e");
+
+  bolt_strv_rotate_left (a);
+  g_assert_cmpstr (a[0], ==, "");
+  g_assert_cmpstr (a[1], ==, "");
+  g_assert_cmpstr (a[2], ==, "d");
+  g_assert_cmpstr (a[3], ==, "e");
+  g_assert_cmpstr (a[4], ==, "a");
 }
 
 static void
