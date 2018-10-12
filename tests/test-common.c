@@ -874,18 +874,21 @@ static void
 test_strv_rotate_left (TestRng *tt, gconstpointer user_data)
 {
   g_auto(GStrv) a = NULL;
+  char **target;
 
   /* handle NULL */
-  bolt_strv_rotate_left (NULL);
+  target = bolt_strv_rotate_left (NULL);
+  g_assert_null (target);
 
   /* single element */
   a = g_strsplit ("a", ":", -1);
   g_assert_cmpuint (g_strv_length (a), ==, 1);
   g_assert_cmpstr (a[0], ==, "a");
 
-  bolt_strv_rotate_left (a);
+  target = bolt_strv_rotate_left (a);
   g_assert_cmpuint (g_strv_length (a), ==, 1);
   g_assert_cmpstr (a[0], ==, "a");
+  g_assert_true (target == &a[0]);
 
   /* two elements */
   g_strfreev (a);
@@ -895,10 +898,11 @@ test_strv_rotate_left (TestRng *tt, gconstpointer user_data)
   g_assert_cmpstr (a[0], ==, "a");
   g_assert_cmpstr (a[1], ==, "b");
 
-  bolt_strv_rotate_left (a);
+  target = bolt_strv_rotate_left (a);
   g_assert_cmpuint (g_strv_length (a), ==, 2);
   g_assert_cmpstr (a[1], ==, "a");
   g_assert_cmpstr (a[0], ==, "b");
+  g_assert_true (target == &a[1]);
 
   /* now > 2 */
   g_strfreev (a);
@@ -908,13 +912,14 @@ test_strv_rotate_left (TestRng *tt, gconstpointer user_data)
   g_assert_cmpstr (a[0], ==, "a");
   g_assert_cmpstr (a[4], ==, "e");
 
-  bolt_strv_rotate_left (a);
+  target = bolt_strv_rotate_left (a);
   g_assert_cmpuint (g_strv_length (a), ==, 5);
   g_assert_cmpstr (a[0], ==, "b");
   g_assert_cmpstr (a[1], ==, "c");
   g_assert_cmpstr (a[2], ==, "d");
   g_assert_cmpstr (a[3], ==, "e");
   g_assert_cmpstr (a[4], ==, "a");
+  g_assert_true (target == &a[4]);
 
   /* now with empty strings in between */
   g_strfreev (a);
@@ -924,12 +929,13 @@ test_strv_rotate_left (TestRng *tt, gconstpointer user_data)
   g_assert_cmpstr (a[3], ==, "d");
   g_assert_cmpstr (a[4], ==, "e");
 
-  bolt_strv_rotate_left (a);
+  target = bolt_strv_rotate_left (a);
   g_assert_cmpstr (a[0], ==, "");
   g_assert_cmpstr (a[1], ==, "");
   g_assert_cmpstr (a[2], ==, "d");
   g_assert_cmpstr (a[3], ==, "e");
   g_assert_cmpstr (a[4], ==, "a");
+  g_assert_true (target == &a[4]);
 }
 
 static void

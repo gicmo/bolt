@@ -187,7 +187,7 @@ bolt_strv_diff (const GStrv before,
   return changed;
 }
 
-void
+char **
 bolt_strv_rotate_left (char **strv)
 {
   char *start;
@@ -195,13 +195,14 @@ bolt_strv_rotate_left (char **strv)
   char **iter;
 
   if (strv == NULL || *strv == NULL)
-    return;
+    return NULL;
 
   start = *strv; /* remember the first element */
   for (prev = strv, iter = strv + 1; *iter; prev = iter, iter++)
     *prev = *iter;
 
   *prev = start;
+  return prev;
 }
 
 char *
