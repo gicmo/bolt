@@ -90,6 +90,21 @@ bolt_strv_length (char * const *strv)
   return l;
 }
 
+char **
+bolt_strv_contains (GStrv haystack, const char *needle)
+{
+  g_return_val_if_fail (needle != NULL, NULL);
+
+  if (haystack == NULL)
+    return NULL;
+
+  for (char **iter = haystack; *iter != NULL; iter++)
+    if (bolt_streq (*iter, needle))
+      return iter;
+
+  return NULL;
+}
+
 gboolean
 bolt_strv_equal (const GStrv a, const GStrv b)
 {

@@ -34,6 +34,8 @@ void bolt_str_erase_clear (char **str);
 
 GStrv    bolt_strv_from_ptr_array (GPtrArray **array);
 gsize    bolt_strv_length (char * const *strv);
+char **  bolt_strv_contains (GStrv       haystack,
+                             const char *needle);
 gboolean bolt_strv_equal (const GStrv a,
                           const GStrv b);
 gboolean bolt_strv_diff (const GStrv before,
