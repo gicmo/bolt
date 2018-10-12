@@ -74,6 +74,13 @@ enum {
 
 static GParamSpec *props[PROP_LAST] = { NULL, };
 
+enum {
+  SIGNAL_BOOTACL_ALLOC,
+  SIGNAL_LAST
+};
+
+static guint signals[SIGNAL_LAST] = {0, };
+
 G_DEFINE_TYPE (BoltDomain,
                bolt_domain,
                BOLT_TYPE_EXPORTED)
@@ -260,6 +267,20 @@ bolt_domain_class_init (BoltDomainClass *klass)
                                          PROP_LAST,
                                          props);
 
+  signals[SIGNAL_BOOTACL_ALLOC] =
+    g_signal_new ("bootacl-alloc",
+                  BOLT_TYPE_DOMAIN,
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  g_signal_accumulator_true_handled,
+                  NULL,
+                  NULL,
+                  G_TYPE_BOOLEAN,
+                  3,
+                  G_TYPE_STRV,
+                  G_TYPE_STRING,
+                  G_TYPE_POINTER);
+
 }
 
 /*  */
@@ -285,6 +306,76 @@ bolt_domain_update_bootacl (BoltDomain         *domain,
   bolt_swap (domain->bootacl, acl);
 
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
+}
+
+static void
+bolt_domain_bootacl_allocate (BoltDomain *domain,
+                              GStrv       acl,
+                              const char *uuid,
+                              GError    **error)
+{
+  char **target;
+  gboolean ok;
+  gint slot = -1;
+
+  g_return_if_fail (acl != NULL && *acl != NULL);
+
+  /* find the first empty slot, if there is any */
+  target = bolt_strv_contains (acl, "");
+  if (target)
+    slot = target - acl;
+
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+              "slot before allocation: %d", slot);
+
+  g_signal_emit (domain, signals[SIGNAL_BOOTACL_ALLOC], 0,
+                 acl, uuid, &slot, &ok);
+
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+              "slot after allocation: %d [handled: %s]",
+              slot, bolt_yesno (ok));
+
+  if (slot == -1)
+    {
+      /* no slot was allocated so far, lets do FIFO */
+      target = bolt_strv_rotate_left (acl);
+      slot = target - acl;
+    }
+
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+              "adding '%s' as bootacl[%d] (was '%s)",
+              uuid, slot, acl[slot]);
+
+  bolt_set_strdup (&acl[slot], uuid);
+}
+
+
+static gboolean
+bolt_domain_bootacl_remove (BoltDomain *domain,
+                            GStrv       acl,
+                            const char *uuid,
+                            GError    **error)
+{
+  char **target = NULL;
+
+  g_return_val_if_fail (domain->bootacl != NULL, FALSE);
+
+  target = bolt_strv_contains (acl, uuid);
+
+  if (target == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "device '%s' not in boot ACL of domain '%s'",
+                   uuid, domain->id);
+      return FALSE;
+    }
+
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+              "removing '%s' from bootacl", uuid);
+
+  bolt_set_strdup (target, "");
+
+  return TRUE;
 }
 
 /*  */
@@ -628,6 +719,102 @@ bolt_domain_bootacl_get_used (BoltDomain *domain,
   return (const char **) g_ptr_array_free (res, FALSE);
 }
 
+gboolean
+bolt_domain_bootacl_add (BoltDomain *domain,
+                         const char *uuid,
+                         GError    **error)
+{
+  g_auto(GStrv) acl = NULL;
+  gboolean online;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+  g_return_val_if_fail (uuid != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  if (domain->bootacl == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "boot ACL not supported on domain '%s'", domain->uid);
+      return FALSE;
+    }
+
+  if (bolt_domain_bootacl_contains (domain, uuid))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS,
+                   "'%s' already in boot ACL of domain '%s'",
+                   uuid, domain->id);
+      return FALSE;
+    }
+
+  online = domain->syspath != NULL;
+
+  if (!online)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "boot ACL offline update not supported for %s",
+                   domain->uid);
+      return FALSE;
+    }
+
+  acl = g_strdupv (domain->bootacl);
+  bolt_domain_bootacl_allocate (domain, acl, uuid, error);
+
+  ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
+
+  if (!ok)
+    return FALSE;
+
+  bolt_swap (acl, domain->bootacl);
+  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
+
+  return TRUE;
+}
+
+gboolean
+bolt_domain_bootacl_del (BoltDomain *domain,
+                         const char *uuid,
+                         GError    **error)
+{
+  g_auto(GStrv) acl = NULL;
+  gboolean online;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+  g_return_val_if_fail (uuid != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  if (domain->bootacl == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "boot ACL not supported on domain '%s'", domain->uid);
+      return FALSE;
+    }
+
+  online = domain->syspath != NULL;
+
+  if (!online)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "boot ACL offline update not supported for %s",
+                   domain->uid);
+      return FALSE;
+    }
+
+  acl = g_strdupv (domain->bootacl);
+  ok = bolt_domain_bootacl_remove (domain, acl, uuid, error);
+
+  if (ok)
+    ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
+
+  if (!ok)
+    return FALSE;
+
+  bolt_swap (acl, domain->bootacl);
+  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
+
+  return TRUE;
+}
 
 BoltDomain *
 bolt_domain_next (BoltDomain *domain)

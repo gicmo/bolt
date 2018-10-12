@@ -74,6 +74,13 @@ gboolean          bolt_domain_bootacl_contains (BoltDomain *domain,
 const char **     bolt_domain_bootacl_get_used (BoltDomain *domain,
                                                 guint      *n_used);
 
+gboolean          bolt_domain_bootacl_add (BoltDomain *domain,
+                                           const char *uuid,
+                                           GError    **error);
+
+gboolean          bolt_domain_bootacl_del (BoltDomain *domain,
+                                           const char *uuid,
+                                           GError    **error);
 /* domain list management */
 BoltDomain *      bolt_domain_insert (BoltDomain *list,
                                       BoltDomain *domain) G_GNUC_WARN_UNUSED_RESULT;
