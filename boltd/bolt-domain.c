@@ -720,6 +720,60 @@ bolt_domain_bootacl_get_used (BoltDomain *domain,
 }
 
 gboolean
+bolt_domain_bootacl_set (BoltDomain *domain,
+                         GStrv       acl,
+                         GError    **error)
+{
+  gboolean online;
+  gboolean ok;
+  guint ours, theirs;
+
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+  g_return_val_if_fail (acl != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  if (domain->bootacl == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "boot ACL not supported on domain '%s'", domain->uid);
+      return FALSE;
+    }
+
+  online = domain->syspath != NULL;
+
+  if (!online)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "boot ACL offline update not supported for %s",
+                   domain->uid);
+      return FALSE;
+    }
+
+  theirs = g_strv_length (acl);
+  ours = g_strv_length (domain->bootacl);
+
+  if (ours != theirs)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "boot ACL length mismatch (ours: %u yours: %u)",
+                   ours, theirs);
+      return FALSE;
+    }
+
+  ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
+
+  if (!ok)
+    return TRUE;
+
+  g_strfreev (domain->bootacl);
+  domain->bootacl = g_strdupv (acl);
+
+  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
+
+  return TRUE;
+}
+
+gboolean
 bolt_domain_bootacl_add (BoltDomain *domain,
                          const char *uuid,
                          GError    **error)

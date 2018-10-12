@@ -74,6 +74,10 @@ gboolean          bolt_domain_bootacl_contains (BoltDomain *domain,
 const char **     bolt_domain_bootacl_get_used (BoltDomain *domain,
                                                 guint      *n_used);
 
+gboolean          bolt_domain_bootacl_set (BoltDomain *domain,
+                                           GStrv       acl,
+                                           GError    **error);
+
 gboolean          bolt_domain_bootacl_add (BoltDomain *domain,
                                            const char *uuid,
                                            GError    **error);
