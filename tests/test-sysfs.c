@@ -491,6 +491,33 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
 
       g_assert_null (bolt_strv_contains (have, uuid));
     }
+
+  /* now we set a bunch in one-go */
+  for (guint i = 0; i < tt->slots; i++)
+    {
+      char *uuid = NULL;
+
+      uuid = g_strdup_printf ("deadbab%x-cccc-0100-ffff-ffffffffffff", i);
+      bolt_set_strdup (&acl[i], uuid);
+    }
+
+  ok = bolt_domain_bootacl_set (dom, acl, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_clear_pointer (&sysacl, g_strfreev);
+  sysacl = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
+
+  for (guint i = 0; i < slots; i++)
+    g_debug ("bootacl[%u] = %s [%s]", i, sysacl[i], acl[i]);
+
+  bolt_assert_strv_equal (acl, sysacl, -1);
+
+  /* check that if we set the same bootacl as
+   * we already have, we get FALSE but no error */
+  ok = bolt_domain_bootacl_set (dom, acl, &err);
+  g_assert_no_error (err);
+  g_assert_false (ok);
 }
 
 int
