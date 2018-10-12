@@ -762,6 +762,25 @@ test_strv_length (TestRng *tt, gconstpointer user_data)
     g_assert_cmpuint (bolt_strv_length (table[i].strv), ==, table[i].l);
 }
 
+static void
+test_strv_contains (TestRng *tt, gconstpointer user_data)
+{
+
+  const GStrv strv = MAKE_GSTRV ("a", "b", "c", "d", NULL);
+
+  g_assert_false (bolt_strv_contains (NULL, "nonexistant"));
+  g_assert_false (bolt_strv_contains (strv, "nonexistant"));
+
+  for (char **iter = strv; *iter; iter++)
+    {
+      char **target = bolt_strv_contains (strv, *iter);
+      g_assert_nonnull (target);
+      g_assert_cmpuint (GPOINTER_TO_UINT ((gpointer) target), ==,
+                        GPOINTER_TO_UINT ((gpointer) iter));
+    }
+}
+
+
 typedef struct
 {
 
@@ -1090,6 +1109,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_strv_length,
+              NULL);
+
+  g_test_add ("/common/strv/contains",
+              TestRng,
+              NULL,
+              NULL,
+              test_strv_contains,
               NULL);
 
   g_test_add ("/common/strv/diff",
