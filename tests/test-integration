@@ -1651,7 +1651,6 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.daemon_start()
         self.polkitd_start()
-        client = self.client
 
         devices = self.client.list_devices()
         self.assertEqual(len(devices), len(tree.devices))
