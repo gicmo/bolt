@@ -1023,13 +1023,21 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(local.bolt_authflags, remote.authflags)
         return True
 
-    def add_domain_host(self, domain=0, security='secure', uid=None):
+    def add_domain_host(self, domain=0, security='secure', uid=None, bootacl=15):
 
         if uid is None:
             uid = str(uuid.uuid4())
 
+        props = ['security', security]
+
+        if isinstance(bootacl, int):
+            bootacl = ',' * bootacl
+
+        if bootacl is not None:
+            props += ['boot_acl', bootacl]
+
         dc = self.testbed.add_device('thunderbolt', 'domain%d' % domain, None,
-                                     ['security', security],
+                                     props,
                                      ['DEVTYPE', 'thunderbolt_domain'])
 
         host = self.testbed.add_device('thunderbolt', "%d-0" % domain, dc,
