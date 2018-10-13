@@ -738,6 +738,10 @@ class TbDomain(Device):
         return self.collect(lambda c: isinstance(c, TbDevice))
 
     @property
+    def peripherals(self):
+        return self.collect(lambda c: isinstance(c, TbDevice) and not isinstance(c, TbHost))
+
+    @property
     def domain(self):
         return self
 
@@ -1220,6 +1224,42 @@ class BoltTest(dbusmock.DBusTestCase):
 
         remotes = self.client.list_domains()
         self.assertEqual(len(remotes), 4)
+
+        self.daemon_stop()
+
+    def test_domain_bootacl_init(self):
+
+        ssd1 = TbDevice('SSD1',)
+        cable1 = TbDevice('Cable1', children=[ssd1])
+        ssd2 = TbDevice('SSD2')
+        cable2 = TbDevice('Cable2', children=[ssd2])
+
+        host = TbHost([cable1,
+                       cable2])
+        tree = TbDomain(security=TbDomain.SECURITY_SECURE,
+                        acl=9,
+                        host=host)
+
+        tree.connect_tree(self.testbed)
+
+        self.store_device(cable1, key=None)
+        self.store_device(ssd1, key='known')
+        self.store_device(cable2, key='known')
+        self.store_device(ssd2, key='known')
+
+        domain_id = host.unique_id
+
+        self.daemon_start()
+        self.polkitd_start()
+        client = self.client
+
+        domain = client.domain_by_id(domain_id)
+        bootacl = domain.BootACL
+        print('domain [%s] bootacl: %s' % (domain.uid, bootacl))
+
+        devs = tree.peripherals
+        for d in devs:
+            self.assertIn(d.unique_id, bootacl)
 
         self.daemon_stop()
 
