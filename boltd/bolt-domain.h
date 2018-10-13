@@ -47,6 +47,8 @@ BoltSecurity      bolt_domain_get_security (BoltDomain *domain);
 
 GStrv             bolt_domain_get_bootacl (BoltDomain *domain);
 
+GStrv             bolt_domain_dup_bootacl (BoltDomain *domain);
+
 gboolean          bolt_domain_is_stored (BoltDomain *domain);
 
 gboolean          bolt_domain_is_connected (BoltDomain *domain);

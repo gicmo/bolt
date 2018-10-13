@@ -433,6 +433,14 @@ bolt_domain_get_bootacl (BoltDomain *domain)
   return domain->bootacl;
 }
 
+GStrv
+bolt_domain_dup_bootacl (BoltDomain *domain)
+{
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), NULL);
+
+  return g_strdupv (domain->bootacl);
+}
+
 gboolean
 bolt_domain_is_stored (BoltDomain *domain)
 {
