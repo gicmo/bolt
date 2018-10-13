@@ -943,7 +943,7 @@ class BoltTest(dbusmock.DBusTestCase):
             except GLib.GError:
                 pass
         else:
-            timeout_time = timeout_count * timeout_sleep
+            timeout_time = timeout * 10 * timeout_sleep
             self.fail('daemon did not start in %d seconds' % timeout_time)
 
         self.client = BoltClient(self.dbus)
