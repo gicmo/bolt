@@ -54,6 +54,9 @@ static gboolean bolt_manager_initialize (GInitable    *initable,
 static gboolean      manager_load_domains (BoltManager *mgr,
                                            GError     **error);
 
+static void          manager_bootacl_inital_sync (BoltManager *mgr,
+                                                  BoltDomain  *domain);
+
 static BoltDomain *  manager_domain_ensure (BoltManager        *mgr,
                                             struct udev_device *dev);
 
@@ -590,6 +593,69 @@ manager_load_domains (BoltManager *mgr,
   return TRUE;
 }
 
+static void
+manager_bootacl_inital_sync (BoltManager *mgr,
+                             BoltDomain  *domain)
+{
+  g_autoptr(GError) err = NULL;
+  g_auto(GStrv) acl = NULL;
+  const char *uid;
+  gboolean ok;
+  guint n, empty;
+
+  uid = bolt_domain_get_uid (domain);
+
+  if (!bolt_domain_supports_bootacl (domain))
+    {
+      bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM_UID (uid),
+                 "bootacl not supported, no sync");
+      return;
+    }
+
+  acl = bolt_domain_dup_bootacl (domain);
+  g_assert (acl != NULL);
+
+  n = bolt_domain_bootacl_slots (domain, &empty);
+
+  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM_UID (uid),
+             "sync start [slots: %u free: %u]", n, empty);
+
+  for (guint i = 0; i < mgr->devices->len; i++)
+    {
+      BoltDevice *dev = g_ptr_array_index (mgr->devices, i);
+      const char *duid = bolt_device_get_uid (dev);
+      gboolean polok, inacl, sync;
+
+      polok = bolt_device_get_policy (dev) == BOLT_POLICY_AUTO;
+      inacl = bolt_domain_bootacl_contains (domain, duid);
+      sync = polok && !inacl;
+
+      bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM_UID (uid),
+                 LOG_DEV_UID (duid),
+                 "sync '%.17s' %s [policy: %s, in acl; %s]",
+                 duid, bolt_yesno (sync), bolt_yesno (polok),
+                 bolt_yesno (inacl));
+
+      if (!sync)
+        continue;
+
+      bolt_domain_bootacl_allocate (domain, acl, duid);
+    }
+
+  ok = bolt_domain_bootacl_set (domain, acl, &err);
+
+  if (!ok && err != NULL)
+    {
+      bolt_warn_err (err, LOG_DOM_UID (uid), "failed to write bootacl");
+      return;
+    }
+
+  bolt_domain_bootacl_slots (domain, &empty);
+  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM_UID (uid),
+             "sync done [wrote: %s, now free: %u]",
+             bolt_yesno (ok), empty);
+}
+
 static BoltDomain *
 manager_domain_ensure (BoltManager        *mgr,
                        struct udev_device *dev)
@@ -653,6 +719,10 @@ manager_domain_ensure (BoltManager        *mgr,
   /* registering the domain will add one reference */
   g_object_unref (domain);
 
+  /* add all devices with POLICY_AUTO to the bootacl */
+  manager_bootacl_inital_sync (mgr, domain);
+
+  /* now store the domain (with an updated bootacl) */
   bolt_info (LOG_TOPIC ("store"), LOG_DOM_UID (uid),
              "storing newly connected domain");
 
