@@ -716,7 +716,7 @@ class TbDomain(Device):
     subsystem = "thunderbolt"
     devtype = "thunderbolt_domain"
 
-    udev_attrs = ['security']
+    udev_attrs = ['security', 'boot_acl']
     udev_props = ['DEVTYPE']
 
     SECURITY_NONE = 'none'
@@ -725,12 +725,13 @@ class TbDomain(Device):
     SECURITY_DPONLY = 'dponly'
     SECURITY_USBONLY = 'usbonly'
 
-    def __init__(self, security=SECURITY_SECURE, index=0, host=None):
+    def __init__(self, security=SECURITY_SECURE, index=0, host=None, acl=None):
         assert host
         assert isinstance(host, TbHost)
         name = 'domain%d' % index
         super(TbDomain, self).__init__(name, children=[host])
         self.security = security
+        self.boot_acl = ','*acl if isinstance(acl, int) else acl
 
     @property
     def devices(self):
