@@ -75,6 +75,7 @@ enum {
 static GParamSpec *props[PROP_LAST] = { NULL, };
 
 enum {
+  SIGNAL_BOOTACL_CHANGED,
   SIGNAL_BOOTACL_ALLOC,
   SIGNAL_LAST
 };
@@ -267,6 +268,19 @@ bolt_domain_class_init (BoltDomainClass *klass)
                                          PROP_LAST,
                                          props);
 
+  signals[SIGNAL_BOOTACL_CHANGED] =
+    g_signal_new ("bootacl-changed",
+                  BOLT_TYPE_DOMAIN,
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL,
+                  NULL,
+                  NULL,
+                  G_TYPE_NONE,
+                  2,
+                  G_TYPE_BOOLEAN,
+                  G_TYPE_HASH_TABLE);
+
   signals[SIGNAL_BOOTACL_ALLOC] =
     g_signal_new ("bootacl-alloc",
                   BOLT_TYPE_DOMAIN,
@@ -288,6 +302,7 @@ static void
 bolt_domain_update_bootacl (BoltDomain         *domain,
                             struct udev_device *dev)
 {
+  g_autoptr(GHashTable) diff = NULL;
   g_autoptr(GError) err = NULL;
   g_auto(GStrv) acl = NULL;
   gboolean same;
@@ -303,9 +318,13 @@ bolt_domain_update_bootacl (BoltDomain         *domain,
   if (same)
     return;
 
-  bolt_swap (domain->bootacl, acl);
+  diff = bolt_strv_diff (domain->bootacl, acl);
 
+  bolt_swap (domain->bootacl, acl);
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
+
+  g_signal_emit (domain, signals[SIGNAL_BOOTACL_CHANGED], 0,
+                 g_hash_table_size (diff) > 0, diff);
 }
 
 static gboolean
@@ -730,6 +749,7 @@ bolt_domain_bootacl_set (BoltDomain *domain,
                          GStrv       acl,
                          GError    **error)
 {
+  g_autoptr(GHashTable) diff = NULL;
   gboolean online;
   gboolean same;
   gboolean ok;
@@ -773,6 +793,8 @@ bolt_domain_bootacl_set (BoltDomain *domain,
   if (same == TRUE)
     return FALSE;
 
+  diff = bolt_strv_diff (domain->bootacl, acl);
+
   ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
 
   if (!ok)
@@ -783,6 +805,9 @@ bolt_domain_bootacl_set (BoltDomain *domain,
 
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
 
+  g_signal_emit (domain, signals[SIGNAL_BOOTACL_CHANGED], 0,
+                 g_hash_table_size (diff) > 0, diff);
+
   return TRUE;
 }
 
@@ -791,6 +816,7 @@ bolt_domain_bootacl_add (BoltDomain *domain,
                          const char *uuid,
                          GError    **error)
 {
+  g_autoptr(GHashTable) diff = NULL;
   g_auto(GStrv) acl = NULL;
   gboolean online;
   gboolean ok;
@@ -832,8 +858,14 @@ bolt_domain_bootacl_add (BoltDomain *domain,
   if (!ok)
     return FALSE;
 
+  /* a full diff here is done because an existing entry might
+   * have been overwritten by allocate  */
+  diff = bolt_strv_diff (domain->bootacl, acl);
   bolt_swap (acl, domain->bootacl);
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
+
+  g_signal_emit (domain, signals[SIGNAL_BOOTACL_CHANGED], 0,
+                 g_hash_table_size (diff) > 0, diff);
 
   return TRUE;
 }
@@ -843,6 +875,7 @@ bolt_domain_bootacl_del (BoltDomain *domain,
                          const char *uuid,
                          GError    **error)
 {
+  g_autoptr(GHashTable) diff = NULL;
   g_auto(GStrv) acl = NULL;
   gboolean online;
   gboolean ok;
@@ -879,6 +912,11 @@ bolt_domain_bootacl_del (BoltDomain *domain,
 
   bolt_swap (acl, domain->bootacl);
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
+
+  diff = g_hash_table_new (g_str_hash, g_str_equal);
+  g_hash_table_insert (diff, (gpointer) uuid, GINT_TO_POINTER ('-'));
+  g_signal_emit (domain, signals[SIGNAL_BOOTACL_CHANGED], 0,
+                 TRUE, diff);
 
   return TRUE;
 }
