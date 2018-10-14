@@ -38,10 +38,10 @@ char **  bolt_strv_contains (GStrv       haystack,
                              const char *needle);
 gboolean bolt_strv_equal (const GStrv a,
                           const GStrv b);
-gboolean bolt_strv_diff (const GStrv before,
-                         const GStrv after,
-                         GStrv      *added,
-                         GStrv      *removed);
+
+GHashTable * bolt_strv_diff (const GStrv before,
+                             const GStrv after);
+
 char ** bolt_strv_rotate_left (char **strv);
 
 #define bolt_strzero(str) (str == NULL || *str == '\0')

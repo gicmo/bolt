@@ -27,6 +27,7 @@
 #include "bolt-list.h"
 #include "bolt-rnd.h"
 #include "bolt-str.h"
+#include "mock-sysfs.h"
 
 #include "test-enums.h"
 
@@ -850,23 +851,54 @@ test_strv_diff (TestRng *tt, gconstpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
     {
-      g_auto(GStrv) added = NULL;
-      g_auto(GStrv) removed = NULL;
+      g_autoptr(GHashTable) diff = NULL;
+      g_autoptr(GPtrArray) add = NULL;
+      g_autoptr(GPtrArray) del = NULL;
+      GStrv added = NULL;
+      GStrv removed = NULL;
       StrvDiffTest *t = &table[i];
+      GHashTableIter hi;
+      gpointer k, v;
       gboolean add_equal;
       gboolean rem_equal;
       gboolean res;
 
-      res = bolt_strv_diff (t->before, t->after, &added, &removed);
+      diff = bolt_strv_diff (t->before, t->after);
+
+      add = g_ptr_array_new ();
+      del = g_ptr_array_new ();
+
+      g_hash_table_iter_init (&hi, diff);
+      while (g_hash_table_iter_next (&hi, &k, &v))
+        {
+          gint op = GPOINTER_TO_INT (v);
+          if (op == '+')
+            g_ptr_array_add (add, k);
+          else if (op == '-')
+            g_ptr_array_add (del, k);
+          else
+            g_warning ("unknown op: %c", op);
+        }
+
+      g_ptr_array_sort (add, bolt_comparefn_strcmp);
+      g_ptr_array_sort (del, bolt_comparefn_strcmp);
+
+      g_ptr_array_add (add, NULL);
+      g_ptr_array_add (del, NULL);
+
+      added = (GStrv) add->pdata;
+      removed = (GStrv) del->pdata;
+
+      res = g_hash_table_size (diff) > 0;
       add_equal = bolt_strv_equal (added, t->added);
       rem_equal = bolt_strv_equal (removed, t->removed);
 
-      g_debug ("strv-diff[%2" G_GSIZE_FORMAT "] expected | got: %3s | %3s add: %s, rem: %s",
-               i, bolt_yesno (res), bolt_yesno (res), bolt_yesno (add_equal), bolt_yesno (rem_equal));
+      g_debug ("strv-diff[%2" G_GSIZE_FORMAT "] expected, got | %3s, %3s add: %s, rem: %s",
+               i, bolt_yesno (t->result), bolt_yesno (res), bolt_yesno (add_equal), bolt_yesno (rem_equal));
 
       g_assert_true (res == t->result);
-      g_assert_true (add_equal);
-      g_assert_true (rem_equal);
+      bolt_assert_strv_equal (added, t->added, -1);
+      bolt_assert_strv_equal (removed, t->removed, -1);
     }
 }
 
