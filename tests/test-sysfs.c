@@ -342,6 +342,66 @@ on_bootacl_notify (GObject    *object,
   (*n_signals)++;
 }
 
+typedef struct
+{
+  gboolean    changed;
+  GHashTable *changes;
+  gboolean    fired;
+} AclChangeSet;
+
+static void
+acl_change_set_verify (AclChangeSet *cs,
+                       int           n_changes,
+                       ...)
+{
+  guint sz;
+  va_list ap;
+
+  if (n_changes == -1)
+    {
+      g_assert_false (cs->fired);
+      return;
+    }
+
+  g_assert_true (cs->fired);
+  g_assert_true (cs->changed);
+
+  sz = g_hash_table_size (cs->changes);
+  g_assert_cmpint (sz, ==, n_changes);
+
+  va_start (ap, n_changes);
+
+  for (int i = 0; i < n_changes; i++)
+    {
+      const char *uuid = va_arg (ap, const char *);
+      int op = va_arg (ap, int);
+      char *key;
+
+      g_assert_nonnull (uuid);
+      key = g_hash_table_lookup (cs->changes, uuid);
+
+      g_assert_nonnull (key);
+      g_assert_cmpint (GPOINTER_TO_INT (key), ==, op);
+    }
+
+  va_end (ap);
+}
+
+static void
+on_bootacl_changed (BoltDomain *dom,
+                    gboolean    changed,
+                    GHashTable *changes,
+                    gpointer    user_data)
+{
+  AclChangeSet *changeset = user_data;
+
+  g_clear_pointer (&changeset->changes, g_hash_table_unref);
+
+  changeset->changed = changed;
+  changeset->changes = g_hash_table_ref (changes);
+  changeset->fired = TRUE;
+}
+
 static void
 test_bootacl_update_udev (TestBootacl *tt, gconstpointer user)
 {
@@ -353,6 +413,7 @@ test_bootacl_update_udev (TestBootacl *tt, gconstpointer user)
   guint n_free, n_used;
   guint n_signals = 0;
   gboolean ok;
+  AclChangeSet changeset = {FALSE, NULL, FALSE, };
 
   syspath = mock_sysfs_domain_get_syspath (tt->sysfs, tt->dom_sysid);
 
@@ -360,6 +421,10 @@ test_bootacl_update_udev (TestBootacl *tt, gconstpointer user)
   g_signal_connect (dom, "notify::bootacl",
                     G_CALLBACK (on_bootacl_notify),
                     &n_signals);
+
+  g_signal_connect (dom, "bootacl-changed",
+                    G_CALLBACK (on_bootacl_changed),
+                    &changeset);
 
   for (guint i = 0; i < 8; i++)
     {
@@ -394,6 +459,10 @@ test_bootacl_update_udev (TestBootacl *tt, gconstpointer user)
       have = bolt_domain_get_bootacl (dom);
       bolt_assert_strv_equal (have, acl, -1);
 
+      /* we verify the bootacl-changed signal */
+      acl_change_set_verify (&changeset, 1, uuid, '+');
+      changeset.fired = FALSE;
+
       udev_unref (udev);
     }
 }
@@ -407,6 +476,11 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
   BoltDomain *dom = tt->dom;
   gboolean ok;
   guint slots;
+  AclChangeSet changeset = {FALSE, NULL, FALSE, };
+
+  g_signal_connect (dom, "bootacl-changed",
+                    G_CALLBACK (on_bootacl_changed),
+                    &changeset);
 
   for (guint i = 0; i < tt->slots; i++)
     {
@@ -427,6 +501,9 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
       g_assert_nonnull (have);
 
       g_assert_nonnull (bolt_strv_contains (have, uuid));
+
+      acl_change_set_verify (&changeset, 1, uuid, '+');
+      changeset.fired = FALSE;
 
       bolt_assert_strv_equal (acl, have, -1);
     }
@@ -464,6 +541,12 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
 
       g_assert_nonnull (bolt_strv_contains (have, uuid));
       g_assert_cmpstr (have[slots - 1], ==, uuid);
+
+      /* check the bootacl-changed signal emission:
+       *  add for the new one, remove for the overwritten one
+       */
+      acl_change_set_verify (&changeset, 2, uuid, '+', sysacl[i], '-');
+      changeset.fired = FALSE;
     }
 
   /* remove all the entries */
@@ -479,6 +562,7 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
       g_auto(GStrv) have = NULL;
       char *uuid = sysacl[i];
 
+      changeset.fired = FALSE;
       ok = bolt_domain_bootacl_del (dom, uuid, &err);
       g_assert_no_error (err);
       g_assert_true (ok);
@@ -490,6 +574,10 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
       g_assert_nonnull (have);
 
       g_assert_null (bolt_strv_contains (have, uuid));
+
+      /* check the bootacl-changed signal emission */
+      acl_change_set_verify (&changeset, 1, uuid, '-');
+      changeset.fired = FALSE;
     }
 
   /* now we set a bunch in one-go */
@@ -501,12 +589,19 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
       bolt_set_strdup (&acl[i], uuid);
     }
 
+  changeset.fired = FALSE;
   ok = bolt_domain_bootacl_set (dom, acl, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
 
   g_clear_pointer (&sysacl, g_strfreev);
   sysacl = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
+
+  /* check we got removed signals for all of them */
+  g_assert_true (changeset.fired);
+  g_assert_true (changeset.changed);
+  g_assert_cmpuint (g_hash_table_size (changeset.changes), ==, slots);
+  changeset.fired = FALSE;
 
   for (guint i = 0; i < slots; i++)
     g_debug ("bootacl[%u] = %s [%s]", i, sysacl[i], acl[i]);
@@ -515,9 +610,11 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
 
   /* check that if we set the same bootacl as
    * we already have, we get FALSE but no error */
+  changeset.fired = FALSE;
   ok = bolt_domain_bootacl_set (dom, acl, &err);
   g_assert_no_error (err);
   g_assert_false (ok);
+  g_assert_false (changeset.fired);
 }
 
 int
