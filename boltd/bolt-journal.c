@@ -372,6 +372,56 @@ bolt_journal_put (BoltJournal  *journal,
   return TRUE;
 }
 
+gboolean
+bolt_journal_put_diff (BoltJournal *journal,
+                       GHashTable  *diff,
+                       GError     **error)
+{
+  GHashTableIter iter;
+  gpointer key, val;
+  gboolean ok = TRUE;
+
+  /* FIMXE: do this atomically:
+   * - copy_file_range/sendfile to a new tmp file
+   * - write the changes to the new tmp file
+   * - fsync the tmp file
+   * - rename new over the old file
+   * - close the old file
+   */
+
+  g_return_val_if_fail (BOLT_IS_JOURNAL (journal), FALSE);
+  g_return_val_if_fail (diff != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  g_hash_table_iter_init (&iter, diff);
+  while (ok && g_hash_table_iter_next (&iter, &key, &val))
+    {
+      const char *uid = key;
+      const int opcode = GPOINTER_TO_INT (val);
+      BoltJournalOp op;
+
+      switch (opcode)
+        {
+        case '+':
+          op = BOLT_JOURNAL_ADDED;
+          break;
+
+        case '-':
+          op = BOLT_JOURNAL_REMOVED;
+          break;
+
+        default:
+          g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                       "unsupported op-code in diff: %c", opcode);
+          return FALSE;
+        }
+
+      ok = bolt_journal_put (journal, uid, op, error);
+    }
+
+  return ok;
+}
+
 GPtrArray *
 bolt_journal_list (BoltJournal *journal,
                    GError     **error)

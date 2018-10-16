@@ -53,6 +53,10 @@ gboolean           bolt_journal_put (BoltJournal  *journal,
                                      BoltJournalOp op,
                                      GError      **error);
 
+gboolean           bolt_journal_put_diff (BoltJournal *journal,
+                                          GHashTable  *diff,
+                                          GError     **error);
+
 GPtrArray *        bolt_journal_list (BoltJournal *journal,
                                       GError     **error);
 
