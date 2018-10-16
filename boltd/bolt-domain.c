@@ -33,15 +33,18 @@
 
 #include <libudev.h>
 
+static void bolt_domain_bootacl_open_log (BoltDomain *domain);
+
 struct _BoltDomain
 {
   BoltExported object;
 
   /* internal list  */
-  BoltList   domains;
-  gint       sort;
+  BoltList     domains;
+  gint         sort;
 
-  BoltStore *store;
+  BoltStore   *store;
+  BoltJournal *acllog;
 
   /* persistent */
   char *uid;
@@ -92,6 +95,7 @@ bolt_domain_finalize (GObject *object)
   BoltDomain *dom = BOLT_DOMAIN (object);
 
   g_clear_object (&dom->store);
+  g_clear_object (&dom->acllog);
 
   g_free (dom->uid);
   g_free (dom->id);
@@ -163,6 +167,12 @@ bolt_domain_set_property (GObject      *object,
 
       g_clear_object (&dom->store);
       dom->store = g_value_dup_object (value);
+
+      if (dom->store)
+        bolt_domain_bootacl_open_log (dom);
+      else
+        g_clear_object (&dom->acllog);
+
       break;
 
     case PROP_UID:
@@ -299,6 +309,25 @@ bolt_domain_class_init (BoltDomainClass *klass)
 
 /*  */
 static void
+bolt_domain_bootacl_open_log (BoltDomain *domain)
+{
+  g_autoptr(GError) err = NULL;
+  BoltJournal *log = NULL;
+  const char *uid = domain->uid;
+
+  log = bolt_store_open_journal (domain->store,
+                                 "bootacl",
+                                 uid,
+                                 &err);
+
+  if (log == NULL)
+    bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM_UID (uid),
+                   "could not open journal");
+
+  domain->acllog = log;
+}
+
+static void
 bolt_domain_update_bootacl (BoltDomain         *domain,
                             struct udev_device *dev)
 {
@@ -335,7 +364,7 @@ bolt_domain_bootacl_remove (BoltDomain *domain,
 {
   char **target = NULL;
 
-  g_return_val_if_fail (domain->bootacl != NULL, FALSE);
+  g_return_val_if_fail (acl != NULL, FALSE);
 
   target = bolt_strv_contains (acl, uuid);
 
@@ -353,6 +382,111 @@ bolt_domain_bootacl_remove (BoltDomain *domain,
   bolt_set_strdup (target, "");
 
   return TRUE;
+}
+
+static void
+bolt_domain_bootacl_sync (BoltDomain *domain,
+                          GStrv      *sysacl)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GPtrArray) diff = NULL;
+  g_auto(GStrv) acl = NULL;
+  BoltJournal *log = domain->acllog;
+  gboolean ok;
+
+  if (*sysacl == NULL || log == NULL)
+    return;
+
+  acl = g_strdupv (*sysacl);
+
+  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+             "synchronizing journal");
+
+  diff = bolt_journal_list (log, &err);
+
+  if (diff == NULL)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+                     "could not list bootacl changes");
+      return;
+    }
+
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+              "journal contains %u entries", diff->len);
+
+  for (guint i = 0; i < diff->len; i++)
+    {
+      BoltJournalItem *item = g_ptr_array_index (diff, i);
+      BoltJournalOp op = item->op;
+      const char *uid = item->id;
+      ok = TRUE;
+
+      bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+                  "applying op '%c' for '%s'", op, uid);
+
+      switch (op)
+        {
+        case BOLT_JOURNAL_ADDED:
+          if (bolt_strv_contains (acl, uid))
+            {
+              bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+                          "'%s' already in acl", uid);
+              continue;
+            }
+
+          bolt_domain_bootacl_allocate (domain, acl, uid);
+          break;
+
+        case BOLT_JOURNAL_REMOVED:
+          if (!bolt_strv_contains (acl, uid))
+            {
+              bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+                          "'%s' already removed from acl", uid);
+              continue;
+            }
+
+          ok = bolt_domain_bootacl_remove (domain, acl, uid, &err);
+          break;
+
+        default:
+          bolt_bug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+                    "handled journal op %d", item->op);
+          break;
+        }
+
+      if (!ok)
+        {
+          bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+                         LOG_DEV_UID (uid),
+                         "applying journal op (%d) failed for %.17s",
+                         item->op, uid);
+
+          g_clear_error (&err);
+        }
+    }
+
+  ok = bolt_journal_reset (log, &err);
+
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+                     "could not reset journal");
+
+      g_clear_error (&err);
+      /* keep going */
+    }
+
+  ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+                     "could not write changed bootacl to sysfs");
+
+      return;
+    }
+
+  /* all good, we replace the passed in one with our version */
+  bolt_swap (acl, *sysacl);
 }
 
 /*  */
@@ -504,7 +638,9 @@ bolt_domain_connected (BoltDomain         *domain,
                        struct udev_device *dev)
 {
   g_autoptr(GError) err = NULL;
+  g_auto(GStrv) acl = NULL;
   BoltSecurity security;
+  gboolean ok = TRUE;
   const char *syspath;
   const char *id;
 
@@ -543,7 +679,21 @@ bolt_domain_connected (BoltDomain         *domain,
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_SYSPATH]);
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_SECURITY]);
 
-  bolt_domain_update_bootacl (domain, dev);
+  acl = bolt_sysfs_read_boot_acl (dev, &err);
+  if (acl == NULL && !bolt_err_notfound (err))
+    bolt_warn_err (err, "failed to get boot_acl");
+
+  bolt_domain_bootacl_sync (domain, &acl);
+
+  if (acl)
+    ok = bolt_domain_bootacl_set (domain, acl, &err);
+
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("udev"),
+                     "error writing new bootacl to sysfs");
+      g_clear_error (&err);
+    }
 
   g_object_thaw_notify (G_OBJECT (domain));
 
@@ -750,6 +900,7 @@ bolt_domain_bootacl_set (BoltDomain *domain,
                          GError    **error)
 {
   g_autoptr(GHashTable) diff = NULL;
+  BoltJournal *log;
   gboolean online;
   gboolean same;
   gboolean ok;
@@ -767,11 +918,12 @@ bolt_domain_bootacl_set (BoltDomain *domain,
     }
 
   online = domain->syspath != NULL;
+  log = domain->acllog;
 
-  if (!online)
+  if (online == FALSE && log == NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "boot ACL offline update not supported for %s",
+                   "domain [%s] offline and no bootacl journal",
                    domain->uid);
       return FALSE;
     }
@@ -795,7 +947,10 @@ bolt_domain_bootacl_set (BoltDomain *domain,
 
   diff = bolt_strv_diff (domain->bootacl, acl);
 
-  ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
+  if (online)
+    ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
+  else
+    ok = bolt_journal_put_diff (log, diff, error);
 
   if (!ok)
     return TRUE;
@@ -818,6 +973,7 @@ bolt_domain_bootacl_add (BoltDomain *domain,
 {
   g_autoptr(GHashTable) diff = NULL;
   g_auto(GStrv) acl = NULL;
+  BoltJournal *log = NULL;
   gboolean online;
   gboolean ok;
 
@@ -841,11 +997,12 @@ bolt_domain_bootacl_add (BoltDomain *domain,
     }
 
   online = domain->syspath != NULL;
+  log = domain->acllog;
 
-  if (!online)
+  if (online == FALSE && log == NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "boot ACL offline update not supported for %s",
+                   "domain [%s] offline and no bootacl journal",
                    domain->uid);
       return FALSE;
     }
@@ -853,7 +1010,10 @@ bolt_domain_bootacl_add (BoltDomain *domain,
   acl = g_strdupv (domain->bootacl);
   bolt_domain_bootacl_allocate (domain, acl, uuid);
 
-  ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
+  if (online)
+    ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
+  else
+    ok = bolt_journal_put (log, uuid, BOLT_JOURNAL_ADDED, error);
 
   if (!ok)
     return FALSE;
@@ -877,6 +1037,7 @@ bolt_domain_bootacl_del (BoltDomain *domain,
 {
   g_autoptr(GHashTable) diff = NULL;
   g_auto(GStrv) acl = NULL;
+  BoltJournal *log;
   gboolean online;
   gboolean ok;
 
@@ -892,11 +1053,12 @@ bolt_domain_bootacl_del (BoltDomain *domain,
     }
 
   online = domain->syspath != NULL;
+  log = domain->acllog;
 
-  if (!online)
+  if (online == FALSE && log == NULL)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "boot ACL offline update not supported for %s",
+                   "domain [%s] offline and no bootacl journal",
                    domain->uid);
       return FALSE;
     }
@@ -906,6 +1068,8 @@ bolt_domain_bootacl_del (BoltDomain *domain,
 
   if (ok)
     ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
+  else
+    ok = bolt_journal_put (log, uuid, BOLT_JOURNAL_REMOVED, error);
 
   if (!ok)
     return FALSE;
