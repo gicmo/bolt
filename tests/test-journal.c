@@ -179,6 +179,84 @@ test_journal_insert (TestJournal *tt, gconstpointer user_data)
   g_assert_true (bolt_journal_is_fresh (j));
 }
 
+static gint
+sort_journal_items (gconstpointer a,
+                    gconstpointer b)
+{
+  const BoltJournalItem *ia = *((BoltJournalItem **) a);
+  const BoltJournalItem *ib = *((BoltJournalItem **) b);
+
+  return g_strcmp0 (ia->id, ib->id);
+}
+
+static void
+test_journal_diff (TestJournal *tt, gconstpointer user_data)
+{
+  g_autoptr(BoltJournal) j = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GPtrArray) arr = NULL;
+  g_autoptr(GHashTable) diff = NULL;
+  gboolean ok;
+  static BoltJournalItem items[] = {
+    {(char *) "aaaa", BOLT_JOURNAL_ADDED,   0},
+    {(char *) "bbbb", BOLT_JOURNAL_REMOVED, 0},
+    {(char *) "cccc", BOLT_JOURNAL_REMOVED, 0},
+    {(char *) "dddd", BOLT_JOURNAL_ADDED,   0},
+    {(char *) "eeee", BOLT_JOURNAL_ADDED,   0},
+    {(char *) "ffff", BOLT_JOURNAL_ADDED,   0},
+  };
+  guint k;
+
+  j = bolt_journal_new (tt->root, "diff", &err);
+
+  /* the first and the last elements are  added "manually"
+   * the rest via _put_diff */
+  ok = bolt_journal_put (j, items[0].id, items[0].op, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  diff = g_hash_table_new (g_str_hash, g_str_equal);
+
+  for (k = 1; k < G_N_ELEMENTS (items) - 2; k++)
+    {
+      BoltJournalItem *i = items + k;
+      int op = (i->op == BOLT_JOURNAL_ADDED) ? '+' : '-';
+
+      g_hash_table_insert (diff, i->id, GINT_TO_POINTER (op));
+    }
+
+  ok = bolt_journal_put_diff (j, diff, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  /* the last element */
+
+  ok = bolt_journal_put (j, items[k].id, items[k].op, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  arr = bolt_journal_list (j, &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (arr);
+
+  g_assert_cmpuint (arr->len, ==, G_N_ELEMENTS (items) - 1);
+
+  /* put_diff does not have an order of any of the items
+   * within the diff, so they are sorted to the same order
+   * as the initial array
+   */
+  g_ptr_array_sort (arr, sort_journal_items);
+
+  for (guint i = 0; i < arr->len; i++)
+    {
+      BoltJournalItem *ours = items + i;
+      BoltJournalItem *theirs = g_ptr_array_index (arr, i);
+
+      g_assert_cmpstr (theirs->id, ==, ours->id);
+      g_assert_cmpint (theirs->op, ==, ours->op);
+    }
+}
 
 int
 main (int argc, char **argv)
@@ -202,6 +280,13 @@ main (int argc, char **argv)
               NULL,
               test_journal_setup,
               test_journal_insert,
+              test_journal_tear_down);
+
+  g_test_add ("/journal/diff",
+              TestJournal,
+              NULL,
+              test_journal_setup,
+              test_journal_diff,
               test_journal_tear_down);
 
   return g_test_run ();
