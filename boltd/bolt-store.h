@@ -24,11 +24,11 @@
 
 #include "bolt-device.h"
 #include "bolt-domain.h"
-#include "bolt-key.h"
 #include "bolt-enums.h"
+#include "bolt-key.h"
+#include "bolt-journal.h"
 
 G_BEGIN_DECLS
-
 
 /* BoltStore - database for devices, keys */
 #define BOLT_TYPE_STORE bolt_store_get_type ()
@@ -124,5 +124,10 @@ BoltKey *         bolt_store_get_key (BoltStore  *store,
 gboolean          bolt_store_del_key (BoltStore  *store,
                                       const char *uid,
                                       GError    **error);
+
+BoltJournal *     bolt_store_open_journal (BoltStore  *store,
+                                           const char *type,
+                                           const char *name,
+                                           GError    **error);
 
 G_END_DECLS

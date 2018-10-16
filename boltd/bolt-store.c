@@ -1014,3 +1014,24 @@ bolt_store_del (BoltStore  *store,
 
   return ok;
 }
+
+BoltJournal *
+bolt_store_open_journal (BoltStore  *store,
+                         const char *type,
+                         const char *name,
+                         GError    **error)
+{
+  g_autoptr(GFile) root = NULL;
+  BoltJournal *journal;
+
+  g_return_val_if_fail (store != NULL, NULL);
+  g_return_val_if_fail (type != NULL, NULL);
+  g_return_val_if_fail (name != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  root = g_file_get_child (store->root, type);
+
+  journal = bolt_journal_new (root, name, error);
+
+  return journal;
+}
