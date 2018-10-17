@@ -328,29 +328,48 @@ bolt_domain_bootacl_open_log (BoltDomain *domain)
 }
 
 static void
-bolt_domain_update_bootacl (BoltDomain         *domain,
-                            struct udev_device *dev)
+bolt_domain_bootacl_update (BoltDomain *domain,
+                            GStrv      *acl,
+                            GHashTable *diff_hint)
 {
   g_autoptr(GHashTable) diff = NULL;
-  g_autoptr(GError) err = NULL;
-  g_auto(GStrv) acl = NULL;
+  gboolean pending;
   gboolean same;
+  guint signal;
 
-  acl = bolt_sysfs_read_boot_acl (dev, &err);
-  if (acl == NULL && !bolt_err_notfound (err))
-    {
-      bolt_warn_err (err, "failed to get boot_acl");
-      return;
-    }
+  g_return_if_fail (acl != NULL || *acl != NULL);
 
-  same = bolt_strv_equal (domain->bootacl, acl);
+  same = bolt_strv_equal (domain->bootacl, *acl);
   if (same)
     return;
 
-  diff = bolt_strv_diff (domain->bootacl, acl);
+  bolt_swap (domain->bootacl, *acl);
 
-  bolt_swap (domain->bootacl, acl);
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
+
+  if (domain->store)
+    {
+      g_autoptr(GError) err = NULL;
+      gboolean ok;
+
+      ok = bolt_store_put_domain (domain->store, domain, &err);
+
+      if (!ok)
+        bolt_warn_err (err, LOG_TOPIC ("bootacl"),
+                       LOG_DOM_UID (domain->uid),
+                       "could not update domain");
+    }
+
+  signal = signals[SIGNAL_BOOTACL_CHANGED];
+  pending = g_signal_has_handler_pending (domain, signal, 0, FALSE);
+
+  if (!pending)
+    return;
+
+  if (diff_hint != NULL)
+    diff = g_hash_table_ref (diff_hint);
+  else
+    diff = bolt_strv_diff (*acl, domain->bootacl);
 
   g_signal_emit (domain, signals[SIGNAL_BOOTACL_CHANGED], 0,
                  g_hash_table_size (diff) > 0, diff);
@@ -640,7 +659,6 @@ bolt_domain_connected (BoltDomain         *domain,
   g_autoptr(GError) err = NULL;
   g_auto(GStrv) acl = NULL;
   BoltSecurity security;
-  gboolean ok = TRUE;
   const char *syspath;
   const char *id;
 
@@ -684,16 +702,7 @@ bolt_domain_connected (BoltDomain         *domain,
     bolt_warn_err (err, "failed to get boot_acl");
 
   bolt_domain_bootacl_sync (domain, &acl);
-
-  if (acl)
-    ok = bolt_domain_bootacl_set (domain, acl, &err);
-
-  if (!ok)
-    {
-      bolt_warn_err (err, LOG_TOPIC ("udev"),
-                     "error writing new bootacl to sysfs");
-      g_clear_error (&err);
-    }
+  bolt_domain_bootacl_update (domain, &acl, NULL);
 
   g_object_thaw_notify (G_OBJECT (domain));
 
@@ -724,7 +733,22 @@ void
 bolt_domain_update_from_udev (BoltDomain         *domain,
                               struct udev_device *udev)
 {
-  bolt_domain_update_bootacl (domain, udev);
+  g_autoptr(GError) err = NULL;
+  g_auto(GStrv) acl = NULL;
+  gboolean same;
+
+  acl = bolt_sysfs_read_boot_acl (udev, &err);
+  if (acl == NULL && !bolt_err_notfound (err))
+    {
+      bolt_warn_err (err, "failed to get boot_acl");
+      return;
+    }
+
+  same = bolt_strv_equal (domain->bootacl, acl);
+  if (same)
+    return;
+
+  bolt_domain_bootacl_update (domain, &acl, NULL);
 }
 
 gboolean
@@ -900,6 +924,7 @@ bolt_domain_bootacl_set (BoltDomain *domain,
                          GError    **error)
 {
   g_autoptr(GHashTable) diff = NULL;
+  g_auto(GStrv) tmp = NULL;
   BoltJournal *log;
   gboolean online;
   gboolean same;
@@ -955,13 +980,8 @@ bolt_domain_bootacl_set (BoltDomain *domain,
   if (!ok)
     return TRUE;
 
-  g_strfreev (domain->bootacl);
-  domain->bootacl = g_strdupv (acl);
-
-  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
-
-  g_signal_emit (domain, signals[SIGNAL_BOOTACL_CHANGED], 0,
-                 g_hash_table_size (diff) > 0, diff);
+  tmp = g_strdupv (acl);
+  bolt_domain_bootacl_update (domain, &tmp, diff);
 
   return TRUE;
 }
@@ -971,7 +991,6 @@ bolt_domain_bootacl_add (BoltDomain *domain,
                          const char *uuid,
                          GError    **error)
 {
-  g_autoptr(GHashTable) diff = NULL;
   g_auto(GStrv) acl = NULL;
   BoltJournal *log = NULL;
   gboolean online;
@@ -1018,14 +1037,7 @@ bolt_domain_bootacl_add (BoltDomain *domain,
   if (!ok)
     return FALSE;
 
-  /* a full diff here is done because an existing entry might
-   * have been overwritten by allocate  */
-  diff = bolt_strv_diff (domain->bootacl, acl);
-  bolt_swap (acl, domain->bootacl);
-  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
-
-  g_signal_emit (domain, signals[SIGNAL_BOOTACL_CHANGED], 0,
-                 g_hash_table_size (diff) > 0, diff);
+  bolt_domain_bootacl_update (domain, &acl, NULL);
 
   return TRUE;
 }
@@ -1074,13 +1086,10 @@ bolt_domain_bootacl_del (BoltDomain *domain,
   if (!ok)
     return FALSE;
 
-  bolt_swap (acl, domain->bootacl);
-  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
-
   diff = g_hash_table_new (g_str_hash, g_str_equal);
   g_hash_table_insert (diff, (gpointer) uuid, GINT_TO_POINTER ('-'));
-  g_signal_emit (domain, signals[SIGNAL_BOOTACL_CHANGED], 0,
-                 TRUE, diff);
+
+  bolt_domain_bootacl_update (domain, &acl, diff);
 
   return TRUE;
 }
