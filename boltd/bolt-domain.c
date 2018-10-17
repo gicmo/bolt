@@ -327,6 +327,27 @@ bolt_domain_bootacl_open_log (BoltDomain *domain)
   domain->acllog = log;
 }
 
+static gboolean
+bolt_domain_bootacl_can_update (BoltDomain *domain,
+                                GError    **error)
+{
+  if (domain->bootacl == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "boot ACL not supported on domain '%s'", domain->uid);
+      return FALSE;
+    }
+
+  if (domain->syspath == NULL && domain->acllog == NULL)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                           "domain offline and no bootacl journal");
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 static void
 bolt_domain_bootacl_update (BoltDomain *domain,
                             GStrv      *acl,
@@ -935,23 +956,12 @@ bolt_domain_bootacl_set (BoltDomain *domain,
   g_return_val_if_fail (acl != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-  if (domain->bootacl == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "boot ACL not supported on domain '%s'", domain->uid);
-      return FALSE;
-    }
+  ok = bolt_domain_bootacl_can_update (domain, error);
+  if (!ok)
+    return FALSE;
 
   online = domain->syspath != NULL;
   log = domain->acllog;
-
-  if (online == FALSE && log == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "domain [%s] offline and no bootacl journal",
-                   domain->uid);
-      return FALSE;
-    }
 
   theirs = g_strv_length (acl);
   ours = g_strv_length (domain->bootacl);
@@ -1000,12 +1010,9 @@ bolt_domain_bootacl_add (BoltDomain *domain,
   g_return_val_if_fail (uuid != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-  if (domain->bootacl == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "boot ACL not supported on domain '%s'", domain->uid);
-      return FALSE;
-    }
+  ok = bolt_domain_bootacl_can_update (domain, error);
+  if (!ok)
+    return FALSE;
 
   if (bolt_domain_bootacl_contains (domain, uuid))
     {
@@ -1017,16 +1024,8 @@ bolt_domain_bootacl_add (BoltDomain *domain,
 
   online = domain->syspath != NULL;
   log = domain->acllog;
-
-  if (online == FALSE && log == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "domain [%s] offline and no bootacl journal",
-                   domain->uid);
-      return FALSE;
-    }
-
   acl = g_strdupv (domain->bootacl);
+
   bolt_domain_bootacl_allocate (domain, acl, uuid);
 
   if (online)
@@ -1050,35 +1049,25 @@ bolt_domain_bootacl_del (BoltDomain *domain,
   g_autoptr(GHashTable) diff = NULL;
   g_auto(GStrv) acl = NULL;
   BoltJournal *log;
-  gboolean online;
   gboolean ok;
 
   g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
   g_return_val_if_fail (uuid != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-  if (domain->bootacl == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "boot ACL not supported on domain '%s'", domain->uid);
-      return FALSE;
-    }
+  ok = bolt_domain_bootacl_can_update (domain, error);
+  if (!ok)
+    return FALSE;
 
-  online = domain->syspath != NULL;
   log = domain->acllog;
-
-  if (online == FALSE && log == NULL)
-    {
-      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "domain [%s] offline and no bootacl journal",
-                   domain->uid);
-      return FALSE;
-    }
-
   acl = g_strdupv (domain->bootacl);
+
   ok = bolt_domain_bootacl_remove (domain, acl, uuid, error);
 
-  if (ok)
+  if (!ok)
+    return FALSE;
+
+  if (domain->syspath != NULL)
     ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
   else
     ok = bolt_journal_put (log, uuid, BOLT_JOURNAL_REMOVED, error);
