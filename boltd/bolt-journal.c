@@ -303,6 +303,42 @@ bolt_journal_op_from_string (const char *data,
   return BOLT_JOURNAL_FAILED;
 }
 
+static gboolean
+bolt_journal_write_entry (int           fd,
+                          const char   *id,
+                          BoltJournalOp op,
+                          GError      **error)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *data = NULL;
+  const char *opstr;
+  gboolean ok;
+  guint64 now;
+  size_t l;
+
+  g_return_val_if_fail (fd > -1, FALSE);
+
+  now = (guint64) g_get_real_time ();
+  opstr = bolt_journal_op_to_string (op);
+
+  data = g_strdup_printf ("%s %s %016"G_GINT64_MODIFIER "X\n",
+                          id, opstr, now);
+
+  l = strlen (data);
+  ok = bolt_write_all (fd, data, l, &err);
+  if (!ok)
+    {
+      g_propagate_prefixed_error (error, g_steal_pointer (&err),
+                                  "could not add journal entry: ");
+      return FALSE;
+    }
+
+  bolt_debug (LOG_TOPIC ("journal"), "wrote '%.*s' to %d",
+              l - 1, data, fd);
+
+  return TRUE;
+}
+
 /* public methods */
 
 BoltJournal *
@@ -331,33 +367,15 @@ bolt_journal_put (BoltJournal  *journal,
                   BoltJournalOp op,
                   GError      **error)
 {
-  g_autoptr(GError) err = NULL;
-  g_autofree char *data = NULL;
-  const char *opstr;
   gboolean ok;
-  guint64 now;
-  size_t l;
   int r;
 
   g_return_val_if_fail (BOLT_IS_JOURNAL (journal), FALSE);
 
-  now = (guint64) g_get_real_time ();
-  opstr = bolt_journal_op_to_string (op);
+  ok = bolt_journal_write_entry (journal->fd, id, op, error);
 
-  data = g_strdup_printf ("%s %s %016"G_GINT64_MODIFIER "X\n",
-                          id, opstr, now);
-
-  l = strlen (data);
-  ok = bolt_write_all (journal->fd, data, l, &err);
   if (!ok)
-    {
-      g_propagate_prefixed_error (error, g_steal_pointer (&err),
-                                  "could not add journal entry: ");
-      return FALSE;
-    }
-
-  bolt_debug (LOG_TOPIC ("journal"), "wrote '%.*s' to %s",
-              l - 1, data, journal->name);
+    return FALSE;
 
   r = fdatasync (journal->fd);
   if (r == -1)
