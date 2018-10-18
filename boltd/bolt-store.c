@@ -467,6 +467,7 @@ bolt_store_put_device (BoltStore  *store,
   BoltDeviceType type;
   const char *uid;
   const char *label;
+  gboolean fresh;
   gboolean ok;
   guint64 ctime;
   guint64 atime;
@@ -551,6 +552,8 @@ bolt_store_put_device (BoltStore  *store,
   if (!ok)
     return FALSE;
 
+  fresh = bolt_device_get_stored (device) == FALSE;
+
   g_object_set (device,
                 "store", store,
                 "policy", policy,
@@ -558,7 +561,8 @@ bolt_store_put_device (BoltStore  *store,
                 "storetime", stime,
                 NULL);
 
-  g_signal_emit (store, signals[SIGNAL_DEVICE_ADDED], 0, uid);
+  if (fresh)
+    g_signal_emit (store, signals[SIGNAL_DEVICE_ADDED], 0, uid);
 
   ctime = bolt_device_get_conntime (device);
   atime = bolt_device_get_authtime (device);
