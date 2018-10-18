@@ -729,6 +729,47 @@ bolt_rename (const char *from,
   return FALSE;
 }
 
+gboolean
+bolt_copy_bytes (int      fd_from,
+                 int      fd_to,
+                 size_t   len,
+                 GError **error)
+{
+  g_return_val_if_fail (fd_from > -1, FALSE);
+  g_return_val_if_fail (fd_to > -1, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  do
+    {
+      ssize_t r;
+
+      r = copy_file_range (fd_from, NULL, fd_to, NULL, len, 0);
+
+      if (r == -1)
+        {
+          int code = errno;
+
+          g_set_error (error, G_IO_ERROR,
+                       g_io_error_from_errno (code),
+                       "error while copying data: %s",
+                       g_strerror (code));
+
+          return FALSE;
+        }
+      else if (r == 0)
+        {
+          break;
+        }
+
+      len -= r;
+
+    }
+  while (len > 0);
+
+  return len == 0;
+}
+
+
 /* auto cleanup helpers */
 void
 bolt_cleanup_close_intpr (int *fd)
