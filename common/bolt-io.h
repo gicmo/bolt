@@ -114,6 +114,10 @@ int        bolt_mkfifo (const char *path,
                         mode_t      mode,
                         GError    **error);
 
+gboolean   bolt_faddflags (int      fd,
+                           int      flags,
+                           GError **error);
+
 gboolean   bolt_fstat (int          fd,
                        struct stat *statbuf,
                        GError     **error);

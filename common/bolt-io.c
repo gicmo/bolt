@@ -575,6 +575,32 @@ bolt_mkfifo (const char *path,
 }
 
 gboolean
+bolt_faddflags (int      fd,
+                int      flags,
+                GError **error)
+{
+  int cur;
+  int code;
+
+  cur = fcntl (fd, F_GETFL);
+  if (cur != -1)
+    {
+      cur |= flags;
+      cur = fcntl (fd, F_SETFL, cur);
+    }
+
+  if (cur != -1)
+    return TRUE;
+
+  code = g_io_error_from_errno (errno);
+  g_set_error (error, G_IO_ERROR, code,
+               "could not add flags to fd: %s",
+               g_strerror (errno));
+
+  return FALSE;
+}
+
+gboolean
 bolt_fstat (int          fd,
             struct stat *statbuf,
             GError     **error)
