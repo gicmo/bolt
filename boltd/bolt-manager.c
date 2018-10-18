@@ -129,6 +129,10 @@ static void          handle_udev_device_detached (BoltManager *mgr,
                                                   BoltDevice  *dev);
 
 /* signal callbacks */
+static void          handle_store_device_added (BoltStore   *store,
+                                                const char  *uid,
+                                                BoltManager *mgr);
+
 static void          handle_store_device_removed (BoltStore   *store,
                                                   const char  *uid,
                                                   BoltManager *mgr);
@@ -327,6 +331,10 @@ bolt_manager_init (BoltManager *mgr)
   /* default configuration */
   mgr->policy = BOLT_POLICY_AUTO;
   mgr->authmode = BOLT_AUTH_ENABLED;
+
+  g_signal_connect_object (mgr->store, "device-added",
+                           G_CALLBACK (handle_store_device_added),
+                           mgr, 0);
 
   g_signal_connect_object (mgr->store, "device-removed",
                            G_CALLBACK (handle_store_device_removed),
@@ -1446,20 +1454,121 @@ handle_udev_device_detached (BoltManager *mgr,
   bolt_device_disconnected (dev);
 }
 
+typedef struct
+{
+  BoltManager *mgr;
+  const char  *uid;
+} BootaclCtx;
+
+static void
+bootacl_add_dev (gpointer data,
+                 gpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  BoltDomain *dom = data;
+  BootaclCtx *ctx = user_data;
+  const char *duid;
+  gboolean ok;
+
+  duid = bolt_domain_get_uid (dom);
+  bolt_info (LOG_TOPIC ("bootacl"),
+             LOG_DEV_UID (ctx->uid),
+             LOG_DOM_UID (duid),
+             "adding newly stored device to bootacl");
+
+  if (!bolt_domain_supports_bootacl (dom))
+    return;
+
+  if (bolt_domain_bootacl_contains (dom, ctx->uid))
+    return;
+
+  ok = bolt_domain_bootacl_add (dom, ctx->uid, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("bootacl"),
+                     LOG_DEV_UID (ctx->uid),
+                     LOG_DOM_UID (duid),
+                     "could not add device [%.17s]",
+                     ctx->uid);
+    }
+}
+
+static void
+bootacl_del_dev (gpointer data,
+                 gpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  BoltDomain *dom = data;
+  BootaclCtx *ctx = user_data;
+  const char *duid;
+  gboolean ok;
+
+  duid = bolt_domain_get_uid (dom);
+  bolt_info (LOG_TOPIC ("bootacl"),
+             LOG_DEV_UID (ctx->uid),
+             LOG_DOM_UID (duid),
+             "removing forgotten device from bootacl");
+
+  if (!bolt_domain_supports_bootacl (dom))
+    return;
+
+  if (!bolt_domain_bootacl_contains (dom, ctx->uid))
+    return;
+
+  ok = bolt_domain_bootacl_del (dom, ctx->uid, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("bootacl"),
+                     LOG_DEV_UID (ctx->uid),
+                     LOG_DOM_UID (duid),
+                     "could not remove device [%.17s]",
+                     ctx->uid);
+    }
+}
+
+
+static void
+handle_store_device_added (BoltStore   *store,
+                           const char  *uid,
+                           BoltManager *mgr)
+{
+  g_autoptr(BoltDevice) dev = NULL;
+  BoltDomain *dom = mgr->domains;
+  BootaclCtx ctx = {mgr, uid};
+
+  dev = manager_find_device_by_uid (mgr, uid, NULL);
+
+  if (dev == NULL || dom == NULL)
+    return;
+
+  if (bolt_device_get_policy (dev) != BOLT_POLICY_AUTO)
+    {
+      bolt_info (LOG_TOPIC ("bootacl"),
+                 LOG_DEV_UID (uid),
+                 "policy not 'auto', not adding");
+      return;
+    }
+
+  bolt_domain_foreach (dom, bootacl_add_dev, &ctx);
+}
+
 static void
 handle_store_device_removed (BoltStore   *store,
                              const char  *uid,
                              BoltManager *mgr)
 {
   g_autoptr(BoltDevice) dev = NULL;
+  BoltDomain *dom = mgr->domains;
+  BootaclCtx ctx = {mgr, uid};
   BoltStatus status;
   const char *opath;
 
   dev = manager_find_device_by_uid (mgr, uid, NULL);
-  bolt_msg (LOG_DEV (dev), "removed from store");
 
   if (!dev)
     return;
+
+  bolt_msg (LOG_DEV (dev), "removed from store");
 
   /* TODO: maybe move to a new bolt_device_removed (dev) */
   g_object_set (dev,
@@ -1467,6 +1576,9 @@ handle_store_device_removed (BoltStore   *store,
                 "key", BOLT_KEY_MISSING,
                 "policy", BOLT_POLICY_DEFAULT,
                 NULL);
+
+  /* remove device from bootacl */
+  bolt_domain_foreach (dom, bootacl_del_dev, &ctx);
 
   status = bolt_device_get_status (dev);
   /* if the device is connected, keep it around */
