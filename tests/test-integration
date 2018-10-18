@@ -734,6 +734,12 @@ class TbDomain(Device):
         self.boot_acl = ','*acl if isinstance(acl, int) else acl
 
     @property
+    def unique_id(self):
+        if len(self.children) < 1:
+            return None
+        return self.children[0].unique_id
+
+    @property
     def devices(self):
         return self.collect(lambda c: isinstance(c, TbDevice))
 
