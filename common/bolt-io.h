@@ -131,6 +131,12 @@ gboolean   bolt_fstatat (int          dirfd,
 gboolean   bolt_fdatasync (int      fd,
                            GError **error);
 
+gboolean   bolt_lseek (int      fd,
+                       off_t    offset,
+                       int      whence,
+                       int     *pos,
+                       GError **error);
+
 /* auto cleanup for I/O handles */
 void       bolt_cleanup_close_intpr (int *fd);
 #define    bolt_autoclose bolt_cleanup (bolt_cleanup_close_intpr)

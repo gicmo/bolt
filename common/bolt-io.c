@@ -678,6 +678,31 @@ bolt_fdatasync (int      fd,
   return FALSE;
 }
 
+gboolean
+bolt_lseek (int      fd,
+            off_t    offset,
+            int      whence,
+            int     *pos,
+            GError **error)
+{
+  off_t p;
+
+  p = lseek (fd, offset, whence);
+
+  if (p == (off_t) -1)
+    {
+      int code = errno;
+      g_set_error (error, G_IO_ERROR, g_io_error_from_errno (code),
+                   "could not seek file: %s", g_strerror (code));
+      return FALSE;
+    }
+
+  if (pos)
+    *pos = p;
+
+  return TRUE;
+}
+
 /* auto cleanup helpers */
 void
 bolt_cleanup_close_intpr (int *fd)
