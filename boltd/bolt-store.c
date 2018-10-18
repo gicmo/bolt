@@ -461,7 +461,9 @@ bolt_store_put_device (BoltStore  *store,
 {
   g_autoptr(GFile) entry = NULL;
   g_autoptr(GKeyFile) kf = NULL;
-  g_autofree char *data  = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autofree char *data = NULL;
+  g_autofree char *path = NULL;
   BoltDeviceType type;
   const char *uid;
   const char *label;
@@ -485,6 +487,20 @@ bolt_store_put_device (BoltStore  *store,
     return FALSE;
 
   kf = g_key_file_new ();
+
+  path = g_file_get_path (entry);
+
+  ok = g_key_file_load_from_file (kf,
+                                  path,
+                                  G_KEY_FILE_KEEP_COMMENTS,
+                                  &err);
+
+  if (!ok && bolt_err_exists (err))
+    {
+      bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DEV_UID (uid),
+                     "could not load previously stored device");
+      g_clear_error (&err);
+    }
 
   g_key_file_set_string (kf, DEVICE_GROUP, "name", bolt_device_get_name (device));
   g_key_file_set_string (kf, DEVICE_GROUP, "vendor", bolt_device_get_vendor (device));
@@ -517,8 +533,6 @@ bolt_store_put_device (BoltStore  *store,
 
   if (key)
     {
-      g_autoptr(GError) err  = NULL;
-
       ok = bolt_store_put_key (store, uid, key, &err);
 
       if (!ok)
