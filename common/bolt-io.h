@@ -137,6 +137,10 @@ gboolean   bolt_lseek (int      fd,
                        int     *pos,
                        GError **error);
 
+gboolean   bolt_rename (const char *from,
+                        const char *to,
+                        GError    **error);
+
 /* auto cleanup for I/O handles */
 void       bolt_cleanup_close_intpr (int *fd);
 #define    bolt_autoclose bolt_cleanup (bolt_cleanup_close_intpr)

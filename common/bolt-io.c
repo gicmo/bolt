@@ -703,6 +703,32 @@ bolt_lseek (int      fd,
   return TRUE;
 }
 
+gboolean
+bolt_rename (const char *from,
+             const char *to,
+             GError    **error)
+{
+  int code;
+  int r;
+
+  g_return_val_if_fail (from != NULL, FALSE);
+  g_return_val_if_fail (to != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  r = rename (from, to);
+
+  if (r == 0)
+    return TRUE;
+
+  code = errno;
+  g_set_error (error, G_IO_ERROR,
+               g_io_error_from_errno (code),
+               "could not rename '%s' to '%s': %s",
+               from, to, g_strerror (code));
+
+  return FALSE;
+}
+
 /* auto cleanup helpers */
 void
 bolt_cleanup_close_intpr (int *fd)
