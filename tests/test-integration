@@ -269,7 +269,7 @@ class Recorder(object):
 
         def got_event(event):
             for idx, e in enumerate(lst):
-                if self.event_match(e, event):
+                if self.event_match(event, e):
                     del lst[idx]
                     break
             if len(lst) == 0:
