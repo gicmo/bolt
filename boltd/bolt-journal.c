@@ -395,21 +395,43 @@ bolt_journal_put_diff (BoltJournal *journal,
                        GHashTable  *diff,
                        GError     **error)
 {
+  g_autoptr(GError) err = NULL;
+  g_autofree char *path = NULL;
+  g_autofree char *base = NULL;
+  bolt_autoclose int fd = -1;
+  struct stat st;
   GHashTableIter iter;
   gpointer key, val;
   gboolean ok = TRUE;
 
-  /* FIMXE: do this atomically:
-   * - copy_file_range/sendfile to a new tmp file
-   * - write the changes to the new tmp file
-   * - fsync the tmp file
-   * - rename new over the old file
-   * - close the old file
-   */
-
   g_return_val_if_fail (BOLT_IS_JOURNAL (journal), FALSE);
   g_return_val_if_fail (diff != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  base = g_file_get_path (journal->path);
+  path = g_strdup_printf ("%s.lock", base);
+
+  fd = bolt_open (path,
+                  O_RDWR |  O_CREAT | O_CLOEXEC | O_TRUNC,
+                  0666,
+                  error);
+
+  if (fd < 0)
+    return FALSE;
+
+  memset (&st, 0, sizeof (st));
+  ok = bolt_fstat (journal->fd, &st, &err);
+  if (!ok)
+    {
+      g_propagate_prefixed_error (error, g_steal_pointer (&err),
+                                  "could not query journal: ");
+      return FALSE;
+    }
+
+  ok = bolt_lseek (journal->fd, 0, SEEK_SET, NULL, error);
+
+  if (ok)
+    ok = bolt_copy_bytes (journal->fd, fd, st.st_size, error);
 
   g_hash_table_iter_init (&iter, diff);
   while (ok && g_hash_table_iter_next (&iter, &key, &val))
@@ -434,8 +456,20 @@ bolt_journal_put_diff (BoltJournal *journal,
           return FALSE;
         }
 
-      ok = bolt_journal_put (journal, uid, op, error);
+      ok = bolt_journal_write_entry (fd, uid, op, error);
     }
+
+  if (ok)
+    ok = bolt_fdatasync (fd, error);
+
+  if (ok)
+    ok = bolt_faddflags (fd, O_APPEND, error);
+
+  if (ok)
+    ok = bolt_rename (path, base, error);
+
+  if (ok)
+    bolt_swap (journal->fd, fd);
 
   return ok;
 }
