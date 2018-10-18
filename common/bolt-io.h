@@ -128,6 +128,9 @@ gboolean   bolt_fstatat (int          dirfd,
                          int          flags,
                          GError     **error);
 
+gboolean   bolt_fdatasync (int      fd,
+                           GError **error);
+
 /* auto cleanup for I/O handles */
 void       bolt_cleanup_close_intpr (int *fd);
 #define    bolt_autoclose bolt_cleanup (bolt_cleanup_close_intpr)

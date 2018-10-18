@@ -654,6 +654,30 @@ bolt_fstatat (int          dirfd,
   return FALSE;
 }
 
+gboolean
+bolt_fdatasync (int      fd,
+                GError **error)
+{
+  int code;
+  int r;
+
+  g_return_val_if_fail (fd > -1, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  r = fdatasync (fd);
+
+  if (r == 0)
+    return TRUE;
+
+  code = errno;
+  g_set_error (error, G_IO_ERROR,
+               g_io_error_from_errno (code),
+               "could not sync file data : %s",
+               g_strerror (code));
+
+  return FALSE;
+}
+
 /* auto cleanup helpers */
 void
 bolt_cleanup_close_intpr (int *fd)
