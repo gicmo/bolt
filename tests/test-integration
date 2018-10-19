@@ -749,8 +749,10 @@ class TbDomain(Device):
     def checkattr(d, k, v):
         return hasattr(d, k) and getattr(d, k) == v
 
-    def find(self, **kwargs):
+    def find(self, include_domain, **kwargs):
         def finder(d):
+            if not include_domain and isinstance(d, TbDomain):
+                return False
             return all([self.checkattr(d, k, v) for k, v in kwargs.items()])
 
         return self.first(finder)
@@ -1138,7 +1140,7 @@ class BoltTest(dbusmock.DBusTestCase):
         devices = self.client.list_devices()
         self.assertEqual(len(devices), len(tree.devices))
         for remote in devices:
-            local = tree.find(unique_id=remote.uid)
+            local = tree.find(False, unique_id=remote.uid)
             self.assertDeviceEqual(local, remote)
 
         # disconnect all devices again
@@ -1622,7 +1624,7 @@ class BoltTest(dbusmock.DBusTestCase):
         tree.children[0].connect(self.testbed)  # and the host too
 
         for remote in devices:
-            local = tree.find(unique_id=remote.uid)
+            local = tree.find(False, unique_id=remote.uid)
             self.assertDeviceEqual(local, remote)
             self.assertTrue(remote.stored, True)
             # key status should have changed to HAVE from NEW
