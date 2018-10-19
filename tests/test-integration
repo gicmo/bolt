@@ -1002,13 +1002,13 @@ class BoltTest(dbusmock.DBusTestCase):
             print(f.read())
 
     # mock tree stuff
-    def default_mock_tree(self):
+    def default_mock_tree(self, acl=None):
         # default mock tree
         mt = TbDomain(host=TbHost([
             TbDevice('Cable1'),
             TbDevice('Cable2'),
             TbDevice('SSD1')
-        ]))
+        ]), acl=acl)
         return mt
 
     def simple_mock_tree(self):
@@ -1560,11 +1560,14 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def test_device_enroll(self):
         self.daemon_start()
-        tree = self.default_mock_tree()
+        tree = self.default_mock_tree(acl=16)
         tree.connect_tree(self.testbed)
         self.polkitd_start()
 
         client = self.client
+        domain = client.domain_by_id(tree.unique_id)
+        self.assertIsNotNone(domain)
+        self.assertIsNotNone(domain.BootACL)
 
         to_enroll = tree.collect(TbDevice.is_unauthorized)
 
@@ -1588,7 +1591,12 @@ class BoltTest(dbusmock.DBusTestCase):
         before = int(time.time())
         policy = BoltClient.POLICY_AUTO
         for d in to_enroll:
-            remote = client.enroll(d.unique_id, policy)
+            with domain.record() as tape:
+                remote = client.enroll(d.unique_id, policy)
+                res = tape.wait_for_event('property',
+                                          'BootACL',
+                                          None)
+                self.assertTrue(res)
             d.reload_auth()  # will emit the uevent, so the daemon can update
             # the security level for the domain is SECURE, which means we should
             # have authorized via a new key:
@@ -1609,6 +1617,8 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertTrue(remote.AuthorizeTime > 1)
             self.assertTrue(remote.AuthorizeTime >= before)
             self.assertTrue(remote.AuthorizeTime <= now)
+
+            self.assertIn(d.unique_id, domain.BootACL)
 
         # we disconnect the tree, but since the devices are connected
         # the daemon should have them in its database now
@@ -1741,7 +1751,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def test_device_forget(self):
         self.daemon_start()
-        tree = self.default_mock_tree()
+        tree = self.default_mock_tree(acl=16)
         self.polkitd_start()
         tree.connect_tree(self.testbed)
 
@@ -1749,7 +1759,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.polkitd.SetAllowed(['org.freedesktop.bolt.enroll'])
 
         to_enroll = tree.collect(TbDevice.is_unauthorized)
-        policy = BoltClient.POLICY_MANUAL
+        policy = BoltClient.POLICY_AUTO
         for d in to_enroll:
             remote = client.enroll(d.unique_id, policy)
             d.reload_auth()
@@ -1782,8 +1792,18 @@ class BoltTest(dbusmock.DBusTestCase):
             # non-existent uuid
             client.forget("884c6edd-7118-4b21-b186-b02d396ecca0")
 
+        domain = client.domain_by_id(tree.unique_id)
+
+        # now we actually forget the device
         for remote in devices:
-            client.forget(remote.uid)
+            self.assertIn(remote.uid, domain.BootACL)
+            with domain.record() as tape:
+                client.forget(remote.uid)
+                res = tape.wait_for_event('property',
+                                          'BootACL',
+                                          None)
+                self.assertTrue(res)
+            self.assertNotIn(remote.uid, domain.BootACL)
 
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 0)
