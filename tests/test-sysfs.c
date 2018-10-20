@@ -617,6 +617,61 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
   g_assert_false (changeset.fired);
 }
 
+static gboolean
+bootacl_allocator (BoltDomain *domain,
+                   GStrv       bootacl,
+                   const char *uid,
+                   gint       *slot,
+                   gpointer    data)
+{
+  g_assert_nonnull (bootacl);
+  g_assert_nonnull (uid);
+  g_assert_nonnull (slot);
+  g_assert_cmpint (*slot, >, -1);
+
+  *slot = 0;
+  return TRUE;
+}
+
+static void
+test_bootacl_allocate (TestBootacl *tt, gconstpointer user)
+{
+  g_autoptr(GError) err = NULL;
+  GStrv acl = tt->acl;
+  BoltDomain *dom = tt->dom;
+  gboolean ok;
+
+  g_signal_connect (dom, "bootacl-alloc",
+                    G_CALLBACK (bootacl_allocator),
+                    NULL);
+
+  for (guint i = 0; i < tt->slots; i++)
+    {
+      g_auto(GStrv) have = NULL;
+      GStrv domacl;
+      char *uuid = NULL;
+
+      uuid = g_strdup_printf ("deadbab%x-0200-0100-ffff-ffffffffffff", i);
+      bolt_set_strdup (&acl[0], uuid);
+
+      ok = bolt_domain_bootacl_add (dom, uuid, &err);
+      g_assert_no_error (err);
+      g_assert_true (ok);
+
+      g_assert_true (bolt_domain_bootacl_contains (dom, uuid));
+
+      have = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
+      g_assert_no_error (err);
+      g_assert_nonnull (have);
+
+      g_assert_cmpstr (have[0], ==, uuid);
+      bolt_assert_strv_equal (acl, have, -1);
+
+      domacl = bolt_domain_get_bootacl (dom);
+      bolt_assert_strv_equal (domacl, have, -1);
+    }
+}
+
 int
 main (int argc, char **argv)
 {
@@ -660,6 +715,13 @@ main (int argc, char **argv)
               NULL,
               test_bootacl_setup,
               test_bootacl_update_online,
+              test_bootacl_tear_down);
+
+  g_test_add ("/sysfs/domain/bootacl/allocate",
+              TestBootacl,
+              NULL,
+              test_bootacl_setup,
+              test_bootacl_allocate,
               test_bootacl_tear_down);
 
   return g_test_run ();
