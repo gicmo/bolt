@@ -1180,27 +1180,19 @@ class BoltTest(dbusmock.DBusTestCase):
         self.remove_domain_host(dom, host)
 
         # create more then one domain
-        domains = [make_domain(d, '') for d in range(4)]
+        security = 'secure'
+        domains = [make_domain(d, security) for d in range(4)]
+        self.daemon_start()
 
-        for security in BoltDomain.security_levels():
+        remotes = self.client.list_domains()
+        self.assertEqual(len(domains), len(remotes))
 
-            for name, domain, host in domains:
-                self.testbed.set_attribute(domain, 'security', security)
-
-            self.daemon_start()
-
-            remotes = self.client.list_domains()
-            self.assertEqual(len(domains), len(remotes))
-
+        for name, domain, host in domains:
             for remote in remotes:
                 self.assertEqual(remote.security_level, security)
 
-            remote = self.client.domain_by_id(name)
-            self.assertEqual(remote.id, name)
-
-            self.daemon_stop()
-
-        self.daemon_start()
+                remote = self.client.domain_by_id(name)
+                self.assertEqual(remote.id, name)
 
         with self.assertRaises(GLib.GError):
             self.client.domain_by_id("")
