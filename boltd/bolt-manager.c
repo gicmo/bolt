@@ -70,6 +70,9 @@ static void          manager_deregister_domain (BoltManager *mgr,
                                                 BoltDomain  *domain);
 
 /* device related functions */
+static gboolean      manager_load_devices (BoltManager *mgr,
+                                           GError     **error);
+
 static void          manager_register_device (BoltManager *mgr,
                                               BoltDevice  *device);
 
@@ -442,7 +445,6 @@ bolt_manager_initialize (GInitable    *initable,
                          GCancellable *cancellable,
                          GError      **error)
 {
-  g_auto(GStrv) ids = NULL;
   g_autoptr(BoltPowerGuard) power = NULL;
   BoltManager *mgr;
   struct udev_enumerate *enumerate;
@@ -476,33 +478,9 @@ bolt_manager_initialize (GInitable    *initable,
   if (!ok)
     return FALSE;
 
-  ids = bolt_store_list_uids (mgr->store, "devices", error);
-  if (ids == NULL)
-    {
-      g_prefix_error (error, "failed to list devices in store");
-      return FALSE;
-    }
-
-  bolt_info (LOG_TOPIC ("store"), "loading devices");
-  for (guint i = 0; i < g_strv_length (ids); i++)
-    {
-      g_autoptr(GError) err = NULL;
-      BoltDevice *dev = NULL;
-      const char *uid = ids[i];
-
-      bolt_info (LOG_DEV_UID (uid), LOG_TOPIC ("store"), "loading device");
-
-      dev = bolt_store_get_device (mgr->store, uid, &err);
-      if (dev == NULL)
-        {
-          bolt_warn_err (err, LOG_TOPIC ("store"),
-                         LOG_DIRECT (BOLT_LOG_DEVICE_UID, uid),
-                         "failed to load device (%.7s)", uid);
-          continue;
-        }
-
-      manager_register_device (mgr, dev);
-    }
+  ok = manager_load_devices (mgr, error);
+  if (!ok)
+    return FALSE;
 
   /* setup the power controller */
   mgr->power = bolt_power_new (mgr->udev);
@@ -828,6 +806,43 @@ manager_deregister_domain (BoltManager *mgr,
 }
 
 /* device related functions */
+static gboolean
+manager_load_devices (BoltManager *mgr,
+                      GError     **error)
+{
+  g_auto(GStrv) ids = NULL;
+
+  ids = bolt_store_list_uids (mgr->store, "devices", error);
+  if (ids == NULL)
+    {
+      g_prefix_error (error, "failed to list devices in store");
+      return FALSE;
+    }
+
+  bolt_info (LOG_TOPIC ("store"), "loading devices");
+  for (guint i = 0; i < g_strv_length (ids); i++)
+    {
+      g_autoptr(GError) err = NULL;
+      BoltDevice *dev = NULL;
+      const char *uid = ids[i];
+
+      bolt_info (LOG_DEV_UID (uid), LOG_TOPIC ("store"), "loading device");
+
+      dev = bolt_store_get_device (mgr->store, uid, &err);
+      if (dev == NULL)
+        {
+          bolt_warn_err (err, LOG_TOPIC ("store"),
+                         LOG_DIRECT (BOLT_LOG_DEVICE_UID, uid),
+                         "failed to load device (%.7s)", uid);
+          continue;
+        }
+
+      manager_register_device (mgr, dev);
+    }
+
+  return TRUE;
+}
+
 static void
 manager_register_device (BoltManager *mgr,
                          BoltDevice  *dev)
