@@ -1589,14 +1589,20 @@ class BoltTest(dbusmock.DBusTestCase):
             client.forget("884c6edd-7118-4b21-b186-b02d396ecca0")
 
         before = int(time.time())
-        policy = BoltClient.POLICY_AUTO
-        for d in to_enroll:
-            with domain.record() as tape:
+        policies = {}
+        for i, d in enumerate(to_enroll):
+            if i % 2 == 0:
+                policy = BoltClient.POLICY_AUTO
+                with domain.record() as tape:
+                    remote = client.enroll(d.unique_id, policy)
+                    res = tape.wait_for_event('property',
+                                              'BootACL',
+                                              None)
+                    self.assertTrue(res)
+            else:
+                policy = BoltClient.POLICY_MANUAL
                 remote = client.enroll(d.unique_id, policy)
-                res = tape.wait_for_event('property',
-                                          'BootACL',
-                                          None)
-                self.assertTrue(res)
+
             d.reload_auth()  # will emit the uevent, so the daemon can update
             # the security level for the domain is SECURE, which means we should
             # have authorized via a new key:
@@ -1618,7 +1624,11 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertTrue(remote.AuthorizeTime >= before)
             self.assertTrue(remote.AuthorizeTime <= now)
 
-            self.assertIn(d.unique_id, domain.BootACL)
+            if policy == BoltClient.POLICY_AUTO:
+                self.assertIn(d.unique_id, domain.BootACL)
+            else:
+                self.assertNotIn(d.unique_id, domain.BootACL)
+            policies[d.unique_id] = policy
 
         # we disconnect the tree, but since the devices are connected
         # the daemon should have them in its database now
@@ -1639,7 +1649,8 @@ class BoltTest(dbusmock.DBusTestCase):
         tree.connect(self.testbed)              # we connect the domain again
         tree.children[0].connect(self.testbed)  # and the host too
 
-        for remote in devices:
+        for i, remote in enumerate(devices):
+            policy = policies[remote.uid]
             local = tree.find(False, unique_id=remote.uid)
             self.assertDeviceEqual(local, remote)
             self.assertTrue(remote.stored, True)
@@ -1651,9 +1662,13 @@ class BoltTest(dbusmock.DBusTestCase):
             # the property changes
             with remote.record() as tape:
                 local.connect(self.testbed)
+                if policy == BoltClient.POLICY_AUTO:
+                    status = 'authorized'
+                else:
+                    status = 'connected'
                 res = tape.wait_for_event('property',
                                           'Status',
-                                          'authorized')
+                                          status)
                 local.reload_auth()  # will emit the uevent, so the daemon can update
                 self.assertTrue(res)
                 self.assertDeviceEqual(local, remote)
