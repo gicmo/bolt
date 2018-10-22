@@ -1045,6 +1045,25 @@ handle_authorize (BoltExported          *object,
   BoltSecurity level;
   BoltKey *key;
 
+  /* In bolt_device_authorize the state is also checked, but it
+   * is done already here to fail quicker and avoid accessing the
+   * potentially unset domain (if e.g. the device is not connected).
+   */
+  if (!bolt_status_is_pending (dev->status))
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_BADSTATE,
+                   "wrong device state: %s",
+                   bolt_status_to_string (dev->status));
+      return NULL;
+    }
+  else if (dev->domain == NULL)
+    {
+      bolt_bug (LOG_DEV (dev), "device connected but no domain");
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_BADSTATE,
+                           "device has no domain associated");
+      return NULL;
+    }
+
   level = bolt_domain_get_security (dev->domain);
   key = NULL;
 
