@@ -637,6 +637,12 @@ class TbDevice(Device):
         return os.path.join(self.syspath, 'authorized')
 
     @property
+    def key_file(self):
+        if self.syspath is None:
+            return None
+        return os.path.join(self.syspath, 'key')
+
+    @property
     def bolt_status(self):
         if self.syspath is None:
             return BoltDevice.DISCONNECTED
@@ -688,6 +694,10 @@ class TbDevice(Device):
         with open(self.authorized_file, 'w') as f:
             f.write(level)
         self.reload_auth()
+
+    def writekey(self, key):
+        with open(self.key_file, 'w') as f:
+            f.write(key)
 
 
 class TbHost(TbDevice):
