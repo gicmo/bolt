@@ -1337,6 +1337,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def test_device_authorize(self):
         self.daemon_start()
+        client = self.client
         tree = self.default_mock_tree()
         tree.connect_tree(self.testbed)
 
@@ -1375,6 +1376,29 @@ class BoltTest(dbusmock.DBusTestCase):
             with self.assertRaises(GLib.GError) as cm:
                 remote.authorize()
 
+        # enroll the device, disconnect it and then try
+        # try to authorize it, verifying we are rejecting
+        # the call properly
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.authorize',
+                                 'org.freedesktop.bolt.enroll'])
+        d = to_authorize[0]
+        d.writekey('a26d5ad55b011df39ae06cae1fd329babfecac3465fe0a8828d6178f88e59083')
+        remote = self.client.device_by_uid(d.unique_id)
+        with remote.record() as tape:
+            client.enroll(d.unique_id, 'manual')
+            res = tape.wait_for_event('property',
+                                      'Stored',
+                                      True)
+            d.disconnect(self.testbed)
+            res = tape.wait_for_event('property',
+                                      'Status',
+                                      'disconnected')
+            self.assertTrue(res)
+            err = None
+            with self.assertRaises(GLib.GError) as cm:
+                remote.authorize()
+            err = cm.exception
+            self.assertIn('bolt.Error.BadState', err.message)
         self.daemon_stop()
 
     def test_device_auto_auth(self):
