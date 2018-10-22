@@ -756,6 +756,53 @@ manager_find_domain_by_syspath (BoltManager *mgr,
   return NULL;
 }
 
+static gboolean
+bootacl_alloc (BoltDomain  *domain,
+               GStrv        acl,
+               const char  *uid,
+               gint        *slot,
+               BoltManager *mgr)
+{
+  char **target = NULL;
+  guint64 last = G_MAXUINT64;
+
+  /* if we have a valid allocation, just use that */
+  if (*slot != -1)
+    return TRUE;
+
+  g_return_val_if_fail (acl != NULL, FALSE);
+
+  /* we need to replace one of devices currently in the acl */
+  for (char **iter = acl; *iter; iter++)
+    {
+      g_autoptr(BoltDevice) dev = NULL;
+      guint64 ts;
+
+      dev = manager_find_device_by_uid (mgr, uid, NULL);
+
+      /* device might not be managed by us */
+      if (dev == NULL)
+        continue;
+
+      /* authtime is the last time a device was seen and
+       * successfully authorized; choose the one that
+       * has the *oldest* timestamp (smallest number) */
+      ts = bolt_device_get_authtime (dev);
+      if (ts < last)
+        {
+          target = iter;
+          last = ts;
+        }
+    }
+
+  if (target == NULL)
+    return FALSE;
+
+  *slot = target - acl;
+
+  return TRUE;
+}
+
 static void
 manager_register_domain (BoltManager *mgr,
                          BoltDomain  *domain)
@@ -791,6 +838,9 @@ manager_register_domain (BoltManager *mgr,
                  bolt_security_to_string (mgr->security),
                  bolt_security_to_string (sl));
     }
+
+  g_signal_connect_object (domain, "bootacl-alloc",
+                           G_CALLBACK (bootacl_alloc), mgr, 0);
 }
 
 static void
