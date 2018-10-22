@@ -731,7 +731,7 @@ class TbDomain(Device):
         name = 'domain%d' % index
         super(TbDomain, self).__init__(name, children=[host])
         self.security = security
-        self.boot_acl = ','*acl if isinstance(acl, int) else acl
+        self.boot_acl = ','*(acl-1) if isinstance(acl, int) else acl
 
     @property
     def unique_id(self):
@@ -1044,7 +1044,7 @@ class BoltTest(dbusmock.DBusTestCase):
         props = ['security', security]
 
         if isinstance(bootacl, int):
-            bootacl = ',' * bootacl
+            bootacl = ',' * (bootacl-1)
 
         if bootacl is not None:
             props += ['boot_acl', bootacl]
