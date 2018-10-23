@@ -495,8 +495,14 @@ bolt_log_stdstream (const BoltLogCtx *ctx,
   else if (bolt_log_ctx_find_field (ctx, BOLT_LOG_DOMAIN_UID, &f))
     {
       const char *uid = f->value;
+      const char *name = "domain?";
+      char ident[64];
 
-      g_fprintf (out, "[%s%.13s %17s%s] ", blue, uid, "domain", fg);
+      if (bolt_log_ctx_find_field (ctx, BOLT_LOG_DOMAIN_NAME, &f))
+        name = f->value;
+
+      format_uid_name (uid, name, ident, sizeof (ident), 30);
+      g_fprintf (out, "[%s%s%s] ", blue, ident, fg);
     }
   else if (bolt_log_ctx_find_field (ctx, BOLT_LOG_DEVICE_UID, &f))
     {
