@@ -585,15 +585,12 @@ manager_bootacl_inital_sync (BoltManager *mgr,
 {
   g_autoptr(GError) err = NULL;
   g_auto(GStrv) acl = NULL;
-  const char *uid;
   gboolean ok;
   guint n, empty;
 
-  uid = bolt_domain_get_uid (domain);
-
   if (!bolt_domain_supports_bootacl (domain))
     {
-      bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM_UID (uid),
+      bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                  "bootacl not supported, no sync");
       return;
     }
@@ -603,7 +600,7 @@ manager_bootacl_inital_sync (BoltManager *mgr,
 
   n = bolt_domain_bootacl_slots (domain, &empty);
 
-  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM_UID (uid),
+  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
              "sync start [slots: %u free: %u]", n, empty);
 
   for (guint i = 0; i < mgr->devices->len; i++)
@@ -616,7 +613,7 @@ manager_bootacl_inital_sync (BoltManager *mgr,
       inacl = bolt_domain_bootacl_contains (domain, duid);
       sync = polok && !inacl;
 
-      bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM_UID (uid),
+      bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                  LOG_DEV_UID (duid),
                  "sync '%.17s' %s [policy: %s, in acl; %s]",
                  duid, bolt_yesno (sync), bolt_yesno (polok),
@@ -632,12 +629,12 @@ manager_bootacl_inital_sync (BoltManager *mgr,
 
   if (!ok && err != NULL)
     {
-      bolt_warn_err (err, LOG_DOM_UID (uid), "failed to write bootacl");
+      bolt_warn_err (err, LOG_DOM (domain), "failed to write bootacl");
       return;
     }
 
   bolt_domain_bootacl_slots (domain, &empty);
-  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM_UID (uid),
+  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
              "sync done [wrote: %s, now free: %u]",
              bolt_yesno (ok), empty);
 }
@@ -709,12 +706,12 @@ manager_domain_ensure (BoltManager        *mgr,
   manager_bootacl_inital_sync (mgr, domain);
 
   /* now store the domain (with an updated bootacl) */
-  bolt_info (LOG_TOPIC ("store"), LOG_DOM_UID (uid),
+  bolt_info (LOG_TOPIC ("store"), LOG_DOM (domain),
              "storing newly connected domain");
 
   ok = bolt_store_put_domain (mgr->store, domain, &err);
   if (!ok)
-    bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DOM_UID (uid),
+    bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DOM (domain),
                    "could not store domain");
 
   bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
@@ -807,17 +804,15 @@ static void
 manager_register_domain (BoltManager *mgr,
                          BoltDomain  *domain)
 {
-  const char *uid;
   BoltSecurity sl;
   gboolean online;
 
   mgr->domains = bolt_domain_insert (mgr->domains, domain);
 
-  uid = bolt_domain_get_uid (domain);
   online = bolt_domain_is_connected (domain);
   sl = bolt_domain_get_security (domain);
 
-  bolt_info (LOG_TOPIC ("domain"), LOG_DOM_UID (uid),
+  bolt_info (LOG_TOPIC ("domain"), LOG_DOM (domain),
              "domain (security: %s) added",
              bolt_security_to_string (sl));
 
@@ -1532,13 +1527,10 @@ bootacl_add_dev (gpointer data,
   g_autoptr(GError) err = NULL;
   BoltDomain *dom = data;
   BootaclCtx *ctx = user_data;
-  const char *duid;
   gboolean ok;
 
-  duid = bolt_domain_get_uid (dom);
-  bolt_info (LOG_TOPIC ("bootacl"),
+  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM (dom),
              LOG_DEV_UID (ctx->uid),
-             LOG_DOM_UID (duid),
              "adding newly stored device to bootacl");
 
   if (!bolt_domain_supports_bootacl (dom))
@@ -1550,9 +1542,8 @@ bootacl_add_dev (gpointer data,
   ok = bolt_domain_bootacl_add (dom, ctx->uid, &err);
   if (!ok)
     {
-      bolt_warn_err (err, LOG_TOPIC ("bootacl"),
+      bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM (dom),
                      LOG_DEV_UID (ctx->uid),
-                     LOG_DOM_UID (duid),
                      "could not add device [%.17s]",
                      ctx->uid);
     }
@@ -1565,13 +1556,10 @@ bootacl_del_dev (gpointer data,
   g_autoptr(GError) err = NULL;
   BoltDomain *dom = data;
   BootaclCtx *ctx = user_data;
-  const char *duid;
   gboolean ok;
 
-  duid = bolt_domain_get_uid (dom);
-  bolt_info (LOG_TOPIC ("bootacl"),
+  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM (dom),
              LOG_DEV_UID (ctx->uid),
-             LOG_DOM_UID (duid),
              "removing forgotten device from bootacl");
 
   if (!bolt_domain_supports_bootacl (dom))
@@ -1584,8 +1572,7 @@ bootacl_del_dev (gpointer data,
   if (!ok)
     {
       bolt_warn_err (err, LOG_TOPIC ("bootacl"),
-                     LOG_DEV_UID (ctx->uid),
-                     LOG_DOM_UID (duid),
+                     LOG_DEV_UID (ctx->uid), LOG_DOM (dom),
                      "could not remove device [%.17s]",
                      ctx->uid);
     }
