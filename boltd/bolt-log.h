@@ -34,6 +34,7 @@ G_BEGIN_DECLS
 
 #define LOG_DIRECT(k, v) "_" k, v
 #define LOG_DEV(device) "@device", device
+#define LOG_DOM(domain) "@domain", domain
 #define LOG_ERR(error) "@error", error
 #define LOG_TOPIC(topic) "@topic", topic
 #define LOG_DOM_UID(uid) LOG_DIRECT (BOLT_LOG_DOMAIN_UID, uid)

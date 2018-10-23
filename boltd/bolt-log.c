@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "bolt-device.h"
+#include "bolt-domain.h"
 #include "bolt-error.h"
 #include "bolt-rnd.h"
 #include "bolt-str.h"
@@ -181,6 +182,32 @@ bolt_log_ctx_find_field (const BoltLogCtx *ctx,
 }
 
 static void
+handle_domain_field (BoltLogCtx *ctx,
+                     const char *key,
+                     gpointer    ptr)
+{
+  BoltDomain *dom = BOLT_DOMAIN (ptr);
+  const char *name;
+  GLogField *field;
+
+  g_return_if_fail (BOLT_IS_DOMAIN (dom));
+
+  bolt_log_ctx_next_field (ctx, &field);
+  field->key = BOLT_LOG_DOMAIN_UID;
+  field->value = bolt_domain_get_uid (dom);
+  field->length = -1;
+
+  name = bolt_domain_get_id (dom);
+  if (name == NULL)
+    return;
+
+  bolt_log_ctx_next_field (ctx, &field);
+  field->key = BOLT_LOG_DOMAIN_NAME;
+  field->value = name;
+  field->length = -1;
+}
+
+static void
 handle_device_field (BoltLogCtx *ctx,
                      const char *key,
                      gpointer    ptr)
@@ -276,6 +303,8 @@ handle_special_field (BoltLogCtx *ctx,
 
   if (g_str_has_prefix (key, "device"))
     handle_device_field (ctx, key, ptr);
+  else if (g_str_has_prefix (key, "domain"))
+    handle_domain_field (ctx, key, ptr);
   else if (g_str_equal (key, "error"))
     handle_gerror_field (ctx, key, ptr);
   else if (g_str_equal (key, "topic"))
