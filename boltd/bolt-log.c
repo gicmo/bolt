@@ -578,20 +578,25 @@ bolt_log_ctx_acquire (const GLogField *fields,
   ctx = g_new0 (BoltLogCtx, 1);
   ctx->allocated = TRUE;
 
-  bolt_log_ctx_next_field (ctx, &ctx->message);
-  bolt_log_ctx_next_field (ctx, &ctx->priority);
-  bolt_log_ctx_next_field (ctx, &ctx->domain);
-
   for (gsize i = 0; i < n; i++)
     {
       GLogField *field = (GLogField *) &fields[i];
 
       if (bolt_streq (field->key, "MESSAGE"))
-        ctx->message = field;
+        {
+          bolt_log_ctx_next_field (ctx, &ctx->message);
+          *(ctx->message) = *field;
+        }
       else if (bolt_streq (field->key, "GLIB_DOMAIN"))
-        ctx->domain = field;
+        {
+          bolt_log_ctx_next_field (ctx, &ctx->domain);
+          *(ctx->domain) = *field;
+        }
       else if (bolt_streq (field->key, "PRIORITY"))
-        ctx->priority = field;
+        {
+          bolt_log_ctx_next_field (ctx, &ctx->priority);
+          *(ctx->priority) = *field;
+        }
     }
 
   if (ctx->message == NULL)
