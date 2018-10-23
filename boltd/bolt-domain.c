@@ -321,7 +321,7 @@ bolt_domain_bootacl_open_log (BoltDomain *domain)
                                  &err);
 
   if (log == NULL)
-    bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM_UID (uid),
+    bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                    "could not open journal");
 
   domain->acllog = log;
@@ -376,8 +376,7 @@ bolt_domain_bootacl_update (BoltDomain *domain,
       ok = bolt_store_put_domain (domain->store, domain, &err);
 
       if (!ok)
-        bolt_warn_err (err, LOG_TOPIC ("bootacl"),
-                       LOG_DOM_UID (domain->uid),
+        bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                        "could not update domain");
     }
 
@@ -416,7 +415,7 @@ bolt_domain_bootacl_remove (BoltDomain *domain,
       return FALSE;
     }
 
-  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
               "removing '%s' from bootacl", uuid);
 
   bolt_set_strdup (target, "");
@@ -437,21 +436,19 @@ bolt_domain_bootacl_sync (BoltDomain *domain,
   if (*sysacl == NULL || log == NULL)
     return;
 
+  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM (domain), "synchronizing journal");
+
   acl = g_strdupv (*sysacl);
-
-  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
-             "synchronizing journal");
-
   diff = bolt_journal_list (log, &err);
 
   if (diff == NULL)
     {
-      bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+      bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                      "could not list bootacl changes");
       return;
     }
 
-  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
               "journal contains %u entries", diff->len);
 
   for (guint i = 0; i < diff->len; i++)
@@ -461,7 +458,7 @@ bolt_domain_bootacl_sync (BoltDomain *domain,
       const char *uid = item->id;
       ok = TRUE;
 
-      bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+      bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                   "applying op '%c' for '%s'", op, uid);
 
       switch (op)
@@ -469,7 +466,7 @@ bolt_domain_bootacl_sync (BoltDomain *domain,
         case BOLT_JOURNAL_ADDED:
           if (bolt_strv_contains (acl, uid))
             {
-              bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+              bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                           "'%s' already in acl", uid);
               continue;
             }
@@ -480,7 +477,7 @@ bolt_domain_bootacl_sync (BoltDomain *domain,
         case BOLT_JOURNAL_REMOVED:
           if (!bolt_strv_contains (acl, uid))
             {
-              bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+              bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                           "'%s' already removed from acl", uid);
               continue;
             }
@@ -489,14 +486,14 @@ bolt_domain_bootacl_sync (BoltDomain *domain,
           break;
 
         default:
-          bolt_bug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+          bolt_bug (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                     "handled journal op %d", item->op);
           break;
         }
 
       if (!ok)
         {
-          bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+          bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                          LOG_DEV_UID (uid),
                          "applying journal op (%d) failed for %.17s",
                          item->op, uid);
@@ -509,9 +506,8 @@ bolt_domain_bootacl_sync (BoltDomain *domain,
 
   if (!ok)
     {
-      bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+      bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                      "could not reset journal");
-
       g_clear_error (&err);
       /* keep going */
     }
@@ -519,9 +515,8 @@ bolt_domain_bootacl_sync (BoltDomain *domain,
   ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, &err);
   if (!ok)
     {
-      bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+      bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                      "could not write changed bootacl to sysfs");
-
       return;
     }
 
@@ -691,7 +686,7 @@ bolt_domain_connected (BoltDomain         *domain,
 
   if (domain->syspath != NULL && !bolt_streq (domain->syspath, syspath))
     {
-      bolt_warn (LOG_TOPIC ("domain"), LOG_DOM_UID (domain->uid),
+      bolt_warn (LOG_TOPIC ("domain"), LOG_DOM (domain),
                  "already connected domain at '%s'"
                  "reconnected at '%s'", domain->syspath, syspath);
 
@@ -727,7 +722,7 @@ bolt_domain_connected (BoltDomain         *domain,
 
   g_object_thaw_notify (G_OBJECT (domain));
 
-  bolt_msg (LOG_DOM_UID (domain->uid), "connected: as %s [%s] (%s)",
+  bolt_msg (LOG_DOM (domain), "connected: as %s [%s] (%s)",
             id, bolt_security_to_string (security), syspath);
 }
 
@@ -736,8 +731,7 @@ bolt_domain_disconnected (BoltDomain *domain)
 {
   g_return_if_fail (domain != NULL);
 
-  bolt_msg (LOG_DOM_UID (domain->uid), "disconnected from %s",
-            domain->syspath);
+  bolt_msg (LOG_DOM (domain), "disconnected from %s", domain->syspath);
 
   g_object_freeze_notify (G_OBJECT (domain));
 
@@ -915,13 +909,13 @@ bolt_domain_bootacl_allocate (BoltDomain *domain,
   if (target)
     slot = target - acl;
 
-  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
               "slot before allocation: %d", slot);
 
   g_signal_emit (domain, signals[SIGNAL_BOOTACL_ALLOC], 0,
                  acl, uuid, &slot, &ok);
 
-  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
               "slot after allocation: %d [handled: %s]",
               slot, bolt_yesno (ok));
 
@@ -932,7 +926,7 @@ bolt_domain_bootacl_allocate (BoltDomain *domain,
       slot = target - acl;
     }
 
-  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
               "adding '%s' as bootacl[%d] (was '%s')",
               uuid, slot, acl[slot]);
 
