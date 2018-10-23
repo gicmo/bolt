@@ -423,18 +423,31 @@ bolt_logv (const char    *domain,
 #pragma GCC diagnostic pop
 
 static char *
-format_device_id (BoltDevice *device, char *buffer, gsize len, int size)
+format_uid_name (const char *uid,
+                 const char *name,
+                 char       *buffer,
+                 gsize       len,
+                 int         size)
 {
   static const int u = 13;
+  int n;
+
+  n = MAX (0, size - u);
+  g_snprintf (buffer, len, "%-.*s-%-*.*s", u, uid, n, n, name);
+  return buffer;
+}
+
+static char *
+format_device_id (BoltDevice *device, char *buffer, gsize len, int size)
+{
   const char *uid;
   const char *name;
-  int n;
 
   uid = bolt_device_get_uid (device);
   name = bolt_device_get_name (device);
 
-  n = MAX (0, size - u);
-  g_snprintf (buffer, len, "%-.*s-%-*.*s", u, uid, n, n, name);
+  format_uid_name (uid, name, buffer, len, size);
+
   return buffer;
 }
 
