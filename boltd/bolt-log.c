@@ -577,6 +577,18 @@ bolt_log_journal (const BoltLogCtx *ctx,
       format_device_id (ctx->device, name, sizeof (name), 40);
       bolt_cat_printf (&p, &size, "[%s] ", name);
     }
+  else if (bolt_log_ctx_find_field (ctx, BOLT_LOG_DOMAIN_UID, &f))
+    {
+      const char *uid = f->value;
+      const char *name = "domain?";
+      char ident[64];
+
+      if (bolt_log_ctx_find_field (ctx, BOLT_LOG_DOMAIN_NAME, &f))
+        name = f->value;
+
+      format_uid_name (uid, name, ident, sizeof (ident), 40);
+      bolt_cat_printf (&p, &size, "[%s] ", ident);
+    }
   else if (bolt_log_ctx_find_field (ctx, BOLT_LOG_DEVICE_UID, &f))
     {
       const char *uid = f->value;
