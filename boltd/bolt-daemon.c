@@ -42,6 +42,7 @@ static guint name_owner_id = 0;
 typedef struct _LogCfg
 {
   gboolean debug;
+  gboolean journal;
   char     session_id[33];
 } LogCfg;
 
@@ -78,7 +79,7 @@ daemon_logger (GLogLevelFlags   level,
   if (fileno (stderr) < 0)
     return G_LOG_WRITER_UNHANDLED;
 
-  if (g_log_writer_is_journald (fileno (stderr)))
+  if (log->journal || g_log_writer_is_journald (fileno (stderr)))
     res = bolt_log_journal (ctx, level, 0);
 
   if (res == G_LOG_WRITER_UNHANDLED)
@@ -142,11 +143,12 @@ main (int argc, char **argv)
   gboolean session_bus = FALSE;
   GBusType bus_type = G_BUS_TYPE_SYSTEM;
   GBusNameOwnerFlags flags;
-  LogCfg log = { FALSE, };
+  LogCfg log = { FALSE, FALSE, };
   const GOptionEntry options[] = {
     { "replace", 'r', 0, G_OPTION_ARG_NONE, &replace,  "Replace old daemon.", NULL },
     { "session-bus", 0, 0, G_OPTION_ARG_NONE, &session_bus, "Use the session bus.", NULL},
     { "verbose", 'v', 0, G_OPTION_ARG_NONE, &log.debug,  "Enable debug output.", NULL },
+    { "journal", 0, 0, G_OPTION_ARG_NONE, &log.journal, "Force logging to the journal.", NULL},
     { "version", 0, 0, G_OPTION_ARG_NONE, &show_version, "Print daemon version.", NULL},
     { NULL }
   };
