@@ -44,3 +44,6 @@
 #ifdef IS_COVERITY_BUILD
 #include "fix-coverity.h"
 #endif
+
+/* use structure logging f  */
+#define G_LOG_USE_STRUCTURED 1
