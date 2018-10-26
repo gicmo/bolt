@@ -31,4 +31,5 @@ int      usage_error_too_many_args (void);
 
 void     print_device (BoltDevice *dev,
                        gboolean    verbose);
+
 G_END_DECLS

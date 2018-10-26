@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "boltctl-cmds.h"
+#include "boltctl-uidfmt.h"
 
 #include "bolt-client.h"
 #include "bolt-enums.h"
@@ -198,7 +199,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   g_print ("   %s type:          %s\n", tree_branch, type_text);
   g_print ("   %s name:          %s\n", tree_branch, name);
   g_print ("   %s vendor:        %s\n", tree_branch, vendor);
-  g_print ("   %s uuid:          %s\n", tree_branch, uid);
+  g_print ("   %s uuid:          %s\n", tree_branch, format_uid (uid));
   if (verbose)
     g_print ("   %s dbus path:     %s\n", tree_branch, path);
   g_print ("   %s status:        %s\n", tree_branch, status_text);
@@ -264,6 +265,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   g_print ("\n");
 }
 
+
 /* ****  */
 
 typedef int (*run_t)(BoltClient *client,
@@ -316,9 +318,12 @@ main (int argc, char **argv)
   g_autofree char *cmdline = NULL;
   SubCommand *cmd = NULL;
   const char *cmdname = NULL;
+  const char *uuid_fmtstr = "full";
   gboolean version = FALSE;
+  int r;
   GOptionEntry options[] = {
     { "version", 0, 0, G_OPTION_ARG_NONE, &version, "Print version information and exit", NULL },
+    { "uuids", 'U', 0, G_OPTION_ARG_STRING, &uuid_fmtstr, "How to format uuids [full, *short, alias]", NULL },
     { NULL }
   };
 
@@ -343,6 +348,10 @@ main (int argc, char **argv)
     cmdname = "list";
   else
     cmdname = argv[1];
+
+  r = format_uid_init (uuid_fmtstr, &error);
+  if (r == -1)
+    return usage_error (error);
 
   client = bolt_client_new (&error);
 
