@@ -46,6 +46,7 @@ typedef enum {
 
   ARROW,
   MDASH,
+  ELLIPSIS,
 
   WARNING_SIGN,
 
