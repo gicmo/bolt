@@ -725,6 +725,7 @@ bolt_domain_bootacl_set (BoltDomain *domain,
                          GError    **error)
 {
   gboolean online;
+  gboolean same;
   gboolean ok;
   guint ours, theirs;
 
@@ -759,6 +760,12 @@ bolt_domain_bootacl_set (BoltDomain *domain,
                    ours, theirs);
       return FALSE;
     }
+
+  same = bolt_strv_equal (acl, domain->bootacl);
+
+  /* NB: we return FALSE but set no error */
+  if (same == TRUE)
+    return FALSE;
 
   ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
 
