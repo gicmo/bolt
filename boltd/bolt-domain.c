@@ -308,48 +308,6 @@ bolt_domain_update_bootacl (BoltDomain         *domain,
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_BOOTACL]);
 }
 
-static void
-bolt_domain_bootacl_allocate (BoltDomain *domain,
-                              GStrv       acl,
-                              const char *uuid,
-                              GError    **error)
-{
-  char **target;
-  gboolean ok;
-  gint slot = -1;
-
-  g_return_if_fail (acl != NULL && *acl != NULL);
-
-  /* find the first empty slot, if there is any */
-  target = bolt_strv_contains (acl, "");
-  if (target)
-    slot = target - acl;
-
-  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
-              "slot before allocation: %d", slot);
-
-  g_signal_emit (domain, signals[SIGNAL_BOOTACL_ALLOC], 0,
-                 acl, uuid, &slot, &ok);
-
-  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
-              "slot after allocation: %d [handled: %s]",
-              slot, bolt_yesno (ok));
-
-  if (slot == -1)
-    {
-      /* no slot was allocated so far, lets do FIFO */
-      target = bolt_strv_rotate_left (acl);
-      slot = target - acl;
-    }
-
-  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
-              "adding '%s' as bootacl[%d] (was '%s)",
-              uuid, slot, acl[slot]);
-
-  bolt_set_strdup (&acl[slot], uuid);
-}
-
-
 static gboolean
 bolt_domain_bootacl_remove (BoltDomain *domain,
                             GStrv       acl,
@@ -719,6 +677,46 @@ bolt_domain_bootacl_get_used (BoltDomain *domain,
   return (const char **) g_ptr_array_free (res, FALSE);
 }
 
+void
+bolt_domain_bootacl_allocate (BoltDomain *domain,
+                              GStrv       acl,
+                              const char *uuid)
+{
+  char **target;
+  gboolean ok;
+  gint slot = -1;
+
+  g_return_if_fail (acl != NULL && *acl != NULL);
+
+  /* find the first empty slot, if there is any */
+  target = bolt_strv_contains (acl, "");
+  if (target)
+    slot = target - acl;
+
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+              "slot before allocation: %d", slot);
+
+  g_signal_emit (domain, signals[SIGNAL_BOOTACL_ALLOC], 0,
+                 acl, uuid, &slot, &ok);
+
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+              "slot after allocation: %d [handled: %s]",
+              slot, bolt_yesno (ok));
+
+  if (slot == -1)
+    {
+      /* no slot was allocated so far, lets do FIFO */
+      target = bolt_strv_rotate_left (acl);
+      slot = target - acl;
+    }
+
+  bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM_UID (domain->uid),
+              "adding '%s' as bootacl[%d] (was '%s')",
+              uuid, slot, acl[slot]);
+
+  bolt_set_strdup (&acl[slot], uuid);
+}
+
 gboolean
 bolt_domain_bootacl_set (BoltDomain *domain,
                          GStrv       acl,
@@ -819,7 +817,7 @@ bolt_domain_bootacl_add (BoltDomain *domain,
     }
 
   acl = g_strdupv (domain->bootacl);
-  bolt_domain_bootacl_allocate (domain, acl, uuid, error);
+  bolt_domain_bootacl_allocate (domain, acl, uuid);
 
   ok = bolt_sysfs_write_boot_acl (domain->syspath, acl, error);
 

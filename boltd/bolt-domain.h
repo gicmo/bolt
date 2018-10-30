@@ -74,6 +74,9 @@ gboolean          bolt_domain_bootacl_contains (BoltDomain *domain,
 const char **     bolt_domain_bootacl_get_used (BoltDomain *domain,
                                                 guint      *n_used);
 
+void              bolt_domain_bootacl_allocate (BoltDomain *domain,
+                                                GStrv       acl,
+                                                const char *uuid);
 gboolean          bolt_domain_bootacl_set (BoltDomain *domain,
                                            GStrv       acl,
                                            GError    **error);
