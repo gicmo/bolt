@@ -46,4 +46,6 @@ G_BEGIN_DECLS
 
 /* *INDENT-ON* */
 
+#define bolt_cleanup(x) __attribute__((cleanup (x)))
+
 G_END_DECLS
