@@ -28,6 +28,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "bolt-macros.h"
+
 G_BEGIN_DECLS
 
 /* *INDENT-OFF* */
@@ -120,6 +122,6 @@ gboolean   bolt_fstatat (int          dirfd,
 
 /* auto cleanup for I/O handles */
 void       bolt_cleanup_close_intpr (int *fd);
-#define    bolt_autoclose __attribute__((cleanup (bolt_cleanup_close_intpr)))
+#define    bolt_autoclose bolt_cleanup (bolt_cleanup_close_intpr)
 
 G_END_DECLS
