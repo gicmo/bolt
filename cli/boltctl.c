@@ -26,6 +26,7 @@
 #include "bolt-client.h"
 #include "bolt-enums.h"
 #include "bolt-error.h"
+#include "bolt-macros.h"
 #include "bolt-str.h"
 #include "bolt-term.h"
 #include "bolt-time.h"
@@ -320,7 +321,7 @@ main (int argc, char **argv)
   const char *cmdname = NULL;
   const char *uuid_fmtstr = "full";
   gboolean version = FALSE;
-  int r;
+  int fmt = -1;
   GOptionEntry options[] = {
     { "version", 0, 0, G_OPTION_ARG_NONE, &version, "Print version information and exit", NULL },
     { "uuids", 'U', 0, G_OPTION_ARG_STRING, &uuid_fmtstr, "How to format uuids [full, *short, alias]", NULL },
@@ -349,8 +350,8 @@ main (int argc, char **argv)
   else
     cmdname = argv[1];
 
-  r = format_uid_init (uuid_fmtstr, &error);
-  if (r == -1)
+  fmt = format_uid_init (uuid_fmtstr, &error);
+  if (fmt == -1)
     return usage_error (error);
 
   client = bolt_client_new (&error);

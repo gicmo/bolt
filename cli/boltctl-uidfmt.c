@@ -26,7 +26,9 @@
 #include "boltctl-uidfmt.h"
 
 #include <gio/gio.h>
+
 #include <math.h>
+#include <stdlib.h>
 
 char *
 bolt_uuid_format (const char *uuid,
@@ -114,6 +116,15 @@ bolt_uuid_format_from_string (const char *str,
 
 /*  */
 int uuids_format;
+GHashTable *uuids_table;
+gboolean uuids_cleanup;
+
+static void
+format_uid_cleanup (void)
+{
+  g_clear_pointer (&uuids_table, g_hash_table_unref);
+  uuids_format = 0;
+}
 
 int
 format_uid_init (const char *str,
@@ -129,14 +140,38 @@ format_uid_init (const char *str,
 
   uuids_format = fmt;
 
+  if (uuids_table)
+    g_hash_table_unref (uuids_table);
+
+  uuids_table = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                       g_free, g_free);
+
+  if (!uuids_cleanup)
+    {
+      uuids_cleanup = TRUE;
+      atexit (format_uid_cleanup);
+    }
+
   return fmt;
 }
 
 const char *
 format_uid (const char *uid)
 {
+  const char *res;
+  char *key, *val;
+
   if (uid == NULL)
     uid = "<null>";
 
-  return bolt_uuid_format (uid, uuids_format);
+  res = g_hash_table_lookup (uuids_table, uid);
+
+  if (res != NULL)
+    return res;
+
+  key = g_strdup (uid);
+  val = bolt_uuid_format (uid, uuids_format);
+  g_hash_table_insert (uuids_table, key, val);
+
+  return val;
 }
