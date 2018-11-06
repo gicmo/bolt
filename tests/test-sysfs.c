@@ -20,10 +20,12 @@
 
 #include "config.h"
 
+#include "bolt-store.h"
 #include "bolt-str.h"
 #include "bolt-sysfs.h"
 #include "bolt-domain.h"
 
+#include "bolt-test.h"
 #include "mock-sysfs.h"
 
 #include "bolt-daemon-resource.h"
@@ -617,6 +619,42 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
   g_assert_false (changeset.fired);
 }
 
+static void
+test_bootacl_update_offline (TestBootacl *tt, gconstpointer user)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(BoltStore) store = NULL;
+  g_autoptr(udev_device) udevice = NULL;
+  g_auto(GStrv) sysacl = NULL;
+  g_auto(BoltTmpDir) dir = NULL;
+  BoltDomain *dom = tt->dom;
+  const char *syspath;
+  gboolean ok;
+  GStrv acl;
+
+  dir = bolt_tmp_dir_make ("bolt.sysfs.XXXXXX", NULL);
+  store = bolt_store_new (dir);
+
+  ok = bolt_store_put_domain (store, dom, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (bolt_domain_is_stored (dom));
+  g_assert_true (bolt_domain_supports_bootacl (dom));
+
+  /* we pretend we got disconnected and reconnected with no change */
+  bolt_domain_disconnected (dom);
+  syspath = mock_sysfs_domain_get_syspath (tt->sysfs, tt->dom_sysid);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+  bolt_domain_connected (dom, udevice);
+
+  acl = bolt_domain_get_bootacl (dom);
+  sysacl = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (sysacl);
+
+  bolt_assert_strv_equal (acl, sysacl, -1);
+}
+
 static gboolean
 bootacl_allocator (BoltDomain *domain,
                    GStrv       bootacl,
@@ -716,6 +754,14 @@ main (int argc, char **argv)
               test_bootacl_setup,
               test_bootacl_update_online,
               test_bootacl_tear_down);
+
+  g_test_add ("/sysfs/domain/bootacl/update_offline",
+              TestBootacl,
+              NULL,
+              test_bootacl_setup,
+              test_bootacl_update_offline,
+              test_bootacl_tear_down);
+
 
   g_test_add ("/sysfs/domain/bootacl/allocate",
               TestBootacl,
