@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "boltctl-cmds.h"
+#include "boltctl-uidfmt.h"
 
 #include "bolt-str.h"
 
@@ -32,24 +33,45 @@ print_domain (BoltDomain *domain, gboolean verbose)
   const char *tree_branch;
   const char *tree_right;
   const char *tree_cont;
-  const char *id;
+  const char *uid;
+  const char *name;
   const char *syspath;
   const char *security;
   BoltSecurity sl;
+  gboolean online;
 
   tree_branch = bolt_glyph (TREE_BRANCH);
   tree_right = bolt_glyph (TREE_RIGHT);
   tree_cont = bolt_glyph (TREE_VERTICAL);
 
-  id = bolt_domain_get_id (domain);
+  uid = bolt_domain_get_uid (domain);
+  name = bolt_domain_get_id (domain);
   sl = bolt_domain_get_security (domain);
 
   syspath = bolt_domain_get_syspath (domain);
   security = bolt_security_to_string (sl);
   bootacl = bolt_domain_get_bootacl (domain);
+  online = syspath != NULL;
 
-  g_print (" %s\n", id);
+  if (online)
+    {
+      g_print (" %s%s%s ",
+               bolt_color (ANSI_GREEN),
+               bolt_glyph (BLACK_CIRCLE),
+               bolt_color (ANSI_NORMAL));
+    }
+  else
+    {
+      g_print (" %s ", bolt_glyph (WHITE_CIRCLE));
+    }
+
+  g_print ("%s %s", (name ? : "domain"), format_uid (uid));
+  g_print ("\n");
+
   if (verbose)
+    g_print ("   %s online:   %s\n", tree_branch, bolt_yesno (online));
+
+  if (verbose && syspath != NULL)
     g_print ("   %s syspath:  %s\n", tree_branch, syspath);
 
   if (bootacl)
@@ -71,7 +93,8 @@ print_domain (BoltDomain *domain, gboolean verbose)
           if (bolt_strzero (bootacl[i]))
             continue;
 
-          g_print ("   %s  %s[%u] %s\n", tree_cont, tree_sym, i, bootacl[i]);
+          g_print ("   %s  %s[%u]", tree_cont, tree_sym, i);
+          g_print (" %s\n", format_uid (bootacl[i]));
           used--;
         }
     }
