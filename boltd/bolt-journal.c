@@ -238,7 +238,7 @@ bolt_journal_initialize (GInitable    *initable,
       return FALSE;
     }
 
-  bolt_info (LOG_TOPIC ("journal"), "loaded for '%s'; size: %s",
+  bolt_info (LOG_TOPIC ("journal"), "opened for '%.13s'; size: %s",
              journal->name, g_format_size ((guint64) st.st_size));
 
   journal->fresh = st.st_size == 0;
