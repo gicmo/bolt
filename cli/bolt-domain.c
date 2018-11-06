@@ -208,3 +208,13 @@ bolt_domain_get_bootacl (BoltDomain *domain)
 
   return strv;
 }
+
+gboolean
+bolt_domain_is_online (BoltDomain *domain)
+{
+  const char *syspath;
+
+  syspath = bolt_domain_get_syspath (domain);
+
+  return syspath != NULL;
+}
