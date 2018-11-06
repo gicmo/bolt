@@ -383,7 +383,8 @@ if mockdev.found()
      ['tests/mock-sysfs.c']],
     ['test-sysfs',
      [libdaemon, mockdev],
-     ['tests/mock-sysfs.c']],
+     ['tests/mock-sysfs.c',
+      'tests/bolt-test.c']],
     ['test-udev',
      [libdaemon, mockdev],
      ['tests/mock-sysfs.c']]
