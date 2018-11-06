@@ -615,7 +615,7 @@ manager_bootacl_inital_sync (BoltManager *mgr,
 
       bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
                  LOG_DEV_UID (duid),
-                 "sync '%.17s' %s [policy: %s, in acl; %s]",
+                 "sync '%.13s…' %s [policy: %3s, in acl: %3s]",
                  duid, bolt_yesno (sync), bolt_yesno (polok),
                  bolt_yesno (inacl));
 
