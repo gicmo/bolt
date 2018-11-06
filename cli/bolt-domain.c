@@ -33,6 +33,7 @@ enum {
   PROP_0,
 
   /* D-Bus Props */
+  PROP_UID,
   PROP_ID,
   PROP_SYSPATH,
   PROP_SECURITY,
@@ -65,6 +66,13 @@ bolt_domain_class_init (BoltDomainClass *klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
   gobject_class->get_property = bolt_domain_get_property;
+
+  props[PROP_UID] =
+    g_param_spec_string ("uid",
+                         "Uid", NULL,
+                         "unknown",
+                         G_PARAM_READABLE |
+                         G_PARAM_STATIC_NICK);
 
   props[PROP_ID] =
     g_param_spec_string ("id",
@@ -125,6 +133,20 @@ bolt_domain_new_for_object_path (GDBusConnection *bus,
                         NULL);
 
   return dom;
+}
+
+const char *
+bolt_domain_get_uid (BoltDomain *domain)
+{
+  const char *key;
+  const char *str;
+
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), NULL);
+
+  key = g_param_spec_get_name (props[PROP_UID]);
+  str = bolt_proxy_get_property_string (BOLT_PROXY (domain), key);
+
+  return str;
 }
 
 const char *

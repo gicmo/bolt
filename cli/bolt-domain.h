@@ -34,6 +34,8 @@ BoltDomain *      bolt_domain_new_for_object_path (GDBusConnection *bus,
                                                    GCancellable    *cancellable,
                                                    GError         **error);
 /* getter */
+const char *      bolt_domain_get_uid (BoltDomain *domain);
+
 const char *      bolt_domain_get_id (BoltDomain *domain);
 
 const char *      bolt_domain_get_syspath (BoltDomain *domain);
