@@ -741,6 +741,9 @@ test_str_set (TestRng *tt, gconstpointer user_data)
 
   bolt_set_strdup (&target, "foobar");
   g_assert_cmpstr (target, ==, "foobar");
+
+  bolt_set_strdup_printf (&target, "%s %s", "Hallo", "Welt");
+  g_assert_cmpstr (target, ==, "Hallo Welt");
 }
 
 #define MAKE_GSTRV(...) (GStrv) (const char *[]){ __VA_ARGS__}

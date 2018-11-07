@@ -78,6 +78,9 @@ bolt_set_str (char **target, char *str)
 #define bolt_set_strdup(target, str) \
   bolt_set_str (target, g_strdup (str))
 
+gboolean bolt_set_strdup_printf (char      **target,
+                                 const char *fmt,
+                                 ...) G_GNUC_PRINTF (2, 3);
 
 gint     bolt_comparefn_strcmp (gconstpointer a,
                                 gconstpointer b);

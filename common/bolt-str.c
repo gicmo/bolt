@@ -269,6 +269,24 @@ bolt_str_parse_as_int (const char *str,
   return TRUE;
 }
 
+gboolean
+bolt_set_strdup_printf (char      **target,
+                        const char *fmt,
+                        ...)
+{
+  va_list args;
+  char *str;
+
+  g_return_val_if_fail (target != NULL, FALSE);
+  g_return_val_if_fail (fmt != NULL, FALSE);
+
+  va_start (args, fmt);
+  str = g_strdup_vprintf (fmt, args);
+  va_end (args);
+
+  return bolt_set_str (target, str);
+}
+
 gint
 bolt_comparefn_strcmp (gconstpointer a,
                        gconstpointer b)
