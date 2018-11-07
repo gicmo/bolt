@@ -222,6 +222,7 @@ daemon_sources = files([
   'boltd/bolt-config.c',
   'boltd/bolt-domain.c',
   'boltd/bolt-exported.c',
+  'boltd/bolt-journal.c',
   'boltd/bolt-manager.c',
   'boltd/bolt-power.c',
   'boltd/bolt-device.c',
@@ -371,7 +372,8 @@ tests = [
   ['test-common', [], test_enums],
   ['test-exported', [libdaemon], [test_resources]],
   ['test-logging', [libdaemon]],
-  ['test-store', [libdaemon]]
+  ['test-store', [libdaemon]],
+  ['test-journal', [libdaemon]]
 ]
 
 if mockdev.found()

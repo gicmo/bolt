@@ -55,6 +55,10 @@ gboolean   bolt_write_all (int         fd,
                            gssize      nbytes,
                            GError    **error);
 
+gboolean   bolt_ftruncate (int      fd,
+                           off_t    size,
+                           GError **error);
+
 DIR *      bolt_opendir (const char *path,
                          GError    **error);
 
@@ -110,6 +114,10 @@ int        bolt_mkfifo (const char *path,
                         mode_t      mode,
                         GError    **error);
 
+gboolean   bolt_faddflags (int      fd,
+                           int      flags,
+                           GError **error);
+
 gboolean   bolt_fstat (int          fd,
                        struct stat *statbuf,
                        GError     **error);
@@ -119,6 +127,24 @@ gboolean   bolt_fstatat (int          dirfd,
                          struct stat *statbuf,
                          int          flags,
                          GError     **error);
+
+gboolean   bolt_fdatasync (int      fd,
+                           GError **error);
+
+gboolean   bolt_lseek (int      fd,
+                       off_t    offset,
+                       int      whence,
+                       int     *pos,
+                       GError **error);
+
+gboolean   bolt_rename (const char *from,
+                        const char *to,
+                        GError    **error);
+
+gboolean   bolt_copy_bytes (int      fd_from,
+                            int      fd_to,
+                            size_t   len,
+                            GError **error);
 
 /* auto cleanup for I/O handles */
 void       bolt_cleanup_close_intpr (int *fd);

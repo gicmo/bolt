@@ -529,6 +529,27 @@ bolt_file_write_all (const char *fn,
   return ok;
 }
 
+gboolean
+bolt_ftruncate (int      fd,
+                off_t    size,
+                GError **error)
+{
+  int r;
+
+  r = ftruncate (fd, size);
+
+  if (r == -1)
+    {
+      g_set_error (error, G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "could not truncate file: %s",
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 int
 bolt_mkfifo (const char *path,
              mode_t      mode,
@@ -551,6 +572,32 @@ bolt_mkfifo (const char *path,
     }
 
   return r;
+}
+
+gboolean
+bolt_faddflags (int      fd,
+                int      flags,
+                GError **error)
+{
+  int cur;
+  int code;
+
+  cur = fcntl (fd, F_GETFL);
+  if (cur != -1)
+    {
+      cur |= flags;
+      cur = fcntl (fd, F_SETFL, cur);
+    }
+
+  if (cur != -1)
+    return TRUE;
+
+  code = g_io_error_from_errno (errno);
+  g_set_error (error, G_IO_ERROR, code,
+               "could not add flags to fd: %s",
+               g_strerror (errno));
+
+  return FALSE;
 }
 
 gboolean
@@ -606,6 +653,122 @@ bolt_fstatat (int          dirfd,
 
   return FALSE;
 }
+
+gboolean
+bolt_fdatasync (int      fd,
+                GError **error)
+{
+  int code;
+  int r;
+
+  g_return_val_if_fail (fd > -1, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  r = fdatasync (fd);
+
+  if (r == 0)
+    return TRUE;
+
+  code = errno;
+  g_set_error (error, G_IO_ERROR,
+               g_io_error_from_errno (code),
+               "could not sync file data : %s",
+               g_strerror (code));
+
+  return FALSE;
+}
+
+gboolean
+bolt_lseek (int      fd,
+            off_t    offset,
+            int      whence,
+            int     *pos,
+            GError **error)
+{
+  off_t p;
+
+  p = lseek (fd, offset, whence);
+
+  if (p == (off_t) -1)
+    {
+      int code = errno;
+      g_set_error (error, G_IO_ERROR, g_io_error_from_errno (code),
+                   "could not seek file: %s", g_strerror (code));
+      return FALSE;
+    }
+
+  if (pos)
+    *pos = p;
+
+  return TRUE;
+}
+
+gboolean
+bolt_rename (const char *from,
+             const char *to,
+             GError    **error)
+{
+  int code;
+  int r;
+
+  g_return_val_if_fail (from != NULL, FALSE);
+  g_return_val_if_fail (to != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  r = rename (from, to);
+
+  if (r == 0)
+    return TRUE;
+
+  code = errno;
+  g_set_error (error, G_IO_ERROR,
+               g_io_error_from_errno (code),
+               "could not rename '%s' to '%s': %s",
+               from, to, g_strerror (code));
+
+  return FALSE;
+}
+
+gboolean
+bolt_copy_bytes (int      fd_from,
+                 int      fd_to,
+                 size_t   len,
+                 GError **error)
+{
+  g_return_val_if_fail (fd_from > -1, FALSE);
+  g_return_val_if_fail (fd_to > -1, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  do
+    {
+      ssize_t r;
+
+      r = copy_file_range (fd_from, NULL, fd_to, NULL, len, 0);
+
+      if (r == -1)
+        {
+          int code = errno;
+
+          g_set_error (error, G_IO_ERROR,
+                       g_io_error_from_errno (code),
+                       "error while copying data: %s",
+                       g_strerror (code));
+
+          return FALSE;
+        }
+      else if (r == 0)
+        {
+          break;
+        }
+
+      len -= r;
+
+    }
+  while (len > 0);
+
+  return len == 0;
+}
+
 
 /* auto cleanup helpers */
 void
