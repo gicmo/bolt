@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "bolt-macros.h"
 #include "bolt-str.h"
 
 #include <errno.h>
@@ -187,6 +188,29 @@ bolt_strv_rotate_left (char **strv)
 
   *prev = start;
   return prev;
+}
+
+void
+bolt_strv_permute (char **strv)
+{
+  guint n;
+
+  if (strv == NULL || *strv == NULL)
+    return;
+
+  n = bolt_strv_length (strv);
+
+  g_return_if_fail (n > 0);
+
+  /* Knuth shuffles */
+  for (guint i = 0; i < (n - 1) && strv[i]; i++)
+    {
+      /* random int k, with i ≤ k < n,
+       * i.e. random_int_range returns k ∈ [i, n-1] */
+      gsize k = g_random_int_range (i, n);
+
+      bolt_swap (strv[i], strv[k]);
+    }
 }
 
 char *

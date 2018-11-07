@@ -906,6 +906,23 @@ test_strv_diff (TestRng *tt, gconstpointer user_data)
 }
 
 static void
+test_strv_permute (TestRng *tt, gconstpointer user_data)
+{
+  g_auto(GStrv) tst = NULL;
+  const char *ref[] = {"a", "b", "c", "d", NULL};
+  char *empty[] = {NULL};
+
+  bolt_strv_permute (NULL);
+  bolt_strv_permute (empty);
+
+  g_assert_cmpuint (bolt_strv_length (empty), ==, 0U);
+
+  tst = g_strdupv ((char **) ref);
+  bolt_strv_permute (tst);
+  g_assert_false (bolt_strv_equal ((char **) ref, (char **) tst));
+}
+
+static void
 test_strv_rotate_left (TestRng *tt, gconstpointer user_data)
 {
   g_auto(GStrv) a = NULL;
@@ -1164,6 +1181,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_strv_diff,
+              NULL);
+
+  g_test_add ("/common/strv/permute",
+              TestRng,
+              NULL,
+              NULL,
+              test_strv_permute,
               NULL);
 
   g_test_add ("/common/strv/rotate_left",

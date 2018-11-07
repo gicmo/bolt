@@ -43,6 +43,7 @@ GHashTable * bolt_strv_diff (const GStrv before,
                              const GStrv after);
 
 char ** bolt_strv_rotate_left (char **strv);
+void    bolt_strv_permute (char **strv);
 
 #define bolt_strzero(str) (str == NULL || *str == '\0')
 
