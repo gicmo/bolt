@@ -27,6 +27,7 @@
 #include "bolt-io.h"
 #include "bolt-log.h"
 #include "bolt-macros.h"
+#include "bolt-str.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -196,10 +197,10 @@ bolt_journal_initialize (GInitable    *initable,
 {
   g_autoptr(GError) err = NULL;
   g_autofree char *path = NULL;
+  bolt_autoclose int fd = -1;
   struct stat st;
   BoltJournal *journal;
   gboolean ok;
-  int fd;
 
   journal = BOLT_JOURNAL (initable);
 
@@ -242,7 +243,10 @@ bolt_journal_initialize (GInitable    *initable,
              journal->name, g_format_size ((guint64) st.st_size));
 
   journal->fresh = st.st_size == 0;
-  journal->fd = fd;
+  journal->fd = bolt_steal (&fd, -1);
+
+  bolt_debug (LOG_TOPIC ("journal"), "fresh: %s, fd: %d",
+              bolt_yesno (journal->fresh), journal->fd);
 
   return TRUE;
 }
