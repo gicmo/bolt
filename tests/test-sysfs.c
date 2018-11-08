@@ -461,6 +461,71 @@ test_bootacl_basic (TestBootacl *tt, gconstpointer user)
 }
 
 static void
+test_bootacl_errors (TestBootacl *tt, gconstpointer user)
+{
+  g_autoptr(udev_device) udevice = NULL;
+  g_autoptr(BoltDomain) dom2 = NULL;
+  g_autoptr(GError) err = NULL;
+  g_auto(GStrv) tmp = NULL;
+  g_autofree char *str = NULL;
+  BoltDomain *dom = tt->dom;
+  const char *noacl_dom;
+  const char *syspath;
+  GStrv acl = tt->acl;
+  gboolean ok;
+
+  /* adding an existing uuid */
+  test_bootacl_add_uuid (tt, dom, 0, "deadbab%x-0200-0100-ffff-ffffffffffff", 0U);
+  ok = bolt_domain_bootacl_add (dom, acl[0], &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_EXISTS);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* removing an unknown uuid */
+  ok = bolt_domain_bootacl_del (dom, "deadbabe-0200-ffff-ffff-ffffffffffff", &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* number of slots mismatch */
+  str = g_strnfill (tt->slots * 2, ',');
+  tmp = g_strsplit (str, ",", 1024);
+
+  ok = bolt_domain_bootacl_set (dom, tmp, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* domain without bootacl support */
+  noacl_dom = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_SECURE, NULL);
+  g_assert_nonnull (noacl_dom);
+
+  syspath = mock_sysfs_domain_get_syspath (tt->sysfs, noacl_dom);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+
+  dom2 = bolt_domain_new_for_udev (udevice, tt->dom_uid, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (dom2);
+  g_assert_false (bolt_domain_supports_bootacl (dom2));
+
+  ok = bolt_domain_bootacl_add (dom2, acl[0], &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  ok = bolt_domain_bootacl_del (dom2, acl[0], &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  ok = bolt_domain_bootacl_set (dom2, tmp, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+}
+
+static void
 on_bootacl_notify (GObject    *object,
                    GParamSpec *pspec,
                    gpointer    user_data)
@@ -867,6 +932,13 @@ main (int argc, char **argv)
               NULL,
               test_bootacl_setup,
               test_bootacl_basic,
+              test_bootacl_tear_down);
+
+  g_test_add ("/sysfs/domain/bootacl/errors",
+              TestBootacl,
+              NULL,
+              test_bootacl_setup,
+              test_bootacl_errors,
               test_bootacl_tear_down);
 
   g_test_add ("/sysfs/domain/bootacl/update_udev",
