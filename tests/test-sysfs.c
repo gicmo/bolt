@@ -601,36 +601,21 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
 
   for (guint i = 0; i < tt->slots; i++)
     {
-      g_auto(GStrv) have = NULL;
-      char *uuid = NULL;
+      test_bootacl_add_uuid (tt, dom, i, "deadbab%x-0200-0100-ffff-ffffffffffff", i);
+      test_bootacl_read_acl (tt, &sysacl);
 
-      uuid = g_strdup_printf ("deadbab%x-0200-0100-ffff-ffffffffffff", i);
-      bolt_set_strdup (&acl[i], uuid);
+      g_assert_nonnull (bolt_strv_contains (sysacl, acl[i]));
 
-      ok = bolt_domain_bootacl_add (dom, uuid, &err);
-      g_assert_no_error (err);
-      g_assert_true (ok);
-
-      g_assert_true (bolt_domain_bootacl_contains (dom, uuid));
-
-      have = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
-      g_assert_no_error (err);
-      g_assert_nonnull (have);
-
-      g_assert_nonnull (bolt_strv_contains (have, uuid));
-
-      acl_change_set_verify (&changeset, 1, uuid, '+');
+      acl_change_set_verify (&changeset, 1, acl[i], '+');
       changeset.fired = FALSE;
 
-      bolt_assert_strv_equal (acl, have, -1);
+      bolt_assert_strv_equal (acl, sysacl, -1);
     }
 
   /* verify with what we have in mock sysfs */
-  sysacl = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
+  test_bootacl_read_acl (tt, &sysacl);
   slots = bolt_strv_length (acl);
-
-  for (guint i = 0; i < slots; i++)
-    g_debug ("bootacl[%u] = %s", i, sysacl[i]);
+  dump_strv (sysacl, "sysacl ");
 
   /* NB: acl was verified to be in sync with domain's acl */
   bolt_assert_strv_equal (acl, sysacl, -1);
@@ -641,38 +626,27 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
   for (guint i = 0; i < tt->slots; i++)
     {
       g_auto(GStrv) have = NULL;
-      char *uuid = NULL;
 
       /* NB: different uuid pattern from above (0200-0100) */
-      uuid = g_strdup_printf ("deadbab%x-0200-aaaa-ffff-ffffffffffff", i);
+      test_bootacl_add_uuid (tt, dom, i, "deadbab%x-0200-aaaa-ffff-ffffffffffff", i);
+      test_bootacl_read_acl (tt, &have);
 
-      ok = bolt_domain_bootacl_add (dom, uuid, &err);
-      g_assert_no_error (err);
-      g_assert_true (ok);
-
-      g_assert_true (bolt_domain_bootacl_contains (dom, uuid));
-
-      have = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
-      g_assert_no_error (err);
-      g_assert_nonnull (have);
-
-      g_assert_nonnull (bolt_strv_contains (have, uuid));
-      g_assert_cmpstr (have[slots - 1], ==, uuid);
+      g_assert_nonnull (bolt_strv_contains (have, acl[i]));
+      g_assert_cmpstr (have[slots - 1], ==, acl[i]);
 
       /* check the bootacl-changed signal emission:
        *  add for the new one, remove for the overwritten one
        */
-      acl_change_set_verify (&changeset, 2, uuid, '+', sysacl[i], '-');
+      acl_change_set_verify (&changeset, 2, acl[i], '+', sysacl[i], '-');
       changeset.fired = FALSE;
     }
 
   /* remove all the entries */
-  g_clear_pointer (&sysacl, g_strfreev);
-  sysacl = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
+  test_bootacl_read_acl (tt, &sysacl);
   slots = bolt_strv_length (acl);
 
-  for (guint i = 0; i < slots; i++)
-    g_debug ("bootacl[%u] = %s", i, sysacl[i]);
+  dump_strv (sysacl, "sysacl ");
+
 
   for (guint i = 0; i < slots; i++)
     {
@@ -680,15 +654,9 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
       char *uuid = sysacl[i];
 
       changeset.fired = FALSE;
-      ok = bolt_domain_bootacl_del (dom, uuid, &err);
-      g_assert_no_error (err);
-      g_assert_true (ok);
 
-      g_assert_false (bolt_domain_bootacl_contains (dom, uuid));
-
-      have = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
-      g_assert_no_error (err);
-      g_assert_nonnull (have);
+      test_bootacl_del_uuid (tt, dom, uuid);
+      test_bootacl_read_acl (tt, &have);
 
       g_assert_null (bolt_strv_contains (have, uuid));
 
@@ -699,20 +667,12 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
 
   /* now we set a bunch in one-go */
   for (guint i = 0; i < tt->slots; i++)
-    {
-      char *uuid = NULL;
-
-      uuid = g_strdup_printf ("deadbab%x-cccc-0100-ffff-ffffffffffff", i);
-      bolt_set_strdup (&acl[i], uuid);
-    }
+    bolt_set_strdup_printf (&acl[i], "deadbab%x-cccc-0100-ffff-ffffffffffff", i);
 
   changeset.fired = FALSE;
   ok = bolt_domain_bootacl_set (dom, acl, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
-
-  g_clear_pointer (&sysacl, g_strfreev);
-  sysacl = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
 
   /* check we got removed signals for all of them */
   g_assert_true (changeset.fired);
@@ -720,9 +680,8 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
   g_assert_cmpuint (g_hash_table_size (changeset.changes), ==, slots);
   changeset.fired = FALSE;
 
-  for (guint i = 0; i < slots; i++)
-    g_debug ("bootacl[%u] = %s [%s]", i, sysacl[i], acl[i]);
-
+  dump_strv (sysacl, "sysacl ");
+  test_bootacl_read_acl (tt, &sysacl);
   bolt_assert_strv_equal (acl, sysacl, -1);
 
   /* check that if we set the same bootacl as
@@ -853,10 +812,8 @@ bootacl_allocator (BoltDomain *domain,
 static void
 test_bootacl_allocate (TestBootacl *tt, gconstpointer user)
 {
-  g_autoptr(GError) err = NULL;
   GStrv acl = tt->acl;
   BoltDomain *dom = tt->dom;
-  gboolean ok;
 
   g_signal_connect (dom, "bootacl-alloc",
                     G_CALLBACK (bootacl_allocator),
@@ -866,22 +823,11 @@ test_bootacl_allocate (TestBootacl *tt, gconstpointer user)
     {
       g_auto(GStrv) have = NULL;
       GStrv domacl;
-      char *uuid = NULL;
 
-      uuid = g_strdup_printf ("deadbab%x-0200-0100-ffff-ffffffffffff", i);
-      bolt_set_strdup (&acl[0], uuid);
+      test_bootacl_add_uuid (tt, dom, 0, "deadbab%x-0200-0100-ffff-ffffffffffff", i);
+      test_bootacl_read_acl (tt, &have);
 
-      ok = bolt_domain_bootacl_add (dom, uuid, &err);
-      g_assert_no_error (err);
-      g_assert_true (ok);
-
-      g_assert_true (bolt_domain_bootacl_contains (dom, uuid));
-
-      have = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
-      g_assert_no_error (err);
-      g_assert_nonnull (have);
-
-      g_assert_cmpstr (have[0], ==, uuid);
+      g_assert_cmpstr (have[0], ==, acl[0]);
       bolt_assert_strv_equal (acl, have, -1);
 
       domacl = bolt_domain_get_bootacl (dom);
