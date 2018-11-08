@@ -349,6 +349,17 @@ test_bootacl_read_acl (TestBootacl *tt, GStrv *acl)
 }
 
 static void
+test_bootacl_write_acl (TestBootacl *tt, GStrv acl)
+{
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+
+  ok = mock_sysfs_domain_bootacl_set (tt->sysfs, tt->dom_sysid, acl, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+}
+
+static void
 test_bootacl_connect_and_verify (TestBootacl *tt,
                                  BoltDomain  *dom,
                                  GStrv       *acl)
@@ -522,14 +533,12 @@ on_bootacl_changed (BoltDomain *dom,
 static void
 test_bootacl_update_udev (TestBootacl *tt, gconstpointer user)
 {
-  g_autoptr(GError) err = NULL;
   GStrv acl = tt->acl;
   BoltDomain *dom = tt->dom;
   guint slots = tt->slots;
   const char *syspath;
   guint n_free, n_used;
   guint n_signals = 0;
-  gboolean ok;
   AclChangeSet changeset = {FALSE, NULL, FALSE, };
 
   syspath = mock_sysfs_domain_get_syspath (tt->sysfs, tt->dom_sysid);
@@ -555,9 +564,7 @@ test_bootacl_update_udev (TestBootacl *tt, gconstpointer user)
       uuid = g_strdup_printf ("deadbab%x-0200-0100-ffff-ffffffffffff", i);
       bolt_set_str (&acl[i], uuid);
 
-      ok = mock_sysfs_domain_bootacl_set (tt->sysfs, tt->dom_sysid, acl, &err);
-      g_assert_no_error (err);
-      g_assert_true (ok);
+      test_bootacl_write_acl (tt, acl);
 
       udev = udev_new ();
       ud = udev_device_new_from_syspath (udev, syspath);
@@ -743,9 +750,7 @@ test_bootacl_update_offline (TestBootacl *tt, gconstpointer user)
       bolt_set_strdup_printf (&acl[i], "deadbab%x-0200-0100-ffff-ffffffffffff", i);
     }
   /*    write the external modifications */
-  ok = mock_sysfs_domain_bootacl_set (tt->sysfs, tt->dom_sysid, sysacl, &err);
-  g_assert_no_error (err);
-  g_assert_true (ok);
+  test_bootacl_write_acl (tt, sysacl);
 
   /*   connect, and make sure we have sync */
   test_bootacl_connect_and_verify (tt, dom, &sysacl);
@@ -780,9 +785,7 @@ test_bootacl_update_offline (TestBootacl *tt, gconstpointer user)
   test_bootacl_del_uuid (tt, dom, acl[k]);
 
   /*    write the external modifications */
-  ok = mock_sysfs_domain_bootacl_set (tt->sysfs, tt->dom_sysid, sysacl, &err);
-  g_assert_no_error (err);
-  g_assert_true (ok);
+  test_bootacl_write_acl (tt, sysacl);
 
   /*   connect, and make sure we have sync */
   test_bootacl_connect_and_verify (tt, dom, &sysacl);
