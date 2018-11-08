@@ -44,6 +44,12 @@ G_BEGIN_DECLS
     (b) = t__;                          \
   } G_STMT_END
 
+#define bolt_steal(ptr, none_value) ({  \
+    typeof (*(ptr)) t__ = *(ptr);       \
+    *(ptr) = (none_value);              \
+    t__;                                \
+    })
+
 /* *INDENT-ON* */
 
 #define bolt_cleanup(x) __attribute__((cleanup (x)))
