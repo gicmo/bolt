@@ -319,6 +319,120 @@ test_bootacl_tear_down (TestBootacl *tt, gconstpointer user)
 
 
 static void
+dump_strv (GStrv strv, const char *prefix)
+{
+  for (guint i = 0; strv[i]; i++)
+    g_print ("%s[%u] %s\n", prefix, i, strv[i]);
+}
+
+static void
+test_bootacl_connect_domain (TestBootacl *tt, BoltDomain *dom)
+{
+  g_autoptr(udev_device) udevice = NULL;
+  const char *syspath;
+
+  syspath = mock_sysfs_domain_get_syspath (tt->sysfs, tt->dom_sysid);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+  bolt_domain_connected (dom, udevice);
+}
+
+static void
+test_bootacl_read_acl (TestBootacl *tt, GStrv *acl)
+{
+  g_autoptr(GError) err = NULL;
+  g_clear_pointer (acl, g_strfreev);
+
+  *acl = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (*acl);
+}
+
+static void
+test_bootacl_connect_and_verify (TestBootacl *tt,
+                                 BoltDomain  *dom,
+                                 GStrv       *acl)
+{
+  g_auto(GStrv) sysacl = NULL;
+  GStrv have = NULL;
+
+  test_bootacl_connect_domain (tt, dom);
+  test_bootacl_read_acl (tt, &sysacl);
+
+  dump_strv (sysacl, "sysacl ");
+  dump_strv (tt->acl, "acl ");
+
+  /* the domain and sysfs */
+  have = bolt_domain_get_bootacl (dom);
+  bolt_assert_strv_equal (have, sysacl, -1);
+
+  /* the domain and what we expect */
+  bolt_assert_strv_equal (have, tt->acl, -1);
+
+  if (acl != NULL)
+    bolt_swap (*acl, sysacl);
+}
+
+static void test_bootacl_add_uuid (TestBootacl *tt,
+                                   BoltDomain  *dom,
+                                   int          slot,
+                                   const char  *uuidfmt,
+                                   ...) G_GNUC_PRINTF (4, 5);
+
+static void
+test_bootacl_add_uuid (TestBootacl *tt,
+                       BoltDomain  *dom,
+                       int          slot,
+                       const char  *uuidfmt,
+                       ...)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *uuid = NULL;
+  GStrv acl = tt->acl;
+  gboolean ok;
+  va_list args;
+
+  va_start (args, uuidfmt);
+
+  uuid = g_strdup_vprintf (uuidfmt, args);
+  ok = bolt_domain_bootacl_add (dom, uuid, &err);
+
+  va_end (args);
+
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_true (bolt_domain_bootacl_contains (dom, uuid));
+
+  if (slot > -1)
+    bolt_swap (acl[slot], uuid);
+}
+
+static void
+test_bootacl_del_uuid (TestBootacl *tt,
+                       BoltDomain  *dom,
+                       const char  *uuid)
+{
+  g_autoptr(GError) err = NULL;
+  GStrv acl = tt->acl;
+  gboolean ok;
+  char **p;
+
+  ok = bolt_domain_bootacl_del (dom, uuid, &err);
+
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_false (bolt_domain_bootacl_contains (dom, uuid));
+
+  p = bolt_strv_contains (acl, uuid);
+  if (p != NULL)
+    bolt_set_strdup (p, "");
+}
+
+/* the bootacl related tests */
+
+static void
 test_bootacl_basic (TestBootacl *tt, gconstpointer user)
 {
   BoltDomain *dom = tt->dom;
@@ -618,118 +732,6 @@ test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
   g_assert_no_error (err);
   g_assert_false (ok);
   g_assert_false (changeset.fired);
-}
-
-static void
-dump_strv (GStrv strv, const char *prefix)
-{
-  for (guint i = 0; strv[i]; i++)
-    g_print ("%s[%u] %s\n", prefix, i, strv[i]);
-}
-
-static void
-test_bootacl_connect_domain (TestBootacl *tt, BoltDomain *dom)
-{
-  g_autoptr(udev_device) udevice = NULL;
-  const char *syspath;
-
-  syspath = mock_sysfs_domain_get_syspath (tt->sysfs, tt->dom_sysid);
-  udevice = udev_device_new_from_syspath (tt->udev, syspath);
-  bolt_domain_connected (dom, udevice);
-}
-
-static void
-test_bootacl_read_acl (TestBootacl *tt, GStrv *acl)
-{
-  g_autoptr(GError) err = NULL;
-  g_clear_pointer (acl, g_strfreev);
-
-  *acl = mock_sysfs_domain_bootacl_get (tt->sysfs, tt->dom_sysid, &err);
-
-  g_assert_no_error (err);
-  g_assert_nonnull (*acl);
-}
-
-static void
-test_bootacl_connect_and_verify (TestBootacl *tt,
-                                 BoltDomain  *dom,
-                                 GStrv       *acl)
-{
-  g_auto(GStrv) sysacl = NULL;
-  GStrv have = NULL;
-
-  test_bootacl_connect_domain (tt, dom);
-  test_bootacl_read_acl (tt, &sysacl);
-
-  dump_strv (sysacl, "sysacl ");
-  dump_strv (tt->acl, "acl ");
-
-  /* the domain and sysfs */
-  have = bolt_domain_get_bootacl (dom);
-  bolt_assert_strv_equal (have, sysacl, -1);
-
-  /* the domain and what we expect */
-  bolt_assert_strv_equal (have, tt->acl, -1);
-
-  if (acl != NULL)
-    bolt_swap (*acl, sysacl);
-}
-
-static void test_bootacl_add_uuid (TestBootacl *tt,
-                                   BoltDomain  *dom,
-                                   int          slot,
-                                   const char  *uuidfmt,
-                                   ...) G_GNUC_PRINTF (4, 5);
-
-static void
-test_bootacl_add_uuid (TestBootacl *tt,
-                       BoltDomain  *dom,
-                       int          slot,
-                       const char  *uuidfmt,
-                       ...)
-{
-  g_autoptr(GError) err = NULL;
-  g_autofree char *uuid = NULL;
-  GStrv acl = tt->acl;
-  gboolean ok;
-  va_list args;
-
-  va_start (args, uuidfmt);
-
-  uuid = g_strdup_vprintf (uuidfmt, args);
-  ok = bolt_domain_bootacl_add (dom, uuid, &err);
-
-  va_end (args);
-
-  g_assert_no_error (err);
-  g_assert_true (ok);
-
-  g_assert_true (bolt_domain_bootacl_contains (dom, uuid));
-
-  if (slot > -1)
-    bolt_swap (acl[slot], uuid);
-}
-
-static void
-test_bootacl_del_uuid (TestBootacl *tt,
-                       BoltDomain  *dom,
-                       const char  *uuid)
-{
-  g_autoptr(GError) err = NULL;
-  GStrv acl = tt->acl;
-  gboolean ok;
-  char **p;
-
-  ok = bolt_domain_bootacl_del (dom, uuid, &err);
-
-  g_assert_no_error (err);
-  g_assert_true (ok);
-
-  g_assert_false (bolt_domain_bootacl_contains (dom, uuid));
-
-  p = bolt_strv_contains (acl, uuid);
-  if (p != NULL)
-    bolt_set_strdup (p, "");
 }
 
 static void
