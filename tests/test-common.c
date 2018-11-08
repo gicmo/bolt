@@ -1048,6 +1048,30 @@ test_list_nh (TestRng *tt, gconstpointer user_data)
 }
 
 static void
+test_steal (TestRng *tt, gconstpointer user_data)
+{
+  unsigned int arr[] = {0, 1, 2};
+  unsigned int uit;
+  char c = ' ';
+  char *ptr = &c;
+  char *ref;
+  int ifd = 42;
+  int chk;
+
+  uit = bolt_steal (arr + 1, 0);
+  g_assert_cmpuint (uit, ==, 1);
+  g_assert_cmpuint (arr[1], ==, 0);
+
+  ref = bolt_steal (&ptr, NULL);
+  g_assert_true (ptr == NULL);
+  g_assert_true (ref == &c);
+
+  chk = bolt_steal (&ifd, -1);
+  g_assert_cmpint (chk, ==, 42);
+  g_assert_cmpint (ifd, ==, -1);
+}
+
+static void
 test_swap (TestRng *tt, gconstpointer user_data)
 {
   int ia = 0, ib = 1;
@@ -1202,6 +1226,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_list_nh,
+              NULL);
+
+  g_test_add ("/common/macro/steal",
+              TestRng,
+              NULL,
+              NULL,
+              test_steal,
               NULL);
 
   g_test_add ("/common/macro/swap",
