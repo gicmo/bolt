@@ -148,6 +148,118 @@ test_enums (TestRng *tt, gconstpointer user_data)
 }
 
 static void
+test_error (TestRng *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) failed = NULL;
+  g_autoptr(GError) notfound = NULL;
+  g_autoptr(GError) exists = NULL;
+  g_autoptr(GError) inval = NULL;
+  g_autoptr(GError) cancelled = NULL;
+  g_autoptr(GError) badstate = NULL;
+  g_autoptr(GError) target = NULL;
+  g_autoptr(GError) source = NULL;
+  g_autoptr(GError) noerror = NULL;
+  g_autoptr(GError) buserr = NULL;
+  g_autofree char *remote = NULL;
+  gboolean ok;
+
+  g_set_error_literal (&failed, BOLT_ERROR, BOLT_ERROR_FAILED,
+                       "operation failed");
+
+  /* bolt_err_notfound */
+  g_set_error_literal (&notfound, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                       "not found");
+
+  g_assert_false (bolt_err_notfound (failed));
+  g_assert_true (bolt_err_notfound (notfound));
+
+  /* bolt_err_exists */
+  g_set_error_literal (&exists, G_IO_ERROR, G_IO_ERROR_EXISTS,
+                       "already exists");
+
+  g_assert_false (bolt_err_exists (failed));
+  g_assert_true (bolt_err_exists (exists));
+
+  /* (bolt_err_inval */
+  g_set_error_literal (&inval, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                       "invalid argument");
+
+  g_assert_false (bolt_err_inval (failed));
+  g_assert_true (bolt_err_inval (inval));
+
+  /* bolt_err_cancelled */
+  g_set_error_literal (&cancelled, G_IO_ERROR, G_IO_ERROR_CANCELLED,
+                       "cancelled");
+
+  g_assert_false (bolt_err_cancelled (failed));
+  g_assert_true (bolt_err_cancelled (cancelled));
+
+  /* bolt_err_badstate */
+  g_set_error_literal (&badstate, BOLT_ERROR, BOLT_ERROR_BADSTATE,
+                       "bad state");
+
+  g_assert_false (bolt_err_badstate (failed));
+  g_assert_true (bolt_err_badstate (badstate));
+
+
+  /* bolt_error_propagate */
+  ok = bolt_error_propagate (NULL, &noerror);
+  g_assert_true (ok);
+
+  g_assert_no_error (target);
+  ok = bolt_error_propagate (&target, &noerror);
+  g_assert_no_error (target);
+  g_assert_true (ok);
+
+  g_set_error_literal (&source, BOLT_ERROR, BOLT_ERROR_FAILED,
+                       "operation failed");
+  g_assert_no_error (target);
+  g_assert_error (source, BOLT_ERROR, BOLT_ERROR_FAILED);
+
+  ok = bolt_error_propagate (&target, &source);
+  g_assert_no_error (source);
+  g_assert_error (target, BOLT_ERROR, BOLT_ERROR_FAILED);
+  g_assert_false (ok);
+
+  /*     and back */
+  ok = bolt_error_propagate (&source, &target);
+  g_assert_no_error (target);
+  g_assert_error (source, BOLT_ERROR, BOLT_ERROR_FAILED);
+  g_assert_false (ok);
+
+  /* bolt_error_propagate_stripped */
+  ok = bolt_error_propagate_stripped (NULL, &noerror);
+  g_assert_true (ok);
+
+  g_assert_no_error (target);
+  ok = bolt_error_propagate_stripped (&target, &noerror);
+  g_assert_no_error (target);
+  g_assert_true (ok);
+
+  /*     normal error */
+  ok = bolt_error_propagate_stripped (&target, &source);
+  g_assert_no_error (source);
+  g_assert_error (target, BOLT_ERROR, BOLT_ERROR_FAILED);
+  g_assert_false (ok);
+
+  g_clear_pointer (&target, g_error_free);
+
+  /*     bus error */
+  g_set_error_literal (&buserr, BOLT_ERROR, BOLT_ERROR_BADKEY,
+                       "such a bad, bad key");
+
+  remote = g_dbus_error_get_remote_error (buserr);
+  source = g_dbus_error_new_for_dbus_error (remote, buserr->message);
+  g_assert_error (source, BOLT_ERROR, BOLT_ERROR_BADKEY);
+  g_assert_true (g_dbus_error_is_remote_error (source));
+
+  ok = bolt_error_propagate_stripped (&target, &source);
+  g_assert_error (target, BOLT_ERROR, BOLT_ERROR_BADKEY);
+  g_assert_false (g_dbus_error_is_remote_error (target));
+  g_assert_cmpstr (target->message, ==, buserr->message);
+}
+
+static void
 test_flags (TestRng *tt, gconstpointer user_data)
 {
   g_autoptr(GFlagsClass) klass;
@@ -1107,6 +1219,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_enums,
+              NULL);
+
+  g_test_add ("/common/error",
+              TestRng,
+              NULL,
+              NULL,
+              test_error,
               NULL);
 
   g_test_add ("/common/flags",
