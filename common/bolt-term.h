@@ -33,6 +33,8 @@ G_BEGIN_DECLS
 #define ANSI_HIGHLIGHT_BLACK "\x1B[0;1;30m"
 #define ANSI_HIGHLIGHT_RED "\x1B[0;1;31m"
 
+int              bolt_is_fancy_terminal (void);
+
 const char *     bolt_color (const char *color);
 
 typedef enum {

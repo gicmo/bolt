@@ -26,8 +26,8 @@
 #include <string.h>
 #include <unistd.h>
 
-static int
-fancy_terminal (void)
+int
+bolt_is_fancy_terminal (void)
 {
   const char *val;
 
@@ -47,7 +47,7 @@ bolt_color (const char *color)
   static gint on = -1;
 
   if (G_UNLIKELY (on == -1))
-    on = fancy_terminal ();
+    on = bolt_is_fancy_terminal ();
 
   return on ? color : "";
 }
@@ -90,7 +90,7 @@ bolt_glyph (BoltGlyph g)
   /* TODO: check for utf-8 support */
   if (G_UNLIKELY (glyph_table == NULL))
     {
-      if (fancy_terminal ())
+      if (bolt_is_fancy_terminal ())
         glyph_table = utf8_glphys;
       else
         glyph_table = ansi_glphys;
