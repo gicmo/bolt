@@ -30,7 +30,9 @@
 
 #include <gio/gio.h>
 
+#include <errno.h>
 #include <locale.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -38,6 +40,38 @@
 static BoltManager *manager = NULL;
 static GMainLoop *main_loop = NULL;
 static guint name_owner_id = 0;
+
+
+static void
+daemon_shutdown (void)
+{
+  g_clear_object (&manager);
+  g_bus_unown_name (name_owner_id);
+  g_main_loop_quit (main_loop);
+}
+
+static void
+handle_sigterm (int sig)
+{
+  bolt_debug (LOG_TOPIC ("signal"), "got SIGTERM; shutting down...");
+  daemon_shutdown ();
+}
+
+static void
+install_signal_hanlder (void)
+{
+  struct sigaction action;
+  int r;
+
+  bolt_debug (LOG_TOPIC ("signal"), "installing SIGTERM handler");
+  memset (&action, 0, sizeof (struct sigaction));
+  action.sa_handler = handle_sigterm;
+
+  r = sigaction (SIGTERM, &action, NULL);
+  if (r != 0)
+    bolt_warn (LOG_TOPIC ("signal"), "failed installing SIGTERM hanlder: %s",
+               g_strerror (errno));
+}
 
 typedef struct _LogCfg
 {
@@ -127,10 +161,7 @@ on_name_lost (GDBusConnection *connection,
               gpointer         user_data)
 {
   bolt_debug (LOG_TOPIC ("dbus"), "name lost; shutting down...");
-
-  g_clear_object (&manager);
-  g_bus_unown_name (name_owner_id);
-  g_main_loop_quit (main_loop);
+  daemon_shutdown ();
 }
 
 int
@@ -152,6 +183,8 @@ main (int argc, char **argv)
     { "version", 0, 0, G_OPTION_ARG_NONE, &show_version, "Print daemon version.", NULL},
     { NULL }
   };
+
+  install_signal_hanlder ();
 
   setlocale (LC_ALL, "");
   g_setenv ("GIO_USE_VFS", "local", TRUE);
