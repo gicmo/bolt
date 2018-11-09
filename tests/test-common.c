@@ -27,6 +27,7 @@
 #include "bolt-list.h"
 #include "bolt-rnd.h"
 #include "bolt-str.h"
+#include "bolt-time.h"
 #include "mock-sysfs.h"
 
 #include "test-enums.h"
@@ -1103,6 +1104,15 @@ test_strv_rotate_left (TestRng *tt, gconstpointer user_data)
 }
 
 static void
+test_time (TestRng *tt, gconstpointer user_data)
+{
+  g_autofree char *str = NULL;
+
+  str = bolt_epoch_format (0, "%Y");
+  g_assert_cmpstr (str, ==, "1970");
+}
+
+static void
 test_list_nh (TestRng *tt, gconstpointer user_data)
 {
   BoltList n[10];
@@ -1338,6 +1348,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_strv_rotate_left,
+              NULL);
+
+  g_test_add ("/common/time",
+              TestRng,
+              NULL,
+              NULL,
+              test_time,
               NULL);
 
   g_test_add ("/common/list/nh",
