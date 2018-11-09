@@ -27,6 +27,8 @@ bolt_epoch_format (guint64 seconds, const char *format)
 {
   g_autoptr(GDateTime) dt = NULL;
 
+  g_return_val_if_fail (format != NULL, NULL);
+
   dt = g_date_time_new_from_unix_utc ((gint64) seconds);
 
   if (dt == NULL)
