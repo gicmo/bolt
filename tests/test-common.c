@@ -27,6 +27,7 @@
 #include "bolt-list.h"
 #include "bolt-rnd.h"
 #include "bolt-str.h"
+#include "bolt-term.h"
 #include "bolt-time.h"
 #include "mock-sysfs.h"
 
@@ -1104,6 +1105,32 @@ test_strv_rotate_left (TestRng *tt, gconstpointer user_data)
 }
 
 static void
+test_term_fancy (TestRng *tt, gconstpointer user_data)
+{
+  if (bolt_is_fancy_terminal () == 0)
+    {
+      g_test_skip ("Terminal is not fancy");
+      return;
+    }
+
+  g_assert_cmpstr (bolt_color (ANSI_NORMAL), !=, "");
+  g_assert_cmpstr (bolt_glyph (WARNING_SIGN), !=, "");
+}
+
+static void
+test_term_plain (TestRng *tt, gconstpointer user_data)
+{
+  if (bolt_is_fancy_terminal () != 0)
+    {
+      g_test_skip ("Terminal is too fancy");
+      return;
+    }
+
+  g_assert_cmpstr (bolt_color (ANSI_NORMAL), ==, "");
+  g_assert_cmpstr (bolt_glyph (WARNING_SIGN), !=, "");
+}
+
+static void
 test_time (TestRng *tt, gconstpointer user_data)
 {
   g_autofree char *str = NULL;
@@ -1348,6 +1375,20 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_strv_rotate_left,
+              NULL);
+
+  g_test_add ("/common/term/fancy",
+              TestRng,
+              NULL,
+              NULL,
+              test_term_fancy,
+              NULL);
+
+  g_test_add ("/common/term/plain",
+              TestRng,
+              NULL,
+              NULL,
+              test_term_plain,
               NULL);
 
   g_test_add ("/common/time",
