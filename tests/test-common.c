@@ -324,6 +324,7 @@ test_flags (TestRng *tt, gconstpointer user_data)
 
   /* handle invalid values */
   klass = g_type_class_ref (BOLT_TYPE_KITT_FLAGS);
+  g_assert_nonnull (klass);
 
   ok = bolt_flags_class_from_string (klass, NULL, &val, &err);
   g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
@@ -336,6 +337,11 @@ test_flags (TestRng *tt, gconstpointer user_data)
   g_clear_error (&err);
 
   str = bolt_flags_class_to_string (klass, 0xFFFF, &err);
+  g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
+  g_assert_null (str);
+  g_clear_error (&err);
+
+  str = bolt_flags_class_to_string (klass, BOLT_KITT_SKI_MODE << 1, &err);
   g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
   g_assert_null (str);
   g_clear_error (&err);
