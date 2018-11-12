@@ -586,10 +586,13 @@ static void
 test_io_errors (TestIO *tt, gconstpointer user_data)
 {
   g_autoptr(GError) err = NULL;
+  g_autoptr(GFile) empty_file = NULL;
   g_autoptr(DIR) root = NULL;
   g_autoptr(DIR) dp = NULL;
   g_autofree char *noexist = NULL;
   g_autofree char *subdir = NULL;
+  g_autofree char *rdonly = NULL;
+  g_autofree char *empty = NULL;
   g_autofree char *fifo = NULL;
   g_autofree char *data = NULL;
   bolt_autoclose int to = -1;
@@ -608,6 +611,20 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
 
   noexist = g_build_filename (tt->path, "NONEXISTENT", NULL);
   subdir = g_build_filename (tt->path, "subdir", NULL);
+
+  rdonly = g_build_filename (tt->path, "readonly", NULL);
+  ok = g_file_set_contents (rdonly, "Hallo Welt", -1, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  r = chmod (rdonly, 0400);
+  g_assert_cmpint (r, >, -1);
+
+  empty = g_build_filename (tt->path, "empty", NULL);
+  empty_file = g_file_new_for_path (empty);
+  ok = bolt_fs_touch (empty_file, 0, 0, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
 
   /* error handling*/
   fd = bolt_open (noexist, O_RDONLY | O_CLOEXEC | O_NOCTTY, 0, &err);
@@ -670,6 +687,12 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
   g_assert_null (dp);
   g_clear_pointer (&err, g_error_free);
 
+  /* closedir */
+  ok = bolt_closedir (NULL, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
   /* rmdir */
   ok = bolt_rmdir (noexist, &err);
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
@@ -700,15 +723,29 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
   g_assert_null (data);
   g_clear_pointer (&err, g_error_free);
 
+  data = bolt_read_value_at (dirfd (root), "empty", &err);
+  g_assert_no_error (err);
+  g_assert_cmpstr (data, ==, "");
+
   /* write char at */
   ok = bolt_write_char_at (dirfd (root), "NONEXISTENT", 'c', &err);
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
   g_assert_false (ok);
   g_clear_pointer (&err, g_error_free);
 
+  ok = bolt_write_char_at (dirfd (root), "readonly", 'c', &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
   /* read_int_at */
   ok = bolt_read_int_at (dirfd (root), "NONEXISTENT", &iv, &err);
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  ok = bolt_read_int_at (dirfd (root), "readonly", &iv, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_FAILED);
   g_assert_false (ok);
   g_clear_pointer (&err, g_error_free);
 
@@ -724,9 +761,21 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
   g_assert_false (ok);
   g_clear_pointer (&err, g_error_free);
 
+  /* fstat */
+  ok = bolt_fstat (-1, &st, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_FAILED);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
   /* fstatat */
   ok = bolt_fstatat (dirfd (root), "NONEXISTENT", &st, 0, &err);
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* fdatasync */
+  ok = bolt_fdatasync (-1, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_FAILED);
   g_assert_false (ok);
   g_clear_pointer (&err, g_error_free);
 
@@ -747,7 +796,6 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
   g_assert_false (ok);
   g_clear_pointer (&err, g_error_free);
-
 }
 
 static void
