@@ -733,10 +733,15 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
   g_assert_false (ok);
   g_clear_pointer (&err, g_error_free);
 
-  ok = bolt_write_char_at (dirfd (root), "readonly", 'c', &err);
-  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED);
-  g_assert_false (ok);
-  g_clear_pointer (&err, g_error_free);
+  if (geteuid () != 0)
+    {
+      /* if we run as root, maybe inside a container, we will
+       *  be able o do that anyway so skip it in that case */
+      ok = bolt_write_char_at (dirfd (root), "readonly", 'c', &err);
+      g_assert_error (err, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED);
+      g_assert_false (ok);
+      g_clear_pointer (&err, g_error_free);
+    }
 
   /* read_int_at */
   ok = bolt_read_int_at (dirfd (root), "NONEXISTENT", &iv, &err);
@@ -960,6 +965,11 @@ test_fs (TestIO *tt, gconstpointer user_data)
   ok = bolt_fs_make_parent_dirs (target, &error);
   g_assert_no_error (error);
   g_assert_true (ok);
+
+  if (geteuid () == 0)
+    /* if we run as root, maybe inside a container, we will
+     *  be able o do that anyway so skip it in that case */
+    return;
 
   /* check error checking */
   r = stat (tt->path, &st);
