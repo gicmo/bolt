@@ -1009,11 +1009,14 @@ touch_and_compare (GFile *target, guint64 tp)
 static void
 test_fs_touch (TestIO *tt, gconstpointer user_data)
 {
+  g_autoptr(GFileInfo) info = NULL;
+  g_autoptr(GError) err = NULL;
   g_autoptr(GFile) base = NULL;
   g_autoptr(GFile) target = NULL;
   gboolean ok;
   guint64 now;
   guint64 tp;
+  guint64 ts;
 
   base = g_file_new_for_path (tt->path);
   target = g_file_get_child (base, "this");
@@ -1026,6 +1029,42 @@ test_fs_touch (TestIO *tt, gconstpointer user_data)
 
   tp = 626648700;
   touch_and_compare (target, tp);
+
+  /* omit one of them, start with atime */
+  ok = bolt_fs_touch (target, 0, 42, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  info = g_file_query_info (target, TIME_QI, 0, NULL, &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (info);
+
+  ts = g_file_info_get_attribute_uint64 (info, "time::access");
+  g_assert_cmpuint (ts, ==, tp);
+
+  ts = g_file_info_get_attribute_uint64 (info, "time::modified");
+  g_assert_cmpuint (ts, ==, 42);
+
+  /* omit mtime */
+  ok = bolt_fs_touch (target, 42, 0, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_clear_object (&info);
+  info = g_file_query_info (target, TIME_QI, 0, NULL, &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (info);
+
+  ts = g_file_info_get_attribute_uint64 (info, "time::access");
+  g_assert_cmpuint (ts, ==, 42);
+
+  /* mtime 0 means ignore, effectively meaning now, for touch */
+  ts = g_file_info_get_attribute_uint64 (info, "time::modified");
+  g_assert_cmpuint (ts, >=, now);
+  now = (guint64) g_get_real_time () / G_USEC_PER_SEC;
+  g_assert_cmpuint (ts, <=, now);
 }
 
 static void
