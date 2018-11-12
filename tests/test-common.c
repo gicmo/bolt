@@ -70,10 +70,14 @@ test_enums (TestRng *tt, gconstpointer user_data)
     gint        value;
 
   } ett[] = {
-    {BOLT_TYPE_SECURITY, "none",   BOLT_SECURITY_NONE},
-    {BOLT_TYPE_SECURITY, "dponly", BOLT_SECURITY_DPONLY},
-    {BOLT_TYPE_SECURITY, "user",   BOLT_SECURITY_USER},
-    {BOLT_TYPE_SECURITY, "secure", BOLT_SECURITY_SECURE},
+    {BOLT_TYPE_SECURITY,  "none",    BOLT_SECURITY_NONE},
+    {BOLT_TYPE_SECURITY,  "dponly",  BOLT_SECURITY_DPONLY},
+    {BOLT_TYPE_SECURITY,  "user",    BOLT_SECURITY_USER},
+    {BOLT_TYPE_SECURITY,  "secure",  BOLT_SECURITY_SECURE},
+    {BOLT_TYPE_TEST_ENUM, "unknown", BOLT_TEST_UNKNOWN},
+    {BOLT_TYPE_TEST_ENUM, "one",     BOLT_TEST_ONE},
+    {BOLT_TYPE_TEST_ENUM, "two",     BOLT_TEST_TWO},
+    {BOLT_TYPE_TEST_ENUM, "three",   BOLT_TEST_THREE},
   };
 
   for (guint i = 0; i < G_N_ELEMENTS (ett); i++)
@@ -104,6 +108,11 @@ test_enums (TestRng *tt, gconstpointer user_data)
   g_assert_cmpuint (bolt_security_from_string ("dponly"), ==, BOLT_SECURITY_DPONLY);
   g_assert_cmpuint (bolt_security_from_string ("user"), ==, BOLT_SECURITY_USER);
   g_assert_cmpuint (bolt_security_from_string ("secure"), ==, BOLT_SECURITY_SECURE);
+
+  ok = bolt_enum_class_validate (NULL, 0, &err);
+  g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
 
   klass = g_type_class_ref (BOLT_TYPE_SECURITY);
 
@@ -144,6 +153,12 @@ test_enums (TestRng *tt, gconstpointer user_data)
   g_clear_error (&err);
 
   val = bolt_enum_from_string (BOLT_TYPE_SECURITY, "ILEDELI", &err);
+  g_assert_nonnull (err);
+  g_assert_cmpint (val, ==, -1);
+  g_clear_error (&err);
+
+  /* not a valid enum type */
+  val = bolt_enum_from_string (BOLT_TYPE_KITT_FLAGS, "ILEDELI", &err);
   g_assert_nonnull (err);
   g_assert_cmpint (val, ==, -1);
   g_clear_error (&err);
