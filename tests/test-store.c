@@ -153,8 +153,7 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_assert_no_error (error);
 
   key = bolt_key_new ();
-  g_assert_no_error (error);
-  g_assert_true (ok);
+  g_assert_nonnull (key);
 
   ok = bolt_store_put_device (tt->store, dev, BOLT_POLICY_MANUAL, key, &error);
   g_assert_no_error (error);
