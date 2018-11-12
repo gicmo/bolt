@@ -369,6 +369,7 @@ test_enums = gnome.mkenums_simple(
   sources: ['tests/test-enums.h'])
 
 tests = [
+  ['test-auth', [libdaemon]],
   ['test-common', [], test_enums],
   ['test-exported', [libdaemon], [test_resources]],
   ['test-logging', [libdaemon]],
