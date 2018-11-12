@@ -25,6 +25,7 @@
 #include "bolt-io.h"
 #include "bolt-str.h"
 
+#include "bolt-config.h"
 #include "bolt-store.h"
 
 #include "bolt-daemon-resource.h"
@@ -96,11 +97,16 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(BoltDevice) stored = NULL;
   g_autoptr(BoltKey) key = NULL;
+  g_autoptr(GFile) root = NULL;
   g_autoptr(GError) error = NULL;
+  g_autofree char *path = NULL;
   char uid[] = "fbc83890-e9bf-45e5-a777-b3728490989c";
   BoltKeyState keystate;
   gboolean ok;
 
+  g_object_get (tt->store, "root", &root, NULL);
+  path = g_file_get_path (root);
+  g_assert_cmpstr (tt->path, ==, path);
 
   dev = g_object_new (BOLT_TYPE_DEVICE,
                       "uid", uid,
@@ -217,6 +223,7 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_assert_no_error (error);
 
   keystate = bolt_store_have_key (tt->store, uid);
+
   g_assert_cmpuint (keystate, ==, 0);
 
   ok = bolt_store_del_key (tt->store, uid, &error);
@@ -226,6 +233,70 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_clear_error (&error);
   g_assert_no_error (error);
 
+}
+
+static void
+test_store_config (TestStore *tt, gconstpointer user_data)
+{
+  g_autoptr(GKeyFile) kf = NULL;
+  g_autoptr(GKeyFile) loaded = NULL;
+  g_autoptr(GError) err = NULL;
+  BoltAuthMode authmode;
+  BoltPolicy policy;
+  gboolean ok;
+  BoltTri tri;
+
+  kf = bolt_store_config_load (tt->store, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_null (kf);
+  g_clear_pointer (&err, g_error_free);
+
+  kf = bolt_config_user_init ();
+  g_assert_nonnull (kf);
+
+  ok = bolt_store_config_save (tt->store, kf, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  loaded = bolt_store_config_load (tt->store, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (loaded);
+
+  tri = bolt_config_load_default_policy (loaded, &policy, &err);
+  g_assert_no_error (err);
+  g_assert (tri == TRI_NO);
+
+  /* */
+  bolt_config_set_auth_mode (kf, "WRONG");
+  ok = bolt_store_config_save (tt->store, kf, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_clear_pointer (&loaded, g_key_file_unref);
+  loaded = bolt_store_config_load (tt->store, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (loaded);
+
+  tri = bolt_config_load_auth_mode (loaded, &authmode, &err);
+  g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
+  g_assert (tri == TRI_ERROR);
+  g_clear_pointer (&err, g_error_free);
+
+  /*  */
+  bolt_config_set_auth_mode (kf, "enabled");
+  ok = bolt_store_config_save (tt->store, kf, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_clear_pointer (&loaded, g_key_file_unref);
+  loaded = bolt_store_config_load (tt->store, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (loaded);
+
+  tri = bolt_config_load_auth_mode (loaded, &authmode, &err);
+  g_assert_no_error (err);
+  g_assert (tri == TRI_YES);
+  g_assert_cmpuint (authmode, ==, BOLT_AUTH_ENABLED);
 }
 
 static void
@@ -609,6 +680,13 @@ main (int argc, char **argv)
               NULL,
               test_store_setup,
               test_store_basic,
+              test_store_tear_down);
+
+  g_test_add ("/daemon/store/config",
+              TestStore,
+              NULL,
+              test_store_setup,
+              test_store_config,
               test_store_tear_down);
 
   g_test_add ("/daemon/store/invalid_data",
