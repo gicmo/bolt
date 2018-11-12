@@ -608,7 +608,6 @@ bolt_fstat (int          fd,
   int code;
   int r;
 
-  g_return_val_if_fail (fd > -1, FALSE);
   g_return_val_if_fail (statbuf != NULL, FALSE);
 
   r = fstat (fd, statbuf);
@@ -661,7 +660,6 @@ bolt_fdatasync (int      fd,
   int code;
   int r;
 
-  g_return_val_if_fail (fd > -1, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   r = fdatasync (fd);
