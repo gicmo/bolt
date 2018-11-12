@@ -806,6 +806,19 @@ test_io_verify (TestIO *tt, gconstpointer user_data)
   g_autofree char *uid_path = NULL;
   gboolean ok;
 
+  /* more preparation*/
+  d = bolt_opendir (tt->path, &error);
+
+  g_assert_nonnull (d);
+  g_assert_no_error (error);
+
+  /* unique_id missing */
+  ok = bolt_verify_uid (dirfd (d), valid_uid, &error);
+  g_assert_false (ok);
+  g_assert_error (error, BOLT_ERROR, BOLT_ERROR_FAILED);
+  g_clear_error (&error);
+
+  /* existing, but wrong value */
   uid_path = g_build_filename (tt->path, "unique_id", NULL);
 
   ok = g_file_set_contents (uid_path,
@@ -814,10 +827,7 @@ test_io_verify (TestIO *tt, gconstpointer user_data)
                             &error);
   g_assert_true (ok);
   g_assert_no_error (error);
-  d = bolt_opendir (tt->path, &error);
 
-  g_assert_nonnull (d);
-  g_assert_no_error (error);
 
   /* must fail */
   ok = bolt_verify_uid (dirfd (d), valid_uid, &error);
