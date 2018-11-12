@@ -97,14 +97,15 @@ bolt_enum_from_string (GType       enum_type,
   const char *name;
   GEnumValue *ev;
 
-  klass = g_type_class_ref (enum_type);
-
-  if (klass == NULL)
+  if (!G_TYPE_IS_ENUM (enum_type))
     {
       g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "could not determine enum class");
+                   "supplied type not an enum type");
       return -1;
     }
+
+  klass = g_type_class_ref (enum_type);
+  g_return_val_if_fail (klass != NULL, -1);
 
   if (string == NULL)
     {
