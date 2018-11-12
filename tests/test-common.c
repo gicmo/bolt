@@ -560,6 +560,174 @@ test_io_tear_down (TestIO *tt, gconstpointer user_data)
 static const char *valid_uid = "f96b4cc77f196068ec454cb6006514c602d1011f47dd275cf5c6b8a47744f049";
 
 static void
+test_io_errors (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(DIR) root = NULL;
+  g_autoptr(DIR) dp = NULL;
+  g_autofree char *noexist = NULL;
+  g_autofree char *subdir = NULL;
+  g_autofree char *fifo = NULL;
+  g_autofree char *data = NULL;
+  bolt_autoclose int to = -1;
+  bolt_autoclose int from = -1;
+  struct stat st;
+  char buffer[256] = {0, };
+  gboolean ok;
+  int fd = -1;
+  int iv;
+  int r;
+
+  /* preparation  */
+  root = bolt_opendir (tt->path, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (root);
+
+  noexist = g_build_filename (tt->path, "NONEXISTENT", NULL);
+  subdir = g_build_filename (tt->path, "subdir", NULL);
+
+  /* error handling*/
+  fd = bolt_open (noexist, O_RDONLY | O_CLOEXEC | O_NOCTTY, 0, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_cmpint (fd, <, 0);
+  g_clear_pointer (&err, g_error_free);
+
+  ok = bolt_close (fd, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_FAILED);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* create a pipe, so we can have some read and write errors
+   * by using the wrong end */
+  fifo = g_build_filename (tt->path, "fifo", NULL);
+  r = bolt_mkfifo (fifo, 0600, &err);
+  g_assert_no_error (err);
+  g_assert_cmpint (r, ==, 0);
+
+  /*     reader */
+  from = bolt_open (fifo, O_RDONLY | O_CLOEXEC | O_NONBLOCK, 0, &err);
+  g_assert_no_error (err);
+  g_assert_cmpint (from, >, -1);
+
+  /*     writer */
+  to = bolt_open (fifo, O_WRONLY | O_CLOEXEC | O_NONBLOCK, 0, &err);
+  g_assert_no_error (err);
+  g_assert_cmpint (to, >, -1);
+
+  ok = bolt_read_all (to, buffer, sizeof (buffer), NULL, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_FAILED);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  ok = bolt_write_all (from, buffer, sizeof (buffer), &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_FAILED);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* ftruncate */
+  ok = bolt_ftruncate (to, 0, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* opendir error checking */
+  dp = bolt_opendir (noexist, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_null (dp);
+  g_clear_pointer (&err, g_error_free);
+
+  /* opendir_at error checking */
+  dp = bolt_opendir_at (dirfd (root), "NONEXISTENT", 0, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_null (dp);
+  g_clear_pointer (&err, g_error_free);
+
+  dp = bolt_opendir_at (dirfd (root), "fifo", 0, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_DIRECTORY);
+  g_assert_null (dp);
+  g_clear_pointer (&err, g_error_free);
+
+  /* rmdir */
+  ok = bolt_rmdir (noexist, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* openat */
+  fd = bolt_openat (dirfd (root), "NONEXISTENT", 0, 0, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_cmpint (fd, <, 0);
+  g_clear_pointer (&err, g_error_free);
+
+  /* unlink error checking  */
+  ok = bolt_unlink (noexist, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* unlink_at */
+  ok = bolt_unlink_at (dirfd (root), "NONEXISTENT", 0, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* read_value_at */
+  data = bolt_read_value_at (dirfd (root), "NONEXISTENT", &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_null (data);
+  g_clear_pointer (&err, g_error_free);
+
+  /* write char at */
+  ok = bolt_write_char_at (dirfd (root), "NONEXISTENT", 'c', &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* read_int_at */
+  ok = bolt_read_int_at (dirfd (root), "NONEXISTENT", &iv, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* pipe error checking */
+  fd = bolt_mkfifo (tt->path, 0600, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_EXISTS);
+  g_assert_cmpint (fd, <, 0);
+  g_clear_pointer (&err, g_error_free);
+
+  /* faddflags */
+  ok = bolt_faddflags (-1, 0, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_FAILED);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* fstatat */
+  ok = bolt_fstatat (dirfd (root), "NONEXISTENT", &st, 0, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* lseek */
+  ok = bolt_lseek (to, 0, SEEK_SET, NULL, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_FAILED);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* rename */
+  ok = bolt_rename (noexist, subdir, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* copy_bytes */
+  ok = bolt_copy_bytes (to, from, 1, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+}
+
+static void
 test_io_verify (TestIO *tt, gconstpointer user_data)
 {
   g_autoptr(GError) error = NULL;
@@ -1278,6 +1446,13 @@ main (int argc, char **argv)
               NULL,
               test_rng,
               NULL);
+
+  g_test_add ("/common/io/errors",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_io_errors,
+              test_io_tear_down);
 
   g_test_add ("/common/io/verify",
               TestIO,
