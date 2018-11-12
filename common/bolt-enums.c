@@ -303,12 +303,6 @@ bolt_status_is_pending (BoltStatus status)
 }
 
 gboolean
-bolt_status_validate (BoltStatus status)
-{
-  return bolt_enum_validate (BOLT_TYPE_STATUS, status, NULL);
-}
-
-gboolean
 bolt_status_is_connected (BoltStatus status)
 {
   return status > BOLT_STATUS_DISCONNECTED;
@@ -324,12 +318,6 @@ const char *
 bolt_security_to_string (BoltSecurity security)
 {
   return bolt_enum_to_string (BOLT_TYPE_SECURITY, security, NULL);
-}
-
-gboolean
-bolt_security_validate (BoltSecurity security)
-{
-  return bolt_enum_validate (BOLT_TYPE_SECURITY, security, NULL);
 }
 
 gboolean
@@ -383,12 +371,6 @@ const char *
 bolt_device_type_to_string (BoltDeviceType type)
 {
   return bolt_enum_to_string (BOLT_TYPE_DEVICE_TYPE, type, NULL);
-}
-
-gboolean
-bolt_device_type_validate (BoltDeviceType type)
-{
-  return bolt_enum_validate (BOLT_TYPE_DEVICE_TYPE, type, NULL);
 }
 
 gboolean

@@ -102,7 +102,6 @@ const char *     bolt_status_to_string (BoltStatus status);
 gboolean         bolt_status_is_authorized (BoltStatus status);
 gboolean         bolt_status_is_connected (BoltStatus status);
 gboolean         bolt_status_is_pending (BoltStatus status);
-gboolean         bolt_status_validate (BoltStatus status);
 
 /**
  * BoltAuthFlags:
@@ -170,7 +169,6 @@ typedef enum {
 
 BoltSecurity     bolt_security_from_string (const char *str);
 const char *     bolt_security_to_string (BoltSecurity security);
-gboolean         bolt_security_validate (BoltSecurity security);
 gboolean         bolt_security_allows_pcie (BoltSecurity security);
 
 /**
@@ -228,7 +226,6 @@ typedef enum {
 
 BoltDeviceType   bolt_device_type_from_string (const char *str);
 const char *     bolt_device_type_to_string (BoltDeviceType type);
-gboolean         bolt_device_type_validate (BoltDeviceType type);
 gboolean         bolt_device_type_is_host (BoltDeviceType type);
 
 /**
