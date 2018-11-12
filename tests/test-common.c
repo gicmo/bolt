@@ -916,9 +916,12 @@ test_fs (TestIO *tt, gconstpointer user_data)
   g_autoptr(GFile) base = NULL;
   g_autoptr(GFile) dir = NULL;
   g_autoptr(GFile) target = NULL;
+  g_autoptr(GFile) other = NULL;
   g_autoptr(GError) error = NULL;
   g_autofree char *path = NULL;
+  struct stat st;
   gboolean ok;
+  int r;
 
   base = g_file_new_for_path (tt->path);
 
@@ -957,6 +960,23 @@ test_fs (TestIO *tt, gconstpointer user_data)
   ok = bolt_fs_make_parent_dirs (target, &error);
   g_assert_no_error (error);
   g_assert_true (ok);
+
+  /* check error checking */
+  r = stat (tt->path, &st);
+  g_assert_cmpint (r, >, -1);
+
+  /*     make dir read only */
+  r = chmod (tt->path, st.st_mode & (~00222));
+  g_assert_cmpint (r, >, -1);
+
+  other = g_file_get_child (base, "this/and/that");
+  ok = bolt_fs_make_parent_dirs (other, &error);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED);
+  g_assert_false (ok);
+
+  /*     and back */
+  r = chmod (tt->path, st.st_mode);
+  g_assert_cmpint (r, >, -1);
 }
 
 #define TIME_QI "time::*"
