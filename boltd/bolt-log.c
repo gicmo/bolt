@@ -38,8 +38,8 @@
 #include <stdio.h>
 
 /* stolen from glib */
-static const char *
-log_level_to_priority (GLogLevelFlags log_level)
+const char *
+bolt_log_level_to_priority (GLogLevelFlags log_level)
 {
   if (log_level & G_LOG_LEVEL_ERROR)
     return "3";
@@ -58,8 +58,8 @@ log_level_to_priority (GLogLevelFlags log_level)
   return "5";
 }
 
-static const char *
-log_level_to_string (GLogLevelFlags log_level)
+const char *
+bolt_log_level_to_string (GLogLevelFlags log_level)
 {
   if (log_level & G_LOG_LEVEL_ERROR)
     return "error";
@@ -404,7 +404,7 @@ bolt_logv (const char    *domain,
   ctx.message->length = -1;
 
   ctx.priority->key = "PRIORITY";
-  ctx.priority->value = log_level_to_priority (level);
+  ctx.priority->value = bolt_log_level_to_priority (level);
   ctx.priority->length = -1;
 
   ctx.domain->key = "GLIB_DOMAIN";
@@ -524,7 +524,7 @@ bolt_log_stdstream (const BoltLogCtx *ctx,
       const char *msg = ctx->error->message;
       if (strlen (message) == 0)
         {
-          const char *lvl = log_level_to_string (log_level);
+          const char *lvl = bolt_log_level_to_string (log_level);
           g_fprintf (out, "%s%s%s", fg, lvl, normal);
         }
       g_fprintf (out, ": %s%s%s", yellow, msg, normal);
@@ -603,7 +603,7 @@ bolt_log_fmt_journal (const BoltLogCtx *ctx,
       const GError *error = ctx->error;
       const char *msg = error->message;
       if (strlen (m) == 0)
-        bolt_cat_printf (&p, &size, "%s", log_level_to_string (log_level));
+        bolt_cat_printf (&p, &size, "%s", bolt_log_level_to_string (log_level));
 
       bolt_cat_printf (&p, &size, ": %s", msg);
     }

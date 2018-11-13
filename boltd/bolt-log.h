@@ -116,6 +116,10 @@ void               bolt_log (const char    *domain,
 
 /* consumer functions */
 
+const char *       bolt_log_level_to_priority (GLogLevelFlags log_level);
+
+const char *       bolt_log_level_to_string (GLogLevelFlags log_level);
+
 typedef struct _BoltLogCtx BoltLogCtx;
 
 BoltLogCtx *       bolt_log_ctx_acquire (const GLogField *fields,
