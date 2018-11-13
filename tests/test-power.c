@@ -112,8 +112,12 @@ test_power_basic (TestPower *tt, gconstpointer user)
   g_autoptr(BoltPower) power = NULL;
   g_autoptr(GError) err = NULL;
   g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(BoltPower) guard_power = NULL;
   g_autofree char *guard_id = NULL;
   g_autofree char *guard_who = NULL;
+  g_autofree char *guard_path = NULL;
+  g_autofree char *guard_fifo = NULL;
+  gulong guard_pid;
   BoltPowerState state;
   gboolean supported;
   gboolean on;
@@ -171,13 +175,24 @@ test_power_basic (TestPower *tt, gconstpointer user)
   g_object_get (guard,
                 "id", &guard_id,
                 "who", &guard_who,
+                "power", &guard_power,
+                "path", &guard_path,
+                "pid", &guard_pid,
+                "fifo", &guard_fifo,
                 NULL);
 
   g_assert_nonnull (guard_id);
   g_assert_nonnull (guard_who);
+  g_assert_nonnull (guard_power);
+  g_assert_nonnull (guard_path);
 
   g_assert_cmpstr (guard_id, ==, "1");
   g_assert_cmpstr (guard_who, ==, "boltd");
+  g_assert_cmpuint (guard_pid, ==, getpid ());
+
+  g_assert_cmpstr (guard_id, ==, bolt_power_guard_get_id (guard));
+  g_assert_cmpstr (guard_who, ==, bolt_power_guard_get_who (guard));
+  g_assert_cmpuint (guard_pid, ==, bolt_power_guard_get_pid (guard));
 
   /* set of OFF */
   g_clear_object (&guard);
