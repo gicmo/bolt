@@ -127,11 +127,11 @@ bolt_power_guard_get_property (GObject    *object,
       break;
 
     case PROP_PATH:
-      g_value_set_object (value, guard->path);
+      g_value_set_string (value, guard->path);
       break;
 
     case PROP_FIFO:
-      g_value_set_object (value, guard->fifo);
+      g_value_set_string (value, guard->fifo);
       break;
 
     case PROP_ID:
