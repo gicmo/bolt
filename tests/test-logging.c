@@ -283,6 +283,7 @@ test_log_logger_journal (GLogLevelFlags   level,
 {
   g_autoptr(BoltLogCtx) ctx = NULL;
   char message[2048] = {0, };
+  const char *dom;
 
   g_return_val_if_fail (fields != NULL, G_LOG_WRITER_UNHANDLED);
   g_return_val_if_fail (n_fields > 0, G_LOG_WRITER_UNHANDLED);
@@ -292,8 +293,12 @@ test_log_logger_journal (GLogLevelFlags   level,
   if (ctx == NULL)
     return G_LOG_WRITER_UNHANDLED;
 
+  dom = blot_log_ctx_get_domain (ctx);
+  if (dom != NULL)
+    fprintf (stderr, "DOMAIN: %s", dom);
+
   bolt_log_fmt_journal (ctx, level, message, sizeof (message));
-  fprintf (stderr, "%s", message);
+  fprintf (stderr, "%s\n", message);
 
   return G_LOG_WRITER_HANDLED;
 }
@@ -346,6 +351,8 @@ test_log_logger (TestLog *tt, gconstpointer user_data)
       g_warning ("WARNUNG-2");
       g_critical ("WARNUNG-3");
 
+      g_log ("ck02", G_LOG_LEVEL_INFO, "MESSAGE-%d", 4);
+
       exit (0);
     }
 
@@ -358,11 +365,18 @@ test_log_logger (TestLog *tt, gconstpointer user_data)
   g_test_trap_assert_stderr ("*MESSAGE-1*");
   g_test_trap_assert_stderr ("*MESSAGE-2*");
   g_test_trap_assert_stderr ("*MESSAGE-3*");
+  g_test_trap_assert_stderr ("*MESSAGE-3*");
   g_test_trap_assert_stderr ("*domain0*");
   g_test_trap_assert_stderr ("*884c6edd*");
   g_test_trap_assert_stderr ("*884c6ede*");
   g_test_trap_assert_stderr ("*884c6edf*");
   g_test_trap_assert_stderr ("*Laptop*");
+
+  if (GPOINTER_TO_INT (user_data) == 1)
+    {
+      g_test_trap_assert_stderr ("*DOMAIN: ck01*");
+      g_test_trap_assert_stderr ("*DOMAIN: ck02*");
+    }
 }
 
 
