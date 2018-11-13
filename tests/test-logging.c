@@ -152,6 +152,20 @@ test_log_basic (TestLog *tt, gconstpointer user_data)
 
   g_log_set_writer_func (test_writer, &tt->data, NULL);
   bolt_log ("bolt-test", G_LOG_LEVEL_MESSAGE, "test");
+
+  g_assert_nonnull (bolt_log_level_to_string (G_LOG_LEVEL_ERROR));
+  g_assert_nonnull (bolt_log_level_to_string (G_LOG_LEVEL_CRITICAL));
+  g_assert_nonnull (bolt_log_level_to_string (G_LOG_LEVEL_WARNING));
+  g_assert_nonnull (bolt_log_level_to_string (G_LOG_LEVEL_MESSAGE));
+  g_assert_nonnull (bolt_log_level_to_string (G_LOG_LEVEL_INFO));
+  g_assert_nonnull (bolt_log_level_to_string (G_LOG_LEVEL_DEBUG));
+
+  g_assert_nonnull (bolt_log_level_to_priority (G_LOG_LEVEL_ERROR));
+  g_assert_nonnull (bolt_log_level_to_priority (G_LOG_LEVEL_CRITICAL));
+  g_assert_nonnull (bolt_log_level_to_priority (G_LOG_LEVEL_WARNING));
+  g_assert_nonnull (bolt_log_level_to_priority (G_LOG_LEVEL_MESSAGE));
+  g_assert_nonnull (bolt_log_level_to_priority (G_LOG_LEVEL_INFO));
+  g_assert_nonnull (bolt_log_level_to_priority (G_LOG_LEVEL_DEBUG));
 }
 
 static void
