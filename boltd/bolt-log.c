@@ -37,22 +37,29 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-/* stolen from glib */
+/* mapping taking from glib */
+typedef struct BoltLogLevel
+{
+  GLogLevelFlags code;
+  const char    *prio;
+  const char    *name;
+} BoltLogLevel;
+
+BoltLogLevel known_levels[] = {
+  {G_LOG_LEVEL_ERROR,    "3", "error"},
+  {G_LOG_LEVEL_CRITICAL, "4", "critical"},
+  {G_LOG_LEVEL_WARNING,  "4", "warning"},
+  {G_LOG_LEVEL_MESSAGE,  "5", "message"},
+  {G_LOG_LEVEL_INFO,     "6", "info"},
+  {G_LOG_LEVEL_DEBUG,    "7", "debug"}
+};
+
 const char *
 bolt_log_level_to_priority (GLogLevelFlags log_level)
 {
-  if (log_level & G_LOG_LEVEL_ERROR)
-    return "3";
-  else if (log_level & G_LOG_LEVEL_CRITICAL)
-    return "4";
-  else if (log_level & G_LOG_LEVEL_WARNING)
-    return "4";
-  else if (log_level & G_LOG_LEVEL_MESSAGE)
-    return "5";
-  else if (log_level & G_LOG_LEVEL_INFO)
-    return "6";
-  else if (log_level & G_LOG_LEVEL_DEBUG)
-    return "7";
+  for (gsize i = 0; i < G_N_ELEMENTS (known_levels); i++)
+    if (known_levels[i].code & log_level)
+      return known_levels[i].prio;
 
   /* Default to LOG_NOTICE for custom log levels. */
   return "5";
@@ -61,18 +68,9 @@ bolt_log_level_to_priority (GLogLevelFlags log_level)
 const char *
 bolt_log_level_to_string (GLogLevelFlags log_level)
 {
-  if (log_level & G_LOG_LEVEL_ERROR)
-    return "error";
-  else if (log_level & G_LOG_LEVEL_CRITICAL)
-    return "critical";
-  else if (log_level & G_LOG_LEVEL_WARNING)
-    return "warning";
-  else if (log_level & G_LOG_LEVEL_MESSAGE)
-    return "message";
-  else if (log_level & G_LOG_LEVEL_INFO)
-    return "info";
-  else if (log_level & G_LOG_LEVEL_DEBUG)
-    return "debug";
+  for (gsize i = 0; i < G_N_ELEMENTS (known_levels); i++)
+    if (known_levels[i].code & log_level)
+      return known_levels[i].name;
 
   return "user";
 }
