@@ -998,6 +998,11 @@ bolt_power_wait_timeout (gpointer user_data)
   BoltPower *power = user_data;
   gboolean ok;
 
+  if (power->path == NULL)
+    /* force power support got removed while being used,
+    * this was already complained about, so ignore it */
+    return G_SOURCE_REMOVE;
+
   /* we just removed the last active guard */
   ok = bolt_power_switch_toggle (power, FALSE, &err);
 
@@ -1167,13 +1172,7 @@ bolt_power_switch_toggle (BoltPower *power,
   int fd;
 
   g_return_val_if_fail (BOLT_IS_POWER (power), FALSE);
-
-  if (power->path == NULL)
-    {
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                           "force power not supported");
-      return FALSE;
-    }
+  g_return_val_if_fail (power->path != NULL, FALSE);
 
   bolt_info (LOG_TOPIC ("power"), "setting force_power to %s",
              on ? "ON" : "OFF");
@@ -1332,6 +1331,7 @@ handle_force_power (BoltExported          *object,
 
   g_variant_get (params, "(&s&s)", &who, &flags);
 
+  /* TODO: log errors */
   guard = bolt_power_acquire_full (power, who, (pid_t) pid, error);
   if (guard == NULL)
     return NULL;
@@ -1435,6 +1435,13 @@ bolt_power_acquire_full (BoltPower  *power,
   g_return_val_if_fail (BOLT_IS_POWER (power), NULL);
   g_return_val_if_fail (who != NULL, NULL);
 
+  if (power->path == NULL)
+    {
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                           "force power not supported");
+      return FALSE;
+    }
+
   id = bolt_power_gen_guard_id (power, error);
 
   if (id == NULL)
@@ -1454,8 +1461,6 @@ bolt_power_acquire_full (BoltPower  *power,
 
       if (!ok)
         {
-          bolt_warn_err (err, LOG_TOPIC ("power"),
-                         "failed to toggle force_power");
           g_propagate_error (error, g_steal_pointer (&err));
           return NULL;
         }
