@@ -291,26 +291,36 @@ handle_topic_field (BoltLogCtx *ctx,
     ctx->is_bug = TRUE;
 }
 
+struct SpecialField
+{
+  const char *name;
+  void        (*hanlder) (BoltLogCtx *ctx,
+                          const char *key,
+                          gpointer    ptr);
+} special_fields[] = {
+  {"device", handle_device_field},
+  {"domain", handle_domain_field},
+  {"error",  handle_gerror_field},
+  {"topic",  handle_topic_field}
+};
+
 static gboolean
 handle_special_field (BoltLogCtx *ctx,
                       const char *key,
                       gpointer    ptr)
 {
-  gboolean handled = TRUE;
+  gboolean handled = FALSE;
 
   key++; /* remove the special key indicator */
 
-  if (g_str_has_prefix (key, "device"))
-    handle_device_field (ctx, key, ptr);
-  else if (g_str_has_prefix (key, "domain"))
-    handle_domain_field (ctx, key, ptr);
-  else if (g_str_equal (key, "error"))
-    handle_gerror_field (ctx, key, ptr);
-  else if (g_str_equal (key, "topic"))
-    handle_topic_field (ctx, key, ptr);
-  else
-
-    handled = FALSE;
+  for (gsize i = 0; i < G_N_ELEMENTS (special_fields); i++)
+    {
+      if (g_str_equal (key, special_fields[i].name))
+        {
+          special_fields[i].hanlder (ctx, key, ptr);
+          handled = TRUE;
+        }
+    }
 
   return handled;
 }
