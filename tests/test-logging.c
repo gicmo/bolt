@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "bolt-device.h"
+#include "bolt-domain.h"
 #include "bolt-error.h"
 #include "bolt-str.h"
 #include "bolt-term.h"
@@ -302,17 +303,45 @@ test_log_logger (TestLog *tt, gconstpointer user_data)
 {
   g_autoptr(GError) err = NULL;
   const char *msg = NULL;
+  const char *uid1 = "884c6edd-7118-4b21-b186-b02d396ecca0";
+  const char *uid2 = "884c6ede-7118-4b21-b186-b02d396ecca0";
+  const char *uid3 = "884c6edf-7118-4b21-b186-b02d396ecca0";
 
   if (g_test_subprocess ())
     {
+      g_autoptr(BoltDomain) dom = NULL;
+      g_autoptr(BoltDevice) dev = NULL;
+
       if (GPOINTER_TO_INT (user_data) == 1)
         g_log_set_writer_func (test_log_logger_journal, tt, NULL);
       else
         g_log_set_writer_func (test_log_logger_stdstream, tt, NULL);
 
+      dom = g_object_new (BOLT_TYPE_DOMAIN,
+                          "id", "domain0",
+                          "uid", uid1,
+                          "bootacl", NULL,
+                          NULL);
+
+      dev = g_object_new (BOLT_TYPE_DEVICE,
+                          "uid", uid2,
+                          "name", "Laptop",
+                          "vendor", "GNOME.org",
+                          "status", BOLT_STATUS_DISCONNECTED,
+                          NULL);
+
       msg = "no udev";
       g_set_error_literal (&err, BOLT_ERROR, BOLT_ERROR_UDEV, msg);
       bolt_warn_err (err, LOG_TOPIC ("the_topic"), "WARNUNG-1");
+
+      bolt_log ("ck01", G_LOG_LEVEL_INFO, LOG_DEV (dev),
+                "MESSAGE-%d", 1);
+
+      bolt_log ("ck01", G_LOG_LEVEL_INFO, LOG_DOM (dom),
+                "MESSAGE-%d", 2);
+
+      bolt_log ("ck01", G_LOG_LEVEL_INFO, LOG_DEV_UID (uid3),
+                "MESSAGE-%d", 3);
 
       g_warning ("WARNUNG-2");
       g_critical ("WARNUNG-3");
@@ -326,6 +355,14 @@ test_log_logger (TestLog *tt, gconstpointer user_data)
   g_test_trap_assert_stderr ("*the_topic*");
   g_test_trap_assert_stderr ("*WARNUNG-2*");
   g_test_trap_assert_stderr ("*WARNUNG-3*");
+  g_test_trap_assert_stderr ("*MESSAGE-1*");
+  g_test_trap_assert_stderr ("*MESSAGE-2*");
+  g_test_trap_assert_stderr ("*MESSAGE-3*");
+  g_test_trap_assert_stderr ("*domain0*");
+  g_test_trap_assert_stderr ("*884c6edd*");
+  g_test_trap_assert_stderr ("*884c6ede*");
+  g_test_trap_assert_stderr ("*884c6edf*");
+  g_test_trap_assert_stderr ("*Laptop*");
 }
 
 
