@@ -242,10 +242,10 @@ test_log_macros (TestLog *tt, gconstpointer user_data)
 }
 
 static GLogWriterOutput
-test_log_logger (GLogLevelFlags   level,
-                 const GLogField *fields,
-                 gsize            n_fields,
-                 gpointer         user_data)
+test_log_logger_stdstream (GLogLevelFlags   level,
+                           const GLogField *fields,
+                           gsize            n_fields,
+                           gpointer         user_data)
 {
   g_autoptr(BoltLogCtx) ctx = NULL;
 
@@ -260,15 +260,41 @@ test_log_logger (GLogLevelFlags   level,
   return bolt_log_stdstream (ctx, level, 0);
 }
 
+static GLogWriterOutput
+test_log_logger_journal (GLogLevelFlags   level,
+                         const GLogField *fields,
+                         gsize            n_fields,
+                         gpointer         user_data)
+{
+  g_autoptr(BoltLogCtx) ctx = NULL;
+  char message[2048] = {0, };
+
+  g_return_val_if_fail (fields != NULL, G_LOG_WRITER_UNHANDLED);
+  g_return_val_if_fail (n_fields > 0, G_LOG_WRITER_UNHANDLED);
+
+  ctx = bolt_log_ctx_acquire (fields, n_fields);
+
+  if (ctx == NULL)
+    return G_LOG_WRITER_UNHANDLED;
+
+  bolt_log_fmt_journal (ctx, level, message, sizeof (message));
+  fprintf (stderr, "%s", message);
+
+  return G_LOG_WRITER_HANDLED;
+}
+
 static void
-test_log_stdstream (TestLog *tt, gconstpointer user_data)
+test_log_logger (TestLog *tt, gconstpointer user_data)
 {
   g_autoptr(GError) err = NULL;
   const char *msg = NULL;
 
   if (g_test_subprocess ())
     {
-      g_log_set_writer_func (test_log_logger, tt, NULL);
+      if (GPOINTER_TO_INT (user_data) == 1)
+        g_log_set_writer_func (test_log_logger_journal, tt, NULL);
+      else
+        g_log_set_writer_func (test_log_logger_stdstream, tt, NULL);
 
       msg = "no udev";
       g_set_error_literal (&err, BOLT_ERROR, BOLT_ERROR_UDEV, msg);
@@ -287,6 +313,7 @@ test_log_stdstream (TestLog *tt, gconstpointer user_data)
   g_test_trap_assert_stderr ("*WARNUNG-2*");
   g_test_trap_assert_stderr ("*WARNUNG-3*");
 }
+
 
 int
 main (int argc, char **argv)
@@ -326,13 +353,19 @@ main (int argc, char **argv)
               test_log_macros,
               test_log_tear_down);
 
-  g_test_add ("/logging/log_stdstream",
+  g_test_add ("/logging/logger/stdstream",
               TestLog,
-              NULL,
+              GINT_TO_POINTER (0),
               test_log_setup,
-              test_log_stdstream,
+              test_log_logger,
               test_log_tear_down);
 
+  g_test_add ("/logging/logger/journal",
+              TestLog,
+              GINT_TO_POINTER (1),
+              test_log_setup,
+              test_log_logger,
+              test_log_tear_down);
 
   return g_test_run ();
 }
