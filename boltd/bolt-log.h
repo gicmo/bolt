@@ -128,6 +128,11 @@ void               bolt_log_ctx_free (BoltLogCtx *ctx);
 
 const char *       blot_log_ctx_get_domain (BoltLogCtx *ctx);
 
+void               bolt_log_fmt_journal (const BoltLogCtx *ctx,
+                                         GLogLevelFlags    log_level,
+                                         char             *message,
+                                         gsize             size);
+
 GLogWriterOutput   bolt_log_stdstream (const BoltLogCtx *ctx,
                                        GLogLevelFlags    log_level,
                                        guint             flags);

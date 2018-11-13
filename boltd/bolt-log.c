@@ -23,6 +23,7 @@
 #include "bolt-device.h"
 #include "bolt-domain.h"
 #include "bolt-error.h"
+#include "bolt-macros.h"
 #include "bolt-rnd.h"
 #include "bolt-str.h"
 #include "bolt-term.h"
@@ -554,21 +555,17 @@ bolt_cat_printf (char **buffer, gsize *size, const char *fmt, ...)
   return n;
 }
 
-GLogWriterOutput
-bolt_log_journal (const BoltLogCtx *ctx,
-                  GLogLevelFlags    log_level,
-                  guint             flags)
+void
+bolt_log_fmt_journal (const BoltLogCtx *ctx,
+                      GLogLevelFlags    log_level,
+                      char             *message,
+                      gsize             size)
 {
-  GLogWriterOutput res;
   const char *m;
-  const char *old = NULL;
-  char message[2048];
-  gsize size = sizeof (message);
   char *p = message;
   const GLogField *f;
 
-  if (ctx == NULL || ctx->message == NULL)
-    return G_LOG_WRITER_UNHANDLED;
+  g_return_if_fail (ctx != NULL && ctx->message != NULL);
 
   if (ctx->device)
     {
@@ -610,17 +607,28 @@ bolt_log_journal (const BoltLogCtx *ctx,
 
       bolt_cat_printf (&p, &size, ": %s", msg);
     }
+}
 
-  old = ctx->message->value;
-  ctx->message->value = message;
+GLogWriterOutput
+bolt_log_journal (const BoltLogCtx *ctx,
+                  GLogLevelFlags    log_level,
+                  guint             flags)
+{
+  GLogWriterOutput res;
+  char message[2048];
+  GLogField msg = {"MESSAGE", message, -1};
+
+  g_return_val_if_fail (ctx != NULL, G_LOG_WRITER_UNHANDLED);
+  g_return_val_if_fail (ctx->message != NULL, G_LOG_WRITER_UNHANDLED);
+
+  bolt_log_fmt_journal (ctx, log_level, message, sizeof (message));
+
+  *ctx->message = msg;
 
   res = g_log_writer_journald (log_level,
                                ctx->fields,
                                ctx->n_fields,
                                NULL);
-
-  ctx->message->value = old;
-
   return res;
 }
 
