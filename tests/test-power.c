@@ -111,29 +111,48 @@ test_power_basic (TestPower *tt, gconstpointer user)
 {
   g_autoptr(BoltPower) power = NULL;
   g_autoptr(GError) err = NULL;
+  g_autoptr(BoltUdev) udev = NULL;
+  g_autoptr(GFile) statedir = NULL;
   g_autoptr(BoltPowerGuard) guard = NULL;
   g_autoptr(BoltPower) guard_power = NULL;
   g_autofree char *guard_id = NULL;
   g_autofree char *guard_who = NULL;
   g_autofree char *guard_path = NULL;
   g_autofree char *guard_fifo = NULL;
+  g_autofree char *rundir = NULL;
   gulong guard_pid;
   BoltPowerState state;
   gboolean supported;
   gboolean on;
   const char *fp;
+  guint timeout;
 
   power = make_bolt_power_timeout (tt, 0);
 
   g_object_get (power,
+                "rundir", &rundir,
+                "statedir", &statedir,
+                "udev", &udev,
                 "supported", &supported,
                 "state", &state,
+                "timeout", &timeout,
                 NULL);
 
+  g_assert_nonnull (rundir);
+  g_assert_nonnull (statedir);
+  g_assert_nonnull (udev);
+  g_assert (udev == tt->udev);
   g_assert_false (supported);
   g_assert (state == BOLT_FORCE_POWER_UNSET);
   state = bolt_power_get_state (power);
   g_assert (state == BOLT_FORCE_POWER_UNSET);
+  g_assert_cmpuint (timeout, ==, 0);
+
+  /* force power is unsupported, check the error handling */
+  guard = bolt_power_acquire (power, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED);
+  g_assert_null (guard);
+  g_clear_pointer (&err, g_error_free);
 
   /* add the force power sysfs device,
    * now it must be reported as supported */
