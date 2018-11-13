@@ -276,6 +276,7 @@ bolt_manager_finalize (GObject *object)
   bolt_domain_clear (&mgr->domains);
 
   g_clear_object (&mgr->power);
+  g_clear_object (&mgr->bouncer);
 
   G_OBJECT_CLASS (bolt_manager_parent_class)->finalize (object);
 }
