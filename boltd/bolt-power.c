@@ -757,9 +757,9 @@ bolt_power_class_init (BoltPowerClass *klass)
                          G_PARAM_STATIC_STRINGS);
 
   power_props[PROP_STATEDIR] =
-    g_param_spec_string ("statedir",
+    g_param_spec_object ("statedir",
                          NULL, NULL,
-                         DEFAULT_RUNDIR,
+                         G_TYPE_FILE,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
