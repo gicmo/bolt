@@ -26,7 +26,14 @@
 
 #include "bolt-daemon-resource.h"
 
+#include <glib.h>
+#include <glib/gstdio.h>
+
+#include <fcntl.h>
 #include <locale.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 
 typedef struct
 {
@@ -69,6 +76,93 @@ test_journal_tear_down (TestJournal *tt, gconstpointer user_data)
 
   g_clear_object (&tt->root);
   g_clear_pointer (&tt->path, g_free);
+}
+
+GLogWriterOutput
+static
+nonfatal_logger (GLogLevelFlags   log_level,
+                 const GLogField *fields,
+                 gsize            n_fields,
+                 gpointer         user_data)
+{
+  return g_log_writer_standard_streams (log_level, fields, n_fields, user_data);
+}
+
+static void
+test_journal_object (TestJournal *tt, gconstpointer user_data)
+{
+  g_autoptr(BoltJournal) j = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GFile) root = NULL;
+  g_autofree char *name = NULL;
+  gboolean fresh;
+
+  if (g_test_subprocess ())
+    {
+      g_autofree char *path = NULL;
+      int r;
+
+      /* we fiddle with the writer, and also want to check
+       * stderr, so the easy way is to do from a subprocess */
+      g_log_set_writer_func (nonfatal_logger, NULL, NULL);
+
+      /* name but no root */
+      j = g_initable_new (BOLT_TYPE_JOURNAL,
+                          NULL, &err,
+                          "name", "test",
+                          NULL);
+
+      g_assert_error (err, BOLT_ERROR, BOLT_ERROR_FAILED);
+      g_assert_null (j);
+      g_clear_pointer (&err, g_error_free);
+
+
+      /* root but no name */
+      j = g_initable_new (BOLT_TYPE_JOURNAL,
+                          NULL, &err,
+                          "root", tt->root,
+                          NULL);
+
+      g_assert_error (err, BOLT_ERROR, BOLT_ERROR_FAILED);
+      g_assert_null (j);
+      g_clear_pointer (&err, g_error_free);
+
+      path = g_build_filename (tt->path, "nobody", NULL);
+      r = g_mkdir (path, 0755);
+      g_assert_cmpint (r, >, -1);
+
+      /* root, name, but name is an existing dir */
+      j = g_initable_new (BOLT_TYPE_JOURNAL,
+                          NULL, &err,
+                          "root", tt->root,
+                          "name", "nobody",
+                          NULL);
+
+      g_assert_error (err, G_IO_ERROR, G_IO_ERROR_IS_DIRECTORY);
+      g_assert_null (j);
+      g_clear_pointer (&err, g_error_free);
+
+      exit (0);
+    }
+
+  g_test_trap_subprocess (NULL, 0, 0);
+  g_test_trap_assert_passed ();
+  g_test_trap_assert_stderr ("*invalid*");
+
+  j = bolt_journal_new (tt->root, "test", &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (j);
+
+  g_object_get (j,
+                "name", &name,
+                "root", &root,
+                "fresh", &fresh,
+                NULL);
+
+  g_assert_cmpstr (name, ==, "test");
+  g_assert_true (g_file_equal (root, tt->root));
+  g_assert_true (fresh);
 }
 
 static void
@@ -267,6 +361,13 @@ main (int argc, char **argv)
   g_test_init (&argc, &argv, NULL);
 
   g_resources_register (bolt_daemon_get_resource ());
+
+  g_test_add ("/journal/object",
+              TestJournal,
+              NULL,
+              test_journal_setup,
+              test_journal_object,
+              test_journal_tear_down);
 
   g_test_add ("/journal/create",
               TestJournal,
