@@ -204,7 +204,7 @@ bolt_journal_initialize (GInitable    *initable,
 
   journal = BOLT_JOURNAL (initable);
 
-  if (journal->name == NULL || journal->root == NULL)
+  if (bolt_strzero (journal->name) || journal->root == NULL)
     {
       bolt_bug ("invalid arguments");
       g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
