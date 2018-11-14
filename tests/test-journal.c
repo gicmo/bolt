@@ -352,6 +352,35 @@ test_journal_diff (TestJournal *tt, gconstpointer user_data)
     }
 }
 
+static void
+test_journal_op_stringops (TestJournal *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) error = NULL;
+  BoltJournalOp op;
+  char ops[] = "!=+-";
+
+  /* don't include the trailing \0 */
+  for (gsize i = 0; i < G_N_ELEMENTS (ops) - 1; i++)
+    {
+      g_autoptr(GError) err = NULL;
+      char str[] = {ops[i], '\0'};
+      const char *tst;
+
+      op = bolt_journal_op_from_string (str, &err);
+      g_assert_no_error (err);
+
+      tst = bolt_journal_op_to_string (op);
+      g_assert_cmpstr (tst, ==, str);
+    }
+
+  op = bolt_journal_op_from_string ("XXX", &error);
+  g_assert_error (error, BOLT_ERROR, BOLT_ERROR_FAILED);
+  g_clear_pointer (&error, g_error_free);
+
+  op = bolt_journal_op_from_string ("", &error);
+  g_assert_error (error, BOLT_ERROR, BOLT_ERROR_FAILED);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -389,6 +418,13 @@ main (int argc, char **argv)
               test_journal_setup,
               test_journal_diff,
               test_journal_tear_down);
+
+  g_test_add ("/journal/op/string",
+              TestJournal,
+              NULL,
+              NULL,
+              test_journal_op_stringops,
+              NULL);
 
   return g_test_run ();
 }
