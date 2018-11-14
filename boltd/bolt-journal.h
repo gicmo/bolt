@@ -63,5 +63,10 @@ GPtrArray *        bolt_journal_list (BoltJournal *journal,
 gboolean           bolt_journal_reset (BoltJournal *journal,
                                        GError     **error);
 
+/* BoltJournalOp */
+const char *      bolt_journal_op_to_string (BoltJournalOp op);
 
+BoltJournalOp     bolt_journal_op_from_string (const char *data,
+                                               GError    **error);
+/* BoltJournalItem */
 void               bolt_journal_item_free (BoltJournalItem *entry);

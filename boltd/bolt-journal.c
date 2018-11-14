@@ -252,61 +252,6 @@ bolt_journal_initialize (GInitable    *initable,
 }
 
 /* internal methods */
-
-static const char *
-bolt_journal_op_to_string (BoltJournalOp op)
-{
-  switch (op)
-    {
-    case BOLT_JOURNAL_FAILED:
-      return "!";
-
-    case BOLT_JOURNAL_UNCHANGED:
-      return "=";
-
-    case BOLT_JOURNAL_ADDED:
-      return "+";
-
-    case BOLT_JOURNAL_REMOVED:
-      return "-";
-    }
-
-  bolt_warn_enum_unhandled (BoltJournalOp, op);
-  return "?";
-}
-
-static BoltJournalOp
-bolt_journal_op_from_string (const char *data,
-                             GError    **error)
-{
-  /* both will be caught as errors after
-   * the switch statement */
-  if (data == NULL)
-    data = "<null>";
-  else if (*data == '\0')
-    data = "<empty>";
-
-  switch (data[0])
-    {
-    case '!':
-      return BOLT_JOURNAL_FAILED;
-
-    case '+':
-      return BOLT_JOURNAL_ADDED;
-
-    case '-':
-      return BOLT_JOURNAL_REMOVED;
-
-    case '=':
-      return BOLT_JOURNAL_UNCHANGED;
-    }
-
-  g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
-               "invalid journal operation: %s", data);
-
-  return BOLT_JOURNAL_FAILED;
-}
-
 static gboolean
 bolt_journal_write_entry (int           fd,
                           const char   *id,
@@ -582,6 +527,62 @@ bolt_journal_reset (BoltJournal *journal,
   return ok;
 }
 
+/* journal op methods */
+const char *
+bolt_journal_op_to_string (BoltJournalOp op)
+{
+  switch (op)
+    {
+    case BOLT_JOURNAL_FAILED:
+      return "!";
+
+    case BOLT_JOURNAL_UNCHANGED:
+      return "=";
+
+    case BOLT_JOURNAL_ADDED:
+      return "+";
+
+    case BOLT_JOURNAL_REMOVED:
+      return "-";
+    }
+
+  bolt_warn_enum_unhandled (BoltJournalOp, op);
+  return "?";
+}
+
+BoltJournalOp
+bolt_journal_op_from_string (const char *data,
+                             GError    **error)
+{
+  /* both will be caught as errors after
+   * the switch statement */
+  if (data == NULL)
+    data = "<null>";
+  else if (*data == '\0')
+    data = "<empty>";
+
+  switch (data[0])
+    {
+    case '!':
+      return BOLT_JOURNAL_FAILED;
+
+    case '+':
+      return BOLT_JOURNAL_ADDED;
+
+    case '-':
+      return BOLT_JOURNAL_REMOVED;
+
+    case '=':
+      return BOLT_JOURNAL_UNCHANGED;
+    }
+
+  g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+               "invalid journal operation: %s", data);
+
+  return BOLT_JOURNAL_FAILED;
+}
+
+/*BoltJournalItem  */
 void
 bolt_journal_item_free (BoltJournalItem *entry)
 {
