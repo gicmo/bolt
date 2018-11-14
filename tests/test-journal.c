@@ -353,6 +353,52 @@ test_journal_diff (TestJournal *tt, gconstpointer user_data)
 }
 
 static void
+test_journal_invalid_file (TestJournal *tt, gconstpointer user_data)
+{
+  if (g_test_subprocess ())
+    {
+      g_autoptr(GError) err = NULL;
+      g_autofree char *path = NULL;
+      gboolean ok;
+      const char * const invalid_data[] = {
+        "justonestring\n",
+        "invalidop X 0XFF",
+        "str str str\n",
+        "str str\n",
+        "\n",
+        NULL,
+      };
+
+      /* we fiddle with the writer, and also want to check
+       * stderr, so the easy way is to do from a subprocess */
+      g_log_set_writer_func (nonfatal_logger, NULL, NULL);
+
+      path = g_build_filename (tt->path, "bootacl", NULL);
+
+      for (const char *const *i = invalid_data; *i; i++)
+        {
+          g_autoptr(BoltJournal) j = NULL;
+          g_autoptr(GPtrArray) arr = NULL;
+          const char *data = *i;
+
+          ok = g_file_set_contents (path, data, -1, &err);
+          g_assert_no_error (err);
+          g_assert_true (ok);
+
+          j = bolt_journal_new (tt->root, "bootacl", &err);
+          arr = bolt_journal_list (j, &err);
+          g_assert_no_error (err);
+          g_assert_nonnull (arr);
+        }
+
+      exit (0);
+    }
+
+  g_test_trap_subprocess (NULL, 0, 0);
+  g_test_trap_assert_passed ();
+  g_test_trap_assert_stderr ("*invalid entry*");
+}
+static void
 test_journal_op_stringops (TestJournal *tt, gconstpointer user_data)
 {
   g_autoptr(GError) error = NULL;
@@ -417,6 +463,13 @@ main (int argc, char **argv)
               NULL,
               test_journal_setup,
               test_journal_diff,
+              test_journal_tear_down);
+
+  g_test_add ("/journal/invalid_file",
+              TestJournal,
+              NULL,
+              test_journal_setup,
+              test_journal_invalid_file,
               test_journal_tear_down);
 
   g_test_add ("/journal/op/string",
