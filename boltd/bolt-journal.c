@@ -168,7 +168,7 @@ bolt_journal_class_init (BoltJournalClass *klass)
 
   journal_props[PROP_NAME] =
     g_param_spec_string ("name", NULL, NULL,
-                         "",
+                         NULL,
                          G_PARAM_READWRITE      |
                          G_PARAM_CONSTRUCT_ONLY |
                          G_PARAM_STATIC_NAME);
