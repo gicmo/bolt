@@ -471,12 +471,7 @@ bolt_journal_list (BoltJournal *journal,
   buf[k] = '\0';
 
   lines = g_strsplit (buf, "\n", -1);
-
-  if (lines == NULL)
-    {
-      bolt_warn (LOG_TOPIC ("journal"), "empty lines for non-empty file");
-      return g_steal_pointer (&res);
-    }
+  g_return_val_if_fail (lines != NULL, g_steal_pointer (&res));
 
   for (char **l = lines; *l && *l[0]; l++)
     {
