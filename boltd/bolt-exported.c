@@ -1229,8 +1229,6 @@ bolt_exported_prop_free (gpointer data)
   g_param_spec_unref (prop->spec);
   g_variant_type_free (prop->signature);
 
-
-
   g_free (prop);
 }
 
@@ -1307,11 +1305,8 @@ flags_gvalue_to_gvariant (GFlagsClass  *flags_class,
   str = bolt_flags_class_to_string (flags_class, iv, &err);
   if (str == NULL)
     {
-      const char *name;
-
-      name = g_type_name_from_class ((GTypeClass *) flags_class);
+      bolt_bug ("auto-convert: %s", err->message);
       str = g_strdup_printf ("%u", iv);
-      bolt_bug ("invalid enum flags '%u' for enum '%s'", iv, name);
     }
 
   res = g_variant_new_string (str);
@@ -1324,21 +1319,13 @@ flags_gvariant_to_gvalue (GFlagsClass *flags_class,
                           GValue      *value,
                           GError     **error)
 {
-  gboolean ok;
   const char *str;
+  gboolean ok;
   guint flags;
 
   str = g_variant_get_string (variant, NULL);
 
-  if (str == NULL)
-    {
-      const char *name;
-
-      name = g_type_name_from_class ((GTypeClass *) flags_class);
-      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "invalid flags value (null) for '%s'", name);
-    }
-
+  /* NB: NULL is a safe value for 'str' to be passed into */
   ok = bolt_flags_class_from_string (flags_class, str, &flags, error);
 
   if (ok)
