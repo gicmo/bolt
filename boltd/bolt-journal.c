@@ -29,6 +29,8 @@
 #include "bolt-macros.h"
 #include "bolt-str.h"
 
+#include <gio/gunixinputstream.h>
+
 #include <errno.h>
 #include <stdio.h>
 
@@ -427,13 +429,9 @@ GPtrArray *
 bolt_journal_list (BoltJournal *journal,
                    GError     **error)
 {
-  g_autoptr(GPtrArray) res = NULL;
-  g_auto(GStrv) lines = NULL;
-  struct stat st;
-  gboolean ok;
-  gsize len;
-  gsize k;
-  char *buf;
+  g_autoptr(GInputStream) is = NULL;
+  g_autoptr(GDataInputStream) ds = NULL;
+  GPtrArray *res = NULL;
   off_t pos;
 
   pos = lseek (journal->fd, 0, SEEK_SET);
@@ -446,35 +444,17 @@ bolt_journal_list (BoltJournal *journal,
       return NULL;
     }
 
-  memset (&st, 0, sizeof (st));
-  ok = bolt_fstat (journal->fd, &st, error);
-
-  if (!ok)
-    {
-      g_prefix_error (error, "could not read from journal: ");
-      return NULL;
-    }
-
   res = g_ptr_array_new_full (16, (GDestroyNotify) bolt_journal_item_free);
-  if (st.st_size == 0)
-    return g_steal_pointer (&res);
 
-  len = st.st_size;
+  is = g_unix_input_stream_new (journal->fd, FALSE);
+  ds = g_data_input_stream_new (is);
 
-  /* TODO: ugh, please lets do this line by line */
-  buf = g_alloca (len + 1);
-  ok = bolt_read_all (journal->fd, buf, len, &k, error);
+  g_return_val_if_fail (ds != NULL, res);
 
-  if (!ok)
-    return FALSE;
-
-  buf[k] = '\0';
-
-  lines = g_strsplit (buf, "\n", -1);
-  g_return_val_if_fail (lines != NULL, g_steal_pointer (&res));
-
-  for (char **l = lines; *l && *l[0]; l++)
+  for (;; )
     {
+      g_autoptr(GError) err = NULL;
+      g_autofree char *l = NULL;
       BoltJournalItem *i;
       BoltJournalOp op;
       char *name;
@@ -482,17 +462,33 @@ bolt_journal_list (BoltJournal *journal,
       guint64 ts;
       int n;
 
-      n = sscanf (*l, "%ms %ms %016" G_GINT64_MODIFIER "X",
+      l = g_data_input_stream_read_line (ds, NULL, NULL, &err);
+
+      if (l == NULL)
+        {
+          if (err)
+            bolt_warn_err (err, LOG_TOPIC ("journal"),
+                           "error reading from journal");
+          break;
+        }
+
+      n = sscanf (l, "%ms %ms %016" G_GINT64_MODIFIER "X",
                   &name, &opstr, &ts);
 
       if (n != 3)
         {
-          bolt_warn (LOG_TOPIC ("journal"), "invalid entry: '%s'",
-                     *l);
+          bolt_warn (LOG_TOPIC ("journal"), "invalid entry: '%s'", l);
           continue;
         }
 
-      op = bolt_journal_op_from_string (opstr, NULL);
+      op = bolt_journal_op_from_string (opstr, &err);
+
+      if (err != NULL)
+        {
+          bolt_warn_err (err, LOG_TOPIC ("journal"),
+                         "invalid entry: '%s': %s", l);
+          continue;
+        }
 
       i = g_slice_new (BoltJournalItem);
       i->id = g_strdup (name);
@@ -502,7 +498,7 @@ bolt_journal_list (BoltJournal *journal,
       g_ptr_array_add (res, i);
     }
 
-  return g_steal_pointer (&res);
+  return res;
 }
 
 gboolean
