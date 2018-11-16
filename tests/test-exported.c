@@ -26,6 +26,7 @@
 #include "bolt-error.h"
 #include "bolt-str.h"
 
+#include "test-enums.h"
 #include "bolt-test-resources.h"
 
 #include <glib.h>
@@ -143,23 +144,29 @@ static gboolean handle_set_security (BoltExported *obj,
                                      const GValue *value,
                                      GError      **error);
 
+static gboolean handle_set_kitt (BoltExported *obj,
+                                 const char   *name,
+                                 const GValue *value,
+                                 GError      **error);
+
 struct _BtExported
 {
-  BoltExported parent;
+  BoltExported  parent;
 
-  char        *object_id;
+  char         *object_id;
 
-  char        *str;
-  GError      *setter_err;
+  char         *str;
+  GError       *setter_err;
 
-  gboolean     prop_bool;
+  gboolean      prop_bool;
 
-  BtId        *prop_obj;
+  BtId         *prop_obj;
 
-  gboolean     authorize_methods;
-  gboolean     authorize_properties;
+  gboolean      authorize_methods;
+  gboolean      authorize_properties;
 
-  BoltSecurity security;
+  BoltSecurity  security;
+  BoltKittFlags kitt;
 };
 
 G_DEFINE_TYPE (BtExported, bt_exported, BOLT_TYPE_EXPORTED);
@@ -177,6 +184,7 @@ enum {
   PROP_OBJECT,
 
   PROP_SECURITY,
+  PROP_KITT,
 
   PROP_LAST
 };
@@ -237,6 +245,10 @@ bt_exported_get_property (GObject    *object,
       g_value_set_enum (value, be->security);
       break;
 
+    case PROP_KITT:
+      g_value_set_flags (value, be->kitt);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -265,6 +277,10 @@ bt_exported_set_property (GObject      *object,
 
     case PROP_SECURITY:
       be->security = g_value_get_enum (value);
+      break;
+
+    case PROP_KITT:
+      be->kitt = g_value_get_flags (value);
       break;
 
     default:
@@ -333,6 +349,14 @@ bt_exported_class_init (BtExportedClass *klass)
                        G_PARAM_STATIC_NICK |
                        G_PARAM_STATIC_BLURB);
 
+  props[PROP_KITT] =
+    g_param_spec_flags ("kitt", "KittMode", NULL,
+                        BOLT_TYPE_KITT_FLAGS,
+                        BOLT_KITT_DISABLED,
+                        G_PARAM_READWRITE |
+                        G_PARAM_STATIC_NICK |
+                        G_PARAM_STATIC_BLURB);
+
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
                                      props);
@@ -348,6 +372,10 @@ bt_exported_class_init (BtExportedClass *klass)
   bolt_exported_class_property_setter (exported_class,
                                        props[PROP_SECURITY],
                                        handle_set_security);
+
+  bolt_exported_class_property_setter (exported_class,
+                                       props[PROP_KITT],
+                                       handle_set_kitt);
 }
 
 static gboolean
@@ -473,6 +501,17 @@ handle_set_security (BoltExported *obj,
   return TRUE;
 }
 
+static gboolean
+handle_set_kitt (BoltExported *obj,
+                 const char   *name,
+                 const GValue *value,
+                 GError      **error)
+{
+  BtExported *be = BT_EXPORTED (obj);
+
+  be->kitt = g_value_get_flags (value);
+  return TRUE;
+}
 
 /* *********** */
 
@@ -1103,6 +1142,94 @@ test_exported_props_enums (TestExported *tt, gconstpointer data)
 }
 
 static void
+test_exported_props_flags (TestExported *tt, gconstpointer data)
+{
+  g_autoptr(CallCtx) ctx = NULL;
+  g_autoptr(GVariant) v = NULL;
+  g_autofree char *want = NULL;
+  g_autofree char *ref = NULL;
+  const char *have = NULL;
+  BoltKittFlags kf = BOLT_KITT_ENABLED | BOLT_KITT_TURBO_BOOST;
+
+  ctx = call_ctx_new ();
+
+  tt->obj->kitt = BOLT_KITT_DEFAULT;
+
+  /* valid property value, should be converted to string */
+  g_dbus_connection_call (tt->bus,
+                          tt->bus_name,
+                          tt->obj_path,
+                          "org.freedesktop.DBus.Properties",
+                          "Get",
+                          g_variant_new ("(ss)",
+                                         DBUS_IFACE,
+                                         "KittMode"),
+                          G_VARIANT_TYPE ("(v)"),
+                          G_DBUS_CALL_FLAGS_NONE,
+                          2000,
+                          NULL,
+                          dbus_call_done,
+                          ctx);
+
+  call_ctx_run (ctx);
+  g_assert_no_error (ctx->error);
+
+  g_assert_nonnull (ctx->data);
+  g_variant_get (ctx->data, "(v)", &v);
+  have = g_variant_get_string (v, NULL);
+  want = bolt_flags_to_string (BOLT_TYPE_KITT_FLAGS,
+                               tt->obj->kitt,
+                               NULL);
+  g_assert_cmpstr (have, ==, want);
+
+  /* setter */
+  bt_exported_install_property_authorizer (tt->obj);
+  tt->obj->authorize_properties = TRUE;
+  ref = bolt_flags_to_string (BOLT_TYPE_KITT_FLAGS, kf, NULL);
+
+  g_dbus_connection_call (tt->bus,
+                          tt->bus_name,
+                          tt->obj_path,
+                          "org.freedesktop.DBus.Properties",
+                          "Set",
+                          g_variant_new ("(ssv)",
+                                         DBUS_IFACE,
+                                         "KittMode",
+                                         g_variant_new ("s", ref)),
+                          NULL,
+                          G_DBUS_CALL_FLAGS_NONE,
+                          2000,
+                          NULL,
+                          dbus_call_done,
+                          ctx);
+
+  call_ctx_run (ctx);
+  g_assert_no_error (ctx->error);
+  g_assert_cmpint (tt->obj->kitt, ==, kf);
+
+  /* setter with invalid argument */
+
+  g_dbus_connection_call (tt->bus,
+                          tt->bus_name,
+                          tt->obj_path,
+                          "org.freedesktop.DBus.Properties",
+                          "Set",
+                          g_variant_new ("(ssv)",
+                                         DBUS_IFACE,
+                                         "KittMode",
+                                         g_variant_new ("s", "invalid | foobar")),
+                          NULL,
+                          G_DBUS_CALL_FLAGS_NONE,
+                          2000,
+                          NULL,
+                          dbus_call_done,
+                          ctx);
+
+  call_ctx_run (ctx);
+  g_assert_error (ctx->error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
+}
+
+static void
 test_exported_props_object (TestExported *tt, gconstpointer data)
 {
   g_autoptr(CallCtx) ctx = NULL;
@@ -1207,6 +1334,13 @@ main (int argc, char **argv)
               NULL,
               test_exported_setup,
               test_exported_props_enums,
+              test_exported_teardown);
+
+  g_test_add ("/exported/props/flags",
+              TestExported,
+              NULL,
+              test_exported_setup,
+              test_exported_props_flags,
               test_exported_teardown);
 
   g_test_add ("/exported/props/object",
