@@ -1236,26 +1236,23 @@ static GVariant *
 enum_gvalue_to_gvariant (GEnumClass   *enum_class,
                          const GValue *value)
 {
-  g_autofree char *str = NULL;
-  const char *name;
-  GEnumValue *ev;
+  g_autoptr(GError) err = NULL;
+  const char *str;
   GVariant *res;
   gint iv;
 
   iv = g_value_get_enum (value);
-  ev = g_enum_get_value (enum_class, iv);
+  str = bolt_enum_class_to_string (enum_class, iv, &err);
 
-  if (ev != NULL)
+  if (str == NULL)
     {
-      res = g_variant_new_string (ev->value_nick);
-      return g_variant_ref_sink (res);
+      bolt_bug ("auto-convert enum: %s", err->message);
+      res = g_variant_new_printf ("%d", iv);
     }
-
-  /* we got an invalid value for that enum */
-  str = g_strdup_printf ("%d", iv);
-  res = g_variant_new_string (str);
-  name = g_type_name_from_class ((GTypeClass *) enum_class);
-  bolt_bug ("invalid enum value %d for enum '%s'", iv, name);
+  else
+    {
+      res = g_variant_new_string (str);
+    }
 
   return g_variant_ref_sink (res);
 }
@@ -1266,28 +1263,18 @@ enum_gvariant_to_gvalue (GEnumClass *enum_class,
                          GValue     *value,
                          GError    **error)
 {
-  GEnumValue *ev = NULL;
   const char *str;
+  gboolean ok;
+  gint val;
 
   str = g_variant_get_string (variant, NULL);
 
-  if (str == NULL)
-    str = "invalid";
+  /* NB: it is ok to pass NULL here */
+  ok = bolt_enum_class_from_string (enum_class, str, &val, error);
 
-  ev = g_enum_get_value_by_nick (enum_class, str);
+  if (ok)
+    g_value_set_enum (value, val);
 
-  if (ev == NULL)
-    {
-      const char *name;
-
-      name = g_type_name_from_class ((GTypeClass *) enum_class);
-      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "invalid enum value '%s' for '%s'", str, name);
-
-      return FALSE;
-    }
-
-  g_value_set_enum (value, ev->value);
   return TRUE;
 }
 
