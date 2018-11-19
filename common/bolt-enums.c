@@ -84,6 +84,43 @@ bolt_enum_class_to_string (GEnumClass *klass,
   return ev->value_nick;
 }
 
+
+gboolean
+bolt_enum_class_from_string (GEnumClass *klass,
+                             const char *string,
+                             gint       *enum_out,
+                             GError    **error)
+{
+  const char *name;
+  GEnumValue *ev;
+
+  g_return_val_if_fail (G_IS_ENUM_CLASS (klass), FALSE);
+
+  if (string == NULL)
+    {
+      name = g_type_name_from_class ((GTypeClass *) klass);
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "empty string passed for enum class for '%s'",
+                   name);
+      return FALSE;
+    }
+
+  ev = g_enum_get_value_by_nick (klass, string);
+
+  if (ev == NULL)
+    {
+      name = g_type_name_from_class ((GTypeClass *) klass);
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "invalid string '%s' for enum '%s'", string, name);
+      return FALSE;
+    }
+
+  if (enum_out)
+    *enum_out = ev->value;
+
+  return TRUE;
+}
+
 const char *
 bolt_enum_to_string (GType    enum_type,
                      gint     value,
@@ -104,34 +141,15 @@ bolt_enum_from_string (GType       enum_type,
                        GError    **error)
 {
   g_autoptr(GEnumClass) klass = NULL;
-  const char *name;
-  GEnumValue *ev;
+  gint iv = -1;
 
   g_return_val_if_fail (G_TYPE_IS_ENUM (enum_type), FALSE);
 
   klass = g_type_class_ref (enum_type);
-  g_return_val_if_fail (klass != NULL, -1);
 
-  if (string == NULL)
-    {
-      name = g_type_name_from_class ((GTypeClass *) klass);
-      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "empty string passed for enum class for '%s'",
-                   name);
-      return -1;
-    }
+  bolt_enum_class_from_string (klass, string, &iv, error);
 
-  ev = g_enum_get_value_by_nick (klass, string);
-
-  if (ev == NULL)
-    {
-      name = g_type_name (enum_type);
-      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "invalid string '%s' for enum '%s'", string, name);
-      return -1;
-    }
-
-  return ev->value;
+  return iv;
 }
 
 char *
