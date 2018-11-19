@@ -38,15 +38,7 @@ bolt_enum_class_validate (GEnumClass *enum_class,
   const char *name;
   gboolean oob;
 
-  if (enum_class == NULL)
-    {
-      name = g_type_name_from_class ((GTypeClass *) enum_class);
-      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "could not determine enum class for '%s'",
-                   name);
-
-      return FALSE;
-    }
+  g_return_val_if_fail (G_IS_ENUM_CLASS (enum_class), FALSE);
 
   oob = value < enum_class->minimum || value > enum_class->maximum;
 
@@ -67,7 +59,12 @@ bolt_enum_validate (GType    enum_type,
                     gint     value,
                     GError **error)
 {
-  g_autoptr(GEnumClass) klass = g_type_class_ref (enum_type);
+  g_autoptr(GEnumClass) klass = NULL;
+
+  g_return_val_if_fail (G_TYPE_IS_ENUM (enum_type), FALSE);
+
+  klass = g_type_class_ref (enum_type);
+
   return bolt_enum_class_validate (klass, value, error);
 }
 
@@ -78,6 +75,8 @@ bolt_enum_to_string (GType    enum_type,
 {
   g_autoptr(GEnumClass) klass = NULL;
   GEnumValue *ev;
+
+  g_return_val_if_fail (G_TYPE_IS_ENUM (enum_type), FALSE);
 
   klass = g_type_class_ref (enum_type);
 
@@ -97,12 +96,7 @@ bolt_enum_from_string (GType       enum_type,
   const char *name;
   GEnumValue *ev;
 
-  if (!G_TYPE_IS_ENUM (enum_type))
-    {
-      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "supplied type not an enum type");
-      return -1;
-    }
+  g_return_val_if_fail (G_TYPE_IS_ENUM (enum_type), FALSE);
 
   klass = g_type_class_ref (enum_type);
   g_return_val_if_fail (klass != NULL, -1);
