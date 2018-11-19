@@ -32,6 +32,10 @@ gboolean          bolt_enum_class_validate (GEnumClass *enum_class,
                                             gint        value,
                                             GError    **error);
 
+const char *      bolt_enum_class_to_string (GEnumClass *enum_class,
+                                             gint        value,
+                                             GError    **error);
+
 const char *      bolt_enum_to_string (GType    enum_type,
                                        gint     value,
                                        GError **error);

@@ -69,22 +69,33 @@ bolt_enum_validate (GType    enum_type,
 }
 
 const char *
-bolt_enum_to_string (GType    enum_type,
-                     gint     value,
-                     GError **error)
+bolt_enum_class_to_string (GEnumClass *klass,
+                           gint        value,
+                           GError    **error)
 {
-  g_autoptr(GEnumClass) klass = NULL;
   GEnumValue *ev;
 
-  g_return_val_if_fail (G_TYPE_IS_ENUM (enum_type), FALSE);
-
-  klass = g_type_class_ref (enum_type);
+  g_return_val_if_fail (G_IS_ENUM_CLASS (klass), FALSE);
 
   if (!bolt_enum_class_validate (klass, value, error))
     return NULL;
 
   ev = g_enum_get_value (klass, value);
   return ev->value_nick;
+}
+
+const char *
+bolt_enum_to_string (GType    enum_type,
+                     gint     value,
+                     GError **error)
+{
+  g_autoptr(GEnumClass) klass = NULL;
+
+  g_return_val_if_fail (G_TYPE_IS_ENUM (enum_type), FALSE);
+
+  klass = g_type_class_ref (enum_type);
+
+  return bolt_enum_class_to_string (klass, value, error);
 }
 
 gint
