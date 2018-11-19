@@ -1321,6 +1321,8 @@ test_strv_permute (TestRng *tt, gconstpointer user_data)
   g_auto(GStrv) tst = NULL;
   const char *ref[] = {"a", "b", "c", "d", NULL};
   char *empty[] = {NULL};
+  guint N;
+  guint k = 0;
 
   bolt_strv_permute (NULL);
   bolt_strv_permute (empty);
@@ -1328,8 +1330,21 @@ test_strv_permute (TestRng *tt, gconstpointer user_data)
   g_assert_cmpuint (bolt_strv_length (empty), ==, 0U);
 
   tst = g_strdupv ((char **) ref);
-  bolt_strv_permute (tst);
-  g_assert_false (bolt_strv_equal ((char **) ref, (char **) tst));
+
+  /* there are 4! = 24 possible permutations, do it
+   * at least N = 4! and pick a rather large threshold
+   * instead of a larger N */
+  N = (4 * 3 * 2 * 1);
+
+  for (guint i = 0; i < N; i++)
+    {
+      bolt_strv_permute (tst);
+      if (bolt_strv_equal ((char **) ref, (char **) tst))
+        k++;
+    }
+
+  g_debug ("permutation-test: %u of %u were equal", k, N);
+  g_assert_cmpuint (k, <, 5);
 }
 
 static void
