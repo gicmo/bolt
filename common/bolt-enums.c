@@ -138,15 +138,7 @@ bolt_flags_class_to_string (GFlagsClass *flags_class,
   const char *name;
   GFlagsValue *fv;
 
-  if (flags_class == NULL)
-    {
-      name = g_type_name_from_class ((GTypeClass *) flags_class);
-      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "could not determine flags class for '%s'",
-                   name);
-
-      return FALSE;
-    }
+  g_return_val_if_fail (G_IS_FLAGS_CLASS (flags_class), FALSE);
 
   fv = g_flags_get_first_value (flags_class, value);
   if (fv == NULL)
@@ -195,13 +187,7 @@ bolt_flags_class_from_string (GFlagsClass *flags_class,
   const char *name;
   guint flags = 0;
 
-  if (flags_class == NULL)
-    {
-      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                   "could not determine flags class");
-
-      return FALSE;
-    }
+  g_return_val_if_fail (G_IS_FLAGS_CLASS (flags_class), FALSE);
 
   if (string == NULL)
     {
@@ -247,7 +233,10 @@ bolt_flags_to_string (GType    flags_type,
 {
   g_autoptr(GFlagsClass) klass = NULL;
 
+  g_return_val_if_fail (G_TYPE_IS_FLAGS (flags_type), NULL);
+
   klass = g_type_class_ref (flags_type);
+
   return bolt_flags_class_to_string (klass, value, error);
 }
 
@@ -259,7 +248,10 @@ bolt_flags_from_string (GType       flags_type,
 {
   g_autoptr(GFlagsClass) klass = NULL;
 
+  g_return_val_if_fail (G_TYPE_IS_FLAGS (flags_type), FALSE);
+
   klass = g_type_class_ref (flags_type);
+
   return bolt_flags_class_from_string (klass, string, flags_out, error);
 }
 

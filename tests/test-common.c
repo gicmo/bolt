@@ -328,17 +328,6 @@ test_flags (TestRng *tt, gconstpointer user_data)
       g_assert_cmpuint (val, ==, ftt[i].value);
     }
 
-  /* handle NULL for flags class */
-  ok = bolt_flags_class_from_string (NULL, "fax-machine", &val, &err);
-  g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
-  g_assert_false (ok);
-  g_clear_error (&err);
-
-  str = bolt_flags_class_to_string (NULL, 0xFFFF, &err);
-  g_assert_error (err, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS);
-  g_assert_null (str);
-  g_clear_error (&err);
-
   /* handle invalid values */
   klass = g_type_class_ref (BOLT_TYPE_KITT_FLAGS);
   g_assert_nonnull (klass);
