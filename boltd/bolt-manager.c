@@ -807,15 +807,18 @@ manager_register_domain (BoltManager *mgr,
 {
   BoltSecurity sl;
   gboolean online;
+  gboolean acl;
 
   mgr->domains = bolt_domain_insert (mgr->domains, domain);
 
   online = bolt_domain_is_connected (domain);
+  acl = bolt_domain_supports_bootacl (domain);
   sl = bolt_domain_get_security (domain);
 
   bolt_info (LOG_TOPIC ("domain"), LOG_DOM (domain),
-             "domain (security: %s) added",
-             bolt_security_to_string (sl));
+             "domain (security: %s, bootacl: %s) added",
+             bolt_security_to_string (sl),
+             bolt_yesno (acl));
 
   if (!online)
     return;
