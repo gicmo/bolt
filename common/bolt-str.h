@@ -45,6 +45,8 @@ GHashTable * bolt_strv_diff (const GStrv before,
 char ** bolt_strv_rotate_left (char **strv);
 void    bolt_strv_permute (char **strv);
 
+#define  bolt_strv_isempty(strv) ((strv) == NULL || *(strv) == NULL)
+
 #define bolt_strzero(str) (str == NULL || *str == '\0')
 
 #define bolt_yesno(val) val ? "yes" : "no"
