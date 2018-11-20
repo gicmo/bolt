@@ -625,7 +625,7 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
   g_assert_no_error (err);
   g_assert_nonnull (s1);
   g_assert_true (bolt_domain_is_stored (s1));
-  g_assert_false (bolt_domain_supports_bootacl (d1));
+  g_assert_false (bolt_domain_supports_bootacl (s1));
 
   g_assert_cmpstr (uid, ==, bolt_domain_get_uid (s1));
   bootacl = bolt_domain_get_bootacl (s1);
