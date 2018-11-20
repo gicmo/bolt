@@ -433,7 +433,7 @@ bolt_domain_bootacl_sync (BoltDomain *domain,
   BoltJournal *log = domain->acllog;
   gboolean ok;
 
-  if (*sysacl == NULL || log == NULL)
+  if (bolt_strv_isempty (sysacl) || log == NULL)
     return;
 
   bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM (domain), "synchronizing journal");
@@ -771,7 +771,7 @@ bolt_domain_supports_bootacl (BoltDomain *domain)
 {
   g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
 
-  return domain->bootacl != NULL;
+  return !bolt_strv_isempty (domain->bootacl);
 }
 
 guint
@@ -781,7 +781,7 @@ bolt_domain_bootacl_slots (BoltDomain *domain,
   guint slots = 0;
   guint unused = 0;
 
-  if (domain->bootacl == NULL)
+  if (bolt_strv_isempty (domain->bootacl))
     {
       if (n_free)
         *n_free = 0;
