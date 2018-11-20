@@ -415,6 +415,9 @@ bolt_store_get_domain (BoltStore  *store,
       g_clear_error (&err);
     }
 
+  if (bolt_strv_isempty (bootacl))
+    g_clear_pointer (&bootacl, g_strfreev);
+
   domain = g_object_new (BOLT_TYPE_DOMAIN,
                          "store", store,
                          "uid", uid,

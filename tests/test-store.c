@@ -629,7 +629,7 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
 
   g_assert_cmpstr (uid, ==, bolt_domain_get_uid (s1));
   bootacl = bolt_domain_get_bootacl (s1);
-  g_assert_cmpuint (g_strv_length (bootacl), ==, 0);
+  g_assert_null (bootacl);
 
   /* update the bootacl */
   g_object_set (d1, "bootacl", acl, NULL);
