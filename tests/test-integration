@@ -1515,17 +1515,8 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(remote_ssd1.status, BoltDevice.AUTHORIZED)
         self.daemon_stop()
 
-    def test_device_auto_import_sl1(self):
-        key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
-
-        devs = [
-            {'authorized': 1, 'key': None, 'boot': 0, 'stored': False},  # no boot flag
-            {'authorized': 2, 'key': key,  'boot': 0, 'stored': False},  # no boot flag
-            {'authorized': 1, 'key': None, 'boot': 1, 'stored': True},   # boot, user mode -> import
-            # TODO: check we are not authorizing a device without a key in secure mode
-        ]
-
-        dc, host = self.add_domain_host(security='user')
+    def device_auto_import_test(self, security, devs):
+        dc, host = self.add_domain_host(security=security)
 
         for i, d in enumerate(devs):
             did = i + 1
@@ -1553,6 +1544,19 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertEqual(remote.stored, d['stored'])
 
         self.daemon_stop()
+
+    def test_device_auto_import_sl1(self):
+
+        key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
+
+        devs = [
+            {'authorized': 1, 'key': None, 'boot': 0, 'stored': False},  # no boot flag
+            {'authorized': 2, 'key': key,  'boot': 0, 'stored': False},  # no boot flag
+            {'authorized': 1, 'key': None, 'boot': 1, 'stored': True},   # boot, user mode -> import
+            # TODO: check we are not authorizing a device without a key in secure mode
+        ]
+
+        self.device_auto_import_test('user', devs)
 
     def test_device_auto_import_sl2(self):
         # like test_device_auto_import but in SECURE mode
@@ -1567,34 +1571,7 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 2, 'key': key,  'boot': 1, 'stored': True},
         ]
 
-        dc, host = self.add_domain_host(security='secure')
-
-        for i, d in enumerate(devs):
-            did = i + 1
-            path, uid = self.add_device(host,
-                                        did,
-                                        "Dock%d" % did,
-                                        "GNOME.org",
-                                        authorized=d['authorized'],
-                                        key=d['key'],
-                                        boot='%d' % d['boot'])
-            d['path'] = path
-            d['uid'] = uid
-
-        self.daemon_start()
-        self.polkitd_start()
-        client = self.client
-
-        devices = client.list_devices()
-        self.assertEqual(len(devices), len(devs) + 1)
-
-        for d in devs:
-            remote = self.find_device_by_uid(devices, d['uid'])
-
-            self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
-            self.assertEqual(remote.stored, d['stored'])
-
-        self.daemon_stop()
+        self.device_auto_import_test('secure', devs)
 
     def test_device_enroll(self):
         self.daemon_start()
