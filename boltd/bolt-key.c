@@ -231,15 +231,23 @@ bolt_key_load_file (GFile   *file,
   ok = bolt_read_all (fd, key->data, BOLT_KEY_CHARS, &len, error);
   close (fd);
 
+  if (!ok)
+    return NULL;
+
+  /* empty key; NB: the kernel gives us "\n" for an empty key */
+  if (len == 0 || (len == 1 && g_ascii_isspace (key->data[0])))
+    {
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_NOKEY,
+                           "key-file exists but contains no data");
+      return NULL;
+    }
+
   if (len != BOLT_KEY_CHARS)
     {
       g_set_error (error, BOLT_ERROR, BOLT_ERROR_BADKEY,
                    "unexpected key size (corrupt key?): %zu", len);
       return NULL;
     }
-
-  if (!ok)
-    return NULL;
 
   key->fresh = FALSE;
 
