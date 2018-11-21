@@ -2188,7 +2188,7 @@ enroll_device_store_authorized (BoltManager *mgr,
       bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("udev"),
                      "failed to read key from sysfs");
       g_propagate_prefixed_error (error, g_steal_pointer (&err), "%s",
-                                  "could not determine existing authorization");
+                                  "could not determine existing authorization: ");
       return NULL;
     }
 
