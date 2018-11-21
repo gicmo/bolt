@@ -421,10 +421,11 @@ if res.returncode() == 0
   test_env.prepend('LD_PRELOAD', 'libumockdev-preload.so.0')
   test_env.prepend('BOLT_BUILD_DIR', meson.current_build_dir())
 
-  tests = res.stdout().strip().split(' ')
+  tests = res.stdout().strip().split('\n')
   foreach t: tests
-    name = 'integration @0@'.format(t.split('.')[1])
-    test(name, test_it, args: [t], env: test_env, timeout: 120)
+    args = t.split(' ')
+    name = 'integration @0@'.format(args[1])
+    test(name, test_it, args: [args[0]], env: test_env, timeout: 120)
   endforeach
 else
   msg = '@0@'.format(res.stderr().strip())

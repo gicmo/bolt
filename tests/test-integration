@@ -1871,6 +1871,9 @@ if __name__ == '__main__':
         suit = unittest.defaultTestLoader.loadTestsFromTestCase(BoltTest)
         for t in suit:
             name = t.id()
-            print(name[9:], end=" ")
+            comps = name.split('.')
+            machine = ".".join(comps[1:])
+            human = comps[2][len('test_'):]
+            print("%s %s" % (machine, human), end="\n")
         sys.exit(0)
     unittest.main(verbosity=2)
