@@ -597,7 +597,8 @@ class Device(object):
         bed.uevent(self.syspath, "remove")
         bed.remove_device(self.syspath)
         self.authorized = 0
-        self.key = ""
+        if hasattr(self, 'key') and self.key is not None:
+            self.key = "\n"
         self.root.device_disconnected(self)
         self.syspath = None
         self.testbed = None
@@ -625,7 +626,7 @@ class TbDevice(Device):
         self.vendor_name = vendor or 'GNOME.org'
         self.vendor = self._make_id(self.vendor_name)
         self.authorized = authorized
-        self.key = ""
+        self.key = "\n"
 
     def _make_id(self, name):
         return '0x%X' % binascii.crc32(name.encode('utf-8'))
@@ -1079,6 +1080,9 @@ class BoltTest(dbusmock.DBusTestCase):
                  'unique_id', uid]
 
         if key is not None:
+            # The kernel always returns the key with trailing `\n`
+            if not key.endswith('\n'):
+                key += '\n'
             props += ['key', key]
 
         if boot is not None:
