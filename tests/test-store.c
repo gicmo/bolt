@@ -351,6 +351,19 @@ test_key (TestStore *tt, gconstpointer user_data)
   g_assert_error (err, BOLT_ERROR, BOLT_ERROR_BADKEY);
   g_assert_null (loaded);
   g_clear_error (&err);
+
+  /* empty key file ("", or "\n") */
+  for (gssize i = 0; i < 2; i++)
+    {
+      ok = g_file_set_contents (p, "\n", i, &err);
+      g_assert_no_error (err);
+      g_assert_true (ok);
+
+      loaded = bolt_key_load_file (f, &err);
+      g_assert_error (err, BOLT_ERROR, BOLT_ERROR_NOKEY);
+      g_assert_null (loaded);
+      g_clear_error (&err);
+    }
 }
 
 static GLogWriterOutput
