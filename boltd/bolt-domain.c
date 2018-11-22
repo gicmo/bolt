@@ -756,7 +756,6 @@ bolt_domain_update_from_udev (BoltDomain         *domain,
 {
   g_autoptr(GError) err = NULL;
   g_auto(GStrv) acl = NULL;
-  gboolean same;
 
   acl = bolt_sysfs_read_boot_acl (udev, &err);
   if (acl == NULL && !bolt_err_notfound (err))
@@ -764,10 +763,6 @@ bolt_domain_update_from_udev (BoltDomain         *domain,
       bolt_warn_err (err, "failed to get boot_acl");
       return;
     }
-
-  same = bolt_strv_equal (domain->bootacl, acl);
-  if (same)
-    return;
 
   bolt_domain_bootacl_update (domain, &acl, NULL);
 }
