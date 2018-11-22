@@ -542,6 +542,7 @@ bolt_domain_new_for_udev (struct udev_device *udev,
   BoltSecurity security = BOLT_SECURITY_UNKNOWN;
   const char *syspath;
   const char *sysname;
+  gboolean ok;
   gint sort = -1;
 
   g_return_val_if_fail (udev != NULL, NULL);
@@ -572,8 +573,8 @@ bolt_domain_new_for_udev (struct udev_device *udev,
   if (security == BOLT_SECURITY_UNKNOWN)
     return NULL;
 
-  acl = bolt_sysfs_read_boot_acl (udev, &err);
-  if (acl == NULL && !bolt_err_notfound (err))
+  ok = bolt_sysfs_read_boot_acl (udev, &acl, &err);
+  if (!ok)
     bolt_warn_err (err, "failed to get boot_acl");
 
   dom = g_object_new (BOLT_TYPE_DOMAIN,
@@ -683,6 +684,7 @@ bolt_domain_connected (BoltDomain         *domain,
   BoltSecurity security;
   const char *syspath;
   const char *id;
+  gboolean ok;
 
   g_return_if_fail (domain != NULL);
   g_return_if_fail (dev != NULL);
@@ -719,8 +721,8 @@ bolt_domain_connected (BoltDomain         *domain,
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_SYSPATH]);
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_SECURITY]);
 
-  acl = bolt_sysfs_read_boot_acl (dev, &err);
-  if (acl == NULL && !bolt_err_notfound (err))
+  ok = bolt_sysfs_read_boot_acl (dev, &acl, &err);
+  if (!ok)
     bolt_warn_err (err, "failed to get boot_acl");
 
   bolt_domain_bootacl_sync (domain, &acl);
@@ -756,9 +758,10 @@ bolt_domain_update_from_udev (BoltDomain         *domain,
 {
   g_autoptr(GError) err = NULL;
   g_auto(GStrv) acl = NULL;
+  gboolean ok;
 
-  acl = bolt_sysfs_read_boot_acl (udev, &err);
-  if (acl == NULL && !bolt_err_notfound (err))
+  ok = bolt_sysfs_read_boot_acl (udev, &acl, &err);
+  if (!ok)
     {
       bolt_warn_err (err, "failed to get boot_acl");
       return;

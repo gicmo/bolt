@@ -265,28 +265,32 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
   return TRUE;
 }
 
-GStrv
+gboolean
 bolt_sysfs_read_boot_acl (struct udev_device *udev,
+                          GStrv              *out,
                           GError            **error)
 {
+  g_auto(GStrv) acl = NULL;
   const char *val;
-  GStrv acl;
+
+  g_return_val_if_fail (udev != NULL, FALSE);
+  g_return_val_if_fail (out != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   val = udev_device_get_sysattr_value (udev, "boot_acl");
 
-  if (val == NULL)
-    {
-      int code = g_io_error_from_errno (errno);
-      g_set_error (error, G_IO_ERROR, code,
-                   "could not read 'boot_acl': %s",
-                   g_strerror (errno));
-      return NULL;
-    }
+  if (val)
+    acl = g_strsplit (val, ",", 1024);
+  else if (errno != ENOENT)
+    return bolt_error_for_errno (error, errno, "%m");
 
-  acl = g_strsplit (val, ",", 1024);
-  /* TODO: need to filter empty uuids? */
+  /* if the attribute exists but is empty, return NULL */
+  if (!bolt_strv_isempty (acl))
+    *out = g_steal_pointer (&acl);
+  else
+    *out = NULL;
 
-  return acl;
+  return TRUE;
 }
 
 gboolean
