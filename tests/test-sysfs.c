@@ -321,6 +321,17 @@ test_bootacl_tear_down (TestBootacl *tt, gconstpointer user)
 static void
 dump_strv (GStrv strv, const char *prefix)
 {
+  if (strv == NULL)
+    {
+      g_print ("%s is NULL\n", prefix);
+      return;
+    }
+  else if (*strv == NULL)
+    {
+      g_print ("%s is EMPTY\n", prefix);
+      return;
+    }
+
   for (guint i = 0; strv[i]; i++)
     g_print ("%s[%u] %s\n", prefix, i, strv[i]);
 }
@@ -446,10 +457,13 @@ test_bootacl_del_uuid (TestBootacl *tt,
 static void
 test_bootacl_basic (TestBootacl *tt, gconstpointer user)
 {
+  g_auto(GStrv) sysacl = NULL;
   BoltDomain *dom = tt->dom;
   const char **used;
   guint slots = tt->slots;
   guint n, n_free, n_used;
+
+  g_assert_true (bolt_domain_supports_bootacl (dom));
 
   n = bolt_domain_bootacl_slots (dom, &n_free);
   g_assert_cmpuint (n, ==, slots);
@@ -458,6 +472,42 @@ test_bootacl_basic (TestBootacl *tt, gconstpointer user)
   used = bolt_domain_bootacl_get_used (dom, &n_used);
   g_assert_cmpuint (g_strv_length ((GStrv) used), ==, 0);
   g_assert_cmpuint (n_used, ==, 0);
+
+  /* disconnect and reconnect */
+  bolt_domain_disconnected (dom);
+  test_bootacl_connect_and_verify (tt, dom, &sysacl);
+
+  /* simulate some pathological cases that should not
+   * actually happen, but should still be handled
+   */
+
+  /* after we connect, the slot list is empty */
+  bolt_domain_disconnected (dom);
+  g_strfreev (tt->acl);
+  tt->acl = g_strsplit ("", ",", -1);
+
+  test_bootacl_write_acl (tt, tt->acl);
+
+  test_bootacl_connect_and_verify (tt, dom, &sysacl);
+  g_assert_false (bolt_domain_supports_bootacl (dom));
+
+  n = bolt_domain_bootacl_slots (dom, &n_free);
+  g_assert_cmpuint (n, ==, 0);
+  g_assert_cmpuint (n_free, ==, 0);
+
+  /* after we connect, the slot list changed */
+  bolt_domain_disconnected (dom);
+  g_strfreev (tt->acl);
+  tt->acl = g_strsplit (",", ",", -1); /* two slots */
+
+  test_bootacl_write_acl (tt, tt->acl);
+
+  test_bootacl_connect_and_verify (tt, dom, &sysacl);
+  g_assert_true (bolt_domain_supports_bootacl (dom));
+
+  n = bolt_domain_bootacl_slots (dom, &n_free);
+  g_assert_cmpuint (n, ==, 2);
+  g_assert_cmpuint (n_free, ==, 2);
 }
 
 static void
@@ -961,7 +1011,6 @@ main (int argc, char **argv)
               test_bootacl_setup,
               test_bootacl_update_offline,
               test_bootacl_tear_down);
-
 
   g_test_add ("/sysfs/domain/bootacl/allocate",
               TestBootacl,
