@@ -358,11 +358,17 @@ bolt_domain_bootacl_update (BoltDomain *domain,
   gboolean same;
   guint signal;
 
-  g_return_if_fail (acl != NULL || *acl != NULL);
+  g_return_if_fail (domain != NULL);
+  g_return_if_fail (acl != NULL);
 
   same = bolt_strv_equal (domain->bootacl, *acl);
+
   if (same)
-    return;
+    {
+      bolt_debug (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
+                  "acl unchanged, not updating");
+      return;
+    }
 
   bolt_swap (domain->bootacl, *acl);
 
