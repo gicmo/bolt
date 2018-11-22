@@ -38,6 +38,7 @@
 #include <gio/gio.h>
 #include <glib/gprintf.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <locale.h>
 #include <string.h>
@@ -158,6 +159,7 @@ test_enums (TestRng *tt, gconstpointer user_data)
 static void
 test_error (TestRng *tt, gconstpointer user_data)
 {
+  g_autoptr(GError) error = NULL;
   g_autoptr(GError) failed = NULL;
   g_autoptr(GError) notfound = NULL;
   g_autoptr(GError) exists = NULL;
@@ -265,6 +267,30 @@ test_error (TestRng *tt, gconstpointer user_data)
   g_assert_error (target, BOLT_ERROR, BOLT_ERROR_BADKEY);
   g_assert_false (g_dbus_error_is_remote_error (target));
   g_assert_cmpstr (target->message, ==, buserr->message);
+
+  /* bolt_error_for_errno */
+  ok = bolt_error_for_errno (NULL, 0, "no error!");
+  g_assert_true (ok);
+
+  ok = bolt_error_for_errno (&error, 0, "no error!");
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  ok = bolt_error_for_errno (NULL, ENOENT, "no such thing");
+  g_assert_false (ok);
+
+  ok = bolt_error_for_errno (&error, ENOENT, "no such thing");
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_true (g_str_has_prefix (error->message, "no such thing"));
+  g_assert_false (ok);
+  g_clear_pointer (&error, g_error_free);
+
+  ok = bolt_error_for_errno (&error, ENOENT, "%m");
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_debug ("ENOENT formatted via %%m is '%s'", error->message);
+  g_assert_true (strlen (error->message) > 0);
+  g_assert_false (ok);
+  g_clear_pointer (&error, g_error_free);
 }
 
 static void

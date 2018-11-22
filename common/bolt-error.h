@@ -62,4 +62,8 @@ gboolean bolt_error_propagate (GError **dest,
 gboolean bolt_error_propagate_stripped (GError **dest,
                                         GError **source);
 
+gboolean bolt_error_for_errno (GError    **error,
+                               gint        err_no,
+                               const char *format,
+                               ...) G_GNUC_PRINTF (3, 4);
 G_END_DECLS

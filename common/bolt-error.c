@@ -125,3 +125,30 @@ bolt_error_propagate_stripped (GError **dest,
   g_propagate_error (dest, g_steal_pointer (source));
   return FALSE;
 }
+
+gboolean
+bolt_error_for_errno (GError    **error,
+                      gint        err_no,
+                      const char *format,
+                      ...)
+{
+  va_list ap;
+  int code;
+
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+  g_return_val_if_fail (format != NULL, FALSE);
+
+  if (err_no == 0)
+    return TRUE;
+
+  if (error == NULL)
+    return FALSE;
+
+  code = g_io_error_from_errno (err_no);
+
+  va_start (ap, format);
+  *error = g_error_new_valist (G_IO_ERROR, code, format, ap);
+  va_end (ap);
+
+  return FALSE;
+}
