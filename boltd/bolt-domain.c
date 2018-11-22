@@ -331,7 +331,7 @@ static gboolean
 bolt_domain_bootacl_can_update (BoltDomain *domain,
                                 GError    **error)
 {
-  if (domain->bootacl == NULL)
+  if (!bolt_domain_supports_bootacl (domain))
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
                    "boot ACL not supported on domain '%s'", domain->uid);
