@@ -90,6 +90,12 @@ bolt_err_badstate (const GError *error)
 }
 
 gboolean
+bolt_err_nokey (const GError *error)
+{
+  return g_error_matches (error, BOLT_ERROR, BOLT_ERROR_NOKEY);
+}
+
+gboolean
 bolt_error_propagate (GError **dest,
                       GError **source)
 {
