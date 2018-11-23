@@ -1160,8 +1160,8 @@ manager_maybe_auto_import_device (BoltManager *mgr,
       return;
     }
 
-  key = bolt_device_get_key_from_sysfs (dev, &err);
-  if (key == NULL && !bolt_err_notfound (err))
+  ok = bolt_device_get_key_from_sysfs (dev, &key, &err);
+  if (!ok)
     {
       bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("auto-import"),
                      "failed to read key from sysfs");
@@ -2182,8 +2182,8 @@ enroll_device_store_authorized (BoltManager *mgr,
 
   bolt_info (LOG_DEV (dev), "enrolling an authorized device");
 
-  key = bolt_device_get_key_from_sysfs (dev, &err);
-  if (key == NULL && !bolt_err_notfound (err))
+  ok = bolt_device_get_key_from_sysfs (dev, &key, &err);
+  if (!ok)
     {
       bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("udev"),
                      "failed to read key from sysfs");

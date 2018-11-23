@@ -1462,21 +1462,35 @@ bolt_device_check_authflag (const BoltDevice *dev,
   return bolt_flag_isset (dev->aflags, flag);
 }
 
-BoltKey *
-bolt_device_get_key_from_sysfs (const BoltDevice *dev,
-                                GError          **error)
+gboolean
+bolt_device_get_key_from_sysfs (BoltDevice *dev,
+                                BoltKey   **key,
+                                GError    **error)
 {
+  g_autoptr(GError) err = NULL;
   g_autoptr(GFile) keyfile = NULL;
   g_autofree char *keypath = NULL;
-  BoltKey *key;
 
-  g_return_val_if_fail (dev != NULL, NULL);
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+  g_return_val_if_fail (key != NULL && *key == NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   if (dev->syspath == NULL)
-    return NULL;
+    {
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_BADSTATE,
+                           "device is not connected");
+      return FALSE;
+    }
 
   keypath = g_build_filename (dev->syspath, "key", NULL);
   keyfile = g_file_new_for_path (keypath);
 
-  return key = bolt_key_load_file (keyfile, error);
+  *key = bolt_key_load_file (keyfile, &err);
+
+  if (*key != NULL)
+    return TRUE;
+  else if (bolt_err_notfound (err) || bolt_err_nokey (err))
+    return TRUE;
+  else
+    return bolt_error_propagate (error, &err);
 }
