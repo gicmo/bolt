@@ -78,6 +78,7 @@ mock_domain_destory (gpointer data)
 
   mock_device_destroy (domain->host);
 
+  g_free (domain->idstr);
   g_free (domain->path);
   g_free (domain);
 }
