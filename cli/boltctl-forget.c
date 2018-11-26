@@ -61,6 +61,9 @@ forget (BoltClient *client, int argc, char **argv)
         {
           BoltDevice *dev = g_ptr_array_index (devices, i);
 
+          if (! bolt_device_is_stored (dev))
+            continue;
+
           uid = bolt_device_get_uid (dev);
           ok = bolt_client_forget_device (client, uid, &error);
           if (!ok)
