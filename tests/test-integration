@@ -866,21 +866,27 @@ class BoltTest(dbusmock.DBusTestCase):
 
     @classmethod
     def setUpClass(cls):
-        path = None
+        boltd = None
+        bltctl = None
         if 'BOLT_BUILD_DIR' in os.environ:
             print('Testing local build')
             build_dir = os.environ['BOLT_BUILD_DIR']
-            path = os.path.join(build_dir, 'boltd')
+            boltd = os.path.join(build_dir, 'boltd')
+            boltctl = os.path.join(build_dir, 'boltctl')
         elif 'UNDER_JHBUILD' in os.environ:
             print('Testing JHBuild version')
             jhbuild_prefix = os.environ['JHBUILD_PREFIX']
-            path = os.path.join(jhbuild_prefix, 'libexec', 'boltd')
+            boltd = os.path.join(jhbuild_prefix, 'libexec', 'boltd')
+            boltctl = os.path.join(jhbuild_prefix, 'bin', 'boltctl')
         else:
             print('Testing installed system binaries')
-            path = BoltTest.path_from_service_file(SERVICE_FILE)
+            boltd = BoltTest.path_from_service_file(SERVICE_FILE)
+            boltctl = shutil.which('boltctl')
 
-        assert path is not None, 'failed to find daemon'
-        cls.paths = {'daemon': path}
+        assert boltd is not None, 'failed to find daemon'
+        assert os.access(boltctl, os.X_OK), "could not execute @ " + boltctl
+        cls.paths = {'daemon': boltd,
+                     'boltctl': boltctl}
 
         cls.test_bus = Gio.TestDBus.new(Gio.TestDBusFlags.NONE)
         cls.test_bus.up()
@@ -1001,6 +1007,25 @@ class BoltTest(dbusmock.DBusTestCase):
 
         with open(path, 'r') as f:
             print(f.read())
+
+    # executing boltctl
+    def boltctl(self, *args):
+        env = os.environ.copy()
+        env['G_MESSAGES_DEBUG'] = "all"
+        args = [self.paths['boltctl']] + list(args)
+
+        print('Calling: ' + " ".join(args), file=sys.stderr)
+        process = subprocess.Popen(args,
+                                   env=env,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+        ret = process.returncode
+        if ret != 0:
+            print('OUTPUT:')
+            print(stdout, file=sys.stdout)
+            print(stderr, file=sys.stderr)
+        return stdout, stderr, ret
 
     # mock tree stuff
     def default_mock_tree(self, acl=None):
@@ -1885,6 +1910,93 @@ class BoltTest(dbusmock.DBusTestCase):
                                       val)
             self.assertTrue(res)
         self.assertEqual(remote.label, val)
+
+        self.daemon_stop()
+
+    def test_boltctl(self):
+        tree = self.simple_mock_tree()
+        tree.connect_tree(self.testbed)
+
+        self.daemon_start()
+        self.polkitd_start()
+
+        out, _, res = self.boltctl('--version')
+        out = str(out)
+        self.assertEqual(res, 0)
+        self.assertNotEqual(len(out), 0)
+        self.assertIn('bolt', out)
+
+        out, _, res = self.boltctl('power', '-q')
+        out = str(out)
+        self.assertEqual(res, 0)
+        self.assertNotEqual(len(out), 0)
+        self.assertIn('supported', out)
+
+        out, _, res = self.boltctl('domains')
+        out = str(out)
+        self.assertEqual(res, 0)
+        self.assertNotEqual(len(out), 0)
+        self.assertIn(tree.unique_id, out)
+
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.authorize',
+                                 'org.freedesktop.bolt.enroll',
+                                 'org.freedesktop.bolt.manage'])
+
+        to_enroll = tree.collect(TbDevice.is_unauthorized)
+
+        out, _, res = self.boltctl('list')
+        out = str(out)
+        self.assertEqual(res, 0)
+        for dev in to_enroll:
+            self.assertIn(dev.unique_id, out)
+
+        for dev in to_enroll:
+            uid =  dev.unique_id
+            _, _, res = self.boltctl('authorize', uid)
+            self.assertEqual(res, 0)
+
+            remote = self.client.device_by_uid(uid)
+            self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
+            self.assertEqual(remote.stored, False)
+
+        for dev in to_enroll:
+            uid =  dev.unique_id
+            _, _, res = self.boltctl('enroll', uid)
+            self.assertEqual(res, 0)
+
+            remote = self.client.device_by_uid(uid)
+            self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
+            self.assertEqual(remote.stored, True)
+
+            out, _, res = self.boltctl('info', uid)
+            out = str(out)
+            self.assertEqual(res, 0)
+            self.assertIn('authorized', out)
+
+        for dev in to_enroll:
+            uid =  dev.unique_id
+            _, _, res = self.boltctl('forget', uid)
+            self.assertEqual(res, 0)
+
+            remote = self.client.device_by_uid(uid)
+            self.assertEqual(remote.stored, False)
+
+        for dev in to_enroll:
+            uid =  dev.unique_id
+            _, _, res = self.boltctl('enroll', uid)
+            self.assertEqual(res, 0)
+
+            remote = self.client.device_by_uid(uid)
+            self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
+            self.assertEqual(remote.stored, True)
+
+        _, _, res = self.boltctl('forget', '--all')
+        self.assertEqual(res, 0)
+        for dev in to_enroll:
+            uid =  dev.unique_id
+            remote = self.client.device_by_uid(uid)
+            self.assertEqual(remote.stored, False)
+
 
         self.daemon_stop()
 
