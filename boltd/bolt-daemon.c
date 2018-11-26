@@ -167,8 +167,8 @@ on_name_lost (GDBusConnection *connection,
 int
 main (int argc, char **argv)
 {
+  g_autoptr(GOptionContext) context = NULL;
   g_autoptr(GError) error = NULL;
-  GOptionContext *context;
   gboolean replace = FALSE;
   gboolean show_version = FALSE;
   gboolean session_bus = FALSE;
