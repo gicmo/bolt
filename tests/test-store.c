@@ -44,8 +44,8 @@
 
 typedef struct
 {
-  const char *path;
-  BoltStore  *store;
+  char      *path;
+  BoltStore *store;
 } TestStore;
 
 
@@ -89,6 +89,8 @@ test_store_tear_down (TestStore *tt, gconstpointer user_data)
 
   if (!ok)
     g_warning ("Could not clean up dir: %s", error->message);
+
+  g_free (tt->path);
 }
 
 static void
