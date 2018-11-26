@@ -199,6 +199,7 @@ bolt_journal_initialize (GInitable    *initable,
 {
   g_autoptr(GError) err = NULL;
   g_autofree char *path = NULL;
+  g_autofree char *size = NULL;
   bolt_autoclose int fd = -1;
   struct stat st;
   BoltJournal *journal;
@@ -241,8 +242,9 @@ bolt_journal_initialize (GInitable    *initable,
       return FALSE;
     }
 
+  size = g_format_size ((guint64) st.st_size);
   bolt_info (LOG_TOPIC ("journal"), "opened for '%.13s'; size: %s",
-             journal->name, g_format_size ((guint64) st.st_size));
+             journal->name, size);
 
   journal->fresh = st.st_size == 0;
   journal->fd = bolt_steal (&fd, -1);
@@ -455,10 +457,10 @@ bolt_journal_list (BoltJournal *journal,
     {
       g_autoptr(GError) err = NULL;
       g_autofree char *l = NULL;
+      g_autofree char *name = NULL;
+      g_autofree char *opstr = NULL;
       BoltJournalItem *i;
       BoltJournalOp op;
-      char *name;
-      char *opstr;
       guint64 ts;
       int n;
 
