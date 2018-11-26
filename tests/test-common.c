@@ -581,6 +581,8 @@ test_io_tear_down (TestIO *tt, gconstpointer user_data)
 
   if (!ok && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND))
     g_warning ("Could not clean up dir: %s", error->message);
+
+  g_clear_pointer (&tt->path, g_free);
 }
 
 
