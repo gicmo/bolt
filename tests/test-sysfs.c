@@ -310,7 +310,7 @@ static void
 test_bootacl_tear_down (TestBootacl *tt, gconstpointer user)
 {
 
-  g_clear_pointer (&tt->acl, g_free);
+  g_clear_pointer (&tt->acl, g_strfreev);
   g_clear_object (&tt->dom);
 
   g_clear_object (&tt->sysfs);
@@ -458,8 +458,8 @@ static void
 test_bootacl_basic (TestBootacl *tt, gconstpointer user)
 {
   g_auto(GStrv) sysacl = NULL;
+  g_autofree const char **used = NULL;
   BoltDomain *dom = tt->dom;
-  const char **used;
   guint slots = tt->slots;
   guint n, n_free, n_used;
 
@@ -592,6 +592,18 @@ typedef struct
   gboolean    fired;
 } AclChangeSet;
 
+#define ACL_CHANGE_SET_INIT {FALSE, NULL, FALSE, }
+
+static void
+acl_change_set_clear (AclChangeSet *set)
+{
+  g_clear_pointer (&set->changes, g_hash_table_unref);
+  set->changed = FALSE;
+  set->fired = FALSE;
+}
+
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (AclChangeSet, acl_change_set_clear);
+
 static void
 acl_change_set_verify (AclChangeSet *cs,
                        int           n_changes,
@@ -638,7 +650,7 @@ on_bootacl_changed (BoltDomain *dom,
 {
   AclChangeSet *changeset = user_data;
 
-  g_clear_pointer (&changeset->changes, g_hash_table_unref);
+  acl_change_set_clear (changeset);
 
   changeset->changed = changed;
   changeset->changes = g_hash_table_ref (changes);
@@ -648,13 +660,13 @@ on_bootacl_changed (BoltDomain *dom,
 static void
 test_bootacl_update_udev (TestBootacl *tt, gconstpointer user)
 {
+  g_auto(AclChangeSet) changeset = ACL_CHANGE_SET_INIT;
   GStrv acl = tt->acl;
   BoltDomain *dom = tt->dom;
   guint slots = tt->slots;
   const char *syspath;
   guint n_free, n_used;
   guint n_signals = 0;
-  AclChangeSet changeset = {FALSE, NULL, FALSE, };
 
   syspath = mock_sysfs_domain_get_syspath (tt->sysfs, tt->dom_sysid);
 
@@ -710,12 +722,12 @@ static void
 test_bootacl_update_online (TestBootacl *tt, gconstpointer user)
 {
   g_autoptr(GError) err = NULL;
+  g_auto(AclChangeSet) changeset = ACL_CHANGE_SET_INIT;
   g_auto(GStrv) sysacl = NULL;
   GStrv acl = tt->acl;
   BoltDomain *dom = tt->dom;
   gboolean ok;
   guint slots;
-  AclChangeSet changeset = {FALSE, NULL, FALSE, };
 
   g_signal_connect (dom, "bootacl-changed",
                     G_CALLBACK (on_bootacl_changed),
