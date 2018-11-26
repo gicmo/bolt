@@ -148,6 +148,7 @@ test_udev_basic (TestUdev *tt, gconstpointer user)
   g_autoptr(BoltUdev) udev = NULL;
   struct udev_device *dev = NULL;
   g_autofree char *prop_name = NULL;
+  g_autofree char *idstr = NULL;
   UEvent ev = { NULL, };
   const char *filter[] = {"thunderbolt", NULL};
   const char *syspath;
@@ -190,7 +191,8 @@ test_udev_basic (TestUdev *tt, gconstpointer user)
   g_assert_no_error (err);
 
   /* remove a domain */
-  mock_sysfs_domain_remove (tt->sysfs, domain);
+  idstr = g_strdup (domain);
+  mock_sysfs_domain_remove (tt->sysfs, idstr);
   n = wait_for_event (&ev, 2);
 
   g_assert_false (ev.timedout);
@@ -199,7 +201,7 @@ test_udev_basic (TestUdev *tt, gconstpointer user)
   g_assert_nonnull (ev.dev);
 
   name = udev_device_get_sysname (ev.dev);
-  g_assert_cmpstr (domain, ==, name);
+  g_assert_cmpstr (idstr, ==, name);
 
   /* cleanup */
   uevent_clear (&ev);
