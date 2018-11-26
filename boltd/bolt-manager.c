@@ -271,6 +271,8 @@ bolt_manager_finalize (GObject *object)
       mgr->probing_timeout = 0;
     }
 
+  g_clear_pointer (&mgr->probing_roots, g_ptr_array_unref);
+
   g_clear_object (&mgr->store);
   g_ptr_array_free (mgr->devices, TRUE);
   bolt_domain_clear (&mgr->domains);
