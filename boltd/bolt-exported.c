@@ -1044,9 +1044,10 @@ bolt_exported_class_export_method (BoltExportedClass        *klass,
 gboolean
 bolt_exported_export (BoltExported    *exported,
                       GDBusConnection *connection,
-                      const char      *object_path,
+                      const char      *path_hint,
                       GError         **error)
 {
+  g_autofree char *object_path = NULL;
   BoltExportedPrivate *priv;
   BoltExportedClass *klass;
   guint id;
@@ -1063,6 +1064,8 @@ bolt_exported_export (BoltExported    *exported,
                    "interface information is missing");
       return FALSE;
     }
+
+  object_path = g_strdup (path_hint);
 
   if (object_path == NULL)
     {
@@ -1092,7 +1095,7 @@ bolt_exported_export (BoltExported    *exported,
   bolt_debug (LOG_TOPIC ("dbus"), "registered object at %s", object_path);
 
   priv->dbus = g_object_ref (connection);
-  priv->object_path = g_strdup (object_path);
+  priv->object_path = g_steal_pointer (&object_path);
   priv->registration = id;
 
   g_object_notify_by_pspec (G_OBJECT (exported), props[PROP_OBJECT_PATH]);
