@@ -32,9 +32,11 @@
 
 char *
 bolt_uuid_format (const char *uuid,
+                  const char *salt,
                   int         fmt)
 {
-  g_autofree char *tmp = NULL;
+  g_autoptr(GChecksum) chk = NULL;
+  const char *tmp = NULL;
   guint op;
   int len;
   char *res;
@@ -57,7 +59,12 @@ bolt_uuid_format (const char *uuid,
       break;
 
     case BOLT_UID_FORMAT_ALIAS:
-      tmp = g_compute_checksum_for_string (G_CHECKSUM_SHA1, uuid, -1);
+      chk = g_checksum_new (G_CHECKSUM_SHA1);
+      if (salt)
+        g_checksum_update (chk, (const guchar *) salt, -1);
+      g_checksum_update (chk, (const guchar *) uuid, -1);
+
+      tmp = g_checksum_get_string (chk);
       res = g_strdup_printf ("%.8s-%.4s-%.4s-%.4s-%.12s",
                              tmp, tmp + 8, tmp + 12, tmp + 16, tmp + 20);
       break;
@@ -118,12 +125,42 @@ bolt_uuid_format_from_string (const char *str,
 int uuids_format;
 GHashTable *uuids_table;
 gboolean uuids_cleanup;
+char *uuids_salt;
 
 static void
 format_uid_cleanup (void)
 {
   g_clear_pointer (&uuids_table, g_hash_table_unref);
+  g_clear_pointer (&uuids_salt, g_free);
   uuids_format = 0;
+}
+
+#define MACHINE_ID_PATH "/etc/machine-id"
+#define BOOT_ID_PATH "/proc/sys/kernel/random/boot_id"
+
+static char *
+get_salt (void)
+{
+  char *salt = NULL;
+  gboolean ok;
+
+  ok = g_file_get_contents (MACHINE_ID_PATH, &salt, NULL, NULL);
+
+  if (ok && !bolt_strzero (salt))
+    {
+      g_debug ("using machine-id as salt");
+      return salt;
+    }
+
+  ok = g_file_get_contents (BOOT_ID_PATH, &salt, NULL, NULL);
+  if (ok && !bolt_strzero (salt))
+    {
+      g_debug ("using boot-id as salt");
+      return salt;
+    }
+
+  g_debug ("using PACKAGE_VERSION as pseudo-salt :(");
+  return g_strdup (PACKAGE_VERSION);
 }
 
 int
@@ -145,6 +182,8 @@ format_uid_init (const char *str,
 
   uuids_table = g_hash_table_new_full (g_str_hash, g_str_equal,
                                        g_free, g_free);
+
+  uuids_salt = get_salt ();
 
   if (!uuids_cleanup)
     {
@@ -170,7 +209,7 @@ format_uid (const char *uid)
     return res;
 
   key = g_strdup (uid);
-  val = bolt_uuid_format (uid, uuids_format);
+  val = bolt_uuid_format (uid, uuids_salt, uuids_format);
   g_hash_table_insert (uuids_table, key, val);
 
   return val;

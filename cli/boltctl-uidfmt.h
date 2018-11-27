@@ -35,6 +35,7 @@ typedef enum {
 
 /* generic function  */
 char *        bolt_uuid_format (const char *uuid,
+                                const char *salt,
                                 int         fmt);
 
 int           bolt_uuid_format_from_string (const char *str,
