@@ -867,7 +867,7 @@ class BoltTest(dbusmock.DBusTestCase):
     @classmethod
     def setUpClass(cls):
         boltd = None
-        bltctl = None
+        boltctl = None
         if 'BOLT_BUILD_DIR' in os.environ:
             print('Testing local build')
             build_dir = os.environ['BOLT_BUILD_DIR']
