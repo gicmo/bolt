@@ -604,15 +604,17 @@ call_ctx_reset (CallCtx *ctx)
   if (ctx->data)
     g_variant_unref (ctx->data);
 
-  if (ctx->error)
-    g_clear_error (&ctx->error);
+  g_clear_error (&ctx->error);
 }
 
 static void
 call_ctx_free (CallCtx *ctx)
 {
+  g_return_if_fail (ctx != NULL);
+
   g_main_loop_unref (ctx->loop);
   call_ctx_reset (ctx);
+  g_free (ctx);
 }
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (CallCtx, call_ctx_free);
