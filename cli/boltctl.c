@@ -99,13 +99,13 @@ format_timestamp (BoltDevice *dev,
 void
 print_device (BoltDevice *dev, gboolean verbose)
 {
+  g_autofree char *label = NULL;
   const char *path;
   const char *uid;
   const char *name;
   const char *vendor;
   const char *syspath;
   const char *parent;
-  const char *label;
   BoltDeviceType type;
   BoltStatus status;
   BoltAuthFlags aflags;
