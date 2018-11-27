@@ -2182,7 +2182,8 @@ enroll_device_store_authorized (BoltManager *mgr,
   const char *opath;
   gboolean ok;
 
-  bolt_info (LOG_DEV (dev), "enrolling an authorized device");
+  bolt_info (LOG_DEV (dev), "enrolling an authorized device (%s)",
+             bolt_policy_to_string (policy));
 
   ok = bolt_device_get_key_from_sysfs (dev, &key, &err);
   if (!ok)
