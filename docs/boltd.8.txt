@@ -43,6 +43,20 @@ authorized as soon as they are connected. A command line tool, called
 boltctl(1), can be used to control the daemon and perform all the
 above mentioned tasks.
 
+The pre-boot access control list (*BootACL*) feature is active when
+supported by the firmware and when 'boltd' is running on a new enough
+Linux kernel (>= 4.17). The 'BootACL' is a a list of UUIDs, that can
+be written to the thunderbolt controller. If enabled in the BIOS, all
+devices in that list will be authorized by the firmware during
+pre-boot, which means these devices can be used in the BIOS setup and
+also during Linux early boot. NB: *no device verification* is done,
+even when the security level is set to 'secure' mode in the BIOS, i.e.
+the maximal effective security level for devices in the 'BootACL' is
+only 'user'. If 'BootACL' support is present, all new devices will be
+automatically added. Devices that are 'forgotten' (removed from 'boltd')
+will also be removed from the 'BootACL'. When a controller is offline,
+changes to the 'BootACL' will be written to a journal and synchronized
+back when the controller is online again.
 
 OPTIONS
 -------
