@@ -2241,6 +2241,11 @@ handle_enroll_device (BoltExported          *obj,
                      "invalid policy: %s", policy);
       return NULL;
     }
+  else if (pol == BOLT_POLICY_DEFAULT)
+    {
+      pol = mgr->policy;
+      bolt_info (LOG_DEV (dev), "got 'default' policy, adjusting");
+    }
 
   if (bolt_device_get_stored (dev))
     {
