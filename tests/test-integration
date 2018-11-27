@@ -1738,7 +1738,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
             self.assertEqual(remote.stored, False)
 
-        policy = BoltClient.POLICY_AUTO
+        policy = BoltClient.POLICY_DEFAULT
         for remote, uid in [(d1_remote, d1_uid), (d2_remote, d2_uid)]:
 
             with remote.record() as tape:
@@ -1747,6 +1747,7 @@ class BoltTest(dbusmock.DBusTestCase):
                                           'Stored',
                                           True)
                 self.assertTrue(res)
+            self.assertEqual(remote.policy, client.default_policy)
             now = int(time.time())
             self.assertEqual(remote.stored, True)
             self.assertTrue(remote.StoreTime > 1)
