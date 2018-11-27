@@ -1951,7 +1951,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertIn(dev.unique_id, out)
 
         for dev in to_enroll:
-            uid =  dev.unique_id
+            uid = dev.unique_id
             _, _, res = self.boltctl('authorize', uid)
             self.assertEqual(res, 0)
 
@@ -1960,7 +1960,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertEqual(remote.stored, False)
 
         for dev in to_enroll:
-            uid =  dev.unique_id
+            uid = dev.unique_id
             _, _, res = self.boltctl('enroll', uid)
             self.assertEqual(res, 0)
 
@@ -1974,7 +1974,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertIn('authorized', out)
 
         for dev in to_enroll:
-            uid =  dev.unique_id
+            uid = dev.unique_id
             _, _, res = self.boltctl('forget', uid)
             self.assertEqual(res, 0)
 
@@ -1982,7 +1982,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertEqual(remote.stored, False)
 
         for dev in to_enroll:
-            uid =  dev.unique_id
+            uid = dev.unique_id
             _, _, res = self.boltctl('enroll', uid)
             self.assertEqual(res, 0)
 
@@ -1993,10 +1993,9 @@ class BoltTest(dbusmock.DBusTestCase):
         _, _, res = self.boltctl('forget', '--all')
         self.assertEqual(res, 0)
         for dev in to_enroll:
-            uid =  dev.unique_id
+            uid = dev.unique_id
             remote = self.client.device_by_uid(uid)
             self.assertEqual(remote.stored, False)
-
 
         self.daemon_stop()
 
