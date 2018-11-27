@@ -142,7 +142,7 @@ test_journal_object (TestJournal *tt, gconstpointer user_data)
       g_assert_null (j);
       g_clear_pointer (&err, g_error_free);
 
-      exit (0);
+      return;
     }
 
   g_test_trap_subprocess (NULL, 0, 0);
