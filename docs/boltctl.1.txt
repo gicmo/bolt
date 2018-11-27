@@ -76,9 +76,16 @@ domains [-v | --verbose]
 List all currently active Thunderbolt domains. A Thunderbolt domain
 represents the Thunderbolt controller hardware. There will be one
 domain (and host device) for each Thunderbolt controller present
-in the system.
-NB: The Thunderbolt controllers might be powered down by the
-firmware and my not be visible.
+in the system. The 'security' property shows the security level of
+the controller. 'bootacl' shows the used and total slots of the
+boot access control list (BootACL) and the content of all non-empty
+entries. NB: if BootACL is unsupported it will show 0 for both (0/0).
+The 'online' property shows if the thunderbolt controller is currently
+powered by the firmware. *NB*: if the controller is currently offline
+the BootACL list will reflect what 'boltd' estimates the list will look
+like once the controller is back online and local changes have been
+synchronized to the controller. This might not be accurate if the list
+was modified in the meantime, e.g. from a different installation or OS.
 
 enroll [--policy 'policy'] 'DEVICE'
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
