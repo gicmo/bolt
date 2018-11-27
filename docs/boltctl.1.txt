@@ -36,6 +36,22 @@ OPTIONS
 *--version*::
         Print version information and exit.
 
+*-U | --uuid {'full' | 'short' | 'alias' | N}*::
+        Control how UUIDs are printed. Since they are somewhat sensitive data
+	it is not advisable to share them publically in full length. Instead
+	'short' or 'alias' can and should be used when sharing the output of
+	'boltctl'.
+	'full';;
+	Print all UUIDs in full length.
+	'short';;
+	Truncate all UUIDs so only the first 13 characters are printed.
+	'alias';;
+	All UUIDs are replaced by a random string that is dervied from the
+	UUID, therefore the devices can be uniquely identified without
+	revealing the original UUID.
+	N;;
+	If a integer 'N' is specified, all UUIDs are truncted to only show up
+	to 'N'.
 
 COMMANDS
 --------
