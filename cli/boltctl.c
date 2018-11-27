@@ -324,7 +324,7 @@ main (int argc, char **argv)
   int fmt = -1;
   GOptionEntry options[] = {
     { "version", 0, 0, G_OPTION_ARG_NONE, &version, "Print version information and exit", NULL },
-    { "uuids", 'U', 0, G_OPTION_ARG_STRING, &uuid_fmtstr, "How to format uuids [full, *short, alias]", NULL },
+    { "uuids", 'U', 0, G_OPTION_ARG_STRING, &uuid_fmtstr, "How to format uuids [*full, short, alias]", NULL },
     { NULL }
   };
 
