@@ -56,6 +56,9 @@ OPTIONS
 *-r, --replace*::
   Replace the currently running boltd instance.
 
+*--journal*::
+  Froce logging to the journal.
+
 *-v, --verbosee*::
   Print debug output.
 
