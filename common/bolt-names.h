@@ -62,6 +62,9 @@ G_BEGIN_DECLS
 #define BOLT_DBUS_DOMAIN_INTERFACE "org.freedesktop.bolt1.Domain"
 #define BOLT_DBUS_POWER_INTERFACE "org.freedesktop.bolt1.Power"
 
+/* sysfs */
+#define BOLT_SYSFS_IOMMU "iommu_dma_protection"
+
 /* other well known names */
 #define INTEL_WMI_THUNDERBOLT_GUID "86CCFD48-205E-4A77-9C48-2021CBEDE341"
 
