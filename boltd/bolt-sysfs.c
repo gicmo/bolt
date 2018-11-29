@@ -25,6 +25,7 @@
 #include "bolt-error.h"
 #include "bolt-io.h"
 #include "bolt-log.h"
+#include "bolt-names.h"
 #include "bolt-str.h"
 
 #include <errno.h>
@@ -309,4 +310,25 @@ bolt_sysfs_write_boot_acl (const char *device,
   path = g_build_filename (device, "boot_acl", NULL);
 
   return bolt_file_write_all (path, val, -1, error);
+}
+
+gboolean
+bolt_sysfs_read_iommu (struct udev_device *udev,
+                       gboolean           *out,
+                       GError            **error)
+{
+  int val = 0;
+
+  g_return_val_if_fail (udev != NULL, FALSE);
+  g_return_val_if_fail (out != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  val = sysfs_get_sysattr_value_as_int (udev, BOLT_SYSFS_IOMMU);
+  if (val < 0 && val != -ENOENT)
+    return bolt_error_for_errno (error, errno, "failed to read %s: %s",
+                                 BOLT_SYSFS_IOMMU, g_strerror (-val));
+
+  *out = val > 0;
+
+  return TRUE;
 }

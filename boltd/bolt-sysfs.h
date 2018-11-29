@@ -78,5 +78,8 @@ gboolean             bolt_sysfs_write_boot_acl (const char *device,
                                                 GStrv       acl,
                                                 GError    **error);
 
+gboolean             bolt_sysfs_read_iommu (struct udev_device *udev,
+                                            gboolean           *out,
+                                            GError            **error);
 
 G_END_DECLS
