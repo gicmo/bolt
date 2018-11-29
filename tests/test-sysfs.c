@@ -287,7 +287,8 @@ test_bootacl_setup (TestBootacl *tt, gconstpointer data)
   str = g_strnfill (tt->slots - 1, ',');
   tt->acl = g_strsplit (str, ",", 1024);
 
-  tt->dom_sysid = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_USER, tt->acl);
+  tt->dom_sysid = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_USER,
+                                         "bootacl", tt->acl, NULL);
 
   syspath = mock_sysfs_domain_get_syspath (tt->sysfs, tt->dom_sysid);
   udevice = udev_device_new_from_syspath (tt->udev, syspath);

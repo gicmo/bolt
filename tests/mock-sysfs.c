@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "bolt-io.h"
+#include "bolt-names.h"
 #include "bolt-str.h"
 
 #include "mock-sysfs.h"
@@ -441,12 +442,14 @@ mock_sysfs_force_power_enabled (MockSysfs *ms)
 const char *
 mock_sysfs_domain_add (MockSysfs   *ms,
                        BoltSecurity security,
-                       GStrv        bootacl)
+                       ...)
 {
   g_autofree char *acl = NULL;
-  const char *props[5] = {NULL, };
+  const char *props[7] = {NULL, };
   const char *secstr;
+  const char *key;
   MockDomain *domain;
+  va_list args;
   char *idstr = NULL;
   char *path;
   guint id;
@@ -462,12 +465,29 @@ mock_sysfs_domain_add (MockSysfs   *ms,
   i = 0;
   props[i++] = "security";
   props[i++] = secstr;
-  if (bootacl != NULL)
+
+  va_start (args, security);
+
+  while ((key = va_arg (args, const char *)) != NULL)
     {
-      acl = g_strjoinv (",", bootacl);
-      props[i++] = "boot_acl";
-      props[i++] = acl;
+      if (bolt_streq (key, "bootacl"))
+        {
+          char ** bootacl = va_arg (args, char **);
+          acl = g_strjoinv (",", bootacl);
+          props[i++] = "boot_acl";
+          props[i++] = acl;
+        }
+      else if (bolt_streq (key, "iommu"))
+        {
+          const char *iommu = va_arg (args, const char *);
+          props[i++] = BOLT_SYSFS_IOMMU;
+          props[i++] = iommu;
+        }
     }
+
+  g_assert (i < 7);
+  va_end (args);
+
   props[i++] = NULL;
 
   g_assert (sizeof (props) >= i);

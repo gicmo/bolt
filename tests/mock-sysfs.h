@@ -60,7 +60,7 @@ gboolean         mock_sysfs_force_power_enabled (MockSysfs *ms);
 
 const char *     mock_sysfs_domain_add (MockSysfs   *ms,
                                         BoltSecurity security,
-                                        GStrv        bootacl);
+                                        ...) G_GNUC_NULL_TERMINATED;
 
 const char *     mock_sysfs_domain_get_syspath (MockSysfs  *ms,
                                                 const char *id);
