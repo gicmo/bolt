@@ -661,6 +661,9 @@ bolt_domain_export (BoltDomain      *domain,
   const char *opath;
   gboolean ok;
 
+  g_return_if_fail (BOLT_IS_DOMAIN (domain));
+  g_return_if_fail (G_IS_DBUS_CONNECTION (bus));
+
   exported = BOLT_EXPORTED (domain);
   ok = bolt_exported_export (exported, bus, NULL, &err);
 
@@ -686,7 +689,7 @@ bolt_domain_connected (BoltDomain         *domain,
   const char *id;
   gboolean ok;
 
-  g_return_if_fail (domain != NULL);
+  g_return_if_fail (BOLT_IS_DOMAIN (domain));
   g_return_if_fail (dev != NULL);
 
   id = udev_device_get_sysname (dev);
@@ -737,7 +740,7 @@ bolt_domain_connected (BoltDomain         *domain,
 void
 bolt_domain_disconnected (BoltDomain *domain)
 {
-  g_return_if_fail (domain != NULL);
+  g_return_if_fail (BOLT_IS_DOMAIN (domain));
 
   bolt_msg (LOG_DOM (domain), "disconnected from %s", domain->syspath);
 
@@ -759,6 +762,9 @@ bolt_domain_update_from_udev (BoltDomain         *domain,
   g_autoptr(GError) err = NULL;
   g_auto(GStrv) acl = NULL;
   gboolean ok;
+
+  g_return_if_fail (BOLT_IS_DOMAIN (domain));
+  g_return_if_fail (udev != NULL);
 
   ok = bolt_sysfs_read_boot_acl (udev, &acl, &err);
   if (!ok)
@@ -784,6 +790,8 @@ bolt_domain_bootacl_slots (BoltDomain *domain,
 {
   guint slots = 0;
   guint unused = 0;
+
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), 0);
 
   if (bolt_strv_isempty (domain->bootacl))
     {
@@ -825,7 +833,7 @@ bolt_domain_insert (BoltDomain *list, BoltDomain *domain)
   BoltList iter;
   BoltList *n;
 
-  g_return_val_if_fail (domain != NULL, list);
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), list);
 
   /* the list as a whole takes one reference */
   g_object_ref (domain);
@@ -857,8 +865,8 @@ bolt_domain_remove (BoltDomain *list, BoltDomain *domain)
 {
   BoltList *head;
 
-  g_return_val_if_fail (list != NULL, NULL);
-  g_return_val_if_fail (domain != NULL, list);
+  g_return_val_if_fail (BOLT_IS_DOMAIN (list), NULL);
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), list);
 
   head = bolt_nhlist_del (&list->domains, &domain->domains);
 
@@ -877,6 +885,8 @@ bolt_domain_bootacl_get_used (BoltDomain *domain,
 {
   GPtrArray *res;
   guint used = 0;
+
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), NULL);
 
   res = g_ptr_array_new ();
 
@@ -906,7 +916,9 @@ bolt_domain_bootacl_allocate (BoltDomain *domain,
   gboolean ok;
   gint slot = -1;
 
+  g_return_if_fail (BOLT_IS_DOMAIN (domain));
   g_return_if_fail (acl != NULL && *acl != NULL);
+  g_return_if_fail (uuid != NULL);
 
   /* find the first empty slot, if there is any */
   target = bolt_strv_contains (acl, "");
