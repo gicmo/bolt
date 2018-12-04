@@ -49,9 +49,9 @@ BoltStatus        bolt_device_connected (BoltDevice         *dev,
 
 BoltStatus        bolt_device_disconnected (BoltDevice *dev);
 
-gboolean          bolt_device_is_connected (const BoltDevice *device);
+gboolean          bolt_device_is_connected (BoltDevice *device);
 
-gboolean          bolt_device_is_authorized (const BoltDevice *device);
+gboolean          bolt_device_is_authorized (BoltDevice *device);
 
 BoltStatus        bolt_device_update_from_udev (BoltDevice         *dev,
                                                 struct udev_device *udev);
@@ -66,42 +66,42 @@ void              bolt_device_authorize_idle (BoltDevice         *dev,
                                               GAsyncReadyCallback callback,
                                               gpointer            user_data);
 
-BoltKeyState      bolt_device_get_keystate (const BoltDevice *dev);
+BoltKeyState      bolt_device_get_keystate (BoltDevice *dev);
 
-const char *      bolt_device_get_name (const BoltDevice *dev);
+const char *      bolt_device_get_name (BoltDevice *dev);
 
 const char *      bolt_device_get_object_path (BoltDevice *device);
 
-BoltPolicy        bolt_device_get_policy (const BoltDevice *dev);
+BoltPolicy        bolt_device_get_policy (BoltDevice *dev);
 
-const char *      bolt_device_get_uid (const BoltDevice *dev);
+const char *      bolt_device_get_uid (BoltDevice *dev);
 
-BoltSecurity      bolt_device_get_security (const BoltDevice *dev);
+BoltSecurity      bolt_device_get_security (BoltDevice *dev);
 
-gboolean          bolt_device_get_stored (const BoltDevice *dev);
+gboolean          bolt_device_get_stored (BoltDevice *dev);
 
-BoltStatus        bolt_device_get_status (const BoltDevice *dev);
+BoltStatus        bolt_device_get_status (BoltDevice *dev);
 
-BoltAuthFlags     bolt_device_get_authflags (const BoltDevice *dev);
+BoltAuthFlags     bolt_device_get_authflags (BoltDevice *dev);
 
-const char *      bolt_device_get_syspath (const BoltDevice *dev);
+const char *      bolt_device_get_syspath (BoltDevice *dev);
 
-const char *      bolt_device_get_vendor (const BoltDevice *dev);
+const char *      bolt_device_get_vendor (BoltDevice *dev);
 
-BoltDeviceType    bolt_device_get_device_type (const BoltDevice *dev);
+BoltDeviceType    bolt_device_get_device_type (BoltDevice *dev);
 
-const char *      bolt_device_get_label (const BoltDevice *dev);
+const char *      bolt_device_get_label (BoltDevice *dev);
 
-guint64           bolt_device_get_authtime (const BoltDevice *dev);
+guint64           bolt_device_get_authtime (BoltDevice *dev);
 
-guint64           bolt_device_get_conntime (const BoltDevice *dev);
+guint64           bolt_device_get_conntime (BoltDevice *dev);
 
-gint64            bolt_device_get_storetime (const BoltDevice *dev);
+gint64            bolt_device_get_storetime (BoltDevice *dev);
 
-gboolean          bolt_device_supports_secure_mode (const BoltDevice *dev);
+gboolean          bolt_device_supports_secure_mode (BoltDevice *dev);
 
-gboolean          bolt_device_check_authflag (const BoltDevice *dev,
-                                              BoltAuthFlags     flag);
+gboolean          bolt_device_check_authflag (BoltDevice   *dev,
+                                              BoltAuthFlags flag);
 
 gboolean          bolt_device_get_key_from_sysfs (BoltDevice *dev,
                                                   BoltKey   **key,

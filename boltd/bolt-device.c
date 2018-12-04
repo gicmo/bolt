@@ -1107,6 +1107,7 @@ bolt_device_new_for_udev (struct udev_device *udev,
 
   g_return_val_if_fail (udev != NULL, NULL);
   g_return_val_if_fail (domain != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   uid = udev_device_get_sysattr_value (udev, "unique_id");
   if (uid == NULL)
@@ -1163,7 +1164,9 @@ bolt_device_export (BoltDevice      *device,
 {
   gboolean ok;
 
-  g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
+  g_return_val_if_fail (BOLT_IS_DEVICE (device), NULL);
+  g_return_val_if_fail (G_IS_DBUS_CONNECTION (connection), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   ok = bolt_exported_export (BOLT_EXPORTED (device),
                              connection,
@@ -1187,6 +1190,9 @@ bolt_device_authorize (BoltDevice         *dev,
 {
   g_autoptr(GTask) task = NULL;
 
+  g_return_if_fail (BOLT_IS_DEVICE (dev));
+  g_return_if_fail (BOLT_IS_AUTH (auth));
+
   task = authorize_prepare (dev, auth, callback, user_data);
 
   if (task == NULL)
@@ -1202,6 +1208,9 @@ bolt_device_authorize_idle (BoltDevice         *dev,
                             gpointer            user_data)
 {
   GTask *task = NULL;
+
+  g_return_if_fail (BOLT_IS_DEVICE (dev));
+  g_return_if_fail (BOLT_IS_AUTH (auth));
 
   task = authorize_prepare (dev, auth, callback, user_data);
 
@@ -1223,8 +1232,8 @@ bolt_device_connected (BoltDevice         *dev,
   gboolean ok;
   guint64 ct, at;
 
-  g_return_val_if_fail (dev != NULL, BOLT_STATUS_UNKNOWN);
-  g_return_val_if_fail (domain != NULL, BOLT_STATUS_UNKNOWN);
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), BOLT_STATUS_UNKNOWN);
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), BOLT_STATUS_UNKNOWN);
 
   ok = bolt_sysfs_info_for_device (udev, TRUE, &info, &err);
   if (!ok)
@@ -1259,6 +1268,8 @@ bolt_device_connected (BoltDevice         *dev,
 BoltStatus
 bolt_device_disconnected (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), BOLT_STATUS_UNKNOWN);
+
   g_object_set (G_OBJECT (dev),
                 "parent", NULL,
                 "sysfs-path", NULL,
@@ -1277,14 +1288,18 @@ bolt_device_disconnected (BoltDevice *dev)
 }
 
 gboolean
-bolt_device_is_connected (const BoltDevice *device)
+bolt_device_is_connected (BoltDevice *device)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
+
   return bolt_status_is_connected (device->status);
 }
 
 gboolean
-bolt_device_is_authorized (const BoltDevice *device)
+bolt_device_is_authorized (BoltDevice *device)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
+
   return bolt_status_is_authorized (device->status);
 }
 
@@ -1299,6 +1314,9 @@ bolt_device_update_from_udev (BoltDevice         *dev,
   guint mask;
   gboolean chg;
   gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), BOLT_STATUS_UNKNOWN);
+  g_return_val_if_fail (udev != NULL, BOLT_STATUS_UNKNOWN);
 
   /* if we are currently authorizing, let's not update
    * the status, because we are most likely causing that
@@ -1346,21 +1364,25 @@ bolt_device_update_from_udev (BoltDevice         *dev,
 }
 
 BoltKeyState
-bolt_device_get_keystate (const BoltDevice *dev)
+bolt_device_get_keystate (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), BOLT_KEY_MISSING);
+
   return dev->key;
 }
 
 const char *
-bolt_device_get_name (const BoltDevice *dev)
+bolt_device_get_name (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
   return dev->name;
 }
 
 const char *
 bolt_device_get_object_path (BoltDevice *device)
 {
-  g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
+  g_return_val_if_fail (BOLT_IS_DEVICE (device), NULL);
 
   if (!bolt_exported_is_exported (BOLT_EXPORTED (device)))
     return NULL;
@@ -1369,19 +1391,23 @@ bolt_device_get_object_path (BoltDevice *device)
 }
 
 BoltPolicy
-bolt_device_get_policy (const BoltDevice *dev)
+bolt_device_get_policy (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), BOLT_POLICY_UNKNOWN);
+
   return dev->policy;
 }
 
 const char *
-bolt_device_get_uid (const BoltDevice *dev)
+bolt_device_get_uid (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
   return dev->uid;
 }
 
 BoltSecurity
-bolt_device_get_security (const BoltDevice *dev)
+bolt_device_get_security (BoltDevice *dev)
 {
   g_return_val_if_fail (dev != NULL, BOLT_SECURITY_UNKNOWN);
   g_return_val_if_fail (dev->domain != NULL, BOLT_SECURITY_UNKNOWN);
@@ -1390,75 +1416,99 @@ bolt_device_get_security (const BoltDevice *dev)
 }
 
 BoltStatus
-bolt_device_get_status (const BoltDevice *dev)
+bolt_device_get_status (BoltDevice *dev)
 {
+  g_return_val_if_fail (dev != NULL, BOLT_STATUS_UNKNOWN);
+
   return dev->status;
 }
 
 BoltAuthFlags
-bolt_device_get_authflags (const BoltDevice *dev)
+bolt_device_get_authflags (BoltDevice *dev)
 {
+  g_return_val_if_fail (dev != NULL, BOLT_AUTH_NONE);
+
   return dev->aflags;
 }
 
 gboolean
-bolt_device_get_stored (const BoltDevice *dev)
+bolt_device_get_stored (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+
   return dev->store != NULL;
 }
 
 const char *
-bolt_device_get_syspath (const BoltDevice *dev)
+bolt_device_get_syspath (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
   return dev->syspath;
 }
 
 const char *
-bolt_device_get_vendor (const BoltDevice *dev)
+bolt_device_get_vendor (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
   return dev->vendor;
 }
 
 BoltDeviceType
-bolt_device_get_device_type (const BoltDevice *dev)
+bolt_device_get_device_type (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), BOLT_DEVICE_UNKNOWN_TYPE);
+
   return dev->type;
 }
 
 const char *
-bolt_device_get_label (const BoltDevice *dev)
+bolt_device_get_label (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
   return dev->label;
 }
 
 guint64
-bolt_device_get_authtime (const BoltDevice *dev)
+bolt_device_get_authtime (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), 0);
+
   return dev->authtime;
 }
 
 guint64
-bolt_device_get_conntime (const BoltDevice *dev)
+bolt_device_get_conntime (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), 0);
+
   return dev->conntime;
 }
 
 gint64
-bolt_device_get_storetime (const BoltDevice *dev)
+bolt_device_get_storetime (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), 0);
+
   return dev->storetime;
 }
 
 gboolean
-bolt_device_supports_secure_mode (const BoltDevice *dev)
+bolt_device_supports_secure_mode (BoltDevice *dev)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+
   return bolt_flag_isclear (dev->aflags, BOLT_AUTH_NOKEY);
 }
 
 gboolean
-bolt_device_check_authflag (const BoltDevice *dev,
-                            BoltAuthFlags     flag)
+bolt_device_check_authflag (BoltDevice   *dev,
+                            BoltAuthFlags flag)
 {
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+
   return bolt_flag_isset (dev->aflags, flag);
 }
 
