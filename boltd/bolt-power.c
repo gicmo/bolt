@@ -488,9 +488,12 @@ bolt_power_guard_monitor (BoltPowerGuard *guard,
   gboolean ok;
   int fd;
 
+  g_return_val_if_fail (BOLT_IS_POWER_GUARD (guard), -1);
+  g_return_val_if_fail (error == NULL || *error == NULL, -1);
+
   ok = bolt_power_guard_mkfifo (guard, error);
   if (!ok)
-    return FALSE;
+    return -1;
 
   /* reader */
   fd = bolt_open (guard->fifo, O_RDONLY | O_CLOEXEC | O_NONBLOCK, 0, error);
@@ -1434,6 +1437,7 @@ bolt_power_acquire_full (BoltPower  *power,
 
   g_return_val_if_fail (BOLT_IS_POWER (power), NULL);
   g_return_val_if_fail (who != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   if (power->path == NULL)
     {
