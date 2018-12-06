@@ -216,7 +216,8 @@ bolt_store_config_load (BoltStore *store,
   gboolean ok;
   gsize len;
 
-  g_return_val_if_fail (store != NULL, FALSE);
+  g_return_val_if_fail (store != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   sf = g_file_get_child (store->root, CFG_FILE);
   ok = g_file_load_contents (sf, NULL,
@@ -245,6 +246,10 @@ bolt_store_config_save (BoltStore *store,
   g_autofree char *data  = NULL;
   gboolean ok;
   gsize len;
+
+  g_return_val_if_fail (store != NULL, FALSE);
+  g_return_val_if_fail (config != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   sf = g_file_get_child (store->root, CFG_FILE);
   data = g_key_file_to_data (config, &len, error);
@@ -388,8 +393,9 @@ bolt_store_get_domain (BoltStore  *store,
   BoltDomain *domain = NULL;
   gboolean ok;
 
-  g_return_val_if_fail (store != NULL, FALSE);
-  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (store != NULL, NULL);
+  g_return_val_if_fail (uid != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   db = g_file_get_child (store->domains, uid);
   path = g_file_get_path (db);
@@ -478,8 +484,10 @@ bolt_store_put_device (BoltStore  *store,
   gsize len;
   guint keystate = 0;
 
-  g_return_val_if_fail (store != NULL, FALSE);
-  g_return_val_if_fail (device != NULL, FALSE);
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
+  g_return_val_if_fail (key == NULL || BOLT_IS_KEY (key), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   uid = bolt_device_get_uid (device);
   g_assert (uid);
@@ -500,11 +508,8 @@ bolt_store_put_device (BoltStore  *store,
                                   &err);
 
   if (!ok && bolt_err_exists (err))
-    {
-      bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DEV_UID (uid),
-                     "could not load previously stored device");
-      g_clear_error (&err);
-    }
+    bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DEV_UID (uid),
+                   "could not load previously stored device");
 
   g_key_file_set_string (kf, DEVICE_GROUP, "name", bolt_device_get_name (device));
   g_key_file_set_string (kf, DEVICE_GROUP, "vendor", bolt_device_get_vendor (device));
@@ -537,6 +542,8 @@ bolt_store_put_device (BoltStore  *store,
 
   if (key)
     {
+      g_clear_error (&err);
+
       ok = bolt_store_put_key (store, uid, key, &err);
 
       if (!ok)
@@ -578,7 +585,9 @@ bolt_store_put_device (BoltStore  *store,
 }
 
 BoltDevice *
-bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
+bolt_store_get_device (BoltStore  *store,
+                       const char *uid,
+                       GError    **error)
 {
   g_autoptr(GKeyFile) kf = NULL;
   g_autoptr(GFile) db = NULL;
@@ -598,8 +607,9 @@ bolt_store_get_device (BoltStore *store, const char *uid, GError **error)
   guint64 ctime = 0;
   gsize len;
 
-  g_return_val_if_fail (store != NULL, FALSE);
-  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (BOLT_IS_STORE (store), NULL);
+  g_return_val_if_fail (uid != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   db = g_file_get_child (store->devices, uid);
   ok = g_file_load_contents (db, NULL,
@@ -704,6 +714,10 @@ bolt_store_del_device (BoltStore  *store,
 {
   g_autoptr(GFile) devpath = NULL;
   gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   devpath = g_file_get_child (store->devices, uid);
   ok = g_file_delete (devpath, NULL, error);
@@ -882,6 +896,11 @@ bolt_store_del_time (BoltStore  *store,
   g_autofree char *name = NULL;
   gboolean ok;
 
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (timesel != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
   name = g_strdup_printf ("%s.%s", uid, timesel);
   pathfile = g_file_get_child (store->times, name);
   ok = g_file_delete (pathfile, NULL, error);
@@ -940,6 +959,11 @@ bolt_store_put_key (BoltStore  *store,
   g_autoptr(GFile) keypath = NULL;
   gboolean ok;
 
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (BOLT_IS_KEY (key), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
   keypath = g_file_get_child (store->keys, uid);
   ok = bolt_fs_make_parent_dirs (keypath, error);
 
@@ -957,6 +981,9 @@ bolt_store_have_key (BoltStore  *store,
   g_autoptr(GFile) keypath = NULL;
   g_autoptr(GError) err = NULL;
   guint key = BOLT_KEY_MISSING;
+
+  g_return_val_if_fail (BOLT_IS_STORE (store), key);
+  g_return_val_if_fail (uid != NULL, key);
 
   keypath = g_file_get_child (store->keys, uid);
   keyinfo = g_file_query_info (keypath, "standard::*", 0, NULL, &err);
@@ -976,6 +1003,10 @@ bolt_store_get_key (BoltStore  *store,
 {
   g_autoptr(GFile) keypath = NULL;
 
+  g_return_val_if_fail (BOLT_IS_STORE (store), NULL);
+  g_return_val_if_fail (uid != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
   keypath = g_file_get_child (store->keys, uid);
 
   return bolt_key_load_file (keypath, error);
@@ -988,6 +1019,10 @@ bolt_store_del_key (BoltStore  *store,
 {
   g_autoptr(GFile) keypath = NULL;
   gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   keypath = g_file_get_child (store->keys, uid);
   ok = g_file_delete (keypath, NULL, error);
@@ -1004,8 +1039,9 @@ bolt_store_del (BoltStore  *store,
   const char *uid;
   gboolean ok;
 
-  g_return_val_if_fail (store != NULL, FALSE);
-  g_return_val_if_fail (dev != NULL, FALSE);
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   uid = bolt_device_get_uid (dev);
 
