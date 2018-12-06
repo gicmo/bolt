@@ -324,6 +324,8 @@ bolt_journal_put (BoltJournal  *journal,
   int r;
 
   g_return_val_if_fail (BOLT_IS_JOURNAL (journal), FALSE);
+  g_return_val_if_fail (id != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   ok = bolt_journal_write_entry (journal->fd, id, op, error);
 
@@ -436,6 +438,9 @@ bolt_journal_list (BoltJournal *journal,
   GPtrArray *res = NULL;
   off_t pos;
 
+  g_return_val_if_fail (BOLT_IS_JOURNAL (journal), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
   pos = lseek (journal->fd, 0, SEEK_SET);
 
   if (pos == (off_t) -1)
@@ -547,6 +552,8 @@ BoltJournalOp
 bolt_journal_op_from_string (const char *data,
                              GError    **error)
 {
+  g_return_val_if_fail (error == NULL || *error == NULL, BOLT_JOURNAL_FAILED);
+
   /* both will be caught as errors after
    * the switch statement */
   if (data == NULL)
