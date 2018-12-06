@@ -260,17 +260,15 @@ void
 bolt_bouncer_add_client (BoltBouncer *bnc,
                          gpointer     client)
 {
-  if (BOLT_IS_EXPORTED (client))
-    {
-      g_signal_connect_object (client, "authorize-method",
-                               G_CALLBACK (handle_authorize_method),
-                               bnc, 0);
-      g_signal_connect_object (client, "authorize-property",
-                               G_CALLBACK (handle_authorize_property),
-                               bnc, 0);
-    }
-  else
-    {
-      bolt_critical (LOG_TOPIC ("bouncer"), "unknown client class");
-    }
+
+  g_return_if_fail (BOLT_IS_BOUNCER (bnc));
+  g_return_if_fail (BOLT_IS_EXPORTED (client));
+
+  g_signal_connect_object (client, "authorize-method",
+                           G_CALLBACK (handle_authorize_method),
+                           bnc, 0);
+
+  g_signal_connect_object (client, "authorize-property",
+                           G_CALLBACK (handle_authorize_property),
+                           bnc, 0);
 }
