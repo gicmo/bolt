@@ -56,6 +56,9 @@ bolt_config_load_default_policy (GKeyFile   *cfg,
   g_autofree char *str = NULL;
   BoltPolicy p;
 
+  g_return_val_if_fail (error == NULL || *error == NULL, TRI_NO);
+  g_return_val_if_fail (policy != NULL, TRI_NO);
+
   if (cfg == NULL)
     return TRI_NO;
 
@@ -95,6 +98,8 @@ bolt_config_load_auth_mode (GKeyFile     *cfg,
   if (cfg == NULL)
     return TRI_NO;
 
+  g_return_val_if_fail (error == NULL || *error == NULL, TRI_NO);
+
   str = g_key_file_get_string (cfg, DAEMON_GROUP, AUTH_MODE_KEY, &err);
   if (str == NULL)
     {
@@ -121,5 +126,6 @@ bolt_config_set_auth_mode (GKeyFile   *cfg,
                            const char *authmode)
 {
   g_return_if_fail (cfg != NULL);
+
   g_key_file_set_string (cfg, DAEMON_GROUP, AUTH_MODE_KEY, authmode);
 }
