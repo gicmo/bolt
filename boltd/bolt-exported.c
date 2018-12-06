@@ -879,6 +879,12 @@ bolt_exported_class_set_interface_info (BoltExportedClass *klass,
   g_autoptr(GError) err = NULL;
   const char *xml;
 
+  g_return_if_fail (BOLT_IS_EXPORTED_CLASS (klass));
+  g_return_if_fail (klass->priv != NULL);
+  g_return_if_fail (klass->priv->node_info == NULL);
+  g_return_if_fail (iface_name != NULL);
+  g_return_if_fail (resource_name != NULL);
+
   bolt_exported_class_set_interface_name (klass, iface_name);
 
   data = g_resources_lookup_data (resource_name,
@@ -927,6 +933,8 @@ bolt_exported_class_export_property (BoltExportedClass *klass,
       bolt_error (LOG_TOPIC ("dbus"), "klass not a BoltExportedClass");
       return;
     }
+
+  g_return_if_fail (G_IS_PARAM_SPEC (spec));
 
   priv = klass->priv;
 
@@ -992,6 +1000,7 @@ bolt_exported_class_export_properties (BoltExportedClass *klass,
                                        guint              n_pspecs,
                                        GParamSpec       **specs)
 {
+  g_return_if_fail (BOLT_IS_EXPORTED_CLASS (klass));
   g_return_if_fail (start > 0);
 
   for (guint i = start; i < n_pspecs; i++)
@@ -1031,6 +1040,10 @@ bolt_exported_class_export_method (BoltExportedClass        *klass,
 {
   BoltExportedMethod *method;
 
+  g_return_if_fail (BOLT_IS_EXPORTED_CLASS (klass));
+  g_return_if_fail (name != NULL);
+  g_return_if_fail (handler != NULL);
+
   method = g_new0 (BoltExportedMethod, 1);
 
   method->name = g_strdup (name);
@@ -1054,6 +1067,7 @@ bolt_exported_export (BoltExported    *exported,
 
   g_return_val_if_fail (BOLT_IS_EXPORTED (exported), FALSE);
   g_return_val_if_fail (connection != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   priv = GET_PRIV (exported);
   klass = BOLT_EXPORTED_GET_CLASS (exported);
@@ -1182,6 +1196,9 @@ bolt_exported_emit_signal (BoltExported *exported,
   gboolean ok;
 
   g_return_val_if_fail (BOLT_IS_EXPORTED (exported), FALSE);
+  g_return_val_if_fail (name != NULL, FALSE);
+  g_return_val_if_fail (parameters != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   priv = GET_PRIV (exported);
 
