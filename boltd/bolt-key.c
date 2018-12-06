@@ -177,6 +177,7 @@ bolt_key_write_to (BoltKey      *key,
   g_return_val_if_fail (BOLT_IS_KEY (key), FALSE);
   g_return_val_if_fail (fd > -1, FALSE);
   g_return_val_if_fail (level != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   *level = BOLT_SECURITY_USER;
 
@@ -220,6 +221,9 @@ bolt_key_load_file (GFile   *file,
   gsize len;
   int fd;
 
+  g_return_val_if_fail (G_IS_FILE (file), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
   key = g_object_new (BOLT_TYPE_KEY, NULL);
   path = g_file_get_path (file);
 
@@ -259,6 +263,8 @@ bolt_key_get_state (BoltKey *key)
 {
   if (key == NULL)
     return BOLT_KEY_MISSING;
+
+  g_return_val_if_fail (BOLT_IS_KEY (key), BOLT_KEY_UNKNOWN);
 
   return key->fresh ? BOLT_KEY_NEW : BOLT_KEY_HAVE;
 }
