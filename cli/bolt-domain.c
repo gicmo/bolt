@@ -123,6 +123,11 @@ bolt_domain_new_for_object_path (GDBusConnection *bus,
 {
   BoltDomain *dom;
 
+  g_return_val_if_fail (G_IS_DBUS_CONNECTION (bus), NULL);
+  g_return_val_if_fail (path != NULL, NULL);
+  g_return_val_if_fail (!cancel || G_IS_CANCELLABLE (cancel), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
   dom = g_initable_new (BOLT_TYPE_DOMAIN,
                         cancel, error,
                         "g-flags", G_DBUS_PROXY_FLAGS_NONE,
