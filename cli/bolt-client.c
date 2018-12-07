@@ -269,6 +269,8 @@ bolt_client_new (GError **error)
   BoltClient *cli;
   GDBusConnection *bus;
 
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
   bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, error);
   if (bus == NULL)
     {
@@ -350,6 +352,9 @@ bolt_client_new_async (GCancellable       *cancellable,
 {
   GTask *task;
 
+  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
+  g_return_if_fail (callback == NULL);
+
   task = g_task_new (NULL, cancellable, callback, user_data);
   g_bus_get (G_BUS_TYPE_SYSTEM, cancellable, got_the_bus, task);
 }
@@ -359,6 +364,7 @@ bolt_client_new_finish (GAsyncResult *res,
                         GError      **error)
 {
   g_return_val_if_fail (G_IS_TASK (res), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   return g_task_propagate_pointer (G_TASK (res), error);
 }
@@ -375,6 +381,8 @@ bolt_client_list_domains (BoltClient   *client,
   const char *d;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
+  g_return_val_if_fail (!cancel || G_IS_CANCELLABLE (cancel), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
                                 "ListDomains",
@@ -417,6 +425,8 @@ bolt_client_list_devices (BoltClient   *client,
   const char *d;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
+  g_return_val_if_fail (!cancel || G_IS_CANCELLABLE (cancel), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
                                 "ListDevices",
@@ -460,6 +470,9 @@ bolt_client_get_device (BoltClient   *client,
   const char *opath = NULL;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
+  g_return_val_if_fail (uid != NULL, NULL);
+  g_return_val_if_fail (!cancel || G_IS_CANCELLABLE (cancel), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
                                 "DeviceByUid",
@@ -502,6 +515,8 @@ bolt_client_enroll_device (BoltClient  *client,
   const char *pstr;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
+  g_return_val_if_fail (uid != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   pstr = bolt_enum_to_string (BOLT_TYPE_POLICY, policy, error);
   if (pstr == NULL)
@@ -552,6 +567,8 @@ bolt_client_enroll_device_async (BoltClient         *client,
 
   g_return_if_fail (BOLT_IS_CLIENT (client));
   g_return_if_fail (uid != NULL);
+  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
+  g_return_if_fail (callback == NULL);
 
   pstr = bolt_enum_to_string (BOLT_TYPE_POLICY, policy, &err);
   if (pstr == NULL)
@@ -584,11 +601,12 @@ bolt_client_enroll_device_finish (BoltClient   *client,
                                   char        **path,
                                   GError      **error)
 {
+  g_autoptr(GError) err = NULL;
   GVariant *val = NULL;
 
-  g_autoptr(GError) err = NULL;
-
   g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
+  g_return_val_if_fail (G_IS_ASYNC_RESULT (res), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   val = g_dbus_proxy_call_finish (G_DBUS_PROXY (client), res, &err);
   if (val == NULL)
@@ -612,6 +630,8 @@ bolt_client_forget_device (BoltClient *client,
   g_autoptr(GError) err = NULL;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
+  g_return_val_if_fail (uid != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   val = g_dbus_proxy_call_sync (G_DBUS_PROXY (client),
                                 "ForgetDevice",
@@ -638,6 +658,9 @@ bolt_client_forget_device_async (BoltClient         *client,
                                  gpointer            user_data)
 {
   g_return_if_fail (BOLT_IS_CLIENT (client));
+  g_return_if_fail (uid == NULL);
+  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
+  g_return_if_fail (callback == NULL);
 
   g_dbus_proxy_call (G_DBUS_PROXY (client),
                      "ForgetDevice",
@@ -658,6 +681,8 @@ bolt_client_forget_device_finish (BoltClient   *client,
   g_autoptr(GError) err = NULL;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
+  g_return_val_if_fail (G_IS_ASYNC_RESULT (res), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   val = g_dbus_proxy_call_finish (G_DBUS_PROXY (client), res, &err);
   if (val == NULL)
@@ -675,6 +700,10 @@ bolt_client_new_power_client (BoltClient   *client,
                               GError      **error)
 {
   GDBusConnection *bus = NULL;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), NULL);
+  g_return_val_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
   return bolt_power_new_for_object_path (bus, cancellable, error);
@@ -802,6 +831,10 @@ bolt_client_set_authmode_async (BoltClient         *client,
   GParamSpecFlags *flags_pspec;
   GFlagsClass *flags_class;
 
+  g_return_if_fail (BOLT_IS_CLIENT (client));
+  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
+  g_return_if_fail (callback != NULL);
+
   pspec = props[PROP_AUTHMODE];
   flags_pspec = G_PARAM_SPEC_FLAGS (pspec);
   flags_class = flags_pspec->flags_class;
@@ -826,6 +859,10 @@ bolt_client_set_authmode_finish (BoltClient   *client,
                                  GAsyncResult *res,
                                  GError      **error)
 {
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
+  g_return_val_if_fail (G_IS_ASYNC_RESULT (res), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
   return bolt_proxy_set_property_finish (res, error);
 }
 
