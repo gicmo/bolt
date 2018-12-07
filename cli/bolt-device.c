@@ -222,6 +222,11 @@ bolt_device_new_for_object_path (GDBusConnection *bus,
 {
   BoltDevice *dev;
 
+  g_return_val_if_fail (G_IS_DBUS_CONNECTION (bus), NULL);
+  g_return_val_if_fail (path != NULL, NULL);
+  g_return_val_if_fail (!cancel || G_IS_CANCELLABLE (cancel), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
   dev = g_initable_new (BOLT_TYPE_DEVICE,
                         cancel, error,
                         "g-flags", G_DBUS_PROXY_FLAGS_NONE,
@@ -244,6 +249,8 @@ bolt_device_authorize (BoltDevice   *dev,
   g_autofree char *fstr = NULL;
 
   g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+  g_return_val_if_fail (!cancel || G_IS_CANCELLABLE (cancel), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_CTRL, flags, error);
   if (fstr == NULL)
@@ -274,6 +281,8 @@ bolt_device_authorize_async (BoltDevice         *dev,
   g_autofree char *fstr = NULL;
 
   g_return_if_fail (BOLT_IS_DEVICE (dev));
+  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
+  g_return_if_fail (callback != NULL);
 
   fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_CTRL, flags, &err);
   if (fstr == NULL)
@@ -301,6 +310,8 @@ bolt_device_authorize_finish (BoltDevice   *dev,
   g_autoptr(GVariant) val = NULL;
 
   g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+  g_return_val_if_fail (G_IS_ASYNC_RESULT (res), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   val = g_dbus_proxy_call_finish (G_DBUS_PROXY (dev), res, &err);
   if (val == NULL)
