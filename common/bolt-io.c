@@ -30,6 +30,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#if !HAVE_FN_COPY_FILE_RANGE
+#include <unistd.h>
+#include <sys/syscall.h>
+#endif
+
 #include "bolt-error.h"
 #include "bolt-str.h"
 
@@ -726,6 +731,23 @@ bolt_rename (const char *from,
 
   return FALSE;
 }
+
+#if !HAVE_FN_COPY_FILE_RANGE
+static loff_t
+copy_file_range (int          fd_in,
+                 loff_t      *off_in,
+                 int          fd_out,
+                 loff_t      *off_out,
+                 size_t       len,
+                 unsigned int flags)
+{
+  return syscall (__NR_copy_file_range,
+                  fd_in, off_in,
+                  fd_out, off_out,
+                  len,
+                  flags);
+}
+#endif
 
 gboolean
 bolt_copy_bytes (int      fd_from,
