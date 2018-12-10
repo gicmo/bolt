@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 typedef struct udev_device udev_device;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
