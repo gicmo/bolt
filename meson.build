@@ -102,8 +102,8 @@ dbdir = join_paths(statedir, 'lib', dbname)
 udevdir = udev.get_pkgconfig_variable('udevdir')
 
 unitdir = ''
-if get_option('systemd')
-  systemd = dependency('systemd')
+systemd = dependency('systemd', required: false)
+if systemd.found()
   unitdir = systemd.get_pkgconfig_variable('systemdsystemunitdir')
 endif
 
