@@ -24,6 +24,8 @@
 
 #include "bolt-str.h"
 
+#include <stdlib.h>
+
 int
 enroll (BoltClient *client, int argc, char **argv)
 {

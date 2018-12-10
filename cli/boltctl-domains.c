@@ -25,6 +25,8 @@
 
 #include "bolt-str.h"
 
+#include <stdlib.h>
+
 /* domain related commands */
 static void
 print_domain (BoltDomain *domain, gboolean verbose)

@@ -24,6 +24,8 @@
 
 #include "bolt-str.h"
 
+#include <stdlib.h>
+
 static void
 handle_domain_added (BoltClient *cli,
                      const char *opath,

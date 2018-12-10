@@ -25,6 +25,8 @@
 #include "bolt-error.h"
 #include "bolt-str.h"
 
+#include <stdlib.h>
+
 int
 authorize (BoltClient *client, int argc, char **argv)
 {

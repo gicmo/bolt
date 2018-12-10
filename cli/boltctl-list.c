@@ -24,6 +24,8 @@
 
 #include "bolt-str.h"
 
+#include <stdlib.h>
+
 int
 list_devices (BoltClient *client, int argc, char **argv)
 {

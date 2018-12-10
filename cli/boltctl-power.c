@@ -24,6 +24,8 @@
 
 #include "bolt-str.h"
 
+#include <stdlib.h>
+
 static gboolean
 quit_main_loop (gpointer user_data)
 {
