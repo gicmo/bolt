@@ -806,7 +806,8 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
 
   /* copy_bytes */
   ok = bolt_copy_bytes (to, from, 1, &err);
-  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
+  g_assert_nonnull (err);
+  g_assert_cmpint (err->domain, ==, G_IO_ERROR);
   g_assert_false (ok);
   g_clear_pointer (&err, g_error_free);
 }
