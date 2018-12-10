@@ -694,10 +694,12 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
   g_clear_pointer (&err, g_error_free);
 
   /* closedir */
+#ifdef __GLIBC__
   ok = bolt_closedir (NULL, &err);
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
   g_assert_false (ok);
   g_clear_pointer (&err, g_error_free);
+#endif
 
   /* rmdir */
   ok = bolt_rmdir (noexist, &err);
