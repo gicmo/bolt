@@ -34,6 +34,7 @@
 /* availability of features */
 #mesondefine HAVE_FN_EXPLICIT_BZERO
 #mesondefine HAVE_FN_GETRANDOM
+#mesondefine HAVE_FN_COPY_FILE_RANGE
 #mesondefine HAVE_POLKIT_AUTOPTR
 
 /* constants */

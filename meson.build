@@ -125,11 +125,12 @@ conf.set('VERSION_MINOR', version_minor)
 conf.set('_GNU_SOURCE', true)
 
 foreach fn : [
-  ['explicit_bzero', '''#include <string.h>'''],
-  ['getrandom',      '''#include <sys/random.h>''']
+  ['copy_file_range', '''#include <unistd.h>'''],
+  ['explicit_bzero',  '''#include <string.h>'''],
+  ['getrandom',       '''#include <sys/random.h>'''],
 ]
 
-  have = compiler.has_function(fn[0], prefix : fn[1])
+  have = compiler.has_function(fn[0], prefix: fn[1], args: '-D_GNU_SOURCE')
   conf.set10('HAVE_FN_' + fn[0].to_upper(), have)
 endforeach
 
