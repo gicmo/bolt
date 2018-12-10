@@ -25,3 +25,9 @@ debian:
   variables:
     OS: debian
   <<: *build
+
+alpine:
+  stage: build
+  variables:
+    OS: alpine
+  <<: *build
