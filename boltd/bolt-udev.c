@@ -26,6 +26,7 @@
 #include "bolt-sysfs.h"
 
 #include <libudev.h>
+#include <string.h>
 
 #include <errno.h>
 
