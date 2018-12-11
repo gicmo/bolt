@@ -902,6 +902,85 @@ test_io_file_write_all (TestIO *tt, gconstpointer user_data)
 }
 
 static void
+test_io_copy_bytes (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GChecksum) chk = NULL;
+  g_autofree char *source = NULL;
+  g_autofree char *target = NULL;
+  g_autofree char *chksum = NULL;
+  const gsize N = 1024;
+  char buf[4096];
+  gboolean ok;
+  int from = -1;
+  int to = -1;
+
+  chk = g_checksum_new (G_CHECKSUM_SHA256);
+
+  source = g_build_filename (tt->path, "copy_bytes_source", NULL);
+  from = bolt_open (source, O_RDWR | O_CREAT, 0666, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (from, >, -1);
+
+  for (gsize i = 0; i < N; i++)
+    {
+      bolt_random_prng (buf, sizeof (buf));
+      bolt_write_all (from, buf, sizeof (buf), &error);
+      g_assert_no_error (error);
+      g_checksum_update (chk, (const guchar *) buf, sizeof (buf));
+    }
+
+  chksum = g_strdup (g_checksum_get_string (chk));
+
+  /* close, reopen readonly */
+  ok = bolt_close (from, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  from = bolt_open (source, O_CLOEXEC | O_RDONLY, 0, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (from, >, -1);
+
+
+  /* copy the data with bolt_copy_bytes */
+  target = g_build_filename (tt->path, "copy_bytes_target", NULL);
+  to = bolt_open (target, O_RDWR | O_CREAT, 0666, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (to, >, -1);
+
+  ok = bolt_copy_bytes (from, to, N * sizeof (buf), &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  /* close, reopen, check checksum */
+  ok = bolt_close (to, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  to = bolt_open (target, O_CLOEXEC | O_RDONLY, 0, &error);
+  g_assert_no_error (error);
+  g_assert_cmpint (to, >, -1);
+
+  g_checksum_reset (chk);
+  for (gsize i = 0; i < N; i++)
+    {
+      gsize nread = 0;
+
+      bolt_read_all (to, buf, sizeof (buf), &nread, &error);
+      g_assert_no_error (error);
+      g_checksum_update (chk, (const guchar *) buf, nread);
+    }
+
+  ok = bolt_close (to, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  g_assert_cmpstr (g_checksum_get_string (chk),
+                   ==,
+                   chksum);
+}
+
+static void
 test_autoclose (TestIO *tt, gconstpointer user_data)
 {
   g_autoptr(GError) err = NULL;
@@ -1675,6 +1754,13 @@ main (int argc, char **argv)
               NULL,
               test_io_setup,
               test_io_file_write_all,
+              test_io_tear_down);
+
+  g_test_add ("/common/io/copy_bytes",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_io_copy_bytes,
               test_io_tear_down);
 
   g_test_add ("/common/io/autoclose",
