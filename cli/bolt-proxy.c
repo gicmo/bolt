@@ -269,6 +269,8 @@ bolt_proxy_get_cached_property (BoltProxy  *proxy,
   GVariant *var;
 
   g_return_val_if_fail (BOLT_IS_PROXY (proxy), NULL);
+  g_return_val_if_fail (name != NULL, NULL);
+
   pspec = g_object_class_find_property (G_OBJECT_GET_CLASS (proxy), name);
 
   if (pspec == NULL)
