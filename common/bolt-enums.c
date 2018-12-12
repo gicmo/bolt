@@ -39,6 +39,7 @@ bolt_enum_class_validate (GEnumClass *enum_class,
   gboolean oob;
 
   g_return_val_if_fail (G_IS_ENUM_CLASS (enum_class), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   oob = value < enum_class->minimum || value > enum_class->maximum;
 
@@ -62,6 +63,7 @@ bolt_enum_validate (GType    enum_type,
   g_autoptr(GEnumClass) klass = NULL;
 
   g_return_val_if_fail (G_TYPE_IS_ENUM (enum_type), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   klass = g_type_class_ref (enum_type);
 
@@ -75,7 +77,8 @@ bolt_enum_class_to_string (GEnumClass *klass,
 {
   GEnumValue *ev;
 
-  g_return_val_if_fail (G_IS_ENUM_CLASS (klass), FALSE);
+  g_return_val_if_fail (G_IS_ENUM_CLASS (klass), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   if (!bolt_enum_class_validate (klass, value, error))
     return NULL;
@@ -95,6 +98,7 @@ bolt_enum_class_from_string (GEnumClass *klass,
   GEnumValue *ev;
 
   g_return_val_if_fail (G_IS_ENUM_CLASS (klass), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   if (string == NULL)
     {
@@ -128,7 +132,8 @@ bolt_enum_to_string (GType    enum_type,
 {
   g_autoptr(GEnumClass) klass = NULL;
 
-  g_return_val_if_fail (G_TYPE_IS_ENUM (enum_type), FALSE);
+  g_return_val_if_fail (G_TYPE_IS_ENUM (enum_type), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   klass = g_type_class_ref (enum_type);
 
@@ -143,7 +148,8 @@ bolt_enum_from_string (GType       enum_type,
   g_autoptr(GEnumClass) klass = NULL;
   gint iv = -1;
 
-  g_return_val_if_fail (G_TYPE_IS_ENUM (enum_type), FALSE);
+  g_return_val_if_fail (G_TYPE_IS_ENUM (enum_type), -1);
+  g_return_val_if_fail (error == NULL || *error == NULL, -1);
 
   klass = g_type_class_ref (enum_type);
 
@@ -161,7 +167,8 @@ bolt_flags_class_to_string (GFlagsClass *flags_class,
   const char *name;
   GFlagsValue *fv;
 
-  g_return_val_if_fail (G_IS_FLAGS_CLASS (flags_class), FALSE);
+  g_return_val_if_fail (G_IS_FLAGS_CLASS (flags_class), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   fv = g_flags_get_first_value (flags_class, value);
   if (fv == NULL)
@@ -211,6 +218,7 @@ bolt_flags_class_from_string (GFlagsClass *flags_class,
   guint flags = 0;
 
   g_return_val_if_fail (G_IS_FLAGS_CLASS (flags_class), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   if (string == NULL)
     {
@@ -257,6 +265,7 @@ bolt_flags_to_string (GType    flags_type,
   g_autoptr(GFlagsClass) klass = NULL;
 
   g_return_val_if_fail (G_TYPE_IS_FLAGS (flags_type), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   klass = g_type_class_ref (flags_type);
 
@@ -272,6 +281,7 @@ bolt_flags_from_string (GType       flags_type,
   g_autoptr(GFlagsClass) klass = NULL;
 
   g_return_val_if_fail (G_TYPE_IS_FLAGS (flags_type), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   klass = g_type_class_ref (flags_type);
 
