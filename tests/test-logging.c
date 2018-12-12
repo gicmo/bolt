@@ -36,6 +36,7 @@
 
 #include <locale.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 typedef struct _LogData
