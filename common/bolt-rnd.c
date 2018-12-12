@@ -60,6 +60,9 @@ bolt_random_getrandom (void    *buf,
 {
   int r = -1;
 
+  g_return_val_if_fail (buf != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
 #if HAVE_FN_GETRANDOM
   r = getrandom (buf, n, flags);
 #else
@@ -85,6 +88,8 @@ bolt_random_urandom (void *buf, gsize n)
   int rndfd;
   gsize len;
 
+  g_return_val_if_fail (buf != NULL, FALSE);
+
   rndfd = bolt_open ("/dev/urandom", O_RDONLY | O_CLOEXEC | O_NOCTTY, 0, NULL);
 
   if (rndfd < 0)
@@ -108,6 +113,9 @@ bolt_random_prng (void *buf, gsize n)
   char *ptr = buf;
   const gsize l = n % sizeof (guint32);
   const gsize k = n - l;
+
+  if (buf == NULL || n == 0)
+    return;
 
   for (gsize i = 0; i < k; i += sizeof (guint32))
     {
