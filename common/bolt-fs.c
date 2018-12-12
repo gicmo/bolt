@@ -35,6 +35,9 @@ bolt_fs_make_parent_dirs (GFile   *target,
   g_autoptr(GFile) p = NULL;
   gboolean ok;
 
+  g_return_val_if_fail (G_IS_FILE (target), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
   p = g_file_get_parent (target);
 
   ok = g_file_make_directory_with_parents (p, NULL, &err);
@@ -84,6 +87,9 @@ bolt_fs_cleanup_dir (const char *target,
 {
   DIR *d = NULL;
 
+  g_return_val_if_fail (target != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
   d = bolt_opendir (target, error);
   if (d == NULL)
     return FALSE;
@@ -123,6 +129,9 @@ bolt_fs_touch (GFile   *target,
   gboolean ok;
   int fd;
   int r;
+
+  g_return_val_if_fail (target != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   path = g_file_get_path (target);
 
