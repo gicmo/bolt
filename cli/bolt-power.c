@@ -108,6 +108,10 @@ bolt_power_new_for_object_path (GDBusConnection *bus,
 {
   BoltPower *pwr;
 
+  g_return_val_if_fail (G_IS_DBUS_CONNECTION (bus), NULL);
+  g_return_val_if_fail (!cancel || G_IS_CANCELLABLE (cancel), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
   pwr = g_initable_new (BOLT_TYPE_POWER,
                         cancel, error,
                         "g-flags", G_DBUS_PROXY_FLAGS_NONE,
@@ -132,6 +136,7 @@ bolt_power_force_power (BoltPower *power,
   int fd = -1;
 
   g_return_val_if_fail (BOLT_IS_POWER (power), -1);
+  g_return_val_if_fail (error == NULL || *error == NULL, -1);
 
   input = g_variant_new ("(ss)",
                          "boltctl", /* who */
@@ -180,6 +185,8 @@ bolt_power_list_guards (BoltPower    *power,
   guint pid;
 
   g_return_val_if_fail (BOLT_IS_POWER (power), NULL);
+  g_return_val_if_fail (!cancel || G_IS_CANCELLABLE (cancel), NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
   val = g_dbus_proxy_call_sync (G_DBUS_PROXY (power),
                                 "ListGuards",
@@ -248,6 +255,8 @@ bolt_power_get_state (BoltPower *power)
 void
 bolt_power_guard_free (BoltPowerGuard *guard)
 {
+  g_return_if_fail (guard != NULL);
+
   g_free (guard->id);
   g_free (guard->who);
   g_free (guard);
