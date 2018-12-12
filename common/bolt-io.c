@@ -33,6 +33,15 @@
 #if !HAVE_FN_COPY_FILE_RANGE
 #include <unistd.h>
 #include <sys/syscall.h>
+#  ifndef __NR_copy_file_range
+#    if defined(__x86_64__)
+#      define __NR_copy_file_range 326
+#    elif defined(__i386__)
+#      define __NR_copy_file_range 377
+#    else
+#      error "__NR_copy_file_range on this architecture"
+#    endif
+#  endif
 #endif
 
 #include "bolt-error.h"
