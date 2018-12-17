@@ -484,7 +484,7 @@ mock_sysfs_domain_add (MockSysfs   *ms,
 
   domain = g_new0 (MockDomain, 1);
 
-  domain->id = 0;
+  domain->id = id;
   domain->idstr = idstr;
   domain->path = path;
 
