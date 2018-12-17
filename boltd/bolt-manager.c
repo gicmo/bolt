@@ -50,6 +50,7 @@ static void     bolt_manager_initable_iface_init (GInitableIface *iface);
 static gboolean bolt_manager_initialize (GInitable    *initable,
                                          GCancellable *cancellable,
                                          GError      **error);
+
 /* domain related functions */
 static gboolean      manager_load_domains (BoltManager *mgr,
                                            GError     **error);
@@ -139,6 +140,10 @@ static void          handle_store_device_added (BoltStore   *store,
 static void          handle_store_device_removed (BoltStore   *store,
                                                   const char  *uid,
                                                   BoltManager *mgr);
+
+static void          handle_domain_security_changed (BoltManager *mgr,
+                                                     GParamSpec  *unused,
+                                                     BoltDomain  *domain);
 
 static void          handle_device_status_changed (BoltDevice  *dev,
                                                    BoltStatus   old,
@@ -543,6 +548,33 @@ bolt_manager_initialize (GInitable    *initable,
   return TRUE;
 }
 
+/* specialized setter */
+static void
+manager_maybe_set_security (BoltManager *mgr,
+                            BoltSecurity security)
+{
+  /* update the security level, if it is not already
+   * set, but also ignore if security is 'unknown' */
+
+  if (security == BOLT_SECURITY_UNKNOWN)
+    return;
+
+  if (mgr->security == BOLT_SECURITY_UNKNOWN)
+    {
+      bolt_info ("security level set to '%s'",
+                 bolt_security_to_string (security));
+      mgr->security = security;
+      g_object_notify_by_pspec (G_OBJECT (mgr),
+                                props[PROP_SECURITY]);
+    }
+  else if (mgr->security != security)
+    {
+      bolt_warn ("multiple security levels (%s vs %s)",
+                 bolt_security_to_string (mgr->security),
+                 bolt_security_to_string (security));
+    }
+}
+
 /* domain related function */
 static gboolean
 manager_load_domains (BoltManager *mgr,
@@ -647,6 +679,7 @@ manager_domain_ensure (BoltManager        *mgr,
                        struct udev_device *dev)
 {
   g_autoptr(GError) err = NULL;
+  BoltSecurity security;
   BoltDomain *domain = NULL;
   GDBusConnection *bus;
   struct udev_device *host;
@@ -699,6 +732,13 @@ manager_domain_ensure (BoltManager        *mgr,
                      "failed to create domain: %s");
       return NULL;
     }
+
+  security = bolt_domain_get_security (domain);
+
+  bolt_msg (LOG_DOM (domain), "newly connected [%s] (%s)",
+            bolt_security_to_string (security), syspath);
+
+  manager_maybe_set_security (mgr, security);
 
   manager_register_domain (mgr, domain);
 
@@ -803,45 +843,27 @@ bootacl_alloc (BoltDomain  *domain,
   return TRUE;
 }
 
+
 static void
 manager_register_domain (BoltManager *mgr,
                          BoltDomain  *domain)
 {
-  BoltSecurity sl;
-  gboolean online;
-  gboolean acl;
+  guint n_slots, n_free;
 
   mgr->domains = bolt_domain_insert (mgr->domains, domain);
 
-  online = bolt_domain_is_connected (domain);
-  acl = bolt_domain_supports_bootacl (domain);
-  sl = bolt_domain_get_security (domain);
+  n_slots = bolt_domain_bootacl_slots (domain, &n_free);
 
   bolt_info (LOG_TOPIC ("domain"), LOG_DOM (domain),
-             "domain (security: %s, bootacl: %s) added",
-             bolt_security_to_string (sl),
-             bolt_yesno (acl));
-
-  if (!online)
-    return;
-
-  if (mgr->security == BOLT_SECURITY_UNKNOWN)
-    {
-      bolt_info ("security level set to '%s'",
-                 bolt_security_to_string (sl));
-      mgr->security = sl;
-      g_object_notify_by_pspec (G_OBJECT (mgr),
-                                props[PROP_SECURITY]);
-    }
-  else if (mgr->security != sl)
-    {
-      bolt_warn ("multiple security levels (%s vs %s)",
-                 bolt_security_to_string (mgr->security),
-                 bolt_security_to_string (sl));
-    }
+             "registered (bootacl: %u/%u)",
+             n_free, n_slots);
 
   g_signal_connect_object (domain, "bootacl-alloc",
                            G_CALLBACK (bootacl_alloc), mgr, 0);
+
+  g_signal_connect_object (domain, "notify::security",
+                           G_CALLBACK (handle_domain_security_changed),
+                           mgr, G_CONNECT_SWAPPED);
 }
 
 static void
@@ -1656,6 +1678,19 @@ handle_store_device_removed (BoltStore   *store,
 
   bolt_device_unexport (dev);
   bolt_info (LOG_DEV (dev), "unexported");
+}
+
+
+static void
+handle_domain_security_changed (BoltManager *mgr,
+                                GParamSpec  *unused,
+                                BoltDomain  *domain)
+{
+  BoltSecurity security = bolt_domain_get_security (domain);
+  gboolean online = bolt_domain_is_connected (domain);
+
+  if (online)
+    manager_maybe_set_security (mgr, security);
 }
 
 
