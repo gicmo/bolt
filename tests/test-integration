@@ -907,6 +907,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertTrue(UMockdev.in_mock_environment())
         self.dbpath = tempfile.mkdtemp()
         os.makedirs(os.path.join(self.dbpath, 'devices'))
+        os.makedirs(os.path.join(self.dbpath, 'domains'))
         os.makedirs(os.path.join(self.dbpath, 'keys'))
 
         self.client = None
@@ -1253,6 +1254,27 @@ class BoltTest(dbusmock.DBusTestCase):
 
         remotes = self.client.list_domains()
         self.assertEqual(len(remotes), 4)
+
+        self.daemon_stop()
+
+    def test_domain_connected(self):
+        uid = '884c6edd-7118-4b21-b186-b02d396ecafe'
+        entry = (
+            "[domain]\n"
+            "bootacl=\n"
+        )
+        path = os.path.join(self.dbpath, 'domains', uid)
+        with open(path, 'w') as f:
+            f.write(entry)
+
+        self.daemon_start()
+        self.assertEqual(self.client.security_level, 'unknown')
+
+        with self.client.record() as tape:
+            security='secure'
+            dom, host = self.add_domain_host(0, security=security, uid=uid)
+            tape.wait_for_event('property', 'SecurityLevel', security)
+            self.assertEqual(self.client.security_level, security)
 
         self.daemon_stop()
 
