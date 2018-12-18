@@ -63,7 +63,7 @@ forget (BoltClient *client, int argc, char **argv)
         {
           BoltDevice *dev = g_ptr_array_index (devices, i);
 
-          if (! bolt_device_is_stored (dev))
+          if (!bolt_device_is_stored (dev))
             continue;
 
           uid = bolt_device_get_uid (dev);
