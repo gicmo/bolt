@@ -12,12 +12,14 @@ build/
 cov-int/
 coverity/
 
-# cquery
+# IDEs and related
+.ccls-cache/
 .cquery_cached_index/
 compile_commands.json
-
-# visual studio code
+.idea
+.gdb_history
 .vscode/
 
 # emacs
 TAGS
+\#*\#
