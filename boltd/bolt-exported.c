@@ -488,7 +488,7 @@ dispach_property_setter (BoltExported          *exported,
 
   if (!ok && err != NULL)
     {
-      g_propagate_error (error, g_steal_pointer (&err));
+      bolt_error_propagate (error, &err);
       return NULL;
     }
   else if (!ok)
@@ -730,7 +730,7 @@ handle_dbus_get_property (GDBusConnection *connection,
   if (prop == NULL)
     {
       bolt_warn_err (err, LOG_TOPIC ("dbus"), "get_property");
-      g_propagate_error (error, g_steal_pointer (&err));
+      bolt_error_propagate (error, &err);
       return NULL;
     }
 
@@ -1220,7 +1220,7 @@ bolt_exported_emit_signal (BoltExported *exported,
     {
       bolt_warn_err (err, LOG_TOPIC ("dbus"),
                      "error emitting signal");
-      g_propagate_error (error, g_steal_pointer (&err));
+      bolt_error_propagate (error, &err);
     }
   else
     {

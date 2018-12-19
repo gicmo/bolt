@@ -554,7 +554,7 @@ manager_maybe_set_security (BoltManager *mgr,
                             BoltSecurity security)
 {
   /* update the security level, if it is not already
-   * set, but also ignore if security is 'unknown' */
+  * set, but also ignore if security is 'unknown' */
 
   if (security == BOLT_SECURITY_UNKNOWN)
     return;
@@ -2035,8 +2035,7 @@ handle_set_authmode (BoltExported *obj,
   if (str == NULL)
     {
       bolt_warn_err (err, LOG_TOPIC ("config"), "error setting authmode");
-      g_propagate_error (error, g_steal_pointer (&err));
-      return FALSE;
+      return bolt_error_propagate (error, &err);
     }
 
   bolt_config_set_auth_mode (mgr->config, str);
@@ -2045,8 +2044,7 @@ handle_set_authmode (BoltExported *obj,
   if (!ok)
     {
       bolt_warn_err (err, LOG_TOPIC ("config"), "error saving config");
-      g_propagate_error (error, g_steal_pointer (&err));
-      return FALSE;
+      return bolt_error_propagate (error, &err);
     }
 
   mgr->authmode = authmode;
@@ -2236,7 +2234,7 @@ enroll_device_store_authorized (BoltManager *mgr,
     {
       bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("store"),
                      "failed to store device");
-      g_propagate_error (error, g_steal_pointer (&err));
+      bolt_error_propagate (error, &err);
       return NULL;
     }
 

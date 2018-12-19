@@ -68,7 +68,7 @@ bolt_config_load_default_policy (GKeyFile   *cfg,
       int res = bolt_err_notfound (err) ? TRI_NO : TRI_ERROR;
 
       if (res == TRI_ERROR)
-        g_propagate_error (error, g_steal_pointer (&err));
+        bolt_error_propagate (error, &err);
 
       return res;
     }
@@ -106,7 +106,7 @@ bolt_config_load_auth_mode (GKeyFile     *cfg,
       int res = bolt_err_notfound (err) ? TRI_NO : TRI_ERROR;
 
       if (res == TRI_ERROR)
-        g_propagate_error (error, g_steal_pointer (&err));
+        bolt_error_propagate (error, &err);
 
       return res;
     }

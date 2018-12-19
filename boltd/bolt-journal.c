@@ -219,10 +219,7 @@ bolt_journal_initialize (GInitable    *initable,
 
   ok = bolt_fs_make_parent_dirs (journal->path, &err);
   if (!ok && !bolt_err_exists (err))
-    {
-      g_propagate_error (error, g_steal_pointer (&err));
-      return FALSE;
-    }
+    return bolt_error_propagate (error, &err);
 
   path = g_file_get_path (journal->path);
   fd = bolt_open (path,

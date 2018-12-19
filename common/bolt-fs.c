@@ -42,10 +42,7 @@ bolt_fs_make_parent_dirs (GFile   *target,
 
   ok = g_file_make_directory_with_parents (p, NULL, &err);
   if (!ok && !bolt_err_exists (err))
-    {
-      g_propagate_error (error, g_steal_pointer (&err));
-      return FALSE;
-    }
+    return bolt_error_propagate (error, &err);
 
   return TRUE;
 }

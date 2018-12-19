@@ -22,6 +22,7 @@
 
 #include "bolt-auth.h"
 #include "bolt-device.h"
+#include "bolt-error.h"
 #include "bolt-io.h"
 #include "bolt-log.h"
 #include "bolt-store.h"
@@ -290,8 +291,7 @@ bolt_auth_check (BoltAuth *auth,
   if (auth->error)
     {
       g_autoptr(GError) err = g_error_copy (auth->error);
-      g_propagate_error (error, g_steal_pointer (&err));
-      return FALSE;
+      return bolt_error_propagate (error, &err);
     }
 
   return TRUE;

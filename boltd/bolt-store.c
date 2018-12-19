@@ -302,7 +302,7 @@ bolt_store_list_uids (BoltStore  *store,
       if (bolt_err_notfound (err))
         return bolt_strv_from_ptr_array (&ids);
 
-      g_propagate_error (error, g_steal_pointer (&err));
+      bolt_error_propagate (error, &err);
       return NULL;
     }
 
@@ -787,8 +787,7 @@ bolt_store_get_times (BoltStore  *store,
         {
           if (error != NULL)
             {
-              g_propagate_error (error, g_steal_pointer (&err));
-              res = FALSE;
+              res = bolt_error_propagate (error, &err);
               break;
             }
 
@@ -871,8 +870,7 @@ bolt_store_put_times (BoltStore  *store,
         {
           if (error != NULL)
             {
-              g_propagate_error (error, g_steal_pointer (&err));
-              res = FALSE;
+              res = bolt_error_propagate (error, &err);
               break;
             }
 
@@ -934,8 +932,7 @@ bolt_store_del_times (BoltStore  *store,
         {
           if (error != NULL)
             {
-              g_propagate_error (error, g_steal_pointer (&err));
-              res = FALSE;
+              res = bolt_error_propagate (error, &err);
               break;
             }
 

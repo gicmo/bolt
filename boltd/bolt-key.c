@@ -188,7 +188,7 @@ bolt_key_write_to (BoltKey      *key,
   if (!ok && g_error_matches (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT))
     g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_BADKEY, "invalid key data");
   else if (!ok)
-    g_propagate_error (error, g_steal_pointer (&err));
+    bolt_error_propagate (error, &err);
   else if (!key->fresh) /* ok == True */
     *level = BOLT_SECURITY_SECURE;
 

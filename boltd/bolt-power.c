@@ -436,10 +436,7 @@ bolt_power_guard_mkfifo (BoltPowerGuard *guard,
 
   r = bolt_mkfifo (guard->fifo, 0600, &err);
   if (r == -1 && !bolt_err_exists (err))
-    {
-      g_propagate_error (error, g_steal_pointer (&err));
-      return FALSE;
-    }
+    return bolt_error_propagate (error, &err);
 
   g_object_notify_by_pspec (G_OBJECT (guard),
                             guard_props[PROP_FIFO]);
@@ -1465,7 +1462,7 @@ bolt_power_acquire_full (BoltPower  *power,
 
       if (!ok)
         {
-          g_propagate_error (error, g_steal_pointer (&err));
+          bolt_error_propagate (error, &err);
           return NULL;
         }
     }
