@@ -1574,34 +1574,6 @@ test_time (TestRng *tt, gconstpointer user_data)
 }
 
 static void
-test_pid_is_alive (TestRng *tt, gconstpointer user_data)
-{
-  gboolean ok;
-  pid_t p;
-  pid_t r;
-  int status;
-
-  ok = bolt_pid_is_alive (0);
-  g_assert_true (ok);
-
-  p = fork ();
-  g_assert_cmpint ((int) p, >, -1);
-
-  if (p == 0)
-    /* child */
-    exit (42);
-  /* parent */
-  ok = bolt_pid_is_alive (p);
-  g_assert_true (ok);
-
-  r = waitpid (0, &status, 0);
-  g_assert_cmpint ((int) r, ==, (int) p);
-
-  ok = bolt_pid_is_alive (p);
-  g_assert_false (ok);
-}
-
-static void
 test_list_nh (TestRng *tt, gconstpointer user_data)
 {
   BoltList n[10];
@@ -1872,13 +1844,6 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_time,
-              NULL);
-
-  g_test_add ("/common/unix/pid_is_alive",
-              TestRng,
-              NULL,
-              NULL,
-              test_pid_is_alive,
               NULL);
 
   g_test_add ("/common/list/nh",

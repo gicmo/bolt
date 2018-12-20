@@ -372,12 +372,13 @@ test_enums = gnome.mkenums_simple(
 tests = [
   ['test-auth', [libdaemon]],
   ['test-common', [], test_enums],
+  ['test-unix'],
   ['test-device', [libdaemon]],
   ['test-exported', [libdaemon], [test_resources,
                                   test_enums]],
   ['test-logging', [libdaemon]],
   ['test-store', [libdaemon]],
-  ['test-journal', [libdaemon]]
+  ['test-journal', [libdaemon]],
 ]
 
 if mockdev.found()
@@ -387,8 +388,7 @@ if mockdev.found()
      ['tests/mock-sysfs.c']],
     ['test-sysfs',
      [libdaemon, mockdev],
-     ['tests/mock-sysfs.c',
-      'tests/bolt-test.c']],
+     ['tests/mock-sysfs.c']],
     ['test-udev',
      [libdaemon, mockdev],
      ['tests/mock-sysfs.c']]
@@ -398,7 +398,9 @@ endif
 foreach t: tests
   test_name = t.get(0)
   test_deps = [common] + t.get(1, [])
-  test_srcs = ['tests/@0@.c'.format(test_name), t.get(2, [])]
+  test_srcs = ['tests/@0@.c'.format(test_name),
+               'tests/bolt-test.c',
+               t.get(2, [])]
   test_exec = executable(
     test_name,
     test_srcs,
