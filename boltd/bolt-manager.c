@@ -31,6 +31,7 @@
 #include "bolt-str.h"
 #include "bolt-sysfs.h"
 #include "bolt-udev.h"
+#include "bolt-unix.h"
 
 #include "bolt-manager.h"
 
@@ -50,6 +51,9 @@ static void     bolt_manager_initable_iface_init (GInitableIface *iface);
 static gboolean bolt_manager_initialize (GInitable    *initable,
                                          GCancellable *cancellable,
                                          GError      **error);
+
+/* internal manager functions */
+static void          manager_sd_notify_status (BoltManager *mgr);
 
 /* domain related functions */
 static gboolean      manager_load_domains (BoltManager *mgr,
@@ -545,10 +549,42 @@ bolt_manager_initialize (GInitable    *initable,
 
   udev_enumerate_unref (enumerate);
 
+  manager_sd_notify_status (mgr);
+
   return TRUE;
 }
 
-/* specialized setter */
+/* internal functions */
+static void
+manager_sd_notify_status (BoltManager *mgr)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *status = NULL;
+  const char *pstate = NULL;
+  BoltPowerState power;
+  gboolean sent;
+  gboolean authorizing;
+  gboolean ok = FALSE;
+
+  authorizing = bolt_flag_isset (mgr->authmode, BOLT_AUTH_ENABLED);
+  power = bolt_power_get_state (mgr->power);
+  pstate = bolt_enum_to_string (BOLT_TYPE_POWER_STATE, power, NULL);
+
+  status = g_strdup_printf ("STATUS=authmode: %s,"
+                            " force-power: %s",
+                            (authorizing ? "enabled" : "DISABLED"),
+                            (pstate ? : "unknown"));
+
+  ok = bolt_sd_notify_literal (status, &sent, &err);
+
+  if (!ok)
+    bolt_warn_err (err, LOG_TOPIC ("status"),
+                   "failed to send status");
+  else
+    bolt_debug (LOG_TOPIC ("status"), "%s [sent: %s]",
+                status, bolt_yesno (sent));
+}
+
 static void
 manager_maybe_set_security (BoltManager *mgr,
                             BoltSecurity security)
@@ -1741,6 +1777,8 @@ handle_power_state_changed (GObject    *gobject,
   BoltManager *mgr = BOLT_MANAGER (user_data);
 
   g_object_notify_by_pspec (G_OBJECT (mgr), props[PROP_POWERSTATE]);
+
+  manager_sd_notify_status (mgr);
 }
 
 
@@ -2049,6 +2087,9 @@ handle_set_authmode (BoltExported *obj,
 
   mgr->authmode = authmode;
   bolt_info (LOG_TOPIC ("config"), "auth mode set to '%s'", str);
+
+  manager_sd_notify_status (mgr);
+
   return ok;
 }
 
