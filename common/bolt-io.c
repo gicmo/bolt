@@ -54,9 +54,11 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (FILE, fclose);
 int
 bolt_open (const char *path, int flags, int mode, GError **error)
 {
-  int fd = g_open (path, flags, mode);
+  int fd;
 
   g_return_val_if_fail (error == NULL || *error == NULL, -1);
+
+  fd = g_open (path, flags, mode);
 
   if (fd < 0)
     {
@@ -73,9 +75,11 @@ bolt_open (const char *path, int flags, int mode, GError **error)
 static FILE *
 bolt_fdopen (int fd, const char *mode, GError **error)
 {
-  FILE *fp = fdopen (fd, mode);
+  FILE *fp;
 
   g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  fp = fdopen (fd, mode);
 
   if (fp == NULL)
     {
