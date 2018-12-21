@@ -585,7 +585,7 @@ manager_load_domains (BoltManager *mgr,
   ids = bolt_store_list_uids (mgr->store, "domains", error);
   if (ids == NULL)
     {
-      g_prefix_error (error, "failed to list domains in store");
+      g_prefix_error (error, "failed to list domains in store: ");
       return FALSE;
     }
 
@@ -888,7 +888,7 @@ manager_load_devices (BoltManager *mgr,
   ids = bolt_store_list_uids (mgr->store, "devices", error);
   if (ids == NULL)
     {
-      g_prefix_error (error, "failed to list devices in store");
+      g_prefix_error (error, "failed to list devices in store: ");
       return FALSE;
     }
 
