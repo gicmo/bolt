@@ -926,8 +926,9 @@ test_io_copy_bytes (TestIO *tt, gconstpointer user_data)
   for (gsize i = 0; i < N; i++)
     {
       bolt_random_prng (buf, sizeof (buf));
-      bolt_write_all (from, buf, sizeof (buf), &error);
+      ok = bolt_write_all (from, buf, sizeof (buf), &error);
       g_assert_no_error (error);
+      g_assert_true (ok);
       g_checksum_update (chk, (const guchar *) buf, sizeof (buf));
     }
 
