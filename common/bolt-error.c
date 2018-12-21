@@ -108,7 +108,9 @@ bolt_error_propagate (GError **dest,
   if (src == NULL)
     return TRUE;
 
-  g_propagate_error (dest, g_steal_pointer (source));
+  g_propagate_error (dest, src);
+  *source = NULL;
+
   return FALSE;
 }
 
