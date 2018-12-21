@@ -954,6 +954,10 @@ test_io_copy_bytes (TestIO *tt, gconstpointer user_data)
   g_assert_no_error (error);
   g_assert_true (ok);
 
+  ok = bolt_close (from, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
   /* close, reopen, check checksum */
   ok = bolt_close (to, &error);
   g_assert_no_error (error);
