@@ -9,6 +9,7 @@ BusName=org.freedesktop.bolt
 ExecStart=@libexecdir@/boltd
 #Environment="G_MESSAGES_DEBUG=all"
 Restart=on-failure
+NotifyAccess=main
 
 MemoryDenyWriteExecute=yes
 PrivateTmp=yes
