@@ -1088,8 +1088,8 @@ handle_uevent_wmi (BoltPower          *power,
   syspath = udev_device_get_syspath (device);
   name = udev_device_get_sysname (device);
 
-  bolt_debug (LOG_TOPIC ("power"), "uevent: wmi %s [%s %s]",
-              name, syspath, power->path ? : "<unset>");
+  bolt_debug (LOG_TOPIC ("power"), "uevent: wmi %s %s [%s %s]",
+              action, name, syspath, power->path ? : "<unset>");
 
   path = g_build_filename (syspath, "force_power", NULL);
 
