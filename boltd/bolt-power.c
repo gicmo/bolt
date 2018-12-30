@@ -1083,6 +1083,7 @@ handle_uevent_wmi (BoltPower          *power,
   g_autofree char *path = NULL;
   const char *name;
   const char *syspath;
+  gboolean supported;
   gboolean changed = FALSE;
 
   syspath = udev_device_get_syspath (device);
@@ -1091,33 +1092,35 @@ handle_uevent_wmi (BoltPower          *power,
   bolt_debug (LOG_TOPIC ("power"), "uevent: wmi %s %s [%s %s]",
               action, name, syspath, power->path ? : "<unset>");
 
+  if (!bolt_streq (name, INTEL_WMI_THUNDERBOLT_GUID) ||
+      !bolt_streq (action, "change"))
+    return;
+
   path = g_build_filename (syspath, "force_power", NULL);
+  supported = g_file_test (path, G_FILE_TEST_IS_REGULAR);
 
-  if (bolt_streq (action, "bind") &&
-      bolt_streq (name, INTEL_WMI_THUNDERBOLT_GUID))
+  if (supported)
     {
-
-      if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
+      if (power->path == NULL || !bolt_streq (path, power->path))
         {
           bolt_set_str (&power->path, g_steal_pointer (&path));
-          power->state = BOLT_FORCE_POWER_UNSET;
           changed = TRUE;
         }
     }
-  else if (bolt_streq (action, "unbind") &&
-           bolt_streq (path, power->path))
+  else if (!supported && power->path != NULL)
     {
       if (power->state > BOLT_FORCE_POWER_OFF)
         bolt_warn (LOG_TOPIC ("power"),
                    "force power supported removed while active");
 
       g_clear_pointer (&power->path, g_free);
-      power->state = BOLT_FORCE_POWER_UNSET;
       changed = TRUE;
     }
 
   if (changed)
     {
+      power->state = BOLT_FORCE_POWER_UNSET;
+
       g_object_notify_by_pspec (G_OBJECT (power),
                                 power_props[PROP_STATE]);
       g_object_notify_by_pspec (G_OBJECT (power),
