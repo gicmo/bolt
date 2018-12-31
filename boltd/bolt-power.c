@@ -831,8 +831,6 @@ bolt_power_initialize (GInitable    *initable,
   g_autoptr(BoltPowerGuard) guard = NULL;
   g_autofree char *statedir = NULL;
   BoltPower *power = BOLT_POWER (initable);
-  struct udev_enumerate *e;
-  struct udev_list_entry *l, *devices;
   gboolean on = FALSE;
   gboolean ok;
   guint guards;
@@ -851,29 +849,13 @@ bolt_power_initialize (GInitable    *initable,
                            (GCallback) handle_uevent_udev,
                            power, 0);
 
-  e = bolt_udev_new_enumerate (power->udev, NULL);
-  udev_enumerate_add_match_subsystem (e, "wmi");
-  udev_enumerate_add_match_property (e, "DRIVER", "intel-wmi-thunderbolt");
-
-  udev_enumerate_scan_devices (e);
-  devices = udev_enumerate_get_list_entry (e);
-
-  udev_list_entry_foreach (l, devices)
+  ok = bolt_udev_detect_force_power (power->udev, &power->path, &err);
+  if (!ok)
     {
-      g_autofree char *path = NULL;
-      const char *syspath;
-
-      syspath = udev_list_entry_get_name (l);
-      path = g_build_filename (syspath, "force_power", NULL);
-
-      if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
-        {
-          power->path = g_steal_pointer (&path);
-          break;
-        }
+      bolt_warn_err (err, LOG_TOPIC ("power"),
+                     "failure while detecting force power");
+      g_clear_error (&err);
     }
-
-  udev_enumerate_unref (e);
 
   bolt_msg (LOG_TOPIC ("power"), "force power support: %s",
             bolt_yesno (power->path != NULL));
@@ -1080,11 +1062,12 @@ handle_uevent_wmi (BoltPower          *power,
                    const char         *action,
                    struct udev_device *device)
 {
+  g_autoptr(GError) err = NULL;
   g_autofree char *path = NULL;
   const char *name;
   const char *syspath;
-  gboolean supported;
   gboolean changed = FALSE;
+  gboolean ok;
 
   syspath = udev_device_get_syspath (device);
   name = udev_device_get_sysname (device);
@@ -1092,14 +1075,19 @@ handle_uevent_wmi (BoltPower          *power,
   bolt_debug (LOG_TOPIC ("power"), "uevent: wmi %s %s [%s %s]",
               action, name, syspath, power->path ? : "<unset>");
 
-  if (!bolt_streq (name, INTEL_WMI_THUNDERBOLT_GUID) ||
-      !bolt_streq (action, "change"))
+  if (!bolt_streq (action, "change"))
     return;
 
-  path = g_build_filename (syspath, "force_power", NULL);
-  supported = g_file_test (path, G_FILE_TEST_IS_REGULAR);
+  ok = bolt_udev_detect_force_power (power->udev, &path, &err);
 
-  if (supported)
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("udev"),
+                     "failed to detect force_power support");
+      g_clear_error (&err);
+    }
+
+  if (path != NULL)
     {
       if (power->path == NULL || !bolt_streq (path, power->path))
         {
@@ -1107,7 +1095,7 @@ handle_uevent_wmi (BoltPower          *power,
           changed = TRUE;
         }
     }
-  else if (!supported && power->path != NULL)
+  else if (path == NULL && power->path != NULL)
     {
       if (power->state > BOLT_FORCE_POWER_OFF)
         bolt_warn (LOG_TOPIC ("power"),
@@ -1119,6 +1107,7 @@ handle_uevent_wmi (BoltPower          *power,
 
   if (changed)
     {
+      /* if changed, we don't know our current state */
       power->state = BOLT_FORCE_POWER_UNSET;
 
       g_object_notify_by_pspec (G_OBJECT (power),
