@@ -414,3 +414,42 @@ bolt_udev_count_domains (BoltUdev *udev,
 
   return bolt_sysfs_count_domains (udev->udev, error);
 }
+
+gboolean
+bolt_udev_detect_force_power (BoltUdev *udev,
+                              char    **result,
+                              GError  **error)
+{
+  struct udev_enumerate *e;
+  struct udev_list_entry *l, *devices;
+
+  g_return_val_if_fail (BOLT_IS_UDEV (udev), FALSE);
+  g_return_val_if_fail (result != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  e = bolt_udev_new_enumerate (udev, NULL);
+  udev_enumerate_add_match_subsystem (e, "wmi");
+  udev_enumerate_add_match_property (e, "DRIVER", "intel-wmi-thunderbolt");
+
+  udev_enumerate_scan_devices (e);
+  devices = udev_enumerate_get_list_entry (e);
+
+  udev_list_entry_foreach (l, devices)
+    {
+      g_autofree char *path = NULL;
+      const char *syspath;
+
+      syspath = udev_list_entry_get_name (l);
+      path = g_build_filename (syspath, "force_power", NULL);
+
+      if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
+        {
+          *result = g_steal_pointer (&path);
+          break;
+        }
+    }
+
+  udev_enumerate_unref (e);
+
+  return TRUE;
+}

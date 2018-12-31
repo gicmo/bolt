@@ -48,4 +48,7 @@ struct udev_device * bolt_udev_device_new_from_syspath (BoltUdev   *udev,
 int                  bolt_udev_count_domains (BoltUdev *udev,
                                               GError  **error);
 
+gboolean             bolt_udev_detect_force_power (BoltUdev *udev,
+                                                   char    **path,
+                                                   GError  **error);
 G_END_DECLS
