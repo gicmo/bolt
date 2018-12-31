@@ -207,6 +207,62 @@ test_udev_basic (TestUdev *tt, gconstpointer user)
   uevent_clear (&ev);
 }
 
+static void
+test_udev_detect_force_power (TestUdev *tt, gconstpointer user)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(BoltUdev) udev = NULL;
+  g_autofree char *path = NULL;
+  const char *fp;
+  gboolean ok;
+
+  udev = bolt_udev_new ("udev", NULL, &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (udev);
+
+  /* no force power module attached so far */
+
+  ok = bolt_udev_detect_force_power (udev, &path, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_null (path);
+
+  /* now we add the wmi module */
+  fp = mock_sysfs_force_power_add (tt->sysfs);
+  g_assert_nonnull (fp);
+
+  ok = bolt_udev_detect_force_power (udev, &path, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_nonnull (path);
+  g_debug ("force power detected at: %s", path);
+  g_clear_pointer (&path, g_free);
+
+  /* unload again */
+  g_debug ("UNLOAD");
+  mock_sysfs_force_power_unload (tt->sysfs);
+
+  ok = bolt_udev_detect_force_power (udev, &path, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_null (path);
+
+  /* and load again */
+  g_debug ("LOAD");
+  mock_sysfs_force_power_load (tt->sysfs);
+
+  ok = bolt_udev_detect_force_power (udev, &path, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_nonnull (path);
+  g_debug ("force power detected at: %s", path);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -222,6 +278,13 @@ main (int argc, char **argv)
               NULL,
               test_udev_setup,
               test_udev_basic,
+              test_udev_tear_down);
+
+  g_test_add ("/udev/detect_force_power",
+              TestUdev,
+              NULL,
+              test_udev_setup,
+              test_udev_detect_force_power,
               test_udev_tear_down);
 
   return g_test_run ();
