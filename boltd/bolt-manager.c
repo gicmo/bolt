@@ -1775,6 +1775,12 @@ handle_power_state_changed (GObject    *gobject,
                             gpointer    user_data)
 {
   BoltManager *mgr = BOLT_MANAGER (user_data);
+  gboolean supported = bolt_power_can_force (mgr->power);
+  BoltPowerState state = bolt_power_get_state (mgr->power);
+
+  bolt_info (LOG_TOPIC ("power"), "state changed: %s/%s",
+             (supported ? "supported" : "unsupported"),
+             bolt_power_state_to_string (state));
 
   g_object_notify_by_pspec (G_OBJECT (mgr), props[PROP_POWERSTATE]);
 
