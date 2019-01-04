@@ -490,7 +490,7 @@ bolt_journal_list (BoltJournal *journal,
       if (err != NULL)
         {
           bolt_warn_err (err, LOG_TOPIC ("journal"),
-                         "invalid entry: '%s': %s", l);
+                         "skipping entry '%s'", l);
           continue;
         }
 
