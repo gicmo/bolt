@@ -467,6 +467,18 @@
         The boot access control list.
       </doc:para></doc:description></doc:doc>
     </property>
+
+    <property name="IOMMU" type="b" access="read">
+      <doc:doc><doc:description><doc:para>
+        The input output memory management unit (IOMMU)
+	can used on recent hardware in combination with
+	recent kernel versions to protect against attacks,
+	like direct memory access (DMA) attacs, at the
+	hardware level. If this property is true than
+	IOMMU hardware protection is active.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
   </interface>
 
 </node>

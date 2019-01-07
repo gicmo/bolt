@@ -54,6 +54,7 @@ struct _BoltDomain
   char        *syspath;
   BoltSecurity security;
   GStrv        bootacl;
+  gboolean     iommu;
 };
 
 
@@ -70,6 +71,7 @@ enum {
   PROP_SYSPATH,
   PROP_SECURITY,
   PROP_BOOTACL,
+  PROP_IOMMU,
 
   PROP_LAST,
   PROP_EXPORTED = PROP_UID
@@ -146,6 +148,10 @@ bolt_domain_get_property (GObject    *object,
       g_value_set_boxed (value, dom->bootacl);
       break;
 
+    case PROP_IOMMU:
+      g_value_set_boolean (value, dom->iommu);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -195,6 +201,10 @@ bolt_domain_set_property (GObject      *object,
     case PROP_BOOTACL:
       g_strfreev (dom->bootacl);
       dom->bootacl = g_value_dup_boxed (value);
+      break;
+
+    case PROP_IOMMU:
+      dom->iommu = g_value_get_boolean (value);
       break;
 
     default:
@@ -262,6 +272,14 @@ bolt_domain_class_init (BoltDomainClass *klass)
                         G_TYPE_STRV,
                         G_PARAM_READWRITE |
                         G_PARAM_STATIC_STRINGS);
+
+  props[PROP_IOMMU] =
+    g_param_spec_boolean ("iommu",
+                          "IOMMU", NULL,
+                          FALSE,
+                          G_PARAM_READWRITE |
+                          G_PARAM_CONSTRUCT_ONLY |
+                          G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
@@ -542,6 +560,7 @@ bolt_domain_new_for_udev (struct udev_device *udev,
   BoltSecurity security = BOLT_SECURITY_UNKNOWN;
   const char *syspath;
   const char *sysname;
+  gboolean iommu;
   gboolean ok;
   gint sort = -1;
 
@@ -581,6 +600,13 @@ bolt_domain_new_for_udev (struct udev_device *udev,
       g_clear_error (&err);
     }
 
+  ok = bolt_sysfs_read_iommu (udev, &iommu, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("udev"),
+                     "failed to read iommu");
+      g_clear_error (&err);
+    }
 
   dom = g_object_new (BOLT_TYPE_DOMAIN,
                       "uid", uid,
@@ -588,6 +614,7 @@ bolt_domain_new_for_udev (struct udev_device *udev,
                       "syspath", syspath,
                       "security", security,
                       "bootacl", acl,
+                      "iommu", iommu,
                       NULL);
 
   return dom;
@@ -692,6 +719,7 @@ bolt_domain_connected (BoltDomain         *domain,
   BoltSecurity security;
   const char *syspath;
   const char *id;
+  gboolean iommu;
   gboolean ok;
 
   g_return_if_fail (BOLT_IS_DOMAIN (domain));
@@ -719,15 +747,25 @@ bolt_domain_connected (BoltDomain         *domain,
       g_clear_error (&err);
     }
 
+  ok = bolt_sysfs_read_iommu (dev, &iommu, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("udev"),
+                     "failed to read iommu");
+      g_clear_error (&err);
+    }
+
   g_object_freeze_notify (G_OBJECT (domain));
 
   domain->id = g_strdup (id);
   domain->syspath = g_strdup (syspath);
   domain->security = security;
+  domain->iommu = iommu;
 
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_ID]);
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_SYSPATH]);
   g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_SECURITY]);
+  g_object_notify_by_pspec (G_OBJECT (domain), props[PROP_IOMMU]);
 
   ok = bolt_sysfs_read_boot_acl (dev, &acl, &err);
   if (!ok)
