@@ -575,7 +575,12 @@ bolt_domain_new_for_udev (struct udev_device *udev,
 
   ok = bolt_sysfs_read_boot_acl (udev, &acl, &err);
   if (!ok)
-    bolt_warn_err (err, "failed to get boot_acl");
+    {
+      bolt_warn_err (err, LOG_TOPIC ("udev"),
+                     "failed to read boot_acl");
+      g_clear_error (&err);
+    }
+
 
   dom = g_object_new (BOLT_TYPE_DOMAIN,
                       "uid", uid,
