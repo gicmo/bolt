@@ -30,6 +30,7 @@
 #include <glib-unix.h>
 #include <gio/gio.h>
 
+#include <errno.h>
 #include <locale.h>
 #include <sys/types.h>
 #include <sys/socket.h>
