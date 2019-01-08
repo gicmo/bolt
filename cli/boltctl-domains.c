@@ -35,16 +35,19 @@ print_domain (BoltDomain *domain, gboolean verbose)
   const char *tree_branch;
   const char *tree_right;
   const char *tree_cont;
+  const char *tree_space;
   const char *uid;
   const char *name;
   const char *syspath;
   const char *security;
   BoltSecurity sl;
   gboolean online;
+  gboolean iommu;
 
   tree_branch = bolt_glyph (TREE_BRANCH);
   tree_right = bolt_glyph (TREE_RIGHT);
   tree_cont = bolt_glyph (TREE_VERTICAL);
+  tree_space = bolt_glyph (TREE_SPACE);
 
   uid = bolt_domain_get_uid (domain);
   name = bolt_domain_get_id (domain);
@@ -101,7 +104,29 @@ print_domain (BoltDomain *domain, gboolean verbose)
         }
     }
 
-  g_print ("   %s security: %s\n", tree_right, security);
+  iommu = bolt_domain_has_iommu (domain);
+
+  g_print ("   %s security: ", tree_right);
+
+  if (bolt_security_is_interactive (sl) && iommu)
+    g_print ("iommu+%s", security);
+  else if (bolt_security_allows_pcie (sl) && iommu)
+    g_print ("iommu");
+  else
+    g_print ("%s", security);
+
+  g_print ("\n");
+
+  if (verbose)
+    {
+      g_print ("   %s %s iommu: %s\n", tree_space, tree_branch,
+               bolt_yesno (iommu));
+
+      g_print ("   %s %s level: %s\n", tree_space, tree_right,
+               security);
+
+    }
+
   g_print ("\n");
 }
 
