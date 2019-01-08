@@ -684,6 +684,14 @@ bolt_domain_is_connected (BoltDomain *domain)
   return domain->syspath != NULL;
 }
 
+gboolean
+bolt_domain_has_iommu (BoltDomain *domain)
+{
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+
+  return domain->iommu;
+}
+
 void
 bolt_domain_export (BoltDomain      *domain,
                     GDBusConnection *bus)

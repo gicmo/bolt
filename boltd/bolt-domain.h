@@ -53,6 +53,8 @@ gboolean          bolt_domain_is_stored (BoltDomain *domain);
 
 gboolean          bolt_domain_is_connected (BoltDomain *domain);
 
+gboolean          bolt_domain_has_iommu (BoltDomain *domain);
+
 void              bolt_domain_export (BoltDomain      *domain,
                                       GDBusConnection *connection);
 
