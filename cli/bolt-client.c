@@ -297,7 +297,7 @@ got_the_client (GObject      *source,
                 GAsyncResult *res,
                 gpointer      user_data)
 {
-  g_autoptr(GError) error = NULL;
+  GError *error = NULL;
   GTask *task = user_data;
   GObject *obj;
 
@@ -305,6 +305,7 @@ got_the_client (GObject      *source,
 
   if (obj == NULL)
     {
+      /* error ownership gets transferred to the task */
       g_task_return_error (task, error);
       return;
     }
@@ -318,7 +319,7 @@ got_the_bus (GObject      *source,
              GAsyncResult *res,
              gpointer      user_data)
 {
-  g_autoptr(GError) error = NULL;
+  GError *error = NULL;
   GTask *task = user_data;
   GCancellable *cancellable;
   GDBusConnection *bus;
@@ -327,6 +328,7 @@ got_the_bus (GObject      *source,
   if (bus == NULL)
     {
       g_prefix_error (&error, "could not connect to D-Bus: ");
+      /* error ownership gets transferred to the task */
       g_task_return_error (task, error);
       return;
     }
