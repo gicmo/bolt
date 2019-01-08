@@ -131,7 +131,12 @@ bolt_store_set_property (GObject      *object,
 static void
 bolt_store_constructed (GObject *obj)
 {
+  g_autofree char *path = NULL;
   BoltStore *store = BOLT_STORE (obj);
+
+  path = g_file_get_path (store->root);
+
+  bolt_info (LOG_TOPIC ("store"), "located at: %s", path);
 
   store->devices = g_file_get_child (store->root, "devices");
   store->domains = g_file_get_child (store->root, "domains");
