@@ -277,13 +277,13 @@ bolt_str_parse_as_int (const char *str,
 
   if (str == end)
     {
-      errno = -EINVAL;
+      errno = EINVAL;
       return FALSE;
     }
 
   if (val > G_MAXINT || val < G_MININT)
     {
-      errno = -ERANGE;
+      errno = ERANGE;
       return FALSE;
     }
 

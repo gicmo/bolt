@@ -760,7 +760,7 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
   g_clear_pointer (&err, g_error_free);
 
   ok = bolt_read_int_at (dirfd (root), "readonly", &iv, &err);
-  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_FAILED);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
   g_assert_false (ok);
   g_clear_pointer (&err, g_error_free);
 
