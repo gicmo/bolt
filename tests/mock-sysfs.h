@@ -77,6 +77,11 @@ gboolean         mock_sysfs_domain_bootacl_set (MockSysfs  *ms,
                                                 GStrv       acl,
                                                 GError    **error);
 
+gboolean         mock_syfs_domain_iommu_set (MockSysfs  *ms,
+                                             const char *id,
+                                             const char *val,
+                                             GError    **error);
+
 const char *     mock_sysfs_host_add (MockSysfs  *ms,
                                       const char *domain,
                                       MockDevId  *id);

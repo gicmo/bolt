@@ -628,6 +628,39 @@ mock_sysfs_domain_bootacl_set (MockSysfs  *ms,
   return TRUE;
 }
 
+gboolean
+mock_syfs_domain_iommu_set (MockSysfs  *ms,
+                            const char *id,
+                            const char *val,
+                            GError    **error)
+{
+  g_autofree char *path = NULL;
+  MockDomain *domain;
+  gboolean ok;
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), FALSE);
+  g_return_val_if_fail (id != NULL, FALSE);
+  g_return_val_if_fail (val != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  domain = g_hash_table_lookup (ms->domains, id);
+
+  if (domain == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "domain '%s' not found", id);
+      return FALSE;
+    }
+
+  path = g_build_filename (domain->path, BOLT_SYSFS_IOMMU, NULL);
+  ok = bolt_file_write_all (path, val, -1, error);
+  if (!ok)
+    return FALSE;
+
+  umockdev_testbed_uevent (ms->bed, domain->path, "change");
+  return TRUE;
+}
+
 const char *
 mock_sysfs_host_add (MockSysfs  *ms,
                      const char *dom,
