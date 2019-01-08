@@ -46,4 +46,6 @@ char **           bolt_domain_get_bootacl (BoltDomain *domain);
 
 gboolean          bolt_domain_is_online (BoltDomain *domain);
 
+gboolean          bolt_domain_has_iommu (BoltDomain *domain);
+
 G_END_DECLS

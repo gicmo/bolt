@@ -38,6 +38,7 @@ enum {
   PROP_SYSPATH,
   PROP_SECURITY,
   PROP_BOOTACL,
+  PROP_IOMMU,
 
   PROP_LAST
 };
@@ -102,6 +103,13 @@ bolt_domain_class_init (BoltDomainClass *klass)
                         G_TYPE_STRV,
                         G_PARAM_READABLE |
                         G_PARAM_STATIC_NAME);
+
+  props[PROP_IOMMU] =
+    g_param_spec_boolean ("iommu",
+                          "IOMMU", NULL,
+                          FALSE,
+                          G_PARAM_READABLE |
+                          G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
@@ -222,4 +230,22 @@ bolt_domain_is_online (BoltDomain *domain)
   syspath = bolt_domain_get_syspath (domain);
 
   return syspath != NULL;
+}
+
+gboolean
+bolt_domain_has_iommu (BoltDomain *domain)
+{
+  const char *key;
+  gboolean val = FALSE;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+
+  key = g_param_spec_get_name (props[PROP_IOMMU]);
+  ok = bolt_proxy_get_property_bool (BOLT_PROXY (domain), key, &val);
+
+  if (!ok)
+    g_warning ("failed to get bool property '%s'", key);
+
+  return val;
 }
