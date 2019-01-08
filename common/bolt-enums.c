@@ -368,6 +368,29 @@ bolt_security_allows_pcie (BoltSecurity security)
   return pcie;
 }
 
+gboolean
+bolt_security_is_interactive (BoltSecurity security)
+{
+  gboolean interactive = FALSE;
+
+  switch (security)
+    {
+    case BOLT_SECURITY_USER:
+    case BOLT_SECURITY_SECURE:
+      interactive = TRUE;
+      break;
+
+    case BOLT_SECURITY_NONE:
+    case BOLT_SECURITY_DPONLY:
+    case BOLT_SECURITY_USBONLY:
+    case BOLT_SECURITY_UNKNOWN:
+      interactive = FALSE;
+      break;
+    }
+
+  return interactive;
+}
+
 BoltPolicy
 bolt_policy_from_string (const char *str)
 {
