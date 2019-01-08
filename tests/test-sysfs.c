@@ -146,6 +146,97 @@ test_sysfs_domain_for_device (TestSysfs *tt, gconstpointer user)
 }
 
 static void
+test_sysfs_read_iommu (TestSysfs *tt, gconstpointer user)
+{
+  const char *domain;
+  const char *syspath;
+  gboolean ok;
+
+  domain = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_SECURE, NULL);
+  g_assert_nonnull (domain);
+
+  syspath = mock_sysfs_domain_get_syspath (tt->sysfs, domain);
+  g_assert_nonnull (syspath);
+
+  /* no sysfs attribute at all */
+  {
+    g_autoptr(GError) err = NULL;
+    g_autoptr(udev_device) udev = NULL;
+    gboolean iommu;
+
+    udev = udev_device_new_from_syspath (tt->udev, syspath);
+    g_assert_nonnull (udev);
+
+    iommu = TRUE; /* we expect FALSE */
+    ok = bolt_sysfs_read_iommu (udev, &iommu, &err);
+    g_assert_no_error (err);
+    g_assert_true (ok);
+    g_assert_false (iommu);
+  }
+
+  /* sysfs attribute is "0" */
+  {
+    g_autoptr(GError) err = NULL;
+    g_autoptr(udev_device) udev = NULL;
+    gboolean iommu;
+
+    ok = mock_syfs_domain_iommu_set (tt->sysfs, domain, "0", &err);
+    g_assert_no_error (err);
+    g_assert_true (ok);
+
+    udev = udev_device_new_from_syspath (tt->udev, syspath);
+    g_assert_nonnull (udev);
+
+    iommu = TRUE; /* we expect FALSE */
+    ok = bolt_sysfs_read_iommu (udev, &iommu, &err);
+    g_assert_no_error (err);
+    g_assert_true (ok);
+    g_assert_false (iommu);
+  }
+
+  /* sysfs attribute is "1" */
+  {
+    g_autoptr(GError) err = NULL;
+    g_autoptr(udev_device) udev = NULL;
+    gboolean iommu;
+
+    ok = mock_syfs_domain_iommu_set (tt->sysfs, domain, "1", &err);
+    g_assert_no_error (err);
+    g_assert_true (ok);
+
+    udev = udev_device_new_from_syspath (tt->udev, syspath);
+    g_assert_nonnull (udev);
+
+    iommu = FALSE; /* now we expect TRUE */
+    ok = bolt_sysfs_read_iommu (udev, &iommu, &err);
+    g_assert_no_error (err);
+    g_assert_true (ok);
+    g_assert_true (iommu);
+  }
+
+  /* sysfs attribute contains garbage */
+  {
+    g_autoptr(GError) err = NULL;
+    g_autoptr(udev_device) udev = NULL;
+    gboolean iommu;
+
+    ok = mock_syfs_domain_iommu_set (tt->sysfs, domain, "garbage", &err);
+    g_assert_no_error (err);
+    g_assert_true (ok);
+
+    udev = udev_device_new_from_syspath (tt->udev, syspath);
+    g_assert_nonnull (udev);
+
+    iommu = TRUE; /* should be unchanged */
+    ok = bolt_sysfs_read_iommu (udev, &iommu, &err);
+    g_assert_nonnull (err);
+    g_assert_false (ok);
+    g_assert_true (iommu);
+  }
+
+}
+
+static void
 test_sysfs_domains (TestSysfs *tt, gconstpointer user)
 {
   g_autoptr(GError) err = NULL;
@@ -981,6 +1072,13 @@ main (int argc, char **argv)
               NULL,
               test_sysfs_setup,
               test_sysfs_domain_for_device,
+              test_sysfs_tear_down);
+
+  g_test_add ("/sysfs/read_iommu",
+              TestSysfs,
+              NULL,
+              test_sysfs_setup,
+              test_sysfs_read_iommu,
               test_sysfs_tear_down);
 
   g_test_add ("/sysfs/domain/basic",
