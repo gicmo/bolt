@@ -189,6 +189,10 @@ gboolean         bolt_security_is_interactive (BoltSecurity security);
  * @BOLT_POLICY_AUTO: Connect the device automatically,
  *   with the best possible security level supported
  *   by the domain controller.
+ * @BOLT_POLICY_IOMMU: Like @BOLT_POLICY_AUTO if IOMMU, i.e.
+ *   hardware DMA protection, is active and like  @BOLT_POLICY_MANUAL
+ *   otherwise: automatically authorize the device if and only if
+ *   we have IOMMU active support.
  *
  * What do to for connected devices.
  */
@@ -198,6 +202,7 @@ typedef enum {
   BOLT_POLICY_DEFAULT = 0,
   BOLT_POLICY_MANUAL = 1,
   BOLT_POLICY_AUTO = 2,
+  BOLT_POLICY_IOMMU = 3,
 
 } BoltPolicy;
 
