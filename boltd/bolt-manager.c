@@ -1205,8 +1205,7 @@ manager_maybe_import (BoltManager *mgr,
   gboolean boot;
   gboolean ok;
 
-  if (!bolt_device_is_authorized (dev))
-    return;
+  g_return_if_fail (bolt_device_is_authorized (dev));
 
   if (bolt_device_get_device_type (dev) == BOLT_DEVICE_HOST)
     return;
@@ -1460,7 +1459,8 @@ handle_udev_device_added (BoltManager        *mgr,
 
   bolt_manager_label_device (mgr, dev);
 
-  manager_maybe_import (mgr, dev);
+  if (bolt_status_is_authorized (status))
+    manager_maybe_import (mgr, dev);
 
   /* if we have a valid dbus connection */
   bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
