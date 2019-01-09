@@ -1197,8 +1197,8 @@ maybe_authorize_device (BoltManager *mgr,
 }
 
 static void
-manager_maybe_auto_import_device (BoltManager *mgr,
-                                  BoltDevice  *dev)
+manager_maybe_import (BoltManager *mgr,
+                      BoltDevice  *dev)
 {
   g_autoptr(GError) err = NULL;
   g_autoptr(BoltKey) key = NULL;
@@ -1460,7 +1460,7 @@ handle_udev_device_added (BoltManager        *mgr,
 
   bolt_manager_label_device (mgr, dev);
 
-  manager_maybe_auto_import_device (mgr, dev);
+  manager_maybe_import (mgr, dev);
 
   /* if we have a valid dbus connection */
   bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
