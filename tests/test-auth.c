@@ -53,6 +53,7 @@ test_auth_basic (TestDummy *tt, gconstpointer user_data)
   g_autoptr(BoltKey) k2 = NULL;
   g_autoptr(GObject) obj = NULL;
   BoltSecurity level;
+  BoltPolicy policy;
   gpointer origin;
   char uid[] = "fbc83890-e9bf-45e5-a777-b3728490989c";
 
@@ -70,23 +71,35 @@ test_auth_basic (TestDummy *tt, gconstpointer user_data)
   auth = bolt_auth_new (dev, BOLT_SECURITY_SECURE, key);
   g_object_set (auth, "device", dev, NULL);
 
+  policy = BOLT_POLICY_DEFAULT; // we expect _UNKNOWN
   g_object_get (auth,
                 "origin", &origin,
                 "level", &level,
                 "key", &k2,
                 "device", &d2,
+                "policy", &policy,
                 NULL);
 
   g_assert_cmpint (level, ==, BOLT_SECURITY_SECURE);
   g_assert_true (origin == dev);
   g_assert_true (key == k2);
   g_assert_true (dev == d2);
+  g_assert_cmpint (policy, ==, BOLT_POLICY_UNKNOWN);
 
   g_assert_true (G_IS_ASYNC_RESULT (auth));
   obj = g_async_result_get_source_object (G_ASYNC_RESULT (auth));
   g_assert ((gpointer) obj == (gpointer) dev);
   g_assert_false (g_async_result_is_tagged (G_ASYNC_RESULT (auth), &obj));
   g_assert_null (g_async_result_get_user_data (G_ASYNC_RESULT (auth)));
+
+  bolt_auth_set_policy (auth, BOLT_POLICY_MANUAL);
+  policy = bolt_auth_get_policy (auth);
+  g_assert_cmpint (policy, ==, BOLT_POLICY_MANUAL);
+  g_object_set (auth, "policy", BOLT_POLICY_AUTO, NULL);
+  policy = BOLT_POLICY_UNKNOWN;
+  g_object_get (auth, "policy", &policy, NULL);
+  g_assert_cmpint (policy, ==, BOLT_POLICY_AUTO);
+
 }
 
 static void

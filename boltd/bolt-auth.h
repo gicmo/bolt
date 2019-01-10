@@ -54,6 +54,11 @@ BoltKeyState     bolt_auth_get_keystate (BoltAuth *auth);
 
 gpointer         bolt_auth_get_origin (BoltAuth *auth);
 
+BoltPolicy       bolt_auth_get_policy (BoltAuth *auth);
+
+void             bolt_auth_set_policy (BoltAuth  *auth,
+                                       BoltPolicy policy);
+
 BoltStatus       bolt_auth_to_status (BoltAuth *auth);
 
 BoltAuthFlags    bolt_auth_to_flags (BoltAuth      *auth,

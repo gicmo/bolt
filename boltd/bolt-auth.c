@@ -44,6 +44,9 @@ struct _BoltAuth
 
   /* result */
   GError *error;
+
+  /* memory for enrollment */
+  BoltPolicy policy;
 };
 
 
@@ -56,6 +59,8 @@ enum {
 
   PROP_DEVICE,
   PROP_ERROR,
+
+  PROP_POLICY,
 
   PROP_LAST
 };
@@ -111,6 +116,10 @@ bolt_auth_get_property (GObject    *object,
       g_value_set_object (value, auth->dev);
       break;
 
+    case PROP_POLICY:
+      g_value_set_enum (value, auth->policy);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
     }
@@ -141,6 +150,10 @@ bolt_auth_set_property (GObject      *object,
     case PROP_DEVICE:
       g_return_if_fail (auth->dev == NULL);
       auth->dev = g_value_dup_object (value);
+      break;
+
+    case PROP_POLICY:
+      auth->policy = g_value_get_enum (value);
       break;
 
     default:
@@ -195,6 +208,15 @@ bolt_auth_class_init (BoltAuthClass *klass)
                         G_TYPE_ERROR,
                         G_PARAM_READWRITE |
                         G_PARAM_STATIC_NICK);
+
+  props[PROP_POLICY] =
+    g_param_spec_enum ("policy",
+                       NULL, NULL,
+                       BOLT_TYPE_POLICY,
+                       BOLT_POLICY_UNKNOWN,
+                       G_PARAM_READWRITE |
+                       G_PARAM_CONSTRUCT |
+                       G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
@@ -328,6 +350,27 @@ bolt_auth_get_origin (BoltAuth *auth)
   g_return_val_if_fail (BOLT_IS_AUTH (auth), NULL);
 
   return auth->origin;
+}
+
+BoltPolicy
+bolt_auth_get_policy (BoltAuth *auth)
+{
+  g_return_val_if_fail (BOLT_IS_AUTH (auth), BOLT_POLICY_UNKNOWN);
+
+  return auth->policy;
+}
+
+void
+bolt_auth_set_policy (BoltAuth  *auth,
+                      BoltPolicy policy)
+{
+  g_return_if_fail (BOLT_IS_AUTH (auth));
+
+  if (auth->policy == policy)
+    return;
+
+  auth->policy = policy;
+  g_object_notify_by_pspec (G_OBJECT (auth), props[PROP_POLICY]);
 }
 
 BoltStatus
