@@ -2207,36 +2207,22 @@ enroll_device_done (GObject      *device,
                     GAsyncResult *res,
                     gpointer      user_data)
 {
-  BoltAuth *auth;
-  BoltDevice *dev;
-  BoltManager *mgr;
-  GDBusMethodInvocation *inv;
+  GDBusMethodInvocation *inv = user_data;
+  BoltDevice *dev = BOLT_DEVICE (device);
+  BoltAuth *auth = BOLT_AUTH (res);
   GError *error = NULL;
+  BoltManager *mgr;
   const char *opath;
   gboolean ok;
 
-  inv = user_data;
-  dev = BOLT_DEVICE (device);
-  auth = BOLT_AUTH (res);
   mgr = BOLT_MANAGER (bolt_auth_get_origin (auth));
   ok = bolt_auth_check (auth, &error);
 
   if (ok)
     {
-      GVariant *params;
-      const char *str;
-      BoltPolicy policy;
-
-      params = g_dbus_method_invocation_get_parameters (inv);
-      g_variant_get_child (params, 1, "&s", &str);
-
-      policy = bolt_enum_from_string (BOLT_TYPE_POLICY, str, NULL);
-      if (policy == BOLT_POLICY_DEFAULT)
-        policy = mgr->policy;
-
       ok = bolt_store_put_device (mgr->store,
                                   dev,
-                                  policy,
+                                  bolt_auth_get_policy (auth),
                                   bolt_auth_get_key (auth),
                                   &error);
     }
@@ -2356,6 +2342,8 @@ handle_enroll_device (BoltExported          *obj,
     key = bolt_key_new ();
 
   auth = bolt_auth_new (mgr, level, key);
+  bolt_auth_set_policy (auth, pol);
+
   bolt_device_authorize (dev, auth, enroll_device_done, inv);
 
   return NULL;
