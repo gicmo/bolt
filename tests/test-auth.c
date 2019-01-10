@@ -82,6 +82,7 @@ test_auth_basic (TestDummy *tt, gconstpointer user_data)
 
   g_assert_cmpint (level, ==, BOLT_SECURITY_SECURE);
   g_assert_true (origin == dev);
+  g_assert_true (dev == bolt_auth_get_device (auth));
   g_assert_true (key == k2);
   g_assert_true (dev == d2);
   g_assert_cmpint (policy, ==, BOLT_POLICY_UNKNOWN);

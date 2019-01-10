@@ -27,6 +27,9 @@
 
 G_BEGIN_DECLS
 
+/* forward decl because bolt-device.h include bolt-auth.h */
+typedef struct _BoltDevice BoltDevice;
+
 #define BOLT_TYPE_AUTH bolt_auth_get_type ()
 G_DECLARE_FINAL_TYPE (BoltAuth, bolt_auth, BOLT, AUTH, GObject);
 
@@ -45,6 +48,8 @@ void             bolt_auth_return_error (BoltAuth *auth,
 
 gboolean         bolt_auth_check (BoltAuth *auth,
                                   GError  **error);
+
+BoltDevice *     bolt_auth_get_device (BoltAuth *auth);
 
 BoltSecurity     bolt_auth_get_level (BoltAuth *auth);
 

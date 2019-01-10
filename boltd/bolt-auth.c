@@ -319,6 +319,13 @@ bolt_auth_check (BoltAuth *auth,
   return TRUE;
 }
 
+BoltDevice *
+bolt_auth_get_device (BoltAuth *auth)
+{
+  g_return_val_if_fail (BOLT_IS_AUTH (auth), NULL);
+
+  return auth->dev;
+}
 
 BoltSecurity
 bolt_auth_get_level (BoltAuth *auth)
