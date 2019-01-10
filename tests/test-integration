@@ -459,6 +459,7 @@ class BoltClient(ProxyWrapper):
     POLICY_DEFAULT = 'default'
     POLICY_MANUAL = 'manual'
     POLICY_AUTO = 'auto'
+    POLICY_IOMMU = 'iommu'
 
     def __init__(self, bus):
         super(BoltClient, self).__init__(bus,
@@ -717,7 +718,7 @@ class TbDomain(Device):
     subsystem = "thunderbolt"
     devtype = "thunderbolt_domain"
 
-    udev_attrs = ['security', 'boot_acl']
+    udev_attrs = ['security', 'boot_acl', 'iommu_dma_protection']
     udev_props = ['DEVTYPE']
 
     SECURITY_NONE = 'none'
@@ -726,13 +727,14 @@ class TbDomain(Device):
     SECURITY_DPONLY = 'dponly'
     SECURITY_USBONLY = 'usbonly'
 
-    def __init__(self, security=SECURITY_SECURE, index=0, host=None, acl=None):
+    def __init__(self, security=SECURITY_SECURE, index=0, host=None, acl=None, iommu=None):
         assert host
         assert isinstance(host, TbHost)
         name = 'domain%d' % index
         super(TbDomain, self).__init__(name, children=[host])
         self.security = security
         self.boot_acl = ','*(acl-1) if isinstance(acl, int) else acl
+        self.iommu_dma_protection = iommu
 
     @property
     def unique_id(self):
@@ -751,6 +753,10 @@ class TbDomain(Device):
     @property
     def domain(self):
         return self
+
+    @property
+    def iommu(self):
+        return self.iommu_dma_protection
 
     @staticmethod
     def checkattr(d, k, v):
@@ -1063,7 +1069,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(local.bolt_authflags, remote.authflags)
         return True
 
-    def add_domain_host(self, domain=0, security='secure', uid=None, bootacl=15):
+    def add_domain_host(self, domain=0, security='secure', uid=None, bootacl=15, iommu=None):
 
         if uid is None:
             uid = str(uuid.uuid4())
@@ -1075,6 +1081,9 @@ class BoltTest(dbusmock.DBusTestCase):
 
         if bootacl is not None:
             props += ['boot_acl', bootacl]
+
+        if iommu is not None:
+            props += ['iommu_dma_protection', str(iommu) + '\n']
 
         dc = self.testbed.add_device('thunderbolt', 'domain%d' % domain, None,
                                      props,
