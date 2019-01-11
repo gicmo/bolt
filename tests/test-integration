@@ -1596,7 +1596,12 @@ class BoltTest(dbusmock.DBusTestCase):
         for d in devs:
             remote = self.find_device_by_uid(devices, d['uid'])
 
-            self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
+            if d['authorized'] > 0:
+                status = BoltDevice.AUTHORIZED
+            else:
+                status = BoltDevice.CONNECTED
+
+            self.assertEqual(remote.status, status)
             self.assertEqual(remote.stored, d['stored'])
 
         self.daemon_stop()
@@ -1609,7 +1614,9 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 1, 'key': None, 'boot': 0, 'stored': False},  # no boot flag
             {'authorized': 2, 'key': key,  'boot': 0, 'stored': False},  # no boot flag
             {'authorized': 1, 'key': None, 'boot': 1, 'stored': True},   # boot, user mode -> import
-            # TODO: check we are not authorizing a device without a key in secure mode
+            # check we are not auto-importing (or even authorizing) un-authorized devices
+            {'authorized': 0, 'key': None, 'boot': 0, 'stored': False},  # not authorized
+            {'authorized': 0, 'key': '',   'boot': 0, 'stored': False},  # not authorized
         ]
 
         self.device_auto_import_test('user', devs)
@@ -1625,6 +1632,9 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 1, 'key': '',   'boot': 1, 'stored': False},  # boot, empty key
             # boot, valid key, should not be possible to observe "in the wild"
             {'authorized': 2, 'key': key,  'boot': 1, 'stored': True},
+            # check we are not auto-importing (or even authorizing) un-authorized devices
+            {'authorized': 0, 'key': None, 'boot': 0, 'stored': False},  # not authorized
+            {'authorized': 0, 'key': '',   'boot': 0, 'stored': False},  # not authorized
         ]
 
         self.device_auto_import_test('secure', devs)
