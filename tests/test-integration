@@ -1642,6 +1642,8 @@ class BoltTest(dbusmock.DBusTestCase):
 
         to_enroll = tree.collect(TbDevice.is_unauthorized)
 
+        self.assertNotEqual (to_enroll, 0)
+
         # check that we are not allowed to enroll devices, i.e. the correct
         # policykit action is called.
 
