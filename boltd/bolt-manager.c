@@ -715,14 +715,16 @@ manager_domain_ensure (BoltManager        *mgr,
                        struct udev_device *dev)
 {
   g_autoptr(GError) err = NULL;
-  BoltSecurity security;
+  BoltSecurity level;
   BoltDomain *domain = NULL;
   GDBusConnection *bus;
   struct udev_device *host;
   struct udev_device *dom;
+  const char *security;
   const char *syspath;
   const char *op;
   const char *uid;
+  gboolean iommu;
   gboolean ok;
 
   /* check if we already know a domain that is the parent
@@ -769,12 +771,14 @@ manager_domain_ensure (BoltManager        *mgr,
       return NULL;
     }
 
-  security = bolt_domain_get_security (domain);
+  level = bolt_domain_get_security (domain);
+  iommu = bolt_domain_has_iommu (domain);
+  security = bolt_security_for_display (level, iommu);
 
   bolt_msg (LOG_DOM (domain), "newly connected [%s] (%s)",
-            bolt_security_to_string (security), syspath);
+            security, syspath);
 
-  manager_maybe_set_security (mgr, security);
+  manager_maybe_set_security (mgr, level);
 
   manager_register_domain (mgr, domain);
 
@@ -1245,6 +1249,97 @@ manager_maybe_import (BoltManager *mgr,
                    "failed to store device");
 }
 
+static void
+auto_enroll_done (GObject      *source,
+                  GAsyncResult *res,
+                  gpointer      user_data)
+{
+  g_autoptr(GError) err = NULL;
+  BoltManager *mgr = BOLT_MANAGER (user_data);
+  BoltDevice *dev = BOLT_DEVICE (source);
+  BoltAuth *auth = BOLT_AUTH (res);
+  BoltKey *key;
+  BoltPolicy policy;
+  gboolean ok;
+
+  ok = bolt_auth_check (auth, &err);
+
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("auto-enroll"),
+                     "authorization failed");
+      return;
+    }
+
+  bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-enroll"), "authorized");
+
+  key = bolt_auth_get_key (auth);
+  policy = bolt_auth_get_policy (auth);
+
+  ok = bolt_store_put_device (mgr->store, dev, policy, key, &err);
+
+  if (!ok)
+    bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("auto-enroll"),
+                   "failed to store device");
+}
+
+static void
+manager_auto_enroll (BoltManager *mgr,
+                     BoltDevice  *dev)
+{
+  g_autoptr(BoltDevice) parent = NULL;
+  g_autoptr(BoltAuth) auth = NULL;
+  g_autoptr(BoltKey) key = NULL;
+  BoltStatus status;
+  BoltSecurity level;
+
+  g_return_if_fail (!bolt_device_get_stored (dev));
+
+  /* sanity check for the state */
+  status = bolt_device_get_status (dev);
+  if (!bolt_status_is_pending (status))
+    return;
+
+  /* sanity check for iommu */
+  if (!bolt_device_has_iommu (dev))
+    return;
+
+  if (bolt_auth_mode_is_disabled (mgr->authmode))
+    {
+      bolt_info (LOG_DEV (dev), LOG_TOPIC ("auto-enroll"),
+                 "authorization is globally disabled.");
+      return;
+    }
+
+  /* if the parent is not authorized and we try, we
+   * will fail and create a warning, so lets check */
+  parent = bolt_manager_get_parent (mgr, dev);
+  if (!bolt_device_is_authorized (parent))
+    {
+      bolt_info (LOG_DEV (dev), LOG_TOPIC ("auto-enroll"),
+                 "parent not authorized, deferring");
+      return;
+    }
+
+  level = bolt_device_get_security (dev);
+
+  if (level == BOLT_SECURITY_SECURE)
+    {
+      if (bolt_device_supports_secure_mode (dev))
+        key = bolt_key_new ();
+      else
+        level = BOLT_SECURITY_USER;
+    }
+
+  auth = bolt_auth_new (dev, level, key);
+  bolt_auth_set_policy (auth, BOLT_POLICY_IOMMU);
+
+  bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-enroll"),
+            "enrolling [key: %s]", bolt_yesno (!!key));
+
+  bolt_device_authorize (dev, auth, auto_enroll_done, mgr);
+}
+
 /* udev callbacks */
 static void
 handle_uevent_udev (BoltUdev           *udev,
@@ -1461,6 +1556,8 @@ handle_udev_device_added (BoltManager        *mgr,
 
   if (bolt_status_is_authorized (status))
     manager_maybe_import (mgr, dev);
+  else if (bolt_domain_has_iommu (domain))
+    manager_auto_enroll (mgr, dev);
 
   /* if we have a valid dbus connection */
   bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
@@ -1764,7 +1861,10 @@ handle_device_status_changed (BoltDevice  *dev,
   for (guint i = 0; i < children->len; i++)
     {
       BoltDevice *child = g_ptr_array_index (children, i);
-      maybe_authorize_device (mgr, child);
+      if (bolt_device_get_stored (child))
+        maybe_authorize_device (mgr, child);
+      else if (bolt_device_has_iommu (child))
+        manager_auto_enroll (mgr, child);
     }
 }
 
