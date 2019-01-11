@@ -1041,9 +1041,9 @@ handle_authorize (BoltExported          *object,
                   GError               **error)
 {
   g_autoptr(BoltAuth) auth = NULL;
+  g_autoptr(BoltKey) key = NULL;
   BoltDevice *dev = BOLT_DEVICE (object);
   BoltSecurity level;
-  BoltKey *key;
 
   /* In bolt_device_authorize the state is also checked, but it
    * is done already here to fail quicker and avoid accessing the
@@ -1065,7 +1065,6 @@ handle_authorize (BoltExported          *object,
     }
 
   level = bolt_domain_get_security (dev->domain);
-  key = NULL;
 
   if (level == BOLT_SECURITY_SECURE)
     {
