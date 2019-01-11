@@ -1639,6 +1639,47 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.device_auto_import_test('secure', devs)
 
+    def test_device_auto_enroll(self):
+        # the negative tests, i.e. that devices are not auto-enrolled when iommu is
+        # disabled is done via test_basic and test_device_auto_import_{sl1, sl2}
+
+        tree = TbDomain(host=TbHost([
+            TbDevice('Cable1', children=[
+                TbDevice('Dock1')
+            ]),
+            TbDevice('Cable2', children=[
+                TbDevice('SSD1', key=None)
+            ]),
+        ]), acl=8, iommu='1')
+
+        tree.connect_tree(self.testbed)
+
+        devs = tree.collect(TbDevice.is_unauthorized)
+
+        self.daemon_start()
+        self.polkitd_start()
+        client = self.client
+
+        devices = client.list_devices()
+        self.assertEqual(len(devices), len(devs) + 1)
+
+        # devices closer to the root first
+        for d in sorted(devs, key=lambda d: len(d.syspath)):
+            remote = self.find_device_by_uid(devices, d.unique_id)
+            self.assertIsNotNone(remote)
+
+            with remote.record() as tape:
+                if remote.status != BoltDevice.AUTHORIZED:
+                    res = tape.wait_for_event('property',
+                                              'Stored',
+                                              True)
+                    self.assertTrue(res)
+
+            self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
+            self.assertEqual(remote.stored, True)
+
+        self.daemon_stop()
+
     def test_device_enroll(self):
         self.daemon_start()
         tree = self.default_mock_tree(acl=16)
