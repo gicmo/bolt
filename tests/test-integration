@@ -619,7 +619,7 @@ class TbDevice(Device):
 
     udev_props = ['DEVTYPE']
 
-    def __init__(self, name, authorized=0, vendor=None, uid=None, children=None):
+    def __init__(self, name, authorized=0, vendor=None, uid=None, children=None, key='\n'):
         super(TbDevice, self).__init__(name, children or [])
         self.unique_id = uid or str(uuid.uuid4())
         self.device_name = 'Thunderbolt ' + name
@@ -627,7 +627,7 @@ class TbDevice(Device):
         self.vendor_name = vendor or 'GNOME.org'
         self.vendor = self._make_id(self.vendor_name)
         self.authorized = authorized
-        self.key = "\n"
+        self.key = key
 
     def _make_id(self, name):
         return '0x%X' % binascii.crc32(name.encode('utf-8'))
