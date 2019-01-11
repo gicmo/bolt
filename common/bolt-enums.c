@@ -391,6 +391,27 @@ bolt_security_is_interactive (BoltSecurity security)
   return interactive;
 }
 
+const char *
+bolt_security_for_display (BoltSecurity security,
+                           gboolean     iommu)
+{
+  switch (security)
+    {
+    case BOLT_SECURITY_NONE:
+      return iommu ? "iommu" : "none";
+
+    case BOLT_SECURITY_USER:
+      return iommu ? "iommu+user" : "user";
+
+    case BOLT_SECURITY_SECURE:
+      return iommu ? "iommu+secure" : "secure";
+      break;
+
+    default:
+      return bolt_security_to_string (security);
+    }
+}
+
 BoltPolicy
 bolt_policy_from_string (const char *str)
 {

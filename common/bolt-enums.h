@@ -181,6 +181,8 @@ const char *     bolt_security_to_string (BoltSecurity security);
 gboolean         bolt_security_allows_pcie (BoltSecurity security);
 gboolean         bolt_security_is_interactive (BoltSecurity security);
 
+const char *     bolt_security_for_display (BoltSecurity security,
+                                            gboolean     iommu);
 /**
  * BoltPolicy:
  * @BOLT_POLICY_UNKNOWN: Unknown policy.
