@@ -1438,6 +1438,17 @@ bolt_device_get_stored (BoltDevice *dev)
   return dev->store != NULL;
 }
 
+gboolean
+bolt_device_has_iommu (BoltDevice *dev)
+{
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+
+  if (dev->domain == NULL)
+    return FALSE;
+
+  return bolt_domain_has_iommu (dev->domain);
+}
+
 const char *
 bolt_device_get_syspath (BoltDevice *dev)
 {
