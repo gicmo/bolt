@@ -1537,10 +1537,13 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(len(devices), len(tree.devices))
 
         remote_ssd2 = self.find_device_by_uid(devices, ssd2.unique_id)
-        tries = 0
-        while remote_ssd2.status != BoltDevice.AUTHORIZED and tries < 10:
-            time.sleep(.1)
-            tries += 1
+        self.assertIsNotNone(remote_ssd2)
+
+        tape = remote_ssd2.record()
+        with remote_ssd2.record() as tape:
+            if remote_ssd2.status != BoltDevice.AUTHORIZED:
+                res = tape.wait_for_event('property', 'Status', 'authorized')
+                self.assertTrue(res)
 
         self.assertEqual(remote_ssd2.status, BoltDevice.AUTHORIZED)
 
