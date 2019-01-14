@@ -1598,6 +1598,51 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(remote_ssd1.status, BoltDevice.AUTHORIZED)
         self.daemon_stop()
 
+    def test_device_auto_auth_iommu(self):
+        ssd1 = TbDevice('SSD1',)
+        cable1 = TbDevice('Cable1', children=[ssd1])
+        ssd2 = TbDevice('SSD2')
+        cable2 = TbDevice('Cable2', children=[ssd2])
+
+        tree = TbDomain(security=TbDomain.SECURITY_SECURE,
+                        iommu='1',
+                        host=TbHost([
+                            cable1,
+                            cable2,
+                        ]))
+        tree.connect_tree(self.testbed)
+
+        self.store_device(cable1, key=None, policy='iommu')
+        self.store_device(ssd1, key='known', policy='iommu')
+        self.store_device(cable2, key='known', policy='iommu')
+        self.store_device(ssd2, key='known', policy='auto')
+
+        self.daemon_start()
+
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), len(tree.devices))
+
+        remote_ssd2 = self.find_device_by_uid(devices, ssd2.unique_id)
+        self.assertIsNotNone(remote_ssd2)
+
+        tape = remote_ssd2.record()
+        with remote_ssd2.record() as tape:
+            if remote_ssd2.status != BoltDevice.AUTHORIZED:
+                res = tape.wait_for_event('property', 'Status', 'authorized')
+                self.assertTrue(res)
+
+        self.assertEqual(remote_ssd2.status, BoltDevice.AUTHORIZED)
+
+        # cable1 does *NOT* have a key but we are in SECURE mode
+        # so it should not be authorized even though IOMMU is one
+        remote_c1 = self.find_device_by_uid(devices, cable1.unique_id)
+        self.assertEqual(remote_c1.status, BoltDevice.CONNECTED)
+
+        remote_ssd1 = self.find_device_by_uid(devices, ssd1.unique_id)
+        self.assertEqual(remote_ssd1.status, BoltDevice.CONNECTED)
+
+        self.daemon_stop()
+
     def device_auto_import_test(self, security, devs):
         dc, host = self.add_domain_host(security=security)
 
