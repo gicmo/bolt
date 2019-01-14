@@ -1194,6 +1194,8 @@ manager_auto_authorize (BoltManager *mgr,
     {
       if (policy == BOLT_POLICY_AUTO)
         authorize = TRUE;
+      else if (policy == BOLT_POLICY_IOMMU && iommu)
+        authorize = TRUE;
     }
 
   bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-auth"),
