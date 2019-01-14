@@ -1449,6 +1449,15 @@ bolt_device_has_iommu (BoltDevice *dev)
   return bolt_domain_has_iommu (dev->domain);
 }
 
+gboolean
+bolt_device_has_key (BoltDevice *dev)
+{
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+
+  return !(dev->key == BOLT_KEY_UNKNOWN ||
+           dev->key == BOLT_KEY_MISSING);
+}
+
 const char *
 bolt_device_get_syspath (BoltDevice *dev)
 {
