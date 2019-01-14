@@ -110,6 +110,8 @@ gboolean          bolt_device_check_authflag (BoltDevice   *dev,
 gboolean          bolt_device_get_key_from_sysfs (BoltDevice *dev,
                                                   BoltKey   **key,
                                                   GError    **error);
-
+gboolean          bolt_device_load_key (BoltDevice *dev,
+                                        BoltKey   **key,
+                                        GError    **error);
 
 G_END_DECLS

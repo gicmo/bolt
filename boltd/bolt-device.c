@@ -1563,3 +1563,29 @@ bolt_device_get_key_from_sysfs (BoltDevice *dev,
   else
     return bolt_error_propagate (error, &err);
 }
+
+gboolean
+bolt_device_load_key (BoltDevice *dev,
+                      BoltKey   **key,
+                      GError    **error)
+{
+  BoltKey *k;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), FALSE);
+  g_return_val_if_fail (key != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  if (!bolt_device_has_key (dev) || dev->store == NULL)
+    {
+      *key = NULL;
+      return TRUE;
+    }
+
+  k = bolt_store_get_key (dev->store, dev->uid, error);
+
+  if (k == NULL)
+    return FALSE;
+
+  *key = k;
+  return TRUE;
+}
