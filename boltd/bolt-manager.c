@@ -1134,9 +1134,9 @@ bolt_manager_label_device (BoltManager *mgr,
 
 /* device authorization */
 static void
-authorize_device_finish (GObject      *source,
-                         GAsyncResult *res,
-                         gpointer      user_data)
+auto_auth_done (GObject      *source,
+                GAsyncResult *res,
+                gpointer      user_data)
 {
   g_autoptr(GError) err = NULL;
   BoltDevice *dev = BOLT_DEVICE (source);
@@ -1146,58 +1146,87 @@ authorize_device_finish (GObject      *source,
   ok = bolt_auth_check (auth, &err);
 
   if (!ok)
-    bolt_warn_err (err, LOG_DEV (dev), "authorization failed");
+    bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("auto-auth"),
+                   "authorization failed");
   else
-    bolt_msg (LOG_DEV (dev), "authorized");
+    bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-auth"),
+              "authorization successful");
 }
 
 static void
-maybe_authorize_device (BoltManager *mgr,
+manager_auto_authorize (BoltManager *mgr,
                         BoltDevice  *dev)
 {
   g_autoptr(BoltAuth) auth = NULL;
-  BoltStatus status = bolt_device_get_status (dev);
-  BoltPolicy policy = bolt_device_get_policy (dev);
-  const char *uid = bolt_device_get_uid (dev);
-  BoltKey *key = NULL;
+  g_autoptr(BoltKey) key = NULL;
+  g_autofree char *amstr = NULL;
+  BoltStatus status;
+  BoltPolicy policy;
+  gboolean authmode;
+  gboolean authorize;
+  gboolean iommu;
   BoltSecurity level;
-  gboolean stored;
+  gboolean ok;
 
-  bolt_info (LOG_DEV (dev), "checking possible authorization: %s (%x)",
-             bolt_policy_to_string (policy), status);
+  status = bolt_device_get_status (dev);
+  policy = bolt_device_get_policy (dev);
 
-  if (bolt_auth_mode_is_disabled (mgr->authmode))
-    {
-      bolt_info (LOG_DEV (dev), "authorization is globally disabled.");
-      return;
-    }
-
+  /* more of a sanity check, because we should only end up
+  * here if the device is not yet authorized and stored */
   if (bolt_status_is_authorized (status) ||
-      policy != BOLT_POLICY_AUTO)
+      !bolt_device_get_stored (dev))
     return;
 
-  stored = bolt_device_get_stored (dev);
-  /* sanity check, because we already checked the policy */
-  g_return_if_fail (stored);
+  /* The default is not to authorize anything */
+  authorize = FALSE;
 
+  /* The following sections are security critical and thus
+   * intentionally verbose and explicit  */
+
+  /* 1) global auth mode and policy check */
+  authmode = bolt_auth_mode_is_enabled (mgr->authmode);
+  amstr = bolt_auth_mode_to_string (authmode);
+
+  iommu = bolt_device_has_iommu (dev);
   level = bolt_device_get_security (dev);
-  if (level == BOLT_SECURITY_SECURE &&
-      bolt_device_get_keystate (dev) != BOLT_KEY_MISSING)
+
+  if (authmode)
+    {
+      if (policy == BOLT_POLICY_AUTO)
+        authorize = TRUE;
+    }
+
+  bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-auth"),
+            "authmode: %s, policy: %s, iommu: %s -> %s",
+            amstr, bolt_policy_to_string (policy),
+            bolt_yesno (iommu), bolt_okfail (authorize));
+
+  if (!authorize)
+    return;
+
+  /* 2) security level and key check: if we are in SECURE
+   *    mode but don't have a key, we DON'T authorize */
+  if (level == BOLT_SECURITY_SECURE)
     {
       g_autoptr(GError) err = NULL;
-      key = bolt_store_get_key (mgr->store, uid, &err);
-      if (key == NULL)
+
+      ok = bolt_device_load_key (dev, &key, &err);
+      if (!ok)
         bolt_warn_err (err, LOG_DEV (dev), "could not load key");
+
+      authorize = (key != NULL);
     }
 
-  if (level == BOLT_SECURITY_SECURE && key == NULL)
-    {
-      bolt_msg (LOG_DEV (dev), "have no key, not authorizing (secure mode)");
-      return;
-    }
+  bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-auth"),
+            "security: %s mode, key: %s -> %s",
+            bolt_security_for_display (level, iommu),
+            bolt_yesno (key), bolt_okfail (authorize));
+
+  if (!authorize)
+    return;
 
   auth = bolt_auth_new (mgr, level, key);
-  bolt_device_authorize_idle (dev, auth, authorize_device_finish, mgr);
+  bolt_device_authorize_idle (dev, auth, auto_auth_done, mgr);
 }
 
 static void
@@ -1660,7 +1689,7 @@ handle_udev_device_attached (BoltManager        *mgr,
       bolt_warn (LOG_DEV (dev), "could not find parent");
     }
 
-  maybe_authorize_device (mgr, dev);
+  manager_auto_authorize (mgr, dev);
 }
 
 static void
@@ -1862,7 +1891,7 @@ handle_device_status_changed (BoltDevice  *dev,
     {
       BoltDevice *child = g_ptr_array_index (children, i);
       if (bolt_device_get_stored (child))
-        maybe_authorize_device (mgr, child);
+        manager_auto_authorize (mgr, child);
       else if (bolt_device_has_iommu (child))
         manager_auto_enroll (mgr, child);
     }
