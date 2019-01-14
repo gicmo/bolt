@@ -448,6 +448,12 @@ bolt_device_type_is_host (BoltDeviceType type)
   return type == BOLT_DEVICE_HOST;
 }
 
+char *
+bolt_auth_mode_to_string (BoltAuthMode mode)
+{
+  return bolt_flags_to_string (BOLT_TYPE_AUTH_MODE, mode, NULL);
+}
+
 const char *
 bolt_power_state_to_string (BoltPowerState state)
 {
