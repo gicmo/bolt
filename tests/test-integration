@@ -1519,10 +1519,16 @@ class BoltTest(dbusmock.DBusTestCase):
         cable1 = TbDevice('Cable1', children=[ssd1])
         ssd2 = TbDevice('SSD2')
         cable2 = TbDevice('Cable2', children=[ssd2])
+        dock1 = TbDevice('Dock1')
+        cable3 = TbDevice('Cable3', children=[dock1])
+        dock2 = TbDevice('Dock2')
+        cable4 = TbDevice('Cable4', children=[dock2])
         tree = TbDomain(security=TbDomain.SECURITY_SECURE,
                         host=TbHost([
                             cable1,
                             cable2,
+                            cable3,
+                            cable4,
                         ]))
         tree.connect_tree(self.testbed)
 
@@ -1530,6 +1536,10 @@ class BoltTest(dbusmock.DBusTestCase):
         self.store_device(ssd1, key='known')
         self.store_device(cable2, key='known')
         self.store_device(ssd2, key='known')
+        self.store_device(cable3, key='known', policy='manual')
+        self.store_device(dock1, key='known')
+        self.store_device(cable4, key='known', policy='iommu')
+        self.store_device(dock2, key=None, policy='iommu')
 
         self.daemon_start()
 
@@ -1554,6 +1564,20 @@ class BoltTest(dbusmock.DBusTestCase):
 
         remote_ssd1 = self.find_device_by_uid(devices, ssd1.unique_id)
         self.assertEqual(remote_ssd1.status, BoltDevice.CONNECTED)
+
+        # cable3 has MANUAL policy and therefore should *NOT* be authorized
+        remote_c3 = self.find_device_by_uid(devices, cable3.unique_id)
+        self.assertEqual(remote_c3.status, BoltDevice.CONNECTED)
+
+        remote_dock1 = self.find_device_by_uid(devices, dock1.unique_id)
+        self.assertEqual(remote_dock1.status, BoltDevice.CONNECTED)
+
+        # cable4 has IOMMU policy and therefore should *NOT* be authorized
+        remote_c3 = self.find_device_by_uid(devices, cable3.unique_id)
+        self.assertEqual(remote_c3.status, BoltDevice.CONNECTED)
+
+        remote_dock1 = self.find_device_by_uid(devices, dock1.unique_id)
+        self.assertEqual(remote_dock1.status, BoltDevice.CONNECTED)
 
         # now we pretend the user has authorized the device manually,
         # to check if boltd picks up udev changes properly and then
