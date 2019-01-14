@@ -1514,7 +1514,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertIn('bolt.Error.BadState', err.message)
         self.daemon_stop()
 
-    def test_device_auto_auth(self):
+    def test_device_auto_auth_sl2(self):
         ssd1 = TbDevice('SSD1',)
         cable1 = TbDevice('Cable1', children=[ssd1])
         ssd2 = TbDevice('SSD2')
