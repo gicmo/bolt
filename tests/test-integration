@@ -1678,6 +1678,16 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.daemon_stop()
 
+    def test_device_auto_import_sl0(self):
+        # no security, kinda game over, because the device already has
+        # full access now
+        devs = [
+            {'authorized': 1, 'key': None, 'boot': 0, 'stored': False},
+            {'authorized': 1, 'key': None, 'boot': 1, 'stored': True},
+        ]
+
+        self.device_auto_import_test('none', devs)
+
     def test_device_auto_import_sl1(self):
 
         key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
