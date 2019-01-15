@@ -1643,7 +1643,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.daemon_stop()
 
-    def device_auto_import_test(self, security, devs):
+    def device_import_test(self, security, devs):
         dc, host = self.add_domain_host(security=security)
 
         for i, d in enumerate(devs):
@@ -1686,17 +1686,18 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.daemon_stop()
 
-    def test_device_auto_import_sl0(self):
+    def test_device_import_sl0(self):
         # no security, kinda game over, because the device already has
         # full access now
+
         devs = [
             {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
             {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'auto'},
         ]
 
-        self.device_auto_import_test('none', devs)
+        self.device_import_test('none', devs)
 
-    def test_device_auto_import_sl1(self):
+    def test_device_import_sl1(self):
 
         key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
 
@@ -1711,9 +1712,9 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 0, 'key': '',   'boot': 0, 'policy': None},
         ]
 
-        self.device_auto_import_test('user', devs)
+        self.device_import_test('user', devs)
 
-    def test_device_auto_import_sl2(self):
+    def test_device_import_sl2(self):
         # like test_device_auto_import but in SECURE mode
         key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
 
@@ -1731,9 +1732,9 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 0, 'key': '',   'boot': 0, 'policy': None},
         ]
 
-        self.device_auto_import_test('secure', devs)
+        self.device_import_test('secure', devs)
 
-    def test_device_auto_import_sl3(self):
+    def test_device_import_sl3(self):
         # auto import test for dponly mode, i.e no pci express tunnels
         # in that mode all devices will always be marked as authorized
 
@@ -1742,7 +1743,7 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 1, 'key': None, 'boot': 1, 'stored': False},
         ]
 
-        self.device_auto_import_test('dponly', devs)
+        self.device_import_test('dponly', devs)
 
     def test_device_auto_enroll(self):
         # the negative tests, i.e. that devices are not auto-enrolled when iommu is
