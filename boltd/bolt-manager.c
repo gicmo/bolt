@@ -1237,46 +1237,67 @@ manager_maybe_import (BoltManager *mgr,
 {
   g_autoptr(GError) err = NULL;
   g_autoptr(BoltKey) key = NULL;
+  BoltSecurity level;
+  BoltPolicy policy;
+  const char *secstr;
+  const char *polstr;
+  gboolean import;
+  gboolean iommu;
+  gboolean pcie;
   gboolean boot;
+  gboolean sl2;
   gboolean ok;
-
-  g_return_if_fail (bolt_device_is_authorized (dev));
 
   if (bolt_device_get_device_type (dev) == BOLT_DEVICE_HOST)
     return;
 
+  g_return_if_fail (!bolt_device_get_stored (dev));
+  g_return_if_fail (bolt_device_is_authorized (dev));
+
+  /* This function is intentionally more verbose then it
+   * could be, but since it is security critical, it is
+   * better to be clear than concise */
+
+  level = bolt_device_get_security (dev);
+  iommu = bolt_device_has_iommu (dev);
   boot = bolt_device_check_authflag (dev, BOLT_AUTH_BOOT);
 
-  if (!boot)
+  pcie = bolt_security_allows_pcie (level);
+  sl2 = level == BOLT_SECURITY_SECURE;
+
+  if (sl2)
     {
-      bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-import"),
-                "boot flag missing, not auto-importing");
-      return;
+      g_autoptr(GError) e = NULL;
+      ok = bolt_device_get_key_from_sysfs (dev, &key, &e);
+
+      if (!ok)
+        bolt_warn_err (e, LOG_DEV (dev), LOG_TOPIC ("import"),
+                       "failed to read key from sysfs");
     }
 
-  ok = bolt_device_get_key_from_sysfs (dev, &key, &err);
+  /* Check if we want to import that device at all */
+  import = pcie && boot && (!sl2 || key);
+
+  if (import && !iommu)
+    policy = BOLT_POLICY_AUTO;
+  else
+    policy = BOLT_POLICY_IOMMU;
+
+  secstr = bolt_security_for_display (level, iommu);
+  polstr = bolt_policy_to_string (policy);
+
+  bolt_msg (LOG_DEV (dev), LOG_TOPIC ("import"),
+            "%s mode, boot: %s, key: %s -> %s",
+            secstr, bolt_yesno (boot), bolt_yesno (key),
+            (import ? polstr : "no import"));
+
+  if (!import)
+    return;
+
+  ok = bolt_store_put_device (mgr->store, dev, policy, key, &err);
+
   if (!ok)
-    {
-      bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("auto-import"),
-                     "failed to read key from sysfs");
-      return;
-    }
-
-  if (key == NULL && mgr->security == BOLT_SECURITY_SECURE)
-    {
-      bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-import"),
-                "secure mode enabled, no key, not auto-importing");
-      return;
-    }
-
-  bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-import"),
-            "new authorized device (boot: %s, key: %s), importing",
-            bolt_yesno (boot), bolt_yesno (key != NULL));
-
-  ok = bolt_store_put_device (mgr->store, dev, BOLT_POLICY_AUTO, key, &err);
-
-  if (!ok)
-    bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("auto-import"),
+    bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("import"),
                    "failed to store device");
 }
 
