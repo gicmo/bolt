@@ -858,8 +858,35 @@ class TreeChecker(object):
         self.tree.device_connected.disconnect_all()
         self.tree.device_disconnected.disconnect_all()
 
+class Parameterize(object):
+    # class is used for namespacing
+
+    @staticmethod
+    def _make_test(klass, name, func):
+        params = getattr(func, '__expand')
+        def test_function(self):
+            func(self, **params)
+        suffix = '_' + '_'.join(params.keys())
+        setattr(klass, name +suffix, test_function)
+
+    @staticmethod
+    def enable(klass):
+        tests = [(m, getattr(klass, m)) for m in dir(klass) if m.startswith('test_')]
+        expandable = filter (lambda f: hasattr (f[1], '__expand'), tests)
+        for t in expandable:
+            Parameterize._make_test(klass, t[0], t[1])
+        map(lambda t: Parameterize._make_test(klass, t[0], t[1]), expandable)
+        return klass
+
+    @staticmethod
+    def make(**kwargs):
+        def decorator(func):
+            setattr(func, '__expand', kwargs)
+            return func
+        return decorator
 
 # Test Suite
+@Parameterize.enable
 class BoltTest(dbusmock.DBusTestCase):
     @staticmethod
     def path_from_service_file(sf):
@@ -1691,7 +1718,8 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.daemon_stop()
 
-    def test_device_import_sl0(self):
+    @Parameterize.make(iommu='1')
+    def test_device_import_sl0(self, iommu=None):
         # no security, kinda game over, because the device already has
         # full access now
 
@@ -1700,45 +1728,31 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'iommu'},
         ]
 
-        self.device_import_test('none', devs, None)
+        self.device_import_test('none', devs, iommu)
 
-    def test_device_import_sl0_iommu(self):
-        # like import_sl0 but with iommu support active
+    @Parameterize.make(iommu= '1')
+    def test_device_import_sl1(self, iommu=None):
 
-        devs = [
-            {'authorized': 1, 'key': None, 'boot': 0, 'policy': 'iommu'},
-            # should not happen, normally boot should always be 0
-            {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'iommu'},
-        ]
-
-        self.device_import_test('none', devs, '1')
-
-    def test_device_import_sl1(self):
+        policy = 'iommu' if iommu else 'auto'
 
         devs = [
             # no boot flag -> not importing
             {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
             # boot flag, and user mode -> importing
-            {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'auto'},
-            # check we are not auto-importing un-authorized devices
-            {'authorized': 0, 'key': None, 'boot': 0, 'policy': None},
-            {'authorized': 0, 'key': '',   'boot': 0, 'policy': None},
+            {'authorized': 1, 'key': None, 'boot': 1, 'policy': policy},
         ]
 
-        self.device_import_test('user', devs, None)
+        if not iommu:
+            devs += [
+                # check we are not auto-importing un-authorized devices
+                {'authorized': 0, 'key': None, 'boot': 0, 'policy': None},
+                {'authorized': 0, 'key': '',   'boot': 0, 'policy': None},
+            ]
 
-    def test_device_import_sl1_iommu(self):
+        self.device_import_test('user', devs, iommu)
 
-        devs = [
-            # no boot flag -> not importing
-            {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
-            # boot flag, and user mode -> importing
-            {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'iommu'},
-        ]
-
-        self.device_import_test('user', devs, '1')
-
-    def test_device_import_sl2(self):
+    @Parameterize.make(iommu='1')
+    def test_device_import_sl2(self, iommu=None):
         # like test_device_auto_import but in SECURE mode
         key = self.key
 
@@ -1751,31 +1765,19 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 1, 'key': '',   'boot': 1, 'policy': 'iommu'},
             # boot, valid key, should not be possible to observe "in the wild"
             {'authorized': 2, 'key': key,  'boot': 1, 'policy': 'iommu'},
-            # check we are not auto-importing un-authorized devices
-            {'authorized': 0, 'key': None, 'boot': 0, 'policy': None},
-            {'authorized': 0, 'key': '',   'boot': 0, 'policy': None},
         ]
 
-        self.device_import_test('secure', devs, None)
+        if not iommu:
+            devs += [
+                # check we are not auto-importing un-authorized devices
+                {'authorized': 0, 'key': None, 'boot': 0, 'policy': None},
+                {'authorized': 0, 'key': '',   'boot': 0, 'policy': None},
+            ]
 
-    def test_device_import_sl2_iommu(self):
-        # like sl2, i.e. secure mode, but with iommu active
-        key = self.key
+        self.device_import_test('secure', devs, iommu)
 
-        devs = [
-            # no boot flag, not importing
-            {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
-            {'authorized': 2, 'key': key,  'boot': 0, 'policy': None},
-            # boot flag present but no valid key, not importing
-            {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'iommu'},
-            {'authorized': 1, 'key': '',   'boot': 1, 'policy': 'iommu'},
-            # boot, valid key, should not be possible to observe "in the wild"
-            {'authorized': 2, 'key': key,  'boot': 1, 'policy': 'iommu'},
-        ]
-
-        self.device_import_test('secure', devs, '1')
-
-    def test_device_import_sl3(self):
+    @Parameterize.make(iommu='1')
+    def test_device_import_sl3(self, iommu=None):
         # auto import test for dponly mode, i.e no pci express tunnels
         # in that mode all devices will always be marked as authorized
 
@@ -1784,16 +1786,7 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 1, 'key': None, 'boot': 1, 'policy': None},
         ]
 
-        self.device_import_test('dponly', devs, None)
-
-    def test_device_import_sl3_iommu(self):
-
-        devs = [
-            {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
-            {'authorized': 1, 'key': None, 'boot': 1, 'policy': None},
-        ]
-
-        self.device_import_test('dponly', devs, '1')
+        self.device_import_test('dponly', devs, iommu)
 
     def test_device_auto_enroll(self):
         # the negative tests, i.e. that devices are not auto-enrolled when iommu is
