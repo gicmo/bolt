@@ -1965,7 +1965,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         dc, host = self.add_domain_host()
         d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=2, key=key, boot='0')
-        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=1, key=None, boot='1')
+        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=1, key=None, boot='0')
 
         self.daemon_start()
         self.polkitd_start()
