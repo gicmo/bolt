@@ -1699,6 +1699,17 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.device_import_test('none', devs, None)
 
+    def test_device_import_sl0_iommu(self):
+        # like import_sl0 but with iommu support active
+
+        devs = [
+            {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
+            # should not happen, normally boot should always be 0
+            {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'iommu'},
+        ]
+
+        self.device_import_test('none', devs, '1')
+
     def test_device_import_sl1(self):
 
         key = self.key
@@ -1715,6 +1726,20 @@ class BoltTest(dbusmock.DBusTestCase):
         ]
 
         self.device_import_test('user', devs, None)
+
+    def test_device_import_sl1_iommu(self):
+
+        key = self.key
+
+        devs = [
+            # no boot flag -> not importing
+            {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
+            {'authorized': 2, 'key': key,  'boot': 0, 'policy': None},
+            # boot flag, and user mode -> importing
+            {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'iommu'},
+        ]
+
+        self.device_import_test('user', devs, '1')
 
     def test_device_import_sl2(self):
         # like test_device_auto_import but in SECURE mode
@@ -1736,6 +1761,23 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.device_import_test('secure', devs, None)
 
+    def test_device_import_sl2_iommu(self):
+        # like sl2, i.e. secure mode, but with iommu active
+        key = self.key
+
+        devs = [
+            # no boot flag, not importing
+            {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
+            {'authorized': 2, 'key': key,  'boot': 0, 'policy': None},
+            # boot flag present but no valid key, not importing
+            {'authorized': 1, 'key': None, 'boot': 1, 'policy': None},
+            {'authorized': 1, 'key': '',   'boot': 1, 'policy': None},
+            # boot, valid key, should not be possible to observe "in the wild"
+            {'authorized': 2, 'key': key,  'boot': 1, 'policy': 'iommu'},
+        ]
+
+        self.device_import_test('secure', devs, '1')
+
     def test_device_import_sl3(self):
         # auto import test for dponly mode, i.e no pci express tunnels
         # in that mode all devices will always be marked as authorized
@@ -1746,6 +1788,16 @@ class BoltTest(dbusmock.DBusTestCase):
         ]
 
         self.device_import_test('dponly', devs, None)
+
+    def test_device_import_sl3_iommu(self):
+
+        devs = [
+            {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
+            # should not happen, normally boot will always be 0 in that mode
+            {'authorized': 1, 'key': None, 'boot': 1, 'policy': None},
+        ]
+
+        self.device_import_test('dponly', devs, '1')
 
     def test_device_auto_enroll(self):
         # the negative tests, i.e. that devices are not auto-enrolled when iommu is
