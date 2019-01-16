@@ -15,7 +15,7 @@ boltd is the thunderbolt device manager daemon. Its goal is to enable
 the secure and convenient use of thunderbolt devices by using the
 security features of modern thunderbolt controllers. It provides the
 `org.freedesktop.bolt` name on the system bus. boltd is autostarted
-via systemd/udev if a thunderbolt devices is connected.
+via systemd/udev if a thunderbolt device is connected.
 
 The thunderbolt I/O technology works by bridging PCIe between the
 controllers on each end of the connection, which in turn means that
@@ -71,7 +71,7 @@ OPTIONS
   Replace the currently running boltd instance.
 
 *--journal*::
-  Froce logging to the journal.
+  Force logging to the journal.
 
 *-v, --verbosee*::
   Print debug output.
