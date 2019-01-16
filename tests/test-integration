@@ -902,6 +902,8 @@ class BoltTest(dbusmock.DBusTestCase):
             pass
         os.environ['DBUS_SYSTEM_BUS_ADDRESS'] = cls.test_bus.get_bus_address()
         cls.dbus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+        # a well known key that can be used in testing
+        cls.key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
 
     @classmethod
     def tearDownClass(cls):
@@ -1401,7 +1403,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.daemon_stop()
 
     def test_device_authflags(self):
-        key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
+        key = self.key
 
         dc, host = self.add_domain_host()
         d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=2, key=key, boot='0')
@@ -1699,7 +1701,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def test_device_import_sl1(self):
 
-        key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
+        key = self.key
 
         devs = [
             # no boot flag -> not importing
@@ -1716,7 +1718,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def test_device_import_sl2(self):
         # like test_device_auto_import but in SECURE mode
-        key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
+        key = self.key
 
         devs = [
             # no boot flag, not importing
@@ -1904,7 +1906,7 @@ class BoltTest(dbusmock.DBusTestCase):
                 self.assertDeviceEqual(local, remote)
 
     def test_enroll_authorized(self):
-        key = 'b68bce095a13ac39e9254a88b189a38f240487aa6f78f803390a0cdeceb774d8'
+        key = self.key
 
         dc, host = self.add_domain_host()
         d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=2, key=key, boot='0')
