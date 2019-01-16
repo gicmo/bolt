@@ -1696,8 +1696,8 @@ class BoltTest(dbusmock.DBusTestCase):
         # full access now
 
         devs = [
-            {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
-            {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'auto'},
+            {'authorized': 1, 'key': None, 'boot': 0, 'policy': 'iommu'},
+            {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'iommu'},
         ]
 
         self.device_import_test('none', devs, None)
@@ -1706,7 +1706,7 @@ class BoltTest(dbusmock.DBusTestCase):
         # like import_sl0 but with iommu support active
 
         devs = [
-            {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
+            {'authorized': 1, 'key': None, 'boot': 0, 'policy': 'iommu'},
             # should not happen, normally boot should always be 0
             {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'iommu'},
         ]
@@ -1715,12 +1715,9 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def test_device_import_sl1(self):
 
-        key = self.key
-
         devs = [
             # no boot flag -> not importing
             {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
-            {'authorized': 2, 'key': key,  'boot': 0, 'policy': None},
             # boot flag, and user mode -> importing
             {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'auto'},
             # check we are not auto-importing un-authorized devices
@@ -1732,12 +1729,9 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def test_device_import_sl1_iommu(self):
 
-        key = self.key
-
         devs = [
             # no boot flag -> not importing
             {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
-            {'authorized': 2, 'key': key,  'boot': 0, 'policy': None},
             # boot flag, and user mode -> importing
             {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'iommu'},
         ]
@@ -1753,10 +1747,10 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
             {'authorized': 2, 'key': key,  'boot': 0, 'policy': None},
             # boot flag present but no valid key, not importing
-            {'authorized': 1, 'key': None, 'boot': 1, 'policy': None},
-            {'authorized': 1, 'key': '',   'boot': 1, 'policy': None},
+            {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'iommu'},
+            {'authorized': 1, 'key': '',   'boot': 1, 'policy': 'iommu'},
             # boot, valid key, should not be possible to observe "in the wild"
-            {'authorized': 2, 'key': key,  'boot': 1, 'policy': 'auto'},
+            {'authorized': 2, 'key': key,  'boot': 1, 'policy': 'iommu'},
             # check we are not auto-importing un-authorized devices
             {'authorized': 0, 'key': None, 'boot': 0, 'policy': None},
             {'authorized': 0, 'key': '',   'boot': 0, 'policy': None},
@@ -1773,8 +1767,8 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
             {'authorized': 2, 'key': key,  'boot': 0, 'policy': None},
             # boot flag present but no valid key, not importing
-            {'authorized': 1, 'key': None, 'boot': 1, 'policy': None},
-            {'authorized': 1, 'key': '',   'boot': 1, 'policy': None},
+            {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'iommu'},
+            {'authorized': 1, 'key': '',   'boot': 1, 'policy': 'iommu'},
             # boot, valid key, should not be possible to observe "in the wild"
             {'authorized': 2, 'key': key,  'boot': 1, 'policy': 'iommu'},
         ]
@@ -1786,8 +1780,8 @@ class BoltTest(dbusmock.DBusTestCase):
         # in that mode all devices will always be marked as authorized
 
         devs = [
-            {'authorized': 1, 'key': None, 'boot': 0, 'stored': False},
-            {'authorized': 1, 'key': None, 'boot': 1, 'stored': False},
+            {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
+            {'authorized': 1, 'key': None, 'boot': 1, 'policy': None},
         ]
 
         self.device_import_test('dponly', devs, None)
@@ -1796,7 +1790,6 @@ class BoltTest(dbusmock.DBusTestCase):
 
         devs = [
             {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
-            # should not happen, normally boot will always be 0 in that mode
             {'authorized': 1, 'key': None, 'boot': 1, 'policy': None},
         ]
 

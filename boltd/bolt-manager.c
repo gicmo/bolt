@@ -1241,11 +1241,10 @@ manager_maybe_import (BoltManager *mgr,
   BoltPolicy policy;
   const char *secstr;
   const char *polstr;
+  gboolean sl0, sl1;
+  gboolean boot, pcie;
   gboolean import;
   gboolean iommu;
-  gboolean pcie;
-  gboolean boot;
-  gboolean sl2;
   gboolean ok;
 
   if (bolt_device_get_device_type (dev) == BOLT_DEVICE_HOST)
@@ -1263,22 +1262,16 @@ manager_maybe_import (BoltManager *mgr,
   boot = bolt_device_check_authflag (dev, BOLT_AUTH_BOOT);
 
   pcie = bolt_security_allows_pcie (level);
-  sl2 = level == BOLT_SECURITY_SECURE;
+  sl0 = level == BOLT_SECURITY_NONE;
+  sl1 = level == BOLT_SECURITY_USER;
 
-  if (sl2)
-    {
-      g_autoptr(GError) e = NULL;
-      ok = bolt_device_get_key_from_sysfs (dev, &key, &e);
+  /* Check if we want to import that device at all,
+   * the fundamental rule is: if it was authorized
+   * by the firmware and we have pcie tunnels we want
+   * to import it so we have a record of it */
+  import = pcie && (boot || sl0);
 
-      if (!ok)
-        bolt_warn_err (e, LOG_DEV (dev), LOG_TOPIC ("import"),
-                       "failed to read key from sysfs");
-    }
-
-  /* Check if we want to import that device at all */
-  import = pcie && boot && (!sl2 || key);
-
-  if (import && !iommu)
+  if (import && !iommu && sl1)
     policy = BOLT_POLICY_AUTO;
   else
     policy = BOLT_POLICY_IOMMU;
@@ -1294,7 +1287,11 @@ manager_maybe_import (BoltManager *mgr,
   if (!import)
     return;
 
-  ok = bolt_store_put_device (mgr->store, dev, policy, key, &err);
+  ok = bolt_store_put_device (mgr->store,
+                              dev,
+                              policy,
+                              key, &
+                              err);
 
   if (!ok)
     bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("import"),
