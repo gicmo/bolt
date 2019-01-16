@@ -24,14 +24,24 @@ PCIe. Therefore thunderbolt can achieve very high connection speeds,
 fast enough to even drive external graphics cards. The downside is
 that it also makes certain attacks possible. To mitigate these
 security problems, the latest version -- known as Thunderbolt 3 --
-supports different *security levels*: 'none': No security. The
-behavior is identical to previous Thunderbolt versions.  'dponly': No
-PCIe tunnels are created at all, but DisplayPort tunnels are allowed
-and will work.  'user': Connected devices must be authorized by the
-user. Only then will the PCIe tunnels be activated.  'secure':
-Basically the same as user mode, but additionally a key will be
-written to the device the first time the device is connected. This key
-will then be used to verify the identity of the connected device.
+supports different *security levels*:
+
+*none*::
+ No security. The behavior is identical to previous Thunderbolt
+ versions.
+
+*dponly*::
+ No PCIe tunnels are created at all, but DisplayPort tunnels are allowed
+ and will work.
+
+*user*::
+ Connected devices must be authorized by the user. Only then will the
+ PCIe tunnels be activated.
+
+*secure*::
+ Basically the same as user mode, but additionally a key will be written
+ to the device the first time the device is connected. This key will
+ then be used to verify the identity of the connected device.
 
 The primary task of *boltd* is to authorize thunderbolt peripherals if
 the security level is either `user` or `secure`.  It provides a D-Bus
