@@ -1643,8 +1643,8 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.daemon_stop()
 
-    def device_import_test(self, security, devs):
-        dc, host = self.add_domain_host(security=security)
+    def device_import_test(self, security, devs, iommu):
+        dc, host = self.add_domain_host(security=security, iommu=iommu)
 
         for i, d in enumerate(devs):
             did = i + 1
@@ -1695,7 +1695,7 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 1, 'key': None, 'boot': 1, 'policy': 'auto'},
         ]
 
-        self.device_import_test('none', devs)
+        self.device_import_test('none', devs, None)
 
     def test_device_import_sl1(self):
 
@@ -1712,7 +1712,7 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 0, 'key': '',   'boot': 0, 'policy': None},
         ]
 
-        self.device_import_test('user', devs)
+        self.device_import_test('user', devs, None)
 
     def test_device_import_sl2(self):
         # like test_device_auto_import but in SECURE mode
@@ -1732,7 +1732,7 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 0, 'key': '',   'boot': 0, 'policy': None},
         ]
 
-        self.device_import_test('secure', devs)
+        self.device_import_test('secure', devs, None)
 
     def test_device_import_sl3(self):
         # auto import test for dponly mode, i.e no pci express tunnels
@@ -1743,7 +1743,7 @@ class BoltTest(dbusmock.DBusTestCase):
             {'authorized': 1, 'key': None, 'boot': 1, 'stored': False},
         ]
 
-        self.device_import_test('dponly', devs)
+        self.device_import_test('dponly', devs, None)
 
     def test_device_auto_enroll(self):
         # the negative tests, i.e. that devices are not auto-enrolled when iommu is
