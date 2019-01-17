@@ -345,6 +345,50 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
     g_assert_null (all[i]);
 }
 
+static void
+test_sysfs_domain_connect (TestSysfs *tt, gconstpointer user)
+{
+  g_autoptr(udev_device) udevice = NULL;
+  g_autoptr(BoltDomain) domain = NULL;
+  g_autoptr(GError) err = NULL;
+  const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
+  const char *id;
+  const char *syspath;
+  BoltSecurity security;
+
+  domain = g_object_new (BOLT_TYPE_DOMAIN,
+                         "store", NULL,
+                         "uid", uid,
+                         "bootacl", NULL,
+                         NULL);
+
+  g_assert_nonnull (domain);
+  g_assert_false (bolt_domain_has_iommu (domain));
+  security = bolt_domain_get_security (domain);
+  g_assert_cmpint (security, ==, BOLT_SECURITY_UNKNOWN);
+  g_assert_null (bolt_domain_get_syspath (domain));
+
+  id = mock_sysfs_domain_add (tt->sysfs,
+                              BOLT_SECURITY_SECURE,
+                              "iommu", "1\n",
+                              NULL);
+
+  syspath = mock_sysfs_domain_get_syspath (tt->sysfs, id);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+
+  g_assert_nonnull (udevice);
+
+  bolt_domain_connected (domain, udevice);
+  security = bolt_domain_get_security (domain);
+  g_assert_cmpint (security, ==, BOLT_SECURITY_SECURE);
+
+  g_assert_cmpstr (syspath,
+                   ==,
+                   bolt_domain_get_syspath (domain));
+
+  g_assert_true (bolt_domain_has_iommu (domain));
+}
+
 typedef struct
 {
   MockSysfs   *sysfs;
@@ -1086,6 +1130,13 @@ main (int argc, char **argv)
               NULL,
               test_sysfs_setup,
               test_sysfs_domains,
+              test_sysfs_tear_down);
+
+  g_test_add ("/sysfs/domain/connect",
+              TestSysfs,
+              NULL,
+              test_sysfs_setup,
+              test_sysfs_domain_connect,
               test_sysfs_tear_down);
 
   g_test_add ("/sysfs/domain/bootacl/basic",
