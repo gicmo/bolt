@@ -1,8 +1,8 @@
 Patches
 =======
 
-Patches should be submitted in the form of pull requests at
-[github][github].
+Patches should be submitted in the form of merge requests at
+[gitlab][gitlab].
 
 
 Coding style
@@ -64,7 +64,7 @@ must be in `PATH`) from the source directory:
 
 Upload the `bolt.xz` file to coverity for analysis. Fix defects. Profit.
 
-[github]: https://github.com/gicmo/bolt
+[gitlab]: https://gitlab.freedesktop.org/bolt/bolt
 [coverity]: https://scan.coverity.com/projects/bolt
 [cov-build]: https://scan.coverity.com/download
 [valgrind]: https://gist.github.com/gicmo/327dad149fcb386ac7f59e279b8ba322
