@@ -24,6 +24,7 @@
 #include "bolt-fs.h"
 #include "bolt-io.h"
 #include "bolt-str.h"
+#include "bolt-test.h"
 
 #include "bolt-config.h"
 #include "bolt-store.h"

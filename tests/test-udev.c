@@ -23,6 +23,7 @@
 #include "bolt-udev.h"
 
 #include "bolt-str.h"
+#include "bolt-test.h"
 #include "mock-sysfs.h"
 
 #include "bolt-daemon-resource.h"

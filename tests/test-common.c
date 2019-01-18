@@ -28,6 +28,7 @@
 #include "bolt-rnd.h"
 #include "bolt-str.h"
 #include "bolt-term.h"
+#include "bolt-test.h"
 #include "bolt-time.h"
 #include "bolt-unix.h"
 #include "mock-sysfs.h"
