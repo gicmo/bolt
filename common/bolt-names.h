@@ -20,6 +20,10 @@
 
 #pragma once
 
+#include <glib.h>
+
+G_BEGIN_DECLS
+
 /* D-Bus API revision (here for the lack of a better place) */
 #define BOLT_DBUS_API_VERSION 1U
 
@@ -60,3 +64,10 @@
 
 /* other well known names */
 #define INTEL_WMI_THUNDERBOLT_GUID "86CCFD48-205E-4A77-9C48-2021CBEDE341"
+
+/* helper functions */
+
+char *      bolt_gen_object_path (const char *path_base,
+                                  const char *object_id);
+
+G_END_DECLS
