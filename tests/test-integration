@@ -1937,7 +1937,16 @@ class BoltTest(dbusmock.DBusTestCase):
         self.daemon_stop()
 
     def test_boltctl(self):
-        tree = self.simple_mock_tree()
+        ssd1 = TbDevice('SSD1',)
+        cable1 = TbDevice('Cable1', children=[ssd1])
+        ssd2 = TbDevice('SSD2')
+        cable2 = TbDevice('Cable2', children=[ssd2])
+
+        host = TbHost([cable1,
+                       cable2])
+        tree = TbDomain(security=TbDomain.SECURITY_SECURE,
+                        host=host)
+
         tree.connect_tree(self.testbed)
 
         self.daemon_start()
@@ -1965,7 +1974,7 @@ class BoltTest(dbusmock.DBusTestCase):
                                  'org.freedesktop.bolt.enroll',
                                  'org.freedesktop.bolt.manage'])
 
-        to_enroll = tree.collect(TbDevice.is_unauthorized)
+        to_enroll = [cable1, ssd1]
 
         out, _, res = self.boltctl('list')
         out = str(out)
@@ -2019,6 +2028,16 @@ class BoltTest(dbusmock.DBusTestCase):
             uid = dev.unique_id
             remote = self.client.device_by_uid(uid)
             self.assertEqual(remote.stored, False)
+
+
+        # chain enrollment & authorization
+        _, _, res = self.boltctl('enroll', '--chain', ssd2.unique_id)
+        self.assertEqual(res, 0)
+        for dev in [cable2, ssd2]:
+            uid = dev.unique_id
+            remote = self.client.device_by_uid(uid)
+            self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
+            self.assertEqual(remote.stored, True)
 
         self.daemon_stop()
 
