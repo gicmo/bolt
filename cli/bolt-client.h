@@ -71,6 +71,18 @@ gboolean        bolt_client_enroll_device_finish (BoltClient   *client,
                                                   char        **path,
                                                   GError      **error);
 
+void            bolt_client_enroll_all_async (BoltClient         *client,
+                                              GPtrArray          *uuids,
+                                              BoltPolicy          policy,
+                                              BoltAuthCtrl        flags,
+                                              GCancellable       *cancellable,
+                                              GAsyncReadyCallback callback,
+                                              gpointer            user_data);
+
+gboolean        bolt_client_enroll_all_finish (BoltClient   *client,
+                                               GAsyncResult *res,
+                                               GError      **error);
+
 gboolean        bolt_client_forget_device (BoltClient *client,
                                            const char *uid,
                                            GError    **error);

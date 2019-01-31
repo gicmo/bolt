@@ -623,6 +623,194 @@ bolt_client_enroll_device_finish (BoltClient   *client,
   return TRUE;
 }
 
+typedef struct AllOpData
+{
+  GDBusConnection *bus;
+
+  /* Who you gonna call? */
+  const char *iface;  /* Manager or Device */
+  const char *method; /* Enroll or Authorize */
+
+  /* the task list */
+  GPtrArray *params;
+  GPtrArray *paths; /* object paths */
+  guint      pos;
+
+} AllOpData;
+
+static AllOpData *
+allop_data_new (guint len)
+{
+  AllOpData *d;
+
+  d = g_new (AllOpData, 1);
+  d->params = g_ptr_array_new_full (len, (GDestroyNotify) g_variant_unref);
+  d->paths = g_ptr_array_new_full (len, (GDestroyNotify) g_free);
+  d->pos = 0;
+
+  return d;
+}
+
+static void
+allop_data_free (AllOpData *data)
+{
+  g_clear_object (&data->bus);
+  g_clear_pointer (&data->params, g_ptr_array_unref);
+  g_clear_pointer (&data->paths, g_ptr_array_unref);
+  g_free (data);
+}
+
+static void    allop_one_done (GObject      *source_object,
+                               GAsyncResult *res,
+                               gpointer      user_data);
+
+static void
+allop_continue (GTask *task, AllOpData *data)
+{
+  GCancellable *cancel;
+  const char *opath;
+  GVariant *param;
+  guint index;
+
+  cancel = g_task_get_cancellable (task);
+
+  index = data->pos;
+
+  opath = g_ptr_array_index (data->paths, index);
+  param = g_ptr_array_index (data->params, index);
+
+  g_dbus_connection_call (data->bus,
+                          BOLT_DBUS_NAME,
+                          opath,
+                          data->iface,
+                          data->method,
+                          param,
+                          NULL,
+                          G_DBUS_CALL_FLAGS_NONE,
+                          -1,
+                          cancel,
+                          allop_one_done,
+                          task);
+}
+
+static void
+allop_one_done (GObject      *source_object,
+                GAsyncResult *res,
+                gpointer      user_data)
+{
+  GError *err = NULL;
+  GVariant *val = NULL;
+  AllOpData *data;
+  GTask *task;
+
+  task = (GTask *) user_data;
+  data = g_task_get_task_data (task);
+
+  val = g_dbus_connection_call_finish (data->bus,
+                                       res,
+                                       &err);
+
+  if (val == NULL)
+    {
+      g_task_return_error (task, err); /* takes ownership */
+      g_object_unref (task);
+      /* we are done (albeit with an error) */
+      return;
+    }
+
+  data->pos += 1; /* next */
+
+  if (data->pos < data->params->len)
+    {
+      allop_continue (task, data);
+      return;
+    }
+
+  /* we are done */
+  g_task_return_boolean (task, TRUE);
+  g_object_unref (task);
+}
+
+void
+bolt_client_enroll_all_async (BoltClient         *client,
+                              GPtrArray          *uuids,
+                              BoltPolicy          policy,
+                              BoltAuthCtrl        flags,
+                              GCancellable       *cancellable,
+                              GAsyncReadyCallback callback,
+                              gpointer            user_data)
+{
+  g_autofree char *fstr = NULL;
+  GError *err = NULL;
+  GDBusConnection *bus;
+  const char *pstr;
+  AllOpData *data;
+  GTask *task;
+
+  g_return_if_fail (BOLT_IS_CLIENT (client));
+  g_return_if_fail (uuids != NULL && uuids->len > 0);
+  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
+  g_return_if_fail (callback != NULL);
+
+  pstr = bolt_enum_to_string (BOLT_TYPE_POLICY, policy, &err);
+  if (pstr == NULL)
+    {
+      g_task_report_error (client, callback, user_data, NULL, err);
+      return;
+    }
+
+  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_CTRL, flags, &err);
+  if (fstr == NULL)
+    {
+      g_task_report_error (client, callback, user_data, NULL, err);
+      return;
+    }
+
+  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
+
+  task = g_task_new (client, cancellable, callback, user_data);
+  g_task_set_return_on_cancel (task, TRUE);
+
+  data = allop_data_new (uuids->len);
+  data->bus = g_object_ref (bus);
+  data->iface = BOLT_DBUS_INTERFACE;
+  data->method = "EnrollDevice";
+  g_task_set_task_data (task, data, (GDestroyNotify) allop_data_free);
+
+  for (guint i = 0; i < uuids->len; i++)
+    {
+      const char *uid = g_ptr_array_index (uuids, i);
+      GVariant *param;
+
+      param = g_variant_new ("(sss)", uid, pstr, fstr);
+      g_ptr_array_add (data->params, g_variant_ref_sink (param));
+      g_ptr_array_add (data->paths, g_strdup (BOLT_DBUS_PATH));
+    }
+
+  allop_continue (task, data);
+}
+
+gboolean
+bolt_client_enroll_all_finish (BoltClient   *client,
+                               GAsyncResult *res,
+                               GError      **error)
+{
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
+  g_return_val_if_fail (g_task_is_valid (res, client), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  ok = g_task_propagate_boolean (G_TASK (res), &err);
+
+  if (!ok)
+    bolt_error_propagate_stripped (error, &err);
+
+  return ok;
+}
+
+
 gboolean
 bolt_client_forget_device (BoltClient *client,
                            const char *uid,
