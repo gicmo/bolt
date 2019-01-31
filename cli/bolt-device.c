@@ -383,6 +383,14 @@ bolt_device_get_device_type (BoltDevice *dev)
   return val;
 }
 
+gboolean
+bolt_device_is_host (BoltDevice *dev)
+{
+  BoltDeviceType dt = bolt_device_get_device_type (dev);
+
+  return dt == BOLT_DEVICE_HOST;
+}
+
 BoltStatus
 bolt_device_get_status (BoltDevice *dev)
 {

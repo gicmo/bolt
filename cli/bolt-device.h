@@ -57,6 +57,8 @@ const char *      bolt_device_get_vendor (BoltDevice *dev);
 
 BoltDeviceType    bolt_device_get_device_type (BoltDevice *dev);
 
+gboolean          bolt_device_is_host (BoltDevice *dev);
+
 BoltStatus        bolt_device_get_status (BoltDevice *dev);
 
 BoltAuthFlags     bolt_device_get_authflags (BoltDevice *dev);
