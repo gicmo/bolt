@@ -1941,9 +1941,12 @@ class BoltTest(dbusmock.DBusTestCase):
         cable1 = TbDevice('Cable1', children=[ssd1])
         ssd2 = TbDevice('SSD2')
         cable2 = TbDevice('Cable2', children=[ssd2])
+        ssd3 = TbDevice('SSD3')
+        cable3 = TbDevice('Cable3', children=[ssd3])
 
         host = TbHost([cable1,
-                       cable2])
+                       cable2,
+                       cable3])
         tree = TbDomain(security=TbDomain.SECURITY_SECURE,
                         host=host)
 
@@ -2030,7 +2033,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertEqual(remote.stored, False)
 
 
-        # chain enrollment & authorization
+        # chain enrollment
         _, _, res = self.boltctl('enroll', '--chain', ssd2.unique_id)
         self.assertEqual(res, 0)
         for dev in [cable2, ssd2]:
@@ -2038,6 +2041,15 @@ class BoltTest(dbusmock.DBusTestCase):
             remote = self.client.device_by_uid(uid)
             self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
             self.assertEqual(remote.stored, True)
+
+        # chain authorization
+        _, _, res = self.boltctl('authorize', '--chain', ssd3.unique_id)
+        self.assertEqual(res, 0)
+        for dev in [cable3, ssd3]:
+            uid = dev.unique_id
+            remote = self.client.device_by_uid(uid)
+            self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
+            self.assertEqual(remote.stored, False)
 
         self.daemon_stop()
 
