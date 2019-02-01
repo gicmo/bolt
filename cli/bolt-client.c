@@ -810,6 +810,77 @@ bolt_client_enroll_all_finish (BoltClient   *client,
   return ok;
 }
 
+void
+bolt_client_authorize_all_async (BoltClient         *client,
+                                 GPtrArray          *uuids,
+                                 BoltAuthCtrl        flags,
+                                 GCancellable       *cancellable,
+                                 GAsyncReadyCallback callback,
+                                 gpointer            user_data)
+{
+  g_autofree char *fstr = NULL;
+  GError *err = NULL;
+  GDBusConnection *bus;
+  AllOpData *data;
+  GTask *task;
+
+  g_return_if_fail (BOLT_IS_CLIENT (client));
+  g_return_if_fail (uuids != NULL && uuids->len > 0);
+  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
+  g_return_if_fail (callback != NULL);
+
+  fstr = bolt_flags_to_string (BOLT_TYPE_AUTH_CTRL, flags, &err);
+  if (fstr == NULL)
+    {
+      g_task_report_error (client, callback, user_data, NULL, err);
+      return;
+    }
+
+  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
+
+  task = g_task_new (client, cancellable, callback, user_data);
+  g_task_set_return_on_cancel (task, TRUE);
+
+  data = allop_data_new (uuids->len);
+  data->bus = g_object_ref (bus);
+  data->iface = BOLT_DBUS_DEVICE_INTERFACE;
+  data->method = "Authorize";
+  g_task_set_task_data (task, data, (GDestroyNotify) allop_data_free);
+
+  for (guint i = 0; i < uuids->len; i++)
+    {
+      const char *uid = g_ptr_array_index (uuids, i);
+      GVariant *param;
+      char *path;
+
+      param = g_variant_new ("(s)", fstr);
+      path = bolt_gen_object_path (BOLT_DBUS_PATH_DEVICES, uid);
+      g_ptr_array_add (data->params, g_variant_ref_sink (param));
+      g_ptr_array_add (data->paths, path); /* takes ownership */
+    }
+
+  allop_continue (task, data);
+}
+
+gboolean
+bolt_client_authorize_all_finish (BoltClient   *client,
+                                  GAsyncResult *res,
+                                  GError      **error)
+{
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
+  g_return_val_if_fail (g_task_is_valid (res, client), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  ok = g_task_propagate_boolean (G_TASK (res), &err);
+
+  if (!ok)
+    bolt_error_propagate_stripped (error, &err);
+
+  return ok;
+}
 
 gboolean
 bolt_client_forget_device (BoltClient *client,
