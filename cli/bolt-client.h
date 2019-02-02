@@ -47,6 +47,11 @@ GPtrArray *     bolt_client_list_devices (BoltClient   *client,
                                           GCancellable *cancellable,
                                           GError      **error);
 
+GPtrArray *     bolt_client_list_parents (BoltClient   *client,
+                                          BoltDevice   *device,
+                                          GCancellable *cancellable,
+                                          GError      **error);
+
 BoltDevice *    bolt_client_get_device (BoltClient   *client,
                                         const char   *uid,
                                         GCancellable *cancellable,

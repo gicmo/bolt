@@ -459,6 +459,40 @@ bolt_client_list_devices (BoltClient   *client,
   return g_steal_pointer (&devices);
 }
 
+GPtrArray *
+bolt_client_list_parents (BoltClient   *client,
+                          BoltDevice   *device,
+                          GCancellable *cancellable,
+                          GError      **error)
+{
+  g_autoptr(BoltDevice) dev = NULL;
+  g_autoptr(GPtrArray) uuids = NULL;
+  const char *parent;
+
+  uuids = g_ptr_array_new_full (16, g_object_unref);
+  dev = g_object_ref (device);
+
+  while ((parent = bolt_device_get_parent (dev)) != NULL)
+    {
+      g_autofree char *up = g_strdup (parent);
+
+      g_clear_object (&dev); /* 'parent' can be invalid */
+      parent = NULL;
+
+      dev = bolt_client_get_device (client,
+                                    up,
+                                    NULL,
+                                    error);
+
+      if (dev == NULL)
+        return NULL;
+
+      g_ptr_array_add (uuids, g_object_ref (dev));
+    }
+
+  return g_steal_pointer (&uuids);
+}
+
 BoltDevice *
 bolt_client_get_device (BoltClient   *client,
                         const char   *uid,
