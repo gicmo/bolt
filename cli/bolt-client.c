@@ -632,6 +632,47 @@ typedef struct OpData
 
 } OpData;
 
+static OpData *
+op_data_new_enroll (const char *uid,
+                    const char *policy,
+                    const char *flags)
+{
+  GVariant *params;
+  OpData *op;
+
+  params = g_variant_new ("(sss)", uid, policy, flags);
+
+  op = g_slice_new (OpData);
+  op->iface = BOLT_DBUS_INTERFACE;
+  op->method = "EnrollDevice";
+  op->params = g_variant_ref_sink (params);
+  op->path = g_strdup (BOLT_DBUS_PATH);
+
+  return op;
+}
+
+
+static OpData *
+op_data_new_authorize (const char *uid,
+                       const char *flags)
+{
+  OpData *op = NULL;
+  GVariant *params;
+  char *path;
+
+  path = bolt_gen_object_path (BOLT_DBUS_PATH_DEVICES, uid);
+  params = g_variant_new ("(s)", flags);
+
+  op = g_slice_new (OpData);
+
+  op->iface = BOLT_DBUS_DEVICE_INTERFACE;
+  op->method = "Authorize";
+  op->params = g_variant_ref_sink (params);
+  op->path = path; /* takes ownership */
+
+  return op;
+}
+
 static void
 op_data_free (OpData *op)
 {
@@ -765,16 +806,9 @@ bolt_client_enroll_all_async (BoltClient         *client,
   for (guint i = 0; i < uuids->len; i++)
     {
       const char *uid = g_ptr_array_index (uuids, i);
-      GVariant *params;
       OpData *op;
 
-      params = g_variant_new ("(sss)", uid, pstr, fstr);
-
-      op = g_slice_new (OpData);
-      op->iface = BOLT_DBUS_INTERFACE;
-      op->method = "EnrollDevice";
-      op->params = g_variant_ref_sink (params);
-      op->path = g_strdup (BOLT_DBUS_PATH);
+      op = op_data_new_enroll (uid, pstr, fstr);
 
       g_queue_push_tail (ops, op);
     }
@@ -836,18 +870,9 @@ bolt_client_authorize_all_async (BoltClient         *client,
   for (guint i = 0; i < uuids->len; i++)
     {
       const char *uid = g_ptr_array_index (uuids, i);
-      GVariant *params;
       OpData *op;
-      char *path;
 
-      params = g_variant_new ("(s)", fstr);
-      path = bolt_gen_object_path (BOLT_DBUS_PATH_DEVICES, uid);
-
-      op = g_slice_new (OpData);
-      op->iface = BOLT_DBUS_DEVICE_INTERFACE;
-      op->method = "Authorize";
-      op->params = g_variant_ref_sink (params);
-      op->path = path; /* takes ownership */
+      op = op_data_new_authorize (uid, fstr);
 
       g_queue_push_tail (ops, op);
     }
