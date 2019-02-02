@@ -59,12 +59,11 @@ enroll_all (BoltClient  *client,
             BoltAuthCtrl flags)
 {
   g_autoptr(BoltDevice) target = NULL;
-  g_autoptr(BoltDevice) dev = NULL;
+  g_autoptr(GPtrArray) parents = NULL;
   g_autoptr(GPtrArray) uuids = NULL;
   g_autoptr(GMainLoop) loop = NULL;
   g_autoptr(GError) err = NULL;
   EnrollAllData data;
-  const char *parent;
 
   target = bolt_client_get_device (client,
                                    uid,
@@ -78,38 +77,31 @@ enroll_all (BoltClient  *client,
       return EXIT_FAILURE;
     }
 
-  uuids = g_ptr_array_new_full (16, (GDestroyNotify) g_free);
-
-  dev = g_object_ref (target);
-
-  while ((parent = bolt_device_get_parent (dev)) != NULL)
+  parents = bolt_client_list_parents (client, target, NULL, &err);
+  if (parents == NULL)
     {
-      g_autofree char *up;
+      g_printerr ("Could not look up parents: %s\n",
+                  err->message);
+      return EXIT_FAILURE;
+    }
 
-      up = g_strdup (parent);
-      g_clear_object (&dev); /* parent is invalid */
-      parent = NULL;
-      dev = bolt_client_get_device (client,
-                                    up,
-                                    NULL,
-                                    &err);
+  uuids = g_ptr_array_new_full (parents->len, NULL);
 
-      if (dev == NULL)
-        {
-          g_printerr ("Could not look up parents: %s\n",
-                      err->message);
-          return EXIT_FAILURE;
-        }
+  /* reverse order, starting from the root! */
+  for (guint i = parents->len; i > 0; i--)
+    {
+      BoltDevice *dev = g_ptr_array_index (parents, i - 1);
+      const char *id = bolt_device_get_uid (dev);
 
       if (bolt_device_is_stored (dev) ||
           bolt_device_is_host (dev))
-        break;
+        continue;
 
-      g_ptr_array_add (uuids, g_steal_pointer (&up));
+      g_ptr_array_add (uuids, (gpointer) id);
     }
 
   /* the target itself */
-  g_ptr_array_add (uuids, g_strdup (uid));
+  g_ptr_array_add (uuids, (gpointer) uid);
 
   loop = g_main_loop_new (NULL, FALSE);
   data.loop = loop;
