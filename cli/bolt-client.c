@@ -623,74 +623,64 @@ bolt_client_enroll_device_finish (BoltClient   *client,
   return TRUE;
 }
 
-typedef struct AllOpData
+typedef struct OpData
 {
-  GDBusConnection *bus;
-
-  /* Who you gonna call? */
   const char *iface;  /* Manager or Device */
   const char *method; /* Enroll or Authorize */
+  char       *path;   /* object path */
+  GVariant   *params; /* parameters */
 
-  /* the task list */
-  GPtrArray *params;
-  GPtrArray *paths; /* object paths */
-  guint      pos;
+} OpData;
 
-} AllOpData;
-
-static AllOpData *
-allop_data_new (guint len)
+static void
+op_data_free (OpData *op)
 {
-  AllOpData *d;
-
-  d = g_new (AllOpData, 1);
-  d->params = g_ptr_array_new_full (len, (GDestroyNotify) g_variant_unref);
-  d->paths = g_ptr_array_new_full (len, (GDestroyNotify) g_free);
-  d->pos = 0;
-
-  return d;
+  g_clear_pointer (&op->params, g_variant_unref);
+  g_clear_pointer (&op->path, g_free);
+  g_slice_free (OpData, op);
 }
 
 static void
-allop_data_free (AllOpData *data)
+op_queue_free (GQueue *queue)
 {
-  g_clear_object (&data->bus);
-  g_clear_pointer (&data->params, g_ptr_array_unref);
-  g_clear_pointer (&data->paths, g_ptr_array_unref);
-  g_free (data);
+  g_queue_free_full (queue, (GDestroyNotify) op_data_free);
 }
 
 static void    allop_one_done (GObject      *source_object,
                                GAsyncResult *res,
                                gpointer      user_data);
 
-static void
-allop_continue (GTask *task, AllOpData *data)
+static gboolean
+allop_continue (BoltClient *client, GTask *task, GQueue *ops)
 {
+  GDBusConnection *bus;
   GCancellable *cancel;
-  const char *opath;
-  GVariant *param;
-  guint index;
+  OpData *op;
 
   cancel = g_task_get_cancellable (task);
+  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
 
-  index = data->pos;
+  op = g_queue_pop_head (ops);
 
-  opath = g_ptr_array_index (data->paths, index);
-  param = g_ptr_array_index (data->params, index);
+  if (op == NULL)
+    return TRUE;
 
-  g_dbus_connection_call (data->bus,
+  g_dbus_connection_call (bus,
                           BOLT_DBUS_NAME,
-                          opath,
-                          data->iface,
-                          data->method,
-                          param,
+                          op->path,
+                          op->iface,
+                          op->method,
+                          op->params,
                           NULL,
                           G_DBUS_CALL_FLAGS_NONE,
                           -1,
                           cancel,
                           allop_one_done,
                           task);
+
+  op_data_free (op);
+
+  return FALSE;
 }
 
 static void
@@ -698,17 +688,21 @@ allop_one_done (GObject      *source_object,
                 GAsyncResult *res,
                 gpointer      user_data)
 {
-  GError *err = NULL;
+  BoltClient *client;
+  GDBusConnection *bus;
   GVariant *val = NULL;
-  AllOpData *data;
+  gboolean done;
+  GError *err = NULL;
+  GQueue *ops;
   GTask *task;
 
-  task = (GTask *) user_data;
-  data = g_task_get_task_data (task);
+  task = G_TASK (user_data);
 
-  val = g_dbus_connection_call_finish (data->bus,
-                                       res,
-                                       &err);
+  ops = g_task_get_task_data (task);
+  client = g_task_get_source_object (task);
+  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
+
+  val = g_dbus_connection_call_finish (bus, res, &err);
 
   if (val == NULL)
     {
@@ -718,17 +712,14 @@ allop_one_done (GObject      *source_object,
       return;
     }
 
-  data->pos += 1; /* next */
+  done = allop_continue (client, task, ops);
 
-  if (data->pos < data->params->len)
+  if (done)
     {
-      allop_continue (task, data);
-      return;
+      /* we are done */
+      g_task_return_boolean (task, TRUE);
+      g_object_unref (task);
     }
-
-  /* we are done */
-  g_task_return_boolean (task, TRUE);
-  g_object_unref (task);
 }
 
 void
@@ -742,9 +733,8 @@ bolt_client_enroll_all_async (BoltClient         *client,
 {
   g_autofree char *fstr = NULL;
   GError *err = NULL;
-  GDBusConnection *bus;
   const char *pstr;
-  AllOpData *data;
+  GQueue *ops;
   GTask *task;
 
   g_return_if_fail (BOLT_IS_CLIENT (client));
@@ -766,28 +756,30 @@ bolt_client_enroll_all_async (BoltClient         *client,
       return;
     }
 
-  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
-
   task = g_task_new (client, cancellable, callback, user_data);
   g_task_set_return_on_cancel (task, TRUE);
 
-  data = allop_data_new (uuids->len);
-  data->bus = g_object_ref (bus);
-  data->iface = BOLT_DBUS_INTERFACE;
-  data->method = "EnrollDevice";
-  g_task_set_task_data (task, data, (GDestroyNotify) allop_data_free);
+  ops = g_queue_new ();
+  g_task_set_task_data (task, ops, (GDestroyNotify) op_queue_free);
 
   for (guint i = 0; i < uuids->len; i++)
     {
       const char *uid = g_ptr_array_index (uuids, i);
-      GVariant *param;
+      GVariant *params;
+      OpData *op;
 
-      param = g_variant_new ("(sss)", uid, pstr, fstr);
-      g_ptr_array_add (data->params, g_variant_ref_sink (param));
-      g_ptr_array_add (data->paths, g_strdup (BOLT_DBUS_PATH));
+      params = g_variant_new ("(sss)", uid, pstr, fstr);
+
+      op = g_slice_new (OpData);
+      op->iface = BOLT_DBUS_INTERFACE;
+      op->method = "EnrollDevice";
+      op->params = g_variant_ref_sink (params);
+      op->path = g_strdup (BOLT_DBUS_PATH);
+
+      g_queue_push_tail (ops, op);
     }
 
-  allop_continue (task, data);
+  allop_continue (client, task, ops);
 }
 
 gboolean
@@ -820,8 +812,7 @@ bolt_client_authorize_all_async (BoltClient         *client,
 {
   g_autofree char *fstr = NULL;
   GError *err = NULL;
-  GDBusConnection *bus;
-  AllOpData *data;
+  GQueue *ops;
   GTask *task;
 
   g_return_if_fail (BOLT_IS_CLIENT (client));
@@ -836,30 +827,32 @@ bolt_client_authorize_all_async (BoltClient         *client,
       return;
     }
 
-  bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (client));
-
   task = g_task_new (client, cancellable, callback, user_data);
   g_task_set_return_on_cancel (task, TRUE);
 
-  data = allop_data_new (uuids->len);
-  data->bus = g_object_ref (bus);
-  data->iface = BOLT_DBUS_DEVICE_INTERFACE;
-  data->method = "Authorize";
-  g_task_set_task_data (task, data, (GDestroyNotify) allop_data_free);
+  ops = g_queue_new ();
+  g_task_set_task_data (task, ops, (GDestroyNotify) op_queue_free);
 
   for (guint i = 0; i < uuids->len; i++)
     {
       const char *uid = g_ptr_array_index (uuids, i);
-      GVariant *param;
+      GVariant *params;
+      OpData *op;
       char *path;
 
-      param = g_variant_new ("(s)", fstr);
+      params = g_variant_new ("(s)", fstr);
       path = bolt_gen_object_path (BOLT_DBUS_PATH_DEVICES, uid);
-      g_ptr_array_add (data->params, g_variant_ref_sink (param));
-      g_ptr_array_add (data->paths, path); /* takes ownership */
+
+      op = g_slice_new (OpData);
+      op->iface = BOLT_DBUS_DEVICE_INTERFACE;
+      op->method = "Authorize";
+      op->params = g_variant_ref_sink (params);
+      op->path = path; /* takes ownership */
+
+      g_queue_push_tail (ops, op);
     }
 
-  allop_continue (task, data);
+  allop_continue (client, task, ops);
 }
 
 gboolean
