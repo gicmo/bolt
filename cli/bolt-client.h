@@ -99,6 +99,19 @@ gboolean        bolt_client_authorize_all_finish (BoltClient   *client,
                                                   GAsyncResult *res,
                                                   GError      **error);
 
+void            bolt_client_connect_all_async (BoltClient         *client,
+                                               GPtrArray          *devices,
+                                               BoltPolicy          policy,
+                                               BoltAuthCtrl        flags,
+                                               GCancellable       *cancellable,
+                                               GAsyncReadyCallback callback,
+                                               gpointer            user_data);
+
+gboolean        bolt_client_connect_all_finish (BoltClient   *client,
+                                                GAsyncResult *res,
+                                                GError      **error);
+
+
 gboolean        bolt_client_forget_device (BoltClient *client,
                                            const char *uid,
                                            GError    **error);
