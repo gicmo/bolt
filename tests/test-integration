@@ -477,6 +477,27 @@ class BoltClient(ProxyWrapper):
             return True
         return False
 
+    @property
+    def auth_mode(self):
+        res = getattr(self, 'AuthMode')
+        if res is not None and len(res) < 1:
+            return None
+        return res
+
+    @auth_mode.setter
+    def auth_mode(self, value):
+        if isinstance(value, str):
+            value = GLib.Variant("s", value)
+
+        self._proxy.call_sync('org.freedesktop.DBus.Properties.Set',
+                              GLib.Variant("(ssv)",
+                                           (DBUS_IFACE_MANAGER,
+                                            "AuthMode",
+                                            value)),
+                              0,
+                              -1,
+                              None)
+
     def list_domains(self):
         domains = self.ListDomains()
         if domains is None:
@@ -1225,6 +1246,78 @@ class BoltTest(dbusmock.DBusTestCase):
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 0)
         self.daemon_stop()
+
+    def test_auth_mode(self):
+        dc, host = self.add_domain_host(security='secure')
+
+        self.daemon_start()
+        self.polkitd_start()
+
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.manage',
+                                 'org.freedesktop.bolt.enroll',
+                                 'org.freedesktop.bolt.authorize'])
+
+        client = self.client
+
+        self.assertEqual(client.auth_mode, 'enabled')
+
+        # disable the authorization
+        with client.record() as tape:
+            client.auth_mode = 'disabled'
+            res = tape.wait_for_event('property',
+                                      'AuthMode',
+                                      'disabled')
+            self.assertTrue(res)
+        self.assertEqual(client.auth_mode, 'disabled')
+
+        d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=0, key='', boot='0')
+        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=0, key=None, boot='0')
+
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), 3)
+
+        d1_remote = self.find_device_by_uid(devices, d1_uid)
+        d2_remote = self.find_device_by_uid(devices, d2_uid)
+
+        before = int(time.time())
+
+        remotes = [(d1_remote, d1_uid), (d2_remote, d2_uid)]
+
+        # check we have not automatically authorized devices
+        for remote, uid in remotes:
+            self.assertEqual(remote.status, BoltDevice.CONNECTED)
+            self.assertEqual(remote.stored, False)
+
+        for remote, uid in remotes:
+            with self.assertRaises(GLib.GError) as cm:
+                client.enroll(uid)
+            err = cm.exception
+            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+            self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
+
+        # enable the authorization again now
+        with client.record() as tape:
+            client.auth_mode = 'enabled'
+            res = tape.wait_for_event('property',
+                                      'AuthMode',
+                                      'enabled')
+            self.assertTrue(res)
+        self.assertEqual(client.auth_mode, 'enabled')
+
+        policy = BoltClient.POLICY_DEFAULT
+        for remote, uid in remotes:
+            with remote.record() as tape:
+                client.enroll(uid, policy)
+                res = tape.wait_for_event('property',
+                                          'Stored',
+                                          True)
+                self.assertTrue(res)
+                self.assertEqual(remote.policy, client.default_policy)
+            now = int(time.time())
+            self.assertEqual(remote.stored, True)
+            self.assertTrue(remote.StoreTime > 1)
+            self.assertTrue(remote.StoreTime >= before)
+            self.assertTrue(remote.StoreTime <= now)
 
     def test_domain_basic(self):
 
