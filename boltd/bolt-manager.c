@@ -2458,8 +2458,14 @@ handle_enroll_device (BoltExported          *obj,
     }
   else if (pol == BOLT_POLICY_DEFAULT)
     {
-      pol = mgr->policy;
-      bolt_info (LOG_DEV (dev), "got 'default' policy, adjusting");
+      if (bolt_device_has_iommu (dev))
+        pol = BOLT_POLICY_IOMMU;
+      else
+        pol = mgr->policy;
+
+      bolt_info (LOG_DEV (dev), LOG_TOPIC ("enroll"),
+                 "got 'default' policy, adjusted to: '%s'",
+                 bolt_policy_to_string (pol));
     }
 
   if (bolt_device_get_stored (dev))
