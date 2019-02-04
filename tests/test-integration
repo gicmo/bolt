@@ -2082,6 +2082,70 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.daemon_stop()
 
+    def test_enroll_iommu(self):
+        dc, host = self.add_domain_host(security='secure', iommu='1')
+
+        self.daemon_start()
+        self.polkitd_start()
+        client = self.client
+
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.manage',
+                                 'org.freedesktop.bolt.enroll',
+                                 'org.freedesktop.bolt.authorize'])
+
+        # disable the authorization globally
+        with client.record() as tape:
+            client.auth_mode = 'disabled'
+            res = tape.wait_for_event('property',
+                                      'AuthMode',
+                                      'disabled')
+            self.assertTrue(res)
+        self.assertEqual(client.auth_mode, 'disabled')
+
+        d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=0, key='', boot='0')
+        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=0, key=None, boot='0')
+
+        devices = self.client.list_devices()
+        self.assertEqual(len(devices), 3)
+
+        d1_remote = self.find_device_by_uid(devices, d1_uid)
+        d2_remote = self.find_device_by_uid(devices, d2_uid)
+
+        before = int(time.time())
+
+        remotes = [(d1_remote, d1_uid), (d2_remote, d2_uid)]
+
+        # check we have not automatically enrolled/authorized devices
+        for remote, uid in remotes:
+            self.assertEqual(remote.status, BoltDevice.CONNECTED)
+            self.assertEqual(remote.stored, False)
+
+        # enable the authorization again now
+        with client.record() as tape:
+            client.auth_mode = 'enabled'
+            res = tape.wait_for_event('property',
+                                      'AuthMode',
+                                      'enabled')
+            self.assertTrue(res)
+        self.assertEqual(client.auth_mode, 'enabled')
+
+        # with iommu enabled, the policy should be adjusted to 'IOMMU'
+        policy = BoltClient.POLICY_DEFAULT
+        for remote, uid in remotes:
+            with remote.record() as tape:
+                client.enroll(uid, policy)
+                res = tape.wait_for_event('property',
+                                          'Stored',
+                                          True)
+                self.assertTrue(res)
+                self.assertEqual(remote.policy, client.POLICY_IOMMU)
+            now = int(time.time())
+            self.assertEqual(remote.stored, True)
+            self.assertTrue(remote.StoreTime > 1)
+            self.assertTrue(remote.StoreTime >= before)
+            self.assertTrue(remote.StoreTime <= now)
+
+
     def test_device_key_upgrade(self):
         dock = TbDevice('Dock',)
         ssd1 = TbDevice('SSD1',)
