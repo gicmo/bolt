@@ -638,7 +638,7 @@ bolt_client_enroll_device_finish (BoltClient   *client,
                                   GError      **error)
 {
   g_autoptr(GError) err = NULL;
-  GVariant *val = NULL;
+  g_autoptr(GVariant) val = NULL;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), FALSE);
   g_return_val_if_fail (G_IS_ASYNC_RESULT (res), FALSE);
@@ -763,9 +763,9 @@ allop_one_done (GObject      *source_object,
                 GAsyncResult *res,
                 gpointer      user_data)
 {
+  g_autoptr(GVariant) val = NULL;
   BoltClient *client;
   GDBusConnection *bus;
-  GVariant *val = NULL;
   gboolean done;
   GError *err = NULL;
   GQueue *ops;
