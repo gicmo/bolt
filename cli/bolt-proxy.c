@@ -206,6 +206,7 @@ bolt_proxy_get_dbus_property (GObject    *proxy,
   else
     {
       g_dbus_gvariant_to_gvalue (val, value);
+      handled = TRUE;
     }
 
   return handled;
