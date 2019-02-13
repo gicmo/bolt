@@ -59,6 +59,10 @@ char *bolt_strstrip (char *string);
 gboolean bolt_str_parse_as_int (const char *str,
                                 gint       *ret);
 
+gboolean bolt_str_parse_as_uint64 (const char *str,
+                                   guint64    *ret,
+                                   GError    **error);
+
 /* replacing string pointers, like g_set_object, g_set_error ... */
 static inline gboolean
 bolt_set_str (char **target, char *str)

@@ -20,8 +20,11 @@
 
 #include "config.h"
 
+#include "bolt-error.h"
 #include "bolt-macros.h"
 #include "bolt-str.h"
+
+#include <gio/gio.h>
 
 #include <errno.h>
 #include <string.h>
@@ -289,6 +292,41 @@ bolt_str_parse_as_int (const char *str,
 
   if (ret)
     *ret = (gint) val;
+
+  return TRUE;
+}
+
+gboolean
+bolt_str_parse_as_uint64 (const char *str,
+                          guint64    *ret,
+                          GError    **error)
+{
+  guint64 val;
+  char *end;
+
+  g_return_val_if_fail (str != NULL, FALSE);
+
+  errno = 0;
+  val = g_ascii_strtoull (str, &end, 0);
+
+  if (val == 0 && (errno != 0 || str == end))
+    {
+      if (errno == 0)
+        errno = EINVAL;
+
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "failed to parse '%s' as unsigned integer", str);
+      return FALSE;
+    }
+  else if (val == G_MAXUINT64 && errno == ERANGE)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "parsing '%s' overflows unsigned integer", str);
+      return FALSE;
+    }
+
+  if (ret)
+    *ret = val;
 
   return TRUE;
 }

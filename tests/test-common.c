@@ -1251,6 +1251,43 @@ test_str_erase (TestRng *tt, gconstpointer user_data)
 }
 
 static void
+test_str_parse_uint64 (TestRng *tt, gconstpointer user_data)
+{
+  struct
+  {
+    const char *str;
+    guint64     val;
+    gboolean    error;
+  } table[] = {
+    {"0",                    0,                  FALSE},
+    {"1",                    1,                  FALSE},
+    {"0xffffffffffffffff",   0xffffffffffffffff, FALSE}, /* G_MAXUINT64 */
+    {"notauint64",           0,                  TRUE},
+    {"18446744073709551616", 0,                  TRUE}, /* overflow (G_MAXUINT64 + 1) */
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+    {
+      g_autoptr(GError) err = NULL;
+      gboolean ok;
+      guint64 v;
+
+      ok = bolt_str_parse_as_uint64 (table[i].str, &v, &err);
+      if (table[i].error)
+        {
+          g_assert_nonnull (err);
+          g_assert_false (ok);
+        }
+      else
+        {
+          g_assert_cmpuint (table[i].val, ==, v);
+          g_assert_true (ok);
+        }
+    }
+}
+
+
+static void
 test_str_set (TestRng *tt, gconstpointer user_data)
 {
   g_autofree char *target = NULL;
@@ -1775,6 +1812,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_str_erase,
+              NULL);
+
+  g_test_add ("/common/str/parse/uint64",
+              TestRng,
+              NULL,
+              NULL,
+              test_str_parse_uint64,
               NULL);
 
   g_test_add ("/common/str/set",
