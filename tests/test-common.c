@@ -1286,6 +1286,44 @@ test_str_parse_uint64 (TestRng *tt, gconstpointer user_data)
     }
 }
 
+static void
+test_str_parse_boolean (TestRng *tt, gconstpointer user_data)
+{
+  struct
+  {
+    const char *str;
+    gboolean    val;
+    gboolean    error;
+  } table[] = {
+    {"TRUE",      TRUE,  FALSE},
+    {"YES",       TRUE,  FALSE},
+    {"1",         TRUE,  FALSE},
+    {"FALSE",     FALSE, FALSE},
+    {"no",        FALSE, FALSE},
+    {"0",         FALSE, FALSE},
+    {"notabool",  FALSE, TRUE},
+    {"12",        FALSE, TRUE},
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+    {
+      g_autoptr(GError) err = NULL;
+      gboolean ok;
+      gboolean v;
+
+      ok = bolt_str_parse_as_boolean (table[i].str, &v, &err);
+      if (table[i].error)
+        {
+          g_assert_nonnull (err);
+          g_assert_false (ok);
+        }
+      else
+        {
+          g_assert_cmpuint (table[i].val, ==, v);
+          g_assert_true (ok);
+        }
+    }
+}
 
 static void
 test_str_set (TestRng *tt, gconstpointer user_data)
@@ -1819,6 +1857,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_str_parse_uint64,
+              NULL);
+
+  g_test_add ("/common/str/parse/boolean",
+              TestRng,
+              NULL,
+              NULL,
+              test_str_parse_boolean,
               NULL);
 
   g_test_add ("/common/str/set",

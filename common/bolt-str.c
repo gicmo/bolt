@@ -332,6 +332,45 @@ bolt_str_parse_as_uint64 (const char *str,
 }
 
 gboolean
+bolt_str_parse_as_boolean (const char *str,
+                           gboolean   *ret,
+                           GError    **error)
+{
+  struct
+  {
+    const char *s;
+    gboolean    v;
+  } table[] = {
+    {"1",    TRUE}, {"0",     FALSE},
+    /* true, false */
+    {"t",    TRUE}, {"f",     FALSE},
+    {"true", TRUE}, {"false", FALSE},
+    /* yes, no */
+    {"y",    TRUE}, {"n",     FALSE},
+    {"yes",  TRUE}, {"no",    FALSE},
+    /* on, off */
+    {"on",   TRUE}, {"off",   FALSE},
+  };
+
+  g_return_val_if_fail (str != NULL, FALSE);
+
+  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+    {
+      if (bolt_strcaseeq (table[i].s, str))
+        {
+          if (ret)
+            *ret = table[i].v;
+
+          return TRUE;
+        }
+    }
+
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+               "failed to parse '%s' as boolean", str);
+  return FALSE;
+}
+
+gboolean
 bolt_set_strdup_printf (char      **target,
                         const char *fmt,
                         ...)
