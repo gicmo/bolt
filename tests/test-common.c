@@ -1251,6 +1251,59 @@ test_str_erase (TestRng *tt, gconstpointer user_data)
 }
 
 static void
+test_str_parse_int (TestRng *tt, gconstpointer user_data)
+{
+  struct
+  {
+    const char *str;
+    gint        val;
+    gboolean    error;
+  } table[] = {
+    {"0",                                        0,                FALSE},
+    {"1",                                        1,                FALSE},
+    {"-1",                                      -1,                FALSE},
+#if __SIZEOF_INT__ == 4
+    {"2147483647",                      2147483647,                FALSE}, /* MAX_INT */
+    {"-2147483648",                    -2147483648,                FALSE}, /* MIN_INT */
+    {"2147483648",                               0,                TRUE},  /* MAX_INT + 1 */
+    {"-2147483649",                              0,                TRUE},  /* MIN_INT - 1 */
+#elif __SIZEOF_INT__ == 8
+    {"9223372036854775807",    9223372036854775807,                FALSE}, /* MAX_INT */
+    {"-9223372036854775808",  -9223372036854775808,                FALSE}, /* MIN_INT */
+    {"9223372036854775808",                      0,                TRUE},  /* MAX_INT + 1 */
+    {"-9223372036854775809",                     0,                TRUE},  /* MIN_INT - 1 */
+#else
+    #warning __SIZEOF_INT__ not handled
+#endif
+    {"notanint",                                 0,                TRUE},
+    {"9223372036854775808",                      0,                TRUE}, /* overflow */
+    {"-9223372036854775809",                     0,                TRUE}, /* underflow */
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+    {
+      gboolean ok;
+      gint v;
+
+      errno = 0;
+      ok = bolt_str_parse_as_int (table[i].str, &v);
+
+      if (table[i].error)
+        {
+          int err = errno;
+
+          g_assert_false (ok);
+          g_assert_cmpint (err, !=, 0);
+        }
+      else
+        {
+          g_assert_cmpuint (table[i].val, ==, v);
+          g_assert_true (ok);
+        }
+    }
+}
+
+static void
 test_str_parse_uint64 (TestRng *tt, gconstpointer user_data)
 {
   struct
@@ -1850,6 +1903,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_str_erase,
+              NULL);
+
+  g_test_add ("/common/str/parse/int",
+              TestRng,
+              NULL,
+              NULL,
+              test_str_parse_int,
               NULL);
 
   g_test_add ("/common/str/parse/uint64",
