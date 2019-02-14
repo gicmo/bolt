@@ -195,7 +195,7 @@ sysfs_get_sysattr_value_as_int (struct udev_device *udev,
   if (str == NULL)
     return -errno;
 
-  ok = bolt_str_parse_as_int (str, &val);
+  ok = bolt_str_parse_as_int (str, &val, NULL);
 
   if (!ok)
     return -errno;

@@ -58,7 +58,8 @@ char *bolt_strdup_validate (const char *string);
 char *bolt_strstrip (char *string);
 
 gboolean bolt_str_parse_as_int (const char *str,
-                                gint       *ret);
+                                gint       *ret,
+                                GError    **error);
 
 gboolean bolt_str_parse_as_uint64 (const char *str,
                                    guint64    *ret,

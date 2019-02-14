@@ -565,7 +565,7 @@ bolt_domain_new_for_udev (struct udev_device *udev,
   if (g_str_has_prefix (sysname, "domain"))
     {
       const char *ptr = sysname + strlen ("domain");
-      bolt_str_parse_as_int (ptr, &sort);
+      bolt_str_parse_as_int (ptr, &sort, NULL);
     }
 
   security = bolt_sysfs_security_for_device (udev, error);

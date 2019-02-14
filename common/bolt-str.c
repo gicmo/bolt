@@ -259,7 +259,8 @@ bolt_strstrip (char *string)
 
 gboolean
 bolt_str_parse_as_int (const char *str,
-                       gint       *ret)
+                       gint       *ret,
+                       GError    **error)
 {
   char *end;
   gint64 val;
@@ -269,24 +270,23 @@ bolt_str_parse_as_int (const char *str,
   errno = 0;
   val = g_ascii_strtoll (str, &end, 0);
 
-  /* conversion errors */
-  if (val == 0 && errno != 0)
-    return FALSE;
-
-  /* check over/underflow */
-  if ((val == G_MAXINT64 || val == G_MININT64) &&
-      errno == ERANGE)
-    return FALSE;
-
-  if (str == end)
+  if (val == 0 && (errno != 0 || str == end))
     {
-      errno = EINVAL;
+      if (errno == 0)
+        errno = EINVAL;
+
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "failed to parse '%s' as unsigned integer", str);
       return FALSE;
     }
-
-  if (val > G_MAXINT || val < G_MININT)
+  else if (((val == G_MAXINT64 || val == G_MININT64) && errno == ERANGE) ||
+           val > G_MAXINT || val < G_MININT)
     {
-      errno = ERANGE;
+      if (errno == 0)
+        errno = ERANGE;
+
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "parsing '%s' overflows unsigned integer", str);
       return FALSE;
     }
 

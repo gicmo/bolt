@@ -506,7 +506,6 @@ bolt_read_int_at (int         dirfd,
                   GError    **error)
 {
   g_autofree char *str = NULL;
-  gboolean ok;
 
   g_return_val_if_fail (name != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
@@ -516,17 +515,7 @@ bolt_read_int_at (int         dirfd,
   if (str == NULL)
     return FALSE;
 
-  ok = bolt_str_parse_as_int (str, val);
-
-  if (!ok)
-    {
-      g_set_error (error, G_IO_ERROR,
-                   g_io_error_from_errno (errno),
-                   "could not parse str '%s' as integer: %s",
-                   str, g_strerror (errno));
-    }
-
-  return ok;
+  return bolt_str_parse_as_int (str, val, error);
 }
 
 gboolean

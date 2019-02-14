@@ -1282,16 +1282,18 @@ test_str_parse_int (TestRng *tt, gconstpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
     {
+      g_autoptr(GError) error = NULL;
       gboolean ok;
       gint v;
 
       errno = 0;
-      ok = bolt_str_parse_as_int (table[i].str, &v);
+      ok = bolt_str_parse_as_int (table[i].str, &v, &error);
 
       if (table[i].error)
         {
           int err = errno;
 
+          g_assert_nonnull (error);
           g_assert_false (ok);
           g_assert_cmpint (err, !=, 0);
         }
