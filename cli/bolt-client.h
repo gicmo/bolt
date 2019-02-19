@@ -61,6 +61,10 @@ BoltDevice *    bolt_client_get_device (BoltClient   *client,
                                         GCancellable *cancellable,
                                         GError      **error);
 
+BoltDevice *    bolt_client_find_device (BoltClient *client,
+                                         const char *name,
+                                         GError    **error);
+
 BoltDevice *    bolt_client_enroll_device (BoltClient  *client,
                                            const char  *uid,
                                            BoltPolicy   policy,

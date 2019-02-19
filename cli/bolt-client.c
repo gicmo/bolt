@@ -551,6 +551,31 @@ bolt_client_get_device (BoltClient   *client,
 }
 
 BoltDevice *
+bolt_client_find_device (BoltClient *client,
+                         const char *name,
+                         GError    **error)
+{
+  g_autoptr(GPtrArray) devices = NULL;
+
+  devices = bolt_client_list_devices (client, NULL, error);
+  if (devices == NULL)
+    return NULL;
+
+  for (guint i = 0; i < devices->len; i++)
+    {
+      BoltDevice *dev = g_ptr_array_index (devices, i);
+
+      if (bolt_streq (name, bolt_device_get_uid (dev)) ||
+          bolt_streq (name, bolt_device_get_name (dev)))
+        return g_object_ref (dev);
+    }
+
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+               "could not find device matching '%s'", name);
+  return NULL;
+}
+
+BoltDevice *
 bolt_client_enroll_device (BoltClient  *client,
                            const char  *uid,
                            BoltPolicy   policy,
