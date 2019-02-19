@@ -43,6 +43,10 @@ GPtrArray *     bolt_client_list_domains (BoltClient   *client,
                                           GCancellable *cancellable,
                                           GError      **error);
 
+BoltDomain *    bolt_client_find_domain (BoltClient *client,
+                                         const char *name,
+                                         GError    **error);
+
 GPtrArray *     bolt_client_list_devices (BoltClient   *client,
                                           GCancellable *cancellable,
                                           GError      **error);

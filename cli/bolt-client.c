@@ -23,6 +23,7 @@
 #include "bolt-device.h"
 #include "bolt-error.h"
 #include "bolt-names.h"
+#include "bolt-str.h"
 
 #include <gio/gio.h>
 
@@ -403,6 +404,31 @@ bolt_client_list_domains (BoltClient   *client,
     }
 
   return g_steal_pointer (&domains);
+}
+
+BoltDomain *
+bolt_client_find_domain (BoltClient *client,
+                         const char *name,
+                         GError    **error)
+{
+  g_autoptr(GPtrArray) domains = NULL;
+
+  domains = bolt_client_list_domains (client, NULL, error);
+  if (domains == NULL)
+    return NULL;
+
+  for (guint i = 0; i < domains->len; i++)
+    {
+      BoltDomain *dom = g_ptr_array_index (domains, i);
+
+      if (bolt_streq (name, bolt_domain_get_uid (dom)) ||
+          bolt_streq (name, bolt_domain_get_id (dom)))
+        return g_object_ref (dom);
+    }
+
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+               "could not find domain matching '%s'", name);
+  return NULL;
 }
 
 GPtrArray *
