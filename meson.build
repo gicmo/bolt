@@ -184,6 +184,7 @@ common_sources = [
   'common/bolt-enums.c',
   'common/bolt-error.c',
   'common/bolt-fs.c',
+  'common/bolt-glue.c',
   'common/bolt-io.c',
   'common/bolt-names.c',
   'common/bolt-rnd.c',
