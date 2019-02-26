@@ -53,7 +53,8 @@ bolt_properties_for_type (GType target)
 gboolean
 bolt_properties_find (GPtrArray   *specs,
                       const char  *name,
-                      GParamSpec **spec)
+                      GParamSpec **spec,
+                      GError     **error)
 {
 
   if (name == NULL || specs == NULL)
@@ -70,6 +71,9 @@ bolt_properties_find (GPtrArray   *specs,
           return TRUE;
         }
     }
+
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+               "property '%s' not found", name);
 
   return FALSE;
 }

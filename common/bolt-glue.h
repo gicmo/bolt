@@ -26,8 +26,10 @@ G_BEGIN_DECLS
 
 GPtrArray *           bolt_properties_for_type (GType target);
 
+
 gboolean              bolt_properties_find (GPtrArray   *specs,
                                             const char  *name,
-                                            GParamSpec **spec);
+                                            GParamSpec **spec,
+                                            GError     **error);
 
 G_END_DECLS
