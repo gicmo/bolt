@@ -271,6 +271,7 @@ print_device (BoltDevice *dev, gboolean verbose)
 
 static SubCommand subcommands[] = {
   {"authorize",    authorize,     "Authorize a device"},
+  {"config",       config,        "Get or set global, device or domain properties"},
   {"domains",      list_domains,  "List the active thunderbolt domains"},
   {"enroll",       enroll,        "Authorize and store a device in the database"},
   {"forget",       forget,        "Remove a stored device from the database"},
