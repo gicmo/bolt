@@ -269,17 +269,6 @@ print_device (BoltDevice *dev, gboolean verbose)
 
 /* ****  */
 
-typedef int (*run_t)(BoltClient *client,
-                     int         argc,
-                     char      **argv);
-
-typedef struct SubCommand
-{
-  const char *name;
-  run_t       fn;
-  const char *desc;
-} SubCommand;
-
 static SubCommand subcommands[] = {
   {"authorize",    authorize,     "Authorize a device"},
   {"domains",      list_domains,  "List the active thunderbolt domains"},
@@ -288,26 +277,77 @@ static SubCommand subcommands[] = {
   {"info",         info,          "Show information about a device"},
   {"list",         list_devices,  "List connected and stored devices"},
   {"monitor",      monitor,       "Listen and print changes"},
-  {"power",        power,         "Force power configuration of the controller"}
+  {"power",        power,         "Force power configuration of the controller"},
+  {NULL,           NULL,          NULL},
 };
 
-#define SUMMARY_SPACING 17
-static void
-option_context_make_summary (GOptionContext *ctx)
+char *
+subcommands_make_summary (const SubCommand *cmds)
 {
-  g_autoptr(GString) s = NULL;
+  GString *s = g_string_new ("Commands:");
+  unsigned int spacing = 0;
 
-  s = g_string_new ("Commands:");
+  for (const SubCommand *c = cmds; c && c->name; c++)
+    spacing = MAX (spacing, strlen (c->name));
 
-  for (size_t i = 0; i < G_N_ELEMENTS (subcommands); i++)
+  spacing = MAX (15, spacing) + 2;
+
+  for (const SubCommand *c = cmds; c && c->name; c++)
     {
-      const SubCommand *c = &subcommands[i];
-      int spacing = SUMMARY_SPACING - strlen (c->name);
+      int space = spacing - strlen (c->name);
       g_string_append_printf (s, "\n  %s", c->name);
-      g_string_append_printf (s, "%*s%s", spacing, "", c->desc);
+      g_string_append_printf (s, "%*s%s", space, "", c->desc);
     }
 
-  g_option_context_set_summary (ctx, s->str);
+  return g_string_free (s, FALSE);
+}
+
+const SubCommand *
+subcommands_find (const SubCommand *cmds,
+                  const char       *cmdname,
+                  GError          **error)
+{
+  const SubCommand *cmd = NULL;
+
+  for (const SubCommand *c = cmds; !cmd && c && c->name; c++)
+    if (g_str_equal (cmdname, c->name))
+      cmd = c;
+
+  if (cmd == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
+                   "Invalid command: %s", cmdname);
+      return NULL;
+    }
+
+  return cmd;
+}
+
+int
+subcommand_run (const SubCommand *cmd,
+                BoltClient       *client,
+                int               argc,
+                char            **argv)
+{
+  g_autofree char *cmdline = NULL;
+  g_autofree char **args = NULL;
+  int count;
+
+  cmdline = g_strconcat (g_get_prgname (),
+                         " ",
+                         cmd->name,
+                         NULL);
+
+  g_set_prgname (cmdline);
+
+  count = MAX (argc - 1, 1);
+  args = g_new0 (char *, count + 1);
+
+  args[0] = cmdline;
+  for (int i = 1; i < count; i++)
+    args[i] = argv[i + 1];
+
+  return cmd->fn (client, count, args);
 }
 
 int
@@ -316,8 +356,8 @@ main (int argc, char **argv)
   g_autoptr(GOptionContext) optctx = NULL;
   g_autoptr(BoltClient) client = NULL;
   g_autoptr(GError) error = NULL;
-  g_autofree char *cmdline = NULL;
-  SubCommand *cmd = NULL;
+  g_autofree char *summary = NULL;
+  const SubCommand *cmd = NULL;
   const char *cmdname = NULL;
   const char *uuid_fmtstr = "full";
   gboolean version = FALSE;
@@ -333,7 +373,8 @@ main (int argc, char **argv)
   optctx = g_option_context_new ("[COMMAND]");
   g_option_context_add_main_entries (optctx, options, NULL);
 
-  option_context_make_summary (optctx);
+  summary = subcommands_make_summary (subcommands);
+  g_option_context_set_summary (optctx, summary);
   g_option_context_set_strict_posix (optctx, TRUE);
 
   if (!g_option_context_parse (optctx, &argc, &argv, &error))
@@ -362,26 +403,10 @@ main (int argc, char **argv)
       return EXIT_FAILURE;
     }
 
-  for (size_t i = 0; !cmd && i < G_N_ELEMENTS (subcommands); i++)
-    if (g_str_equal (cmdname, subcommands[i].name))
-      cmd = &subcommands[i];
+  cmd = subcommands_find (subcommands, cmdname, &error);
 
   if (cmd == NULL)
-    {
-      g_set_error (&error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                   "Invalid command: %s", cmdname);
-      return usage_error (error);
-    }
+    return usage_error (error);
 
-  cmdline = g_strconcat (g_get_prgname (),
-                         " ",
-                         cmd->name,
-                         NULL);
-
-  g_set_prgname (cmdline);
-  argv[1] = cmdline;
-  argv += 1;
-  argc -= 1;
-
-  return cmd->fn (client, argc, argv);
+  return subcommand_run (cmd, client, argc, argv);
 }

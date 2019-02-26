@@ -25,6 +25,26 @@
 
 G_BEGIN_DECLS
 
+typedef int (*run_t)(BoltClient *client,
+                     int         argc,
+                     char      **argv);
+
+typedef struct SubCommand
+{
+  const char *name;
+  run_t       fn;
+  const char *desc;
+} SubCommand;
+
+char *              subcommands_make_summary (const SubCommand *cmds);
+const SubCommand *  subcommands_find (const SubCommand *cmds,
+                                      const char       *cmdname,
+                                      GError          **error);
+int                 subcommand_run (const SubCommand *cmd,
+                                    BoltClient       *client,
+                                    int               argc,
+                                    char            **argv);
+
 int      usage_error (GError *error);
 int      usage_error_need_arg (const char *arg);
 int      usage_error_too_many_args (void);
