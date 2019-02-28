@@ -62,21 +62,21 @@ bolt_domain_class_init (BoltDomainClass *klass)
                          "Uid", NULL,
                          "unknown",
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NICK);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_ID] =
     g_param_spec_string ("id",
                          "Id", NULL,
                          "unknown",
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NICK);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_SYSPATH] =
     g_param_spec_string ("syspath",
                          "SysfsPath", NULL,
                          "unknown",
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NICK);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_SECURITY]
     = g_param_spec_enum ("security",
@@ -84,14 +84,14 @@ bolt_domain_class_init (BoltDomainClass *klass)
                          BOLT_TYPE_SECURITY,
                          BOLT_SECURITY_UNKNOWN,
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NAME);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_BOOTACL] =
     g_param_spec_boxed ("bootacl",
                         "BootACL", NULL,
                         G_TYPE_STRV,
                         G_PARAM_READABLE |
-                        G_PARAM_STATIC_NAME);
+                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_IOMMU] =
     g_param_spec_boolean ("iommu",
