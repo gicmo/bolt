@@ -61,7 +61,7 @@ bolt_power_class_init (BoltPowerClass *klass)
                           "Supported", NULL,
                           FALSE,
                           G_PARAM_READABLE |
-                          G_PARAM_STATIC_NICK);
+                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_STATE] =
     g_param_spec_enum ("state",
