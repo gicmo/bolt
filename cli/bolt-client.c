@@ -103,18 +103,17 @@ bolt_client_class_init (BoltClientClass *klass)
   proxy_class->get_dbus_signals = bolt_client_get_dbus_signals;
 
   props[PROP_VERSION]
-    = g_param_spec_uint ("version",
-                         "Version", NULL,
+    = g_param_spec_uint ("version", "Version", NULL,
                          0, G_MAXUINT, 0,
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NAME);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_PROBING]
     = g_param_spec_boolean ("probing",
                             "Probing", NULL,
                             FALSE,
                             G_PARAM_READABLE |
-                            G_PARAM_STATIC_NAME);
+                            G_PARAM_STATIC_STRINGS);
 
   props[PROP_POLICY]
     = g_param_spec_enum ("default-policy",
@@ -122,7 +121,7 @@ bolt_client_class_init (BoltClientClass *klass)
                          BOLT_TYPE_POLICY,
                          BOLT_POLICY_UNKNOWN,
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NAME);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_SECURITY]
     = g_param_spec_enum ("security-level",
@@ -130,7 +129,7 @@ bolt_client_class_init (BoltClientClass *klass)
                          BOLT_TYPE_SECURITY,
                          BOLT_SECURITY_UNKNOWN,
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NAME);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_AUTHMODE] =
     g_param_spec_flags ("auth-mode", "AuthMode", NULL,
@@ -145,7 +144,7 @@ bolt_client_class_init (BoltClientClass *klass)
                        BOLT_TYPE_POWER_STATE,
                        BOLT_FORCE_POWER_UNSET,
                        G_PARAM_READABLE |
-                       G_PARAM_STATIC_NAME);
+                       G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (gobject_class,
                                      PROP_LAST,
