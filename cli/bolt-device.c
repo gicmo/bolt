@@ -77,21 +77,21 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          "Uid", NULL,
                          "unknown",
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NICK);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_NAME] =
     g_param_spec_string ("name",
                          "Name", NULL,
                          "unknown",
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NICK);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_VENDOR] =
     g_param_spec_string ("vendor",
                          "Vendor", NULL,
                          "unknown",
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NICK);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_TYPE] =
     g_param_spec_enum ("type",
@@ -99,7 +99,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        BOLT_TYPE_DEVICE_TYPE,
                        BOLT_DEVICE_PERIPHERAL,
                        G_PARAM_READABLE |
-                       G_PARAM_STATIC_NICK);
+                       G_PARAM_STATIC_STRINGS);
 
   props[PROP_STATUS] =
     g_param_spec_enum ("status",
@@ -107,7 +107,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        BOLT_TYPE_STATUS,
                        BOLT_STATUS_DISCONNECTED,
                        G_PARAM_READABLE |
-                       G_PARAM_STATIC_NICK);
+                       G_PARAM_STATIC_STRINGS);
 
   props[PROP_AUTHFLAGS] =
     g_param_spec_flags ("authflags",
@@ -122,21 +122,21 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          "Parent", NULL,
                          "unknown",
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NICK);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_SYSPATH] =
     g_param_spec_string ("syspath",
                          "SysfsPath", NULL,
                          "unknown",
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NICK);
+                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_DOMAIN] =
     g_param_spec_string ("domain",
                          "Domain", NULL,
                          "unknown",
                          G_PARAM_READABLE |
-                         G_PARAM_STATIC_NICK);
+                         G_PARAM_STATIC_STRINGS);
 
 
   props[PROP_CONNTIME] =
@@ -158,7 +158,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
                           "Stored", NULL,
                           FALSE,
                           G_PARAM_READABLE |
-                          G_PARAM_STATIC_NICK);
+                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_POLICY] =
     g_param_spec_enum ("policy",
@@ -166,7 +166,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        BOLT_TYPE_POLICY,
                        BOLT_POLICY_DEFAULT,
                        G_PARAM_READABLE |
-                       G_PARAM_STATIC_NICK);
+                       G_PARAM_STATIC_STRINGS);
 
   props[PROP_KEY] =
     g_param_spec_enum ("key",
@@ -174,7 +174,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        BOLT_TYPE_KEY_STATE,
                        BOLT_KEY_MISSING,
                        G_PARAM_READABLE |
-                       G_PARAM_STATIC_NICK);
+                       G_PARAM_STATIC_STRINGS);
 
   props[PROP_STORETIME] =
     g_param_spec_uint64 ("storetime",
