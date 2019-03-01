@@ -58,44 +58,44 @@ bolt_domain_class_init (BoltDomainClass *klass)
   gobject_class->get_property = bolt_proxy_property_getter;
 
   props[PROP_UID] =
-    g_param_spec_string ("uid",
-                         "Uid", NULL,
+    g_param_spec_string ("uid", "Uid",
+                         "The unique identifier.",
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_ID] =
-    g_param_spec_string ("id",
-                         "Id", NULL,
+    g_param_spec_string ("id", "Id",
+                         "The sysfs name.",
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_SYSPATH] =
-    g_param_spec_string ("syspath",
-                         "SysfsPath", NULL,
+    g_param_spec_string ("syspath", "SysfsPath",
+                         "Sysfs path of the udev device.",
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_SECURITY]
-    = g_param_spec_enum ("security",
-                         "SecurityLevel", NULL,
+    = g_param_spec_enum ("security", "SecurityLevel",
+                         "The security level set in the BIOS.",
                          BOLT_TYPE_SECURITY,
                          BOLT_SECURITY_UNKNOWN,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_BOOTACL] =
-    g_param_spec_boxed ("bootacl",
-                        "BootACL", NULL,
+    g_param_spec_boxed ("bootacl", "BootACL",
+                        "Pre-boot access control list (uuids).",
                         G_TYPE_STRV,
                         G_PARAM_READABLE |
                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_IOMMU] =
-    g_param_spec_boolean ("iommu",
-                          "IOMMU", NULL,
+    g_param_spec_boolean ("iommu", "IOMMU",
+                          "Is IOMMU based DMA protection active?",
                           FALSE,
                           G_PARAM_READABLE |
                           G_PARAM_STATIC_STRINGS);
