@@ -73,119 +73,119 @@ bolt_device_class_init (BoltDeviceClass *klass)
   gobject_class->get_property = bolt_proxy_property_getter;
 
   props[PROP_UID] =
-    g_param_spec_string ("uid",
-                         "Uid", NULL,
+    g_param_spec_string ("uid", "Uid",
+                         "The unique identifer.",
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_NAME] =
-    g_param_spec_string ("name",
-                         "Name", NULL,
+    g_param_spec_string ("name", "Name",
+                         "Human readable device name.",
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_VENDOR] =
-    g_param_spec_string ("vendor",
-                         "Vendor", NULL,
+    g_param_spec_string ("vendor", "Vendor",
+                         "The name of the device vendor",
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_TYPE] =
-    g_param_spec_enum ("type",
-                       "Type", NULL,
+    g_param_spec_enum ("type", "Type",
+                       "The type, i.e. host or peripheral.",
                        BOLT_TYPE_DEVICE_TYPE,
                        BOLT_DEVICE_PERIPHERAL,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_STATUS] =
-    g_param_spec_enum ("status",
-                       "Status", NULL,
+    g_param_spec_enum ("status", "Status",
+                       "The device status.",
                        BOLT_TYPE_STATUS,
                        BOLT_STATUS_DISCONNECTED,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_AUTHFLAGS] =
-    g_param_spec_flags ("authflags",
-                        "AuthFlags", NULL,
+    g_param_spec_flags ("authflags", "AuthFlags",
+                        "Flags describing the authentication state.",
                         BOLT_TYPE_AUTH_FLAGS,
                         BOLT_AUTH_NONE,
                         G_PARAM_READABLE |
                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_PARENT] =
-    g_param_spec_string ("parent",
-                         "Parent", NULL,
+    g_param_spec_string ("parent", "Parent",
+                         "Unique identifier of the parent.",
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_SYSPATH] =
-    g_param_spec_string ("syspath",
-                         "SysfsPath", NULL,
+    g_param_spec_string ("syspath", "SysfsPath",
+                         "The sysfs path of the udev device.",
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_DOMAIN] =
-    g_param_spec_string ("domain",
-                         "Domain", NULL,
+    g_param_spec_string ("domain", "Domain",
+                         "Unique id of the corresponding domain.",
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
 
   props[PROP_CONNTIME] =
-    g_param_spec_uint64 ("conntime",
-                         "ConnectTime", NULL,
+    g_param_spec_uint64 ("conntime", "ConnectTime",
+                         "When was the device connected?",
                          0, G_MAXUINT64, 0,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_AUTHTIME] =
-    g_param_spec_uint64 ("authtime",
-                         "AuthorizeTime", NULL,
+    g_param_spec_uint64 ("authtime", "AuthorizeTime",
+                         "When was the device authorized?",
                          0, G_MAXUINT64, 0,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_STORED] =
-    g_param_spec_boolean ("stored",
-                          "Stored", NULL,
+    g_param_spec_boolean ("stored", "Stored",
+                          "Is the device recorded in the database?",
                           FALSE,
                           G_PARAM_READABLE |
                           G_PARAM_STATIC_STRINGS);
 
   props[PROP_POLICY] =
-    g_param_spec_enum ("policy",
-                       "Policy", NULL,
+    g_param_spec_enum ("policy", "Policy",
+                       "What to do when the device is connected?",
                        BOLT_TYPE_POLICY,
                        BOLT_POLICY_DEFAULT,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_KEY] =
-    g_param_spec_enum ("key",
-                       "Key", NULL,
+    g_param_spec_enum ("key", "Key",
+                       "State of the device key.",
                        BOLT_TYPE_KEY_STATE,
                        BOLT_KEY_MISSING,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_STORETIME] =
-    g_param_spec_uint64 ("storetime",
-                         "StoreTime", NULL,
+    g_param_spec_uint64 ("storetime", "StoreTime",
+                         "When was the device stored?",
                          0, G_MAXUINT64, 0,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_LABEL] =
-    g_param_spec_string ("label",
-                         "Label", NULL,
+    g_param_spec_string ("label", "Label",
+                         "The name given by bolt or the user.",
                          NULL,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
