@@ -103,44 +103,46 @@ bolt_client_class_init (BoltClientClass *klass)
   proxy_class->get_dbus_signals = bolt_client_get_dbus_signals;
 
   props[PROP_VERSION]
-    = g_param_spec_uint ("version", "Version", NULL,
+    = g_param_spec_uint ("version", "Version",
+                         "D-Bus API revision.",
                          0, G_MAXUINT, 0,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_PROBING]
-    = g_param_spec_boolean ("probing",
-                            "Probing", NULL,
+    = g_param_spec_boolean ("probing", "Probing",
+                            "Is the daemon processing new devices?",
                             FALSE,
                             G_PARAM_READABLE |
                             G_PARAM_STATIC_STRINGS);
 
   props[PROP_POLICY]
-    = g_param_spec_enum ("default-policy",
-                         "DefaultPolicy", NULL,
+    = g_param_spec_enum ("default-policy", "DefaultPolicy",
+                         "Policy to use if none was specified.",
                          BOLT_TYPE_POLICY,
                          BOLT_POLICY_UNKNOWN,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_SECURITY]
-    = g_param_spec_enum ("security-level",
-                         "SecurityLevel", NULL,
+    = g_param_spec_enum ("security-level", "SecurityLevel",
+                         "The global security level.",
                          BOLT_TYPE_SECURITY,
                          BOLT_SECURITY_UNKNOWN,
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
   props[PROP_AUTHMODE] =
-    g_param_spec_flags ("auth-mode", "AuthMode", NULL,
+    g_param_spec_flags ("auth-mode", "AuthMode",
+                        "Current authentication mode.",
                         BOLT_TYPE_AUTH_MODE,
                         BOLT_AUTH_ENABLED,
                         G_PARAM_READABLE |
                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_POWERSTATE] =
-    g_param_spec_enum ("power-state",
-                       "PowerState", NULL,
+    g_param_spec_enum ("power-state", "PowerState",
+                       "Current force power state.",
                        BOLT_TYPE_POWER_STATE,
                        BOLT_FORCE_POWER_UNSET,
                        G_PARAM_READABLE |
