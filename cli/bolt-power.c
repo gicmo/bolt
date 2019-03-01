@@ -57,23 +57,23 @@ bolt_power_class_init (BoltPowerClass *klass)
   gobject_class->get_property = bolt_proxy_property_getter;
 
   props[PROP_SUPPORTED] =
-    g_param_spec_boolean ("supported",
-                          "Supported", NULL,
+    g_param_spec_boolean ("supported", "Supported",
+                          "Is forcing power supported?",
                           FALSE,
                           G_PARAM_READABLE |
                           G_PARAM_STATIC_STRINGS);
 
   props[PROP_STATE] =
-    g_param_spec_enum ("state",
-                       "State", NULL,
+    g_param_spec_enum ("state", "State",
+                       "The force power state.",
                        BOLT_TYPE_POWER_STATE,
                        BOLT_FORCE_POWER_UNSET,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_TIMEOUT] =
-    g_param_spec_uint ("timeout",
-                       "Timeout", NULL,
+    g_param_spec_uint ("timeout", "Timeout",
+                       "The force power timeout.",
                        0, G_MAXINT, 0,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
