@@ -194,6 +194,27 @@ test_param_spec_override (TestGlue *tt, gconstpointer data)
   g_assert_cmpstr (id, ==, oid);
 }
 
+static void
+test_props_basic (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(GPtrArray) props = NULL;
+  g_autoptr(GParamSpec) pspec = NULL;
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+
+  props = bolt_properties_for_type (BT_TYPE_GLUE);
+
+  g_assert_nonnull (props);
+  g_assert_cmpuint (props->len, ==, PROP_GLUE_LAST - 2);
+
+  ok = bolt_properties_find (props, "id", &pspec, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_nonnull (pspec);
+
+  g_assert_true (pspec == glue_props[PROP_ID]);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -206,6 +227,13 @@ main (int argc, char **argv)
               NULL,
               test_glue_setup,
               test_param_spec_override,
+              test_glue_teardown);
+
+  g_test_add ("/common/props_basic",
+              TestGlue,
+              NULL,
+              test_glue_setup,
+              test_props_basic,
               test_glue_teardown);
 
   return g_test_run ();
