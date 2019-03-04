@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "bolt-error.h"
+#include "bolt-glue.h"
 #include "bolt-log.h"
 #include "bolt-str.h"
 #include "bolt-store.h"

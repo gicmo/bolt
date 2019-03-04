@@ -25,6 +25,7 @@
 #include "bolt-domain.h"
 #include "bolt-enums.h"
 #include "bolt-error.h"
+#include "bolt-glue.h"
 #include "bolt-io.h"
 #include "bolt-log.h"
 #include "bolt-manager.h"

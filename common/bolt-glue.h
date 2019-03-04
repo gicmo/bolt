@@ -24,12 +24,16 @@
 
 G_BEGIN_DECLS
 
-GPtrArray *           bolt_properties_for_type (GType target);
 
+GParamSpec *          bolt_param_spec_override (GObjectClass *object_class,
+                                                const char   *name);
+
+GPtrArray *           bolt_properties_for_type (GType target);
 
 gboolean              bolt_properties_find (GPtrArray   *specs,
                                             const char  *name,
                                             GParamSpec **spec,
                                             GError     **error);
+
 
 G_END_DECLS

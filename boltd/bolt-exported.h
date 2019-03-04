@@ -115,8 +115,4 @@ gboolean           bolt_exported_emit_signal (BoltExported *exported,
 
 void               bolt_exported_flush (BoltExported *exported);
 
-/* helper methods */
-GParamSpec *       bolt_param_spec_override (GObjectClass *object_class,
-                                             const char   *name);
-
 G_END_DECLS

@@ -24,6 +24,7 @@
 
 #include "bolt-enums.h"
 #include "bolt-error.h"
+#include "bolt-glue.h"
 #include "bolt-str.h"
 
 #include "test-enums.h"
