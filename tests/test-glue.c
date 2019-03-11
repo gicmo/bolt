@@ -22,6 +22,9 @@
 
 #include "bolt-glue.h"
 
+#include "test-enums.h"
+#include "bolt-test-resources.h"
+
 #include <glib.h>
 #include <gio/gio.h>
 #include <glib/gprintf.h>
@@ -215,6 +218,264 @@ test_props_basic (TestGlue *tt, gconstpointer data)
   g_assert_true (pspec == glue_props[PROP_ID]);
 }
 
+static void
+test_wire_conv_enum (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(BoltWireConv) conv = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GVariant) bogus = NULL;
+  g_autoptr(GVariant) var = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  const GVariantType *wire_type;
+  const GParamSpec *prop_spec;
+  gboolean ok;
+  GParamSpec *spec;
+
+  spec = g_param_spec_enum ("test", "Test",
+                            "Test Enumeration",
+                            BOLT_TYPE_TEST_ENUM,
+                            BOLT_TEST_TWO,
+                            G_PARAM_READWRITE |
+                            G_PARAM_STATIC_STRINGS);
+
+  conv = bolt_wire_conv_for (G_VARIANT_TYPE_STRING, spec);
+
+  g_assert_nonnull (conv);
+
+  wire_type = bolt_wire_conv_get_wire_type (conv);
+  prop_spec = bolt_wire_conv_get_prop_spec (conv);
+
+  g_assert_cmpstr ((const char *) wire_type,
+                   ==,
+                   (const char *) G_VARIANT_TYPE_STRING);
+
+  g_assert_true (prop_spec == spec);
+
+  g_value_init (&val, BOLT_TYPE_TEST_ENUM);
+  g_value_set_enum (&val, BOLT_TEST_THREE);
+
+  /* to the wire */
+  var = bolt_wire_conv_to_wire (conv, &val, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (var);
+
+  g_assert_cmpstr (g_variant_get_string (var, NULL),
+                   ==,
+                   "three");
+
+  /* from the wire */
+  g_value_reset (&val);
+  g_assert_cmpint (g_value_get_enum (&val), !=, BOLT_TEST_THREE);
+
+  ok = bolt_wire_conv_from_wire (conv, var, &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_cmpint (g_value_get_enum (&val),
+                   ==,
+                   BOLT_TEST_THREE);
+
+  /* values from the wire can not be trusted */
+  g_value_reset (&val);
+  g_assert_cmpint (g_value_get_enum (&val), !=, BOLT_TEST_THREE);
+  g_assert_cmpint (g_value_get_enum (&val), !=, BOLT_TEST_TWO);
+
+  bogus = g_variant_ref_sink (g_variant_new_string ("bogus-bogus"));
+  ok = bolt_wire_conv_from_wire (conv, bogus, &val, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_assert_cmpint (g_value_get_enum (&val),
+                   ==,
+                   G_PARAM_SPEC_ENUM (spec)->default_value);
+}
+
+static void
+test_wire_conv_flags (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(BoltWireConv) conv = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GVariant) bogus = NULL;
+  g_autoptr(GVariant) var = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  const GVariantType *wire_type;
+  const GParamSpec *prop_spec;
+  gboolean ok;
+  GParamSpec *spec;
+
+  spec = g_param_spec_flags ("test", "Test",
+                             "Test Flags",
+                             BOLT_TYPE_KITT_FLAGS,
+                             BOLT_KITT_DEFAULT,
+                             G_PARAM_READWRITE |
+                             G_PARAM_STATIC_STRINGS);
+
+  conv = bolt_wire_conv_for (G_VARIANT_TYPE_STRING, spec);
+
+  g_assert_nonnull (conv);
+
+  wire_type = bolt_wire_conv_get_wire_type (conv);
+  prop_spec = bolt_wire_conv_get_prop_spec (conv);
+
+  g_assert_cmpstr ((const char *) wire_type,
+                   ==,
+                   (const char *) G_VARIANT_TYPE_STRING);
+
+  g_assert_true (prop_spec == spec);
+
+  g_value_init (&val, BOLT_TYPE_KITT_FLAGS);
+  g_value_set_flags (&val, BOLT_KITT_ENABLED);
+
+  /* to the wire */
+  var = bolt_wire_conv_to_wire (conv, &val, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (var);
+
+  g_assert_cmpstr (g_variant_get_string (var, NULL),
+                   ==,
+                   "enabled");
+
+  /* from the wire */
+  g_value_reset (&val);
+  g_assert_cmpint (g_value_get_flags (&val), !=, BOLT_KITT_ENABLED);
+
+  ok = bolt_wire_conv_from_wire (conv, var, &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_cmpint (g_value_get_flags (&val),
+                   ==,
+                   BOLT_KITT_ENABLED);
+
+  /* values from the wire can not be trusted */
+  g_value_reset (&val);
+
+  bogus = g_variant_ref_sink (g_variant_new_string ("bogus-bogus"));
+  ok = bolt_wire_conv_from_wire (conv, bogus, &val, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_assert_cmpint (g_value_get_flags (&val),
+                   ==,
+                   G_PARAM_SPEC_FLAGS (spec)->default_value);
+}
+
+static void
+test_wire_conv_object (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(BoltWireConv) conv = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GVariant) bogus = NULL;
+  g_autoptr(GVariant) var = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  const GVariantType *wire_type;
+  const GParamSpec *prop_spec;
+  gboolean ok;
+  GParamSpec *spec;
+
+  spec = g_param_spec_object ("obj", "Obj",
+                              "Object Test",
+                              BT_TYPE_GLUE,
+                              G_PARAM_STATIC_STRINGS);
+
+  conv = bolt_wire_conv_for (G_VARIANT_TYPE_STRING, spec);
+
+  g_assert_nonnull (conv);
+
+  wire_type = bolt_wire_conv_get_wire_type (conv);
+  prop_spec = bolt_wire_conv_get_prop_spec (conv);
+
+  g_assert_cmpstr ((const char *) wire_type,
+                   ==,
+                   (const char *) G_VARIANT_TYPE_STRING);
+
+  g_assert_true (prop_spec == spec);
+
+  /* to the wire, empty value (empty prop), which is legal */
+  g_value_init (&val, BT_TYPE_GLUE);
+  g_value_set_object (&val, NULL);
+
+  var = bolt_wire_conv_to_wire (conv, &val, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (var);
+
+  g_assert_cmpstr (g_variant_get_string (var, NULL),
+                   ==,
+                   "");
+
+  /* to the wire, value holding a valid object */
+  g_value_reset (&val);
+  g_value_set_object (&val, tt->bg);
+
+  var = bolt_wire_conv_to_wire (conv, &val, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (var);
+
+  g_assert_cmpstr (g_variant_get_string (var, NULL),
+                   ==,
+                   "bt-glue");
+
+  /* the other way around does not work */
+  g_value_reset (&val);
+  bogus = g_variant_ref_sink (g_variant_new_string ("bt-glue"));
+  ok = bolt_wire_conv_from_wire (conv, bogus, &val, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+}
+
+static void
+test_wire_conv_simple (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(BoltWireConv) conv = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GVariant) var = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  const GVariantType *wire_type;
+  const GParamSpec *prop_spec;
+  gboolean ok;
+  GParamSpec *spec;
+
+  spec = g_param_spec_uint64 ("uint", "Uint",
+                              "Unsigned Integer",
+                              0, 100, 23,
+                              G_PARAM_STATIC_STRINGS);
+
+  conv = bolt_wire_conv_for (G_VARIANT_TYPE_UINT64, spec);
+
+  g_assert_nonnull (conv);
+
+  wire_type = bolt_wire_conv_get_wire_type (conv);
+  prop_spec = bolt_wire_conv_get_prop_spec (conv);
+
+  g_assert_cmpstr ((const char *) wire_type,
+                   ==,
+                   (const char *) G_VARIANT_TYPE_UINT64);
+
+  g_assert_true (prop_spec == spec);
+
+  g_value_init (&val, G_TYPE_UINT64);
+  g_value_set_uint64 (&val, 42U);
+
+  /* to the wire */
+  var = bolt_wire_conv_to_wire (conv, &val, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (var);
+
+  g_assert_cmpuint (g_variant_get_uint64 (var),
+                    ==,
+                    42U);
+
+  /* from the wire */
+  g_value_reset (&val);
+  g_assert_cmpuint (g_value_get_uint64 (&val), !=, 42U);
+
+  ok = bolt_wire_conv_from_wire (conv, var, &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_cmpint (g_value_get_uint64 (&val),
+                   ==,
+                   42U);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -235,6 +496,35 @@ main (int argc, char **argv)
               test_glue_setup,
               test_props_basic,
               test_glue_teardown);
+
+  g_test_add ("/common/wire_conv/enum",
+              TestGlue,
+              NULL,
+              NULL,
+              test_wire_conv_enum,
+              NULL);
+
+  g_test_add ("/common/wire_conv/flags",
+              TestGlue,
+              NULL,
+              NULL,
+              test_wire_conv_flags,
+              NULL);
+
+  g_test_add ("/common/wire_conv/object",
+              TestGlue,
+              NULL,
+              test_glue_setup,
+              test_wire_conv_object,
+              test_glue_teardown);
+
+  g_test_add ("/common/wire_conv/simple",
+              TestGlue,
+              NULL,
+              NULL,
+              test_wire_conv_simple,
+              NULL);
+
 
   return g_test_run ();
 }
