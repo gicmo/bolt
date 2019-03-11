@@ -35,5 +35,34 @@ gboolean              bolt_properties_find (GPtrArray   *specs,
                                             GParamSpec **spec,
                                             GError     **error);
 
+/* wire protocol variant/value conversions  */
+typedef struct _BoltWireConv BoltWireConv;
+
+BoltWireConv *        bolt_wire_conv_ref (BoltWireConv *conv);
+
+void                  bolt_wire_conv_unref (BoltWireConv *conv);
+
+const GVariantType *  bolt_wire_conv_get_wire_type (BoltWireConv *conv);
+
+const GParamSpec *    bolt_wire_conv_get_prop_spec (BoltWireConv *conv);
+
+BoltWireConv *        bolt_wire_conv_for (const GVariantType *wire_type,
+                                          GParamSpec         *prop_spec);
+
+GVariant *            bolt_wire_conv_to_wire (BoltWireConv *conv,
+                                              const GValue *value,
+                                              GError      **error);
+
+gboolean              bolt_wire_conv_from_wire (BoltWireConv *conv,
+                                                GVariant     *wire,
+                                                GValue       *value,
+                                                GError      **error);
+
+GVariant *            bolt_value_for_wire (const GValue       *value,
+                                           const GVariantType *type,
+                                           const GParamSpec   *spec,
+                                           GError            **error);
+
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (BoltWireConv, bolt_wire_conv_unref)
 
 G_END_DECLS
