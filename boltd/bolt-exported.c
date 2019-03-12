@@ -55,13 +55,6 @@ static void       bolt_exported_method_free (gpointer data);
 
 static void       bolt_exported_prop_free (gpointer data);
 
-static GVariant * bolt_exported_prop_gvalue_to_gvariant (BoltExportedProp *prop,
-                                                         const GValue     *value);
-
-static gboolean   bolt_exported_prop_gvariant_to_gvalue (BoltExportedProp *prop,
-                                                         GVariant         *variant,
-                                                         GValue           *value,
-                                                         GError          **error);
 
 struct _BoltExportedMethod
 {
@@ -81,9 +74,7 @@ struct _BoltExportedProp
   BoltExportedSetter setter;
 
   /* auto string conversion */
-  GEnumClass  *enum_class; /* shortcut for spec->enum_class */
-  GFlagsClass *flags_class; /* shortcut for spec->enum_class */
-  gboolean     object_conv;
+  BoltWireConv *conv;
 };
 
 struct _BoltExportedClassPrivate
@@ -397,6 +388,7 @@ static GVariant *
 bolt_exported_get_prop (BoltExported     *exported,
                         BoltExportedProp *prop)
 {
+  g_autoptr(GError) err = NULL;
   g_auto(GValue) res = G_VALUE_INIT;
   const char *name;
   const GParamSpec *spec;
@@ -408,7 +400,11 @@ bolt_exported_get_prop (BoltExported     *exported,
   g_value_init (&res, spec->value_type);
   g_object_get_property (G_OBJECT (exported), name, &res);
 
-  ret = bolt_exported_prop_gvalue_to_gvariant (prop, &res);
+  ret = bolt_wire_conv_to_wire (prop->conv, &res, &err);
+
+  if (ret == NULL)
+    bolt_bug ("failed to serialize value for prop %s: %s",
+              prop->spec->name, err->message);
 
   return ret;
 }
@@ -470,7 +466,7 @@ dispach_property_setter (BoltExported          *exported,
   g_variant_get_child (params, 2, "v", &vin);
   g_value_init (&val, prop->spec->value_type);
 
-  ok = bolt_exported_prop_gvariant_to_gvalue (prop, vin, &val, &err);
+  ok = bolt_wire_conv_from_wire (prop->conv, vin, &val, &err);
 
   if (ok)
     ok = prop->setter (exported, prop->name_obj, &val, &err);
@@ -914,8 +910,6 @@ bolt_exported_class_export_property (BoltExportedClass *klass,
   GDBusPropertyInfo **iter;
   BoltExportedProp *prop;
   const char *name_bus, *name_obj;
-  gboolean is_str_prop;
-  const char *conv = NULL;
 
   if (!klass || !BOLT_IS_EXPORTED_CLASS (klass))
     {
@@ -955,30 +949,11 @@ bolt_exported_class_export_property (BoltExportedClass *klass,
   prop->name_obj = name_obj;
 
   prop->signature = g_variant_type_new (info->signature);
+  prop->conv = bolt_wire_conv_for (prop->signature, prop->spec);
 
-  is_str_prop = g_variant_type_equal (prop->signature, G_VARIANT_TYPE_STRING);
-
-  if (is_str_prop && G_IS_PARAM_SPEC_ENUM (prop->spec))
-    {
-      GParamSpecEnum *enum_spec = G_PARAM_SPEC_ENUM (prop->spec);
-      prop->enum_class = enum_spec->enum_class;
-      conv = " [enum-auto-convert]";
-    }
-  else if (is_str_prop && G_IS_PARAM_SPEC_FLAGS (prop->spec))
-    {
-      GParamSpecFlags *flags_spec = G_PARAM_SPEC_FLAGS (prop->spec);
-      prop->flags_class = flags_spec->flags_class;
-      conv = " [flags-auto-convert]";
-    }
-  else if (is_str_prop && G_IS_PARAM_SPEC_OBJECT (prop->spec))
-    {
-      prop->object_conv = TRUE;
-      conv = " [object-auto-convert]";
-    }
-
-  bolt_debug (LOG_TOPIC ("dbus"), "installed prop: %s -> %s%s",
+  bolt_debug (LOG_TOPIC ("dbus"), "installed prop: %s -> %s [%s]",
               prop->name_bus, prop->name_obj,
-              conv ? : "");
+              bolt_wire_conv_describe (prop->conv));
 
   g_hash_table_insert (priv->properties, (gpointer) prop->name_bus, prop);
 }
@@ -1237,156 +1212,7 @@ bolt_exported_prop_free (gpointer data)
 
   g_param_spec_unref (prop->spec);
   g_variant_type_free (prop->signature);
+  bolt_wire_conv_unref (prop->conv);
 
   g_free (prop);
-}
-
-static GVariant *
-enum_gvalue_to_gvariant (GEnumClass   *enum_class,
-                         const GValue *value)
-{
-  g_autoptr(GError) err = NULL;
-  const char *str;
-  GVariant *res;
-  gint iv;
-
-  iv = g_value_get_enum (value);
-  str = bolt_enum_class_to_string (enum_class, iv, &err);
-
-  if (str == NULL)
-    {
-      bolt_bug ("auto-convert enum: %s", err->message);
-      res = g_variant_new_printf ("%d", iv);
-    }
-  else
-    {
-      res = g_variant_new_string (str);
-    }
-
-  return g_variant_ref_sink (res);
-}
-
-static gboolean
-enum_gvariant_to_gvalue (GEnumClass *enum_class,
-                         GVariant   *variant,
-                         GValue     *value,
-                         GError    **error)
-{
-  const char *str;
-  gboolean ok;
-  gint val;
-
-  str = g_variant_get_string (variant, NULL);
-
-  /* NB: it is ok to pass NULL here */
-  ok = bolt_enum_class_from_string (enum_class, str, &val, error);
-
-  if (ok)
-    g_value_set_enum (value, val);
-
-  return TRUE;
-}
-
-static GVariant *
-flags_gvalue_to_gvariant (GFlagsClass  *flags_class,
-                          const GValue *value)
-{
-  g_autoptr(GError) err = NULL;
-  g_autofree char *str = NULL;
-  GVariant *res;
-  guint iv;
-
-  iv = g_value_get_flags (value);
-
-  str = bolt_flags_class_to_string (flags_class, iv, &err);
-  if (str == NULL)
-    {
-      bolt_bug ("auto-convert: %s", err->message);
-      str = g_strdup_printf ("%u", iv);
-    }
-
-  res = g_variant_new_string (str);
-  return g_variant_ref_sink (res);
-}
-
-static gboolean
-flags_gvariant_to_gvalue (GFlagsClass *flags_class,
-                          GVariant    *variant,
-                          GValue      *value,
-                          GError     **error)
-{
-  const char *str;
-  gboolean ok;
-  guint flags;
-
-  str = g_variant_get_string (variant, NULL);
-
-  /* NB: NULL is a safe value for 'str' to be passed into */
-  ok = bolt_flags_class_from_string (flags_class, str, &flags, error);
-
-  if (ok)
-    g_value_set_flags (value, flags);
-
-  return ok;
-}
-
-static GVariant *
-object_gvalue_to_gvariant (const GValue *value)
-{
-  g_autofree char *str = NULL;
-  GVariant *res;
-  GObject *obj;
-
-  obj = g_value_get_object (value);
-
-  if (obj)
-    g_object_get (obj, "object-id", &str, NULL);
-
-  if (str == NULL)
-    str = g_strdup ("");
-
-  res = g_variant_new_string (str);
-  return g_variant_ref_sink (res);
-}
-
-static gboolean
-object_gvariant_to_gvalue (GVariant    *variant G_GNUC_UNUSED,
-                           GValue      *value   G_GNUC_UNUSED,
-                           GError             **error)
-{
-  g_set_error_literal (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                       "can not set object property from string");
-  return FALSE;
-}
-
-static GVariant *
-bolt_exported_prop_gvalue_to_gvariant (BoltExportedProp *prop,
-                                       const GValue     *value)
-{
-  if (prop->enum_class != NULL)
-    return enum_gvalue_to_gvariant (prop->enum_class, value);
-  else if (prop->flags_class != NULL)
-    return flags_gvalue_to_gvariant (prop->flags_class, value);
-  else if (prop->object_conv)
-    return object_gvalue_to_gvariant (value);
-  else
-    return g_dbus_gvalue_to_gvariant (value, prop->signature);
-}
-
-static gboolean
-bolt_exported_prop_gvariant_to_gvalue (BoltExportedProp *prop,
-                                       GVariant         *variant,
-                                       GValue           *value,
-                                       GError          **error)
-{
-  if (prop->enum_class != NULL)
-    return enum_gvariant_to_gvalue (prop->enum_class, variant, value, error);
-  else if (prop->flags_class != NULL)
-    return flags_gvariant_to_gvalue (prop->flags_class, variant, value, error);
-  else if (prop->object_conv)
-    return object_gvariant_to_gvalue (variant, value, error);
-
-  g_dbus_gvariant_to_gvalue (variant, value);
-
-  return TRUE;
 }
