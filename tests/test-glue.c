@@ -245,6 +245,9 @@ test_wire_conv_enum (TestGlue *tt, gconstpointer data)
   wire_type = bolt_wire_conv_get_wire_type (conv);
   prop_spec = bolt_wire_conv_get_prop_spec (conv);
 
+  g_assert_false (bolt_wire_conv_is_native (conv));
+  g_assert_nonnull (bolt_wire_conv_describe (conv));
+
   g_assert_cmpstr ((const char *) wire_type,
                    ==,
                    (const char *) G_VARIANT_TYPE_STRING);
@@ -316,6 +319,9 @@ test_wire_conv_flags (TestGlue *tt, gconstpointer data)
   wire_type = bolt_wire_conv_get_wire_type (conv);
   prop_spec = bolt_wire_conv_get_prop_spec (conv);
 
+  g_assert_false (bolt_wire_conv_is_native (conv));
+  g_assert_nonnull (bolt_wire_conv_describe (conv));
+
   g_assert_cmpstr ((const char *) wire_type,
                    ==,
                    (const char *) G_VARIANT_TYPE_STRING);
@@ -383,6 +389,9 @@ test_wire_conv_object (TestGlue *tt, gconstpointer data)
   wire_type = bolt_wire_conv_get_wire_type (conv);
   prop_spec = bolt_wire_conv_get_prop_spec (conv);
 
+  g_assert_false (bolt_wire_conv_is_native (conv));
+  g_assert_nonnull (bolt_wire_conv_describe (conv));
+
   g_assert_cmpstr ((const char *) wire_type,
                    ==,
                    (const char *) G_VARIANT_TYPE_STRING);
@@ -444,6 +453,9 @@ test_wire_conv_simple (TestGlue *tt, gconstpointer data)
 
   wire_type = bolt_wire_conv_get_wire_type (conv);
   prop_spec = bolt_wire_conv_get_prop_spec (conv);
+
+  g_assert_true (bolt_wire_conv_is_native (conv));
+  g_assert_nonnull (bolt_wire_conv_describe (conv));
 
   g_assert_cmpstr ((const char *) wire_type,
                    ==,
