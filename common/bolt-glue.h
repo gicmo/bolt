@@ -46,6 +46,10 @@ const GVariantType *  bolt_wire_conv_get_wire_type (BoltWireConv *conv);
 
 const GParamSpec *    bolt_wire_conv_get_prop_spec (BoltWireConv *conv);
 
+gboolean              bolt_wire_conv_is_native (BoltWireConv *conv);
+
+const char *          bolt_wire_conv_describe (BoltWireConv *conv);
+
 BoltWireConv *        bolt_wire_conv_for (const GVariantType *wire_type,
                                           GParamSpec         *prop_spec);
 

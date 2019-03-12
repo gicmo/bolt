@@ -342,6 +342,37 @@ bolt_wire_conv_get_prop_spec (BoltWireConv *conv)
   return conv->prop_spec;
 }
 
+gboolean
+bolt_wire_conv_is_native (BoltWireConv *conv)
+{
+  g_return_val_if_fail (conv != NULL, TRUE);
+
+  return conv->conv_type == BOLT_WIRE_CONV_NATIVE;
+}
+
+const char *
+bolt_wire_conv_describe (BoltWireConv *conv)
+{
+  g_return_val_if_fail (conv != NULL, "*invalid*");
+
+  switch (conv->conv_type)
+    {
+    case BOLT_WIRE_CONV_NATIVE:
+      return "native";
+
+    case BOLT_WIRE_CONV_ENUM_AS_STRING:
+      return "enum-as-string";
+
+    case BOLT_WIRE_CONV_FLAGS_AS_STRING:
+      return "flags-as-string";
+
+    case BOLT_WIRE_CONV_OBJECT_AS_STRING:
+      return "object-as-string";
+    }
+
+  return "*unknown*";
+}
+
 BoltWireConv *
 bolt_wire_conv_for (const GVariantType *wire_type,
                     GParamSpec         *prop_spec)
