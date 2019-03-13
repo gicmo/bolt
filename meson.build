@@ -45,11 +45,13 @@ test_args = [
   '-Wsign-compare',
   '-Wstrict-aliasing=3',
   '-Wstrict-prototypes',
+  '-Wstringop-overflow',
+  '-Wstringop-truncation',
   '-Wtype-limits',
   '-Wundef',
   '-Wuninitialized',
   '-Wunused-but-set-variable',
-  '-Wwrite-strings'
+  '-Wwrite-strings',
 ]
 
 compiler = meson.get_compiler('c')
