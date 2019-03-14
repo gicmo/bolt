@@ -510,7 +510,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
 
   bolt_exported_class_set_interface_info (exported_class,
                                           BOLT_DBUS_DEVICE_INTERFACE,
-                                          "/boltd/org.freedesktop.bolt.xml");
+                                          BOLT_DBUS_GRESOURCE_PATH);
 
   bolt_exported_class_set_object_path (exported_class,
                                        BOLT_DBUS_PATH_DEVICES);

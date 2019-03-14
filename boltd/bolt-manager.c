@@ -410,7 +410,7 @@ bolt_manager_class_init (BoltManagerClass *klass)
 
   bolt_exported_class_set_interface_info (exported_class,
                                           BOLT_DBUS_INTERFACE,
-                                          "/boltd/org.freedesktop.bolt.xml");
+                                          BOLT_DBUS_GRESOURCE_PATH);
 
   bolt_exported_class_export_properties (exported_class,
                                          PROP_EXPORTED,

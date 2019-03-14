@@ -288,7 +288,7 @@ bolt_domain_class_init (BoltDomainClass *klass)
 
   bolt_exported_class_set_interface_info (exported_class,
                                           BOLT_DBUS_DOMAIN_INTERFACE,
-                                          "/boltd/org.freedesktop.bolt.xml");
+                                          BOLT_DBUS_GRESOURCE_PATH);
 
   bolt_exported_class_set_object_path (exported_class, BOLT_DBUS_PATH_DOMAINS);
 

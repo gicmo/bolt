@@ -811,7 +811,7 @@ bolt_power_class_init (BoltPowerClass *klass)
 
   bolt_exported_class_set_interface_info (exported_class,
                                           BOLT_DBUS_POWER_INTERFACE,
-                                          "/boltd/org.freedesktop.bolt.xml");
+                                          BOLT_DBUS_GRESOURCE_PATH);
 
   bolt_exported_class_export_properties (exported_class,
                                          PROP_SUPPORTED,
