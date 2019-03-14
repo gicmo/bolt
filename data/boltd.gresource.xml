@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/boltd">
+  <!-- keep in sync with BOLT_DBUS_GRESOURCE_PATH in common/bolt-names.h" -->
+  <gresource prefix="/bolt">
     <file preprocess="xml-stripblanks">org.freedesktop.bolt.xml</file>
   </gresource>
 </gresources>
