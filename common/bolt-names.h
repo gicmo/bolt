@@ -51,6 +51,7 @@ G_BEGIN_DECLS
 
 
 /* dbus */
+#define BOLT_DBUS_GRESOURCE_PATH "/boltd/org.freedesktop.bolt.xml"
 
 #define BOLT_DBUS_NAME "org.freedesktop.bolt"
 #define BOLT_DBUS_PATH "/org/freedesktop/bolt"
