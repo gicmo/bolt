@@ -22,6 +22,7 @@
 
 #include "bolt-enums.h"
 #include "bolt-error.h"
+#include "bolt-names.h"
 
 #include "bolt-config.h"
 
@@ -30,6 +31,20 @@
 
 #define DEFAULT_POLICY_KEY "DefaultPolicy"
 #define AUTH_MODE_KEY "AuthMode"
+
+const char *
+bolt_get_store_path (void)
+{
+  const char *path;
+
+  /* set by tools or the user directly */
+  path = g_getenv (BOLT_ENV_DBPATH);
+  if (path != NULL)
+    return path;
+
+  /* set at compile time (config.h) */
+  return BOLT_DBDIR;
+}
 
 GKeyFile *
 bolt_config_user_init (void)

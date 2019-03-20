@@ -26,6 +26,10 @@
 
 G_BEGIN_DECLS
 
+/* well known paths */
+const char *   bolt_get_store_path (void);
+
+/* user and system configuration */
 typedef enum BoltTri {
 
   TRI_ERROR = -1,
