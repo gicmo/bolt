@@ -28,6 +28,7 @@
 #mesondefine VERSION_MINOR
 
 /* directories  */
+#mesondefine DATADIR
 #mesondefine BOLT_DBNAME
 #mesondefine BOLT_DBDIR
 #mesondefine DATADIR
