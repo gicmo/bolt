@@ -336,7 +336,7 @@ static void
 bolt_manager_init (BoltManager *mgr)
 {
   mgr->devices = g_ptr_array_new_with_free_func (g_object_unref);
-  mgr->store = bolt_store_new (g_getenv ("BOLT_DBPATH") ? : BOLT_DBDIR);
+  mgr->store = bolt_store_new (bolt_get_store_path ());
 
   mgr->probing_roots = g_ptr_array_new_with_free_func (g_free);
   mgr->probing_tsettle = PROBING_SETTLE_TIME_MS; /* milliseconds */
