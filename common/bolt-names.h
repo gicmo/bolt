@@ -65,6 +65,9 @@ G_BEGIN_DECLS
 /* sysfs */
 #define BOLT_SYSFS_IOMMU "iommu_dma_protection"
 
+/* environment variables */
+#define BOLT_ENV_DBPATH "BOLT_DBPATH"
+
 /* other well known names */
 #define INTEL_WMI_THUNDERBOLT_GUID "86CCFD48-205E-4A77-9C48-2021CBEDE341"
 
