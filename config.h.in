@@ -29,6 +29,7 @@
 
 /* directories  */
 #mesondefine DATADIR
+#mesondefine LOCALSTATEDIR
 #mesondefine BOLT_DBNAME
 #mesondefine BOLT_DBDIR
 #mesondefine DATADIR
