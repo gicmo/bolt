@@ -53,6 +53,18 @@ bolt_get_store_path (void)
   return BOLT_DBDIR;
 }
 
+const char *
+bolt_get_runtime_directory (void)
+{
+  const char *path;
+
+  path = g_getenv (BOLT_ENV_RUNTIME_DIRECTORY);
+  if (path)
+    return path;
+
+  return "/run/boltd";
+}
+
 GKeyFile *
 bolt_config_user_init (void)
 {

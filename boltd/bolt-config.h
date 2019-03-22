@@ -29,6 +29,8 @@ G_BEGIN_DECLS
 /* well known paths */
 const char *   bolt_get_store_path (void);
 
+const char *   bolt_get_runtime_directory (void);
+
 /* user and system configuration */
 typedef enum BoltTri {
 
