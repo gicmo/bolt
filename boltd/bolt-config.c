@@ -42,6 +42,13 @@ bolt_get_store_path (void)
   if (path != NULL)
     return path;
 
+  /* set by systemd >= 240 to an absolute path
+   * taking into account the StateDirectory
+   * unit file setting */
+  path = g_getenv (BOLT_ENV_STATE_DIRECTORY);
+  if (path != NULL)
+    return path;
+
   /* set at compile time (config.h) */
   return BOLT_DBDIR;
 }
