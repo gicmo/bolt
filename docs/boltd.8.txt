@@ -90,10 +90,14 @@ OPTIONS
 ENVIRONMENT
 -----------
 
-*`BOLT_DBPATH`*::
+*`STATE_DIRECTORY`*::
   Specifies the path where the daemon stores device information,
   including the keys used for authorization. Overwrites the path
-  that was set at compile time.
+  that was set at compile time. Will be set automatically when
+  started via systemd (>= 240).
+
+*`BOLT_DBPATH`*::
+  Same as `STATE_DIRECTORY` but takes precedence over that, if set.
 
 
 EXIT STATUS
