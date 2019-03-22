@@ -67,6 +67,7 @@ G_BEGIN_DECLS
 
 /* environment variables */
 #define BOLT_ENV_DBPATH "BOLT_DBPATH"
+#define BOLT_ENV_STATE_DIRECTORY "STATE_DIRECTORY"
 
 /* other well known names */
 #define INTEL_WMI_THUNDERBOLT_GUID "86CCFD48-205E-4A77-9C48-2021CBEDE341"
