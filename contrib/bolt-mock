@@ -352,7 +352,7 @@ class Daemon(object):
         env = os.environ.copy()
         env['G_DEBUG'] = 'fatal-criticals'
         env['UMOCKDEV_DIR'] = self.sysfs.root
-        env['BOLT_DBPATH'] = self.store.path
+        env['STATE_DIRECTORY'] = self.store.path
         argv = [self.paths['daemon'], '--replace']
         if args.verbose:
             argv += ['-v']
