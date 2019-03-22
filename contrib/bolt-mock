@@ -325,6 +325,11 @@ class Daemon(object):
             jhbuild_prefix = os.environ['JHBUILD_PREFIX']
             boltd = os.path.join(jhbuild_prefix, 'libexec', 'boltd')
             boltctl = os.path.join(jhbuild_prefix, 'bin', 'boltctl')
+        elif os.path.exists(os.path.abspath('build/boltd')):
+            build_dir = os.path.abspath('build')
+            print('Using boltd from %s' % build_dir)
+            boltd = os.path.join(build_dir, 'boltd')
+            boltctl = os.path.join(build_dir, 'boltctl')
         else:
             print('Using boltd from system installation')
             boltd = Daemon.path_from_service_file(SERVICE_FILE)
