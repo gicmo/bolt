@@ -962,6 +962,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.testbed = UMockdev.Testbed.new()
         self.assertTrue(UMockdev.in_mock_environment())
         self.dbpath = tempfile.mkdtemp()
+        self.rundir = tempfile.mkdtemp()
         os.makedirs(os.path.join(self.dbpath, 'devices'))
         os.makedirs(os.path.join(self.dbpath, 'domains'))
         os.makedirs(os.path.join(self.dbpath, 'keys'))
@@ -974,6 +975,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def tearDown(self):
         shutil.rmtree(self.dbpath)
+        shutil.rmtree(self.rundir)
         del self.testbed
         self.daemon_stop()
         self.polkitd_stop()
@@ -996,6 +998,7 @@ class BoltTest(dbusmock.DBusTestCase):
         env['G_DEBUG'] = 'fatal-criticals'
         env['UMOCKDEV_DIR'] = self.testbed.get_root_dir()
         env['STATE_DIRECTORY'] = self.dbpath
+        env['RUNTIME_DIRECTORY'] = self.rundir
         argv = [self.paths['daemon'], '-v']
         valgrind = os.getenv('VALGRIND')
         if valgrind is not None:
