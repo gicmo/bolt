@@ -139,7 +139,7 @@ test_power_basic (TestPower *tt, gconstpointer user)
                 "timeout", &timeout,
                 NULL);
 
-  g_assert_nonnull (rundir);
+  g_assert_cmpstr (rundir, ==, tt->rundir);
   g_assert_nonnull (statedir);
   g_assert_nonnull (udev);
   g_assert (udev == tt->udev);
