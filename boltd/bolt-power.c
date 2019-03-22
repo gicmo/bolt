@@ -22,6 +22,7 @@
 
 #include "bolt-power.h"
 
+#include "bolt-config.h"
 #include "bolt-enums.h"
 #include "bolt-error.h"
 #include "bolt-fs.h"
@@ -38,7 +39,6 @@
 
 #define POWER_WAIT_TIMEOUT 20 * 1000 // 20 seconds
 #define POWER_REAPER_TIMEOUT 20 // seconds
-#define DEFAULT_RUNDIR "/run/boltd/"
 #define DEFAULT_STATEDIR "power"
 #define STATE_FILENAME "on"
 
@@ -736,6 +736,16 @@ bolt_power_set_property (GObject      *object,
     }
 }
 
+static void
+bolt_power_constructed (GObject *obj)
+{
+  BoltPower *power = BOLT_POWER (obj);
+
+  G_OBJECT_CLASS (bolt_power_parent_class)->constructed (obj);
+
+  if (power->runpath == NULL)
+    power->runpath = g_strdup (bolt_get_runtime_directory ());
+}
 
 static void
 bolt_power_class_init (BoltPowerClass *klass)
@@ -745,13 +755,14 @@ bolt_power_class_init (BoltPowerClass *klass)
 
   gobject_class->finalize = bolt_power_finalize;
 
+  gobject_class->constructed  = bolt_power_constructed;
   gobject_class->get_property = bolt_power_get_property;
   gobject_class->set_property = bolt_power_set_property;
 
   power_props[PROP_RUNDIR] =
     g_param_spec_string ("rundir",
                          NULL, NULL,
-                         DEFAULT_RUNDIR,
+                         NULL,
                          G_PARAM_READWRITE |
                          G_PARAM_CONSTRUCT_ONLY |
                          G_PARAM_STATIC_STRINGS);
@@ -838,6 +849,8 @@ bolt_power_initialize (GInitable    *initable,
   statedir = g_build_filename (power->runpath, DEFAULT_STATEDIR, NULL);
   power->statedir = g_file_new_for_path (statedir);
   power->statefile = g_file_get_child (power->statedir, STATE_FILENAME);
+
+  bolt_info (LOG_TOPIC ("power"), "state located at: %s", statedir);
 
   ok = g_file_make_directory_with_parents (power->statedir, NULL, &err);
   if (!ok && !bolt_err_exists (err))
