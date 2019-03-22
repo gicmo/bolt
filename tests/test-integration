@@ -995,7 +995,7 @@ class BoltTest(dbusmock.DBusTestCase):
         env = os.environ.copy()
         env['G_DEBUG'] = 'fatal-criticals'
         env['UMOCKDEV_DIR'] = self.testbed.get_root_dir()
-        env['BOLT_DBPATH'] = self.dbpath
+        env['STATE_DIRECTORY'] = self.dbpath
         argv = [self.paths['daemon'], '-v']
         valgrind = os.getenv('VALGRIND')
         if valgrind is not None:
