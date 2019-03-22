@@ -55,7 +55,7 @@ above mentioned tasks.
 
 The pre-boot access control list (*BootACL*) feature is active when
 supported by the firmware and when 'boltd' is running on a new enough
-Linux kernel (>= 4.17). The 'BootACL' is a a list of UUIDs, that can
+Linux kernel (>= 4.17). The 'BootACL' is a list of UUIDs, that can
 be written to the thunderbolt controller. If enabled in the BIOS, all
 devices in that list will be authorized by the firmware during
 pre-boot, which means these devices can be used in the BIOS setup and
