@@ -67,6 +67,7 @@ G_BEGIN_DECLS
 
 /* environment variables */
 #define BOLT_ENV_DBPATH "BOLT_DBPATH"
+#define BOLT_ENV_RUNTIME_DIRECTORY "RUNTIME_DIRECTORY"
 #define BOLT_ENV_STATE_DIRECTORY "STATE_DIRECTORY"
 
 /* other well known names */
