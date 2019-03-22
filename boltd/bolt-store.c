@@ -134,6 +134,8 @@ bolt_store_constructed (GObject *obj)
   g_autofree char *path = NULL;
   BoltStore *store = BOLT_STORE (obj);
 
+  G_OBJECT_CLASS (bolt_store_parent_class)->constructed (obj);
+
   path = g_file_get_path (store->root);
 
   bolt_info (LOG_TOPIC ("store"), "located at: %s", path);
