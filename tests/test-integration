@@ -2426,14 +2426,19 @@ class BoltTest(dbusmock.DBusTestCase):
         self.daemon_stop()
 
 
+def list_tests():
+    suit = unittest.defaultTestLoader.loadTestsFromTestCase(BoltTest)
+    for t in suit:
+        comps = t.id().split('.')
+        machine = ".".join(comps[1:])
+        human = comps[2][len('test_'):]
+        yield machine, human
+
+
 if __name__ == '__main__':
     if len(sys.argv) == 2 and sys.argv[1] == "list-tests":
-        suit = unittest.defaultTestLoader.loadTestsFromTestCase(BoltTest)
-        for t in suit:
-            name = t.id()
-            comps = name.split('.')
-            machine = ".".join(comps[1:])
-            human = comps[2][len('test_'):]
+        for machine, human in list_tests():
             print("%s %s" % (machine, human), end="\n")
         sys.exit(0)
+
     unittest.main(verbosity=2)
