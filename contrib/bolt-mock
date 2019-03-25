@@ -281,6 +281,10 @@ class Store(object):
         if self.path is None:
             self.make_mock_store()
 
+    def __del__(self):
+        if self.mocked:
+            shutil.rmtree(self.path)
+
     def make_mock_store(self):
         path = tempfile.mkdtemp()
         os.makedirs(os.path.join(path, 'devices'))
