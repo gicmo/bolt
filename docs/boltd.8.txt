@@ -90,6 +90,12 @@ OPTIONS
 ENVIRONMENT
 -----------
 
+*`RUNTIME_DIRECTORY`*::
+  Specifies the path where the daemon stores data that only has
+  to live as long as the current boot. Will be set automatically
+  when started via systemd (>= 240). If not set the default path
+  for runtime data is '/run/boltd'.
+
 *`STATE_DIRECTORY`*::
   Specifies the path where the daemon stores device information,
   including the keys used for authorization. Overwrites the path
