@@ -23,6 +23,7 @@
 from __future__ import print_function
 
 import binascii
+import gc
 import os
 import shutil
 import sys
@@ -982,6 +983,11 @@ class BoltTest(dbusmock.DBusTestCase):
         del self.testbed
         self.daemon_stop()
         self.polkitd_stop()
+        # Gross work-around for some flaky behavior where tests will fail
+        # with some obscure error in umockdev, but only if all the tests
+        # executed in one go. Maybe some cleanup issue. Needs further
+        # investigation.
+        gc.collect()
 
     # dbus helper methods
     def get_dbus_property(self, name, interface=DBUS_IFACE_MANAGER):
