@@ -610,7 +610,7 @@ class World(object):
             print('unknown device')
             return
         print('disconnecting %s' % device.uid)
-        self.sysfs.remove(dev)
+        self.sysfs.remove(device)
 
 
 def main():
