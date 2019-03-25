@@ -879,21 +879,23 @@ class TreeChecker(object):
         self.tree.device_connected.disconnect_all()
         self.tree.device_disconnected.disconnect_all()
 
+
 class Parameterize(object):
     # class is used for namespacing
 
     @staticmethod
     def _make_test(klass, name, func):
         params = getattr(func, '__expand')
+
         def test_function(self):
             func(self, **params)
         suffix = '_' + '_'.join(params.keys())
-        setattr(klass, name +suffix, test_function)
+        setattr(klass, name + suffix, test_function)
 
     @staticmethod
     def enable(klass):
         tests = [(m, getattr(klass, m)) for m in dir(klass) if m.startswith('test_')]
-        expandable = filter (lambda f: hasattr (f[1], '__expand'), tests)
+        expandable = filter(lambda f: hasattr(f[1], '__expand'), tests)
         for t in expandable:
             Parameterize._make_test(klass, t[0], t[1])
         map(lambda t: Parameterize._make_test(klass, t[0], t[1]), expandable)
@@ -905,6 +907,7 @@ class Parameterize(object):
             setattr(func, '__expand', kwargs)
             return func
         return decorator
+
 
 # Test Suite
 @Parameterize.enable
@@ -1345,7 +1348,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         # create more then one domain
         security = 'secure'
-        domains = [make_domain(d, security) for d in range(4)]
+        domains = [make_domain(i, security) for i in range(4)]
         self.daemon_start()
 
         remotes = self.client.list_domains()
@@ -1405,7 +1408,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(self.client.security_level, 'unknown')
 
         with self.client.record() as tape:
-            security='secure'
+            security = 'secure'
             dom, host = self.add_domain_host(0, security=security, uid=uid)
             tape.wait_for_event('property', 'SecurityLevel', security)
             self.assertEqual(self.client.security_level, security)
@@ -1826,7 +1829,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.device_import_test('none', devs, iommu)
 
-    @Parameterize.make(iommu= '1')
+    @Parameterize.make(iommu='1')
     def test_device_import_sl1(self, iommu=None):
 
         policy = 'iommu' if iommu else 'auto'
@@ -1938,7 +1941,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         to_enroll = tree.collect(TbDevice.is_unauthorized)
 
-        self.assertNotEqual (to_enroll, 0)
+        self.assertNotEqual(to_enroll, 0)
 
         # check that we are not allowed to enroll devices, i.e. the correct
         # policykit action is called.
@@ -2147,7 +2150,6 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertTrue(remote.StoreTime > 1)
             self.assertTrue(remote.StoreTime >= before)
             self.assertTrue(remote.StoreTime <= now)
-
 
     def test_device_key_upgrade(self):
         dock = TbDevice('Dock',)
@@ -2402,7 +2404,6 @@ class BoltTest(dbusmock.DBusTestCase):
             uid = dev.unique_id
             remote = self.client.device_by_uid(uid)
             self.assertEqual(remote.stored, False)
-
 
         # chain enrollment
         _, _, res = self.boltctl('enroll', '--chain', ssd2.unique_id)
