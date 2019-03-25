@@ -42,9 +42,6 @@ try:
     gi.require_version('UMockdev', '1.0')
     from gi.repository import UMockdev
 
-    import dbus
-    import dbusmock
-
 except ImportError as e:
     sys.stderr.write('Missing depdendencies: %s\n' % str(e))
     sys.exit(1)
