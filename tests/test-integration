@@ -2441,4 +2441,8 @@ if __name__ == '__main__':
             print("%s %s" % (machine, human), end="\n")
         sys.exit(0)
 
+    if 'umockdev' not in os.environ.get('LD_PRELOAD', ''):
+        wrapped = ['umockdev-wrapper'] + sys.argv
+        os.execvp(wrapped[0], wrapped)
+
     unittest.main(verbosity=2)
