@@ -93,6 +93,7 @@ datadir = join_paths(prefixdir, get_option('datadir'))
 sysconfdir = join_paths(prefixdir, get_option('sysconfdir'))
 statedir = get_option('localstatedir')
 mandir = get_option('mandir')
+testsdir = join_paths(libexecdir, 'installed-tests', 'bolt')
 
 if get_option('db-path') != ''
   warning('db-path option is set, but will be ignored')
@@ -363,6 +364,8 @@ executable('boltctl',
 
 
 # testing
+install_tests = get_option('install-tests')
+
 test_resources = gnome.compile_resources(
   'bolt-test-resources',
   'tests/tests.gresource.xml',
@@ -412,7 +415,9 @@ foreach t: tests
     dependencies: test_deps,
     include_directories: [
       include_directories('tests')
-    ])
+    ],
+    install: install_tests,
+    install_dir: testsdir)
 
   test_env = environment()
 
@@ -439,6 +444,16 @@ if res.returncode() == 0
 else
   msg = '@0@'.format(res.stderr().strip())
   warning(msg)
+endif
+
+if install_tests
+  install_data(test_it.path(),
+               install_mode: 'rwxr-xr-x',
+               install_dir: testsdir)
+
+  install_data(join_paths(srcdir, 'contrib', 'bolt-mock'),
+               install_mode: 'rwxr-xr-x',
+               install_dir: testsdir)
 endif
 
 # contrib
@@ -504,6 +519,7 @@ msg = ['',
   'systemd unitdir:     @0@'.format(unitdir),
   '',
   'build manpage:       @0@'.format(build_man),
+  'install tests:       @0@'.format(install_tests),
   ''
   ]
 message('\n  '.join(msg))
