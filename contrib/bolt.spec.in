@@ -38,11 +38,21 @@ authorized as soon as they are connected.  A command line tool, called
 boltctl, can be used to control the daemon and perform all the above
 mentioned tasks.
 
+%package tests
+Summary:       Integration tests, unit tests and bolt-mock test helper
+Requires:      %{name}%{?_isa} = %{version}-%{release}
+License:       LGPLv2+
+
+%description tests
+Contains the unit tests suite, the integration tests and a bolt-mock
+helper that can be used to run the boltd daemon in a mock environment
+where thunderbolt domains and devices can be simulated.
+
 %prep
 %setup -q
 
 %build
-%meson -Ddb-name=@dbname@
+%meson -Ddb-name=@dbname@ -Dinstall-tests=true
 %meson_build
 
 %check
@@ -75,6 +85,10 @@ mentioned tasks.
 %{_mandir}/man1/boltctl.1*
 %{_mandir}/man8/boltd.8*
 %ghost %dir @dbdir@
+
+%files tests
+%{_libexecdir}/installed-tests/bolt
+%{_libexecdir}/installed-tests/bolt/*
 
 %changelog
 * @longdate@ Christian Kellner <ckellner@redhat.com> - @version@-@reltag@
