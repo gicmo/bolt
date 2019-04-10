@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "bolt-dbus.h"
 #include "bolt-enums.h"
 #include "bolt-error.h"
 #include "bolt-glue.h"
@@ -79,7 +80,6 @@ struct _BoltExportedProp
 
 struct _BoltExportedClassPrivate
 {
-  GDBusNodeInfo      *node_info;
   char               *iface_name;
   GDBusInterfaceInfo *iface_info;
   char               *object_path;
@@ -315,10 +315,10 @@ bolt_exported_base_finalize (gpointer g_class)
   BoltExportedClass *klass = g_class;
   BoltExportedClassPrivate *priv = klass->priv;
 
-  if (priv->node_info)
+  if (priv->iface_info)
     {
-      g_dbus_node_info_unref (priv->node_info);
-      priv->node_info = NULL;
+      g_dbus_interface_info_unref (priv->iface_info);
+      priv->iface_info = NULL;
     }
 
   g_hash_table_unref (priv->properties);
@@ -819,72 +819,30 @@ bolt_exported_class_set_interface_name (BoltExportedClass *klass,
 }
 
 void
-bolt_exported_class_set_interface_info_from_xml (BoltExportedClass *klass,
-                                                 const char        *xml)
-{
-  g_autoptr(GError) error = NULL;
-  BoltExportedClassPrivate *priv;
-  GDBusInterfaceInfo **iter;
-  GDBusInterfaceInfo *info = NULL;
-
-  g_return_if_fail (BOLT_IS_EXPORTED_CLASS (klass));
-  g_return_if_fail (klass->priv != NULL);
-  g_return_if_fail (klass->priv->node_info == NULL);
-
-  priv = klass->priv;
-
-  priv->node_info = g_dbus_node_info_new_for_xml (xml, &error);
-  if (priv->node_info == NULL)
-    bolt_error (LOG_TOPIC ("dbus"), LOG_ERR (error),
-                "failed to load xml");
-
-  for (iter = klass->priv->node_info->interfaces; iter && *iter; iter++)
-    {
-      GDBusInterfaceInfo *ii = *iter;
-      if (bolt_streq (ii->name, klass->priv->iface_name))
-        {
-          info = ii;
-          break;
-        }
-    }
-
-  if (info == NULL)
-    bolt_error (LOG_TOPIC ("dbus"),
-                "interface information is missing");
-
-  priv->iface_info = info;
-}
-
-void
 bolt_exported_class_set_interface_info (BoltExportedClass *klass,
                                         const char        *iface_name,
                                         const char        *resource_name)
 {
-  g_autoptr(GBytes) data = NULL;
   g_autoptr(GError) err = NULL;
-  const char *xml;
+  GDBusInterfaceInfo *info = NULL;
 
   g_return_if_fail (BOLT_IS_EXPORTED_CLASS (klass));
   g_return_if_fail (klass->priv != NULL);
-  g_return_if_fail (klass->priv->node_info == NULL);
+  g_return_if_fail (klass->priv->iface_info == NULL);
   g_return_if_fail (iface_name != NULL);
   g_return_if_fail (resource_name != NULL);
 
   bolt_exported_class_set_interface_name (klass, iface_name);
 
-  data = g_resources_lookup_data (resource_name,
-                                  G_RESOURCE_LOOKUP_FLAGS_NONE,
-                                  &err);
+  info = bolt_dbus_interface_info_lookup (resource_name,
+                                          iface_name,
+                                          &err);
 
-  if (data == NULL)
-    {
-      bolt_error (LOG_TOPIC ("dbus"), LOG_ERR (err),
-                  "could not load resource");
-      return;
-    }
+  if (info == NULL)
+    bolt_error (LOG_TOPIC ("dbus"), LOG_ERR (err),
+                "could not set interface info");
 
-  xml = g_bytes_get_data (data, NULL);
-  bolt_exported_class_set_interface_info_from_xml (klass, xml);
+  klass->priv->iface_info = info; /* transfer ownership */
 }
 
 void

@@ -68,9 +68,6 @@ typedef gboolean (* BoltExportedSetter) (BoltExported *obj,
 void     bolt_exported_class_set_interface_name (BoltExportedClass *klass,
                                                  const char        *name);
 
-void     bolt_exported_class_set_interface_info_from_xml (BoltExportedClass *klass,
-                                                          const char        *xml);
-
 void     bolt_exported_class_set_interface_info (BoltExportedClass *klass,
                                                  const char        *iface_name,
                                                  const char        *resource_name);
