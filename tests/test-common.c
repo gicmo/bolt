@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "bolt-dbus.h"
 #include "bolt-enums.h"
 #include "bolt-error.h"
 #include "bolt-fs.h"
@@ -34,6 +35,7 @@
 #include "mock-sysfs.h"
 
 #include "test-enums.h"
+#include "bolt-test-resources.h"
 
 #include <glib.h>
 #include <gio/gio.h>
@@ -53,7 +55,68 @@
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GEnumClass, g_type_class_unref);
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (GFlagsClass, g_type_class_unref);
 #endif
+typedef struct
+{
+  int dummy;
+} TestDummy;
 
+#define TEST_DBUS_GRESOURCE_PATH "/bolt/tests/exported/example.bolt.xml"
+#define TEST_DBUS_INTERFACE "org.gnome.bolt.Example"
+
+static void
+test_dbus_interface_info_find (TestDummy *tt, gconstpointer user_data)
+{
+  g_autoptr(GBytes) data = NULL;
+  g_autoptr(GError) error = NULL;
+  GDBusInterfaceInfo *info = NULL;
+  const char *xml;
+
+  data = g_resources_lookup_data (TEST_DBUS_GRESOURCE_PATH,
+                                  G_RESOURCE_LOOKUP_FLAGS_NONE,
+                                  &error);
+  g_assert_no_error (error);
+  g_assert_nonnull (data);
+
+  xml = g_bytes_get_data (data, NULL);
+
+  info = bolt_dbus_interface_info_find (xml, "NON-EXISTENT", &error);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_null (info);
+  g_clear_error (&error);
+
+  info = bolt_dbus_interface_info_find (xml, TEST_DBUS_INTERFACE, &error);
+  g_assert_no_error (error);
+  g_assert_nonnull (info);
+  g_dbus_interface_info_unref (info);
+}
+
+static void
+test_dbus_interface_info_lookup (TestDummy *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) error = NULL;
+  GDBusInterfaceInfo *info = NULL;
+
+  info = bolt_dbus_interface_info_lookup ("NON-EXISTENT",
+                                          "NON-EXISTENT",
+                                          &error);
+  g_assert_error (error, G_RESOURCE_ERROR, G_RESOURCE_ERROR_NOT_FOUND);
+  g_assert_null (info);
+  g_clear_error (&error);
+
+  info = bolt_dbus_interface_info_lookup (TEST_DBUS_GRESOURCE_PATH,
+                                          "NON-EXISTENT",
+                                          &error);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_null (info);
+  g_clear_error (&error);
+
+  info = bolt_dbus_interface_info_lookup (TEST_DBUS_GRESOURCE_PATH,
+                                          TEST_DBUS_INTERFACE,
+                                          &error);
+  g_assert_no_error (error);
+  g_assert_nonnull (info);
+  g_dbus_interface_info_unref (info);
+}
 
 typedef struct
 {
@@ -1815,6 +1878,22 @@ main (int argc, char **argv)
   setlocale (LC_ALL, "");
 
   g_test_init (&argc, &argv, NULL);
+
+  g_resources_register (bolt_test_get_resource ());
+
+  g_test_add ("/common/dbus/interface_info_find",
+              TestDummy,
+              NULL,
+              NULL,
+              test_dbus_interface_info_find,
+              NULL);
+
+  g_test_add ("/common/dbus/interface_info_lookup",
+              TestDummy,
+              NULL,
+              NULL,
+              test_dbus_interface_info_lookup,
+              NULL);
 
   g_test_add ("/common/enums",
               TestRng,

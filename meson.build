@@ -379,7 +379,7 @@ test_enums = gnome.mkenums_simple(
 
 tests = [
   ['test-auth', [libdaemon]],
-  ['test-common', [], test_enums],
+  ['test-common', [], [test_resources, test_enums]],
   ['test-glue', [], test_enums],
   ['test-unix'],
   ['test-device', [libdaemon]],
