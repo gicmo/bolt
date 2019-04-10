@@ -185,6 +185,7 @@ common_headers = [
 ]
 
 common_sources = [
+  'common/bolt-dbus.c',
   'common/bolt-enums.c',
   'common/bolt-error.c',
   'common/bolt-fs.c',
