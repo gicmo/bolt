@@ -207,7 +207,7 @@ gen_headers = [common_enums[1]]
 
 gen_sources += gnome.compile_resources(
   'bolt-dbus-resource',
-  'data/boltd.gresource.xml',
+  'data/dbus.gresource.xml',
   source_dir: 'data',
   c_name: 'bolt_dbus')
 
