@@ -20,13 +20,12 @@
 
 #include "config.h"
 
+#include "bolt-dbus.h"
 #include "bolt-log.h"
 #include "bolt-manager.h"
 #include "bolt-names.h"
 #include "bolt-str.h"
 #include "bolt-term.h"
-
-#include "bolt-daemon-resource.h"
 
 #include <glib-unix.h>
 #include <gio/gio.h>
@@ -228,7 +227,7 @@ main (int argc, char **argv)
 
   bolt_log_gen_id (log.session_id);
 
-  g_resources_register (bolt_daemon_get_resource ());
+  bolt_dbus_ensure_resources ();
 
   bolt_msg (LOG_DIRECT (BOLT_LOG_VERSION, PACKAGE_VERSION),
             LOG_ID (STARTUP),
