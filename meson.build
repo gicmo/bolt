@@ -246,12 +246,6 @@ daemon_sources = files([
   'boltd/bolt-udev.c'
 ])
 
-daemon_sources += gnome.compile_resources(
-  'bolt-daemon-resource',
-  'data/boltd.gresource.xml',
-  source_dir: 'data',
-  c_name: 'bolt_daemon')
-
 install_data(['data/org.freedesktop.bolt.xml'],
   install_dir : join_paths(datadir, 'dbus-1', 'interfaces')
 )
