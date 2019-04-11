@@ -22,7 +22,23 @@
 
 #include "bolt-dbus.h"
 
+#include "bolt-dbus-resource.h"
 #include "bolt-str.h"
+
+static gpointer
+register_dbus_resources (gpointer data)
+{
+  g_resources_register (bolt_dbus_get_resource ());
+  return NULL;
+}
+
+void
+bolt_dbus_ensure_resources (void)
+{
+  static GOnce only_once = G_ONCE_INIT;
+
+  g_once (&only_once, register_dbus_resources, NULL);
+}
 
 GDBusInterfaceInfo *
 bolt_dbus_interface_info_find (const char *interface_xml,

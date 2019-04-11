@@ -23,6 +23,8 @@
 
 G_BEGIN_DECLS
 
+void                   bolt_dbus_ensure_resources (void);
+
 GDBusInterfaceInfo *   bolt_dbus_interface_info_find (const char *interface_xml,
                                                       const char *interface_name,
                                                       GError    **error);

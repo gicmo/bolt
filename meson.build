@@ -205,6 +205,12 @@ common_enums = gnome.mkenums_simple('bolt-enum-types',
 gen_sources = [common_enums[0]]
 gen_headers = [common_enums[1]]
 
+gen_sources += gnome.compile_resources(
+  'bolt-dbus-resource',
+  'data/boltd.gresource.xml',
+  source_dir: 'data',
+  c_name: 'bolt_dbus')
+
 common_lib = static_library('common',
   c_args : [cargs],
   sources: common_sources + gen_sources + gen_headers,
