@@ -20,6 +20,7 @@
 
 #include "bolt-proxy.h"
 
+#include "bolt-dbus.h"
 #include "bolt-enums.h"
 #include "bolt-error.h"
 #include "bolt-names.h"
@@ -53,6 +54,10 @@ G_DEFINE_TYPE (BoltProxy, bolt_proxy, G_TYPE_DBUS_PROXY);
 static void
 bolt_proxy_constructed (GObject *object)
 {
+  g_autoptr(GError) err = NULL;
+  GDBusInterfaceInfo *info;
+  const char *interface;
+
   G_OBJECT_CLASS (bolt_proxy_parent_class)->constructed (object);
 
   g_signal_connect (object, "g-properties-changed",
@@ -60,6 +65,29 @@ bolt_proxy_constructed (GObject *object)
 
   g_signal_connect (object, "g-signal",
                     G_CALLBACK (bolt_proxy_handle_dbus_signal), object);
+
+  if (g_dbus_proxy_get_interface_info (G_DBUS_PROXY (object)) != NULL)
+    return;
+
+  interface = g_dbus_proxy_get_interface_name (G_DBUS_PROXY (object));
+
+  if (interface == NULL)
+    return;
+
+  bolt_dbus_ensure_resources ();
+
+  info = bolt_dbus_interface_info_lookup (BOLT_DBUS_GRESOURCE_PATH,
+                                          interface,
+                                          &err);
+
+  if (info == NULL)
+    {
+      g_warning ("could not load interface info: %s", err->message);
+      return;
+    }
+
+  g_dbus_proxy_set_interface_info (G_DBUS_PROXY (object), info);
+  g_dbus_interface_info_unref (info);
 }
 
 static const BoltProxySignal *
