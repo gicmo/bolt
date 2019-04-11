@@ -22,11 +22,10 @@
 
 #include "bolt-udev.h"
 
+#include "bolt-dbus.h"
 #include "bolt-str.h"
 #include "bolt-test.h"
 #include "mock-sysfs.h"
-
-#include "bolt-daemon-resource.h"
 
 #include <glib.h>
 #include <gio/gio.h>
@@ -272,7 +271,7 @@ main (int argc, char **argv)
 
   g_test_init (&argc, &argv, NULL);
 
-  g_resources_register (bolt_daemon_get_resource ());
+  bolt_dbus_ensure_resources ();
 
   g_test_add ("/udev/basic",
               TestUdev,

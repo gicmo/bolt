@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "bolt-dbus.h"
 #include "bolt-error.h"
 #include "bolt-fs.h"
 #include "bolt-io.h"
@@ -29,7 +30,6 @@
 #include "bolt-config.h"
 #include "bolt-store.h"
 
-#include "bolt-daemon-resource.h"
 #include "mock-sysfs.h"
 
 #include <glib.h>
@@ -682,7 +682,7 @@ main (int argc, char **argv)
 
   g_test_init (&argc, &argv, NULL);
 
-  g_resources_register (bolt_daemon_get_resource ());
+  bolt_dbus_ensure_resources ();
 
   g_test_add ("/daemon/key",
               TestStore,

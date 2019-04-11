@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include "bolt-dbus.h"
 #include "bolt-device.h"
 #include "bolt-domain.h"
 #include "bolt-error.h"
@@ -27,8 +28,6 @@
 #include "bolt-term.h"
 
 #include "bolt-log.h"
-
-#include "bolt-daemon-resource.h"
 
 #include <glib.h>
 #include <gio/gio.h>
@@ -389,7 +388,7 @@ main (int argc, char **argv)
 
   g_test_init (&argc, &argv, NULL);
 
-  g_resources_register (bolt_daemon_get_resource ());
+  bolt_dbus_ensure_resources ();
 
   g_test_add ("/logging/basic",
               TestLog,

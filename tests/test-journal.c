@@ -22,9 +22,8 @@
 
 #include "bolt-journal.h"
 
+#include "bolt-dbus.h"
 #include "bolt-fs.h"
-
-#include "bolt-daemon-resource.h"
 
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -436,7 +435,7 @@ main (int argc, char **argv)
 
   g_test_init (&argc, &argv, NULL);
 
-  g_resources_register (bolt_daemon_get_resource ());
+  bolt_dbus_ensure_resources ();
 
   g_test_add ("/journal/object",
               TestJournal,
