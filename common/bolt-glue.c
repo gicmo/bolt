@@ -72,8 +72,8 @@ bolt_param_spec_override (GObjectClass *klass,
 GPtrArray *
 bolt_properties_for_type (GType target)
 {
+  g_autofree GParamSpec **specs = NULL;
   GObjectClass *klass;
-  GParamSpec **specs;
   GPtrArray *props;
   guint n;
 
