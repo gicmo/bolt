@@ -62,11 +62,6 @@ gboolean              bolt_wire_conv_from_wire (BoltWireConv *conv,
                                                 GValue       *value,
                                                 GError      **error);
 
-GVariant *            bolt_value_for_wire (const GValue       *value,
-                                           const GVariantType *type,
-                                           const GParamSpec   *spec,
-                                           GError            **error);
-
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (BoltWireConv, bolt_wire_conv_unref)
 
 G_END_DECLS
