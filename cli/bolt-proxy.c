@@ -23,6 +23,7 @@
 #include "bolt-dbus.h"
 #include "bolt-enums.h"
 #include "bolt-error.h"
+#include "bolt-glue.h"
 #include "bolt-names.h"
 #include "bolt-str.h"
 
@@ -48,7 +49,48 @@ enum {
   PROP_LAST
 };
 
-G_DEFINE_TYPE (BoltProxy, bolt_proxy, G_TYPE_DBUS_PROXY);
+struct _BoltProxyClassPrivate
+{
+  GHashTable *wire_convs;
+};
+
+static gpointer bolt_proxy_parent_class = NULL;
+
+static void     bolt_proxy_init (GTypeInstance *,
+                                 gpointer g_class);
+static void     bolt_proxy_class_init (BoltProxyClass *klass);
+static void     bolt_proxy_base_init (gpointer g_class);
+static void     bolt_proxy_base_finalize (gpointer g_class);
+
+GType
+bolt_proxy_get_type (void)
+{
+  static volatile gsize proxy_type = 0;
+
+  if (g_once_init_enter (&proxy_type))
+    {
+      GType type_id;
+      const GTypeInfo type_info = {
+        sizeof (BoltProxyClass),
+        bolt_proxy_base_init,
+        (GBaseFinalizeFunc) bolt_proxy_base_finalize,
+        (GClassInitFunc) bolt_proxy_class_init,
+        NULL,           /* class_finalize */
+        NULL,           /* class_data */
+        sizeof (BoltProxy),
+        0,              /* n_preallocs */
+        bolt_proxy_init,
+        NULL,           /* value_table */
+      };
+
+      type_id = g_type_register_static (G_TYPE_DBUS_PROXY, "BoltProxy",
+                                        &type_info, G_TYPE_FLAG_ABSTRACT);
+      g_type_add_class_private (type_id, sizeof (BoltProxyClassPrivate));
+      g_once_init_leave (&proxy_type, type_id);
+    }
+
+  return proxy_type;
+}
 
 
 static void
@@ -102,6 +144,8 @@ bolt_proxy_class_init (BoltProxyClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
+  bolt_proxy_parent_class = g_type_class_peek_parent (klass);
+
   gobject_class->constructed = bolt_proxy_constructed;
 
   klass->get_dbus_signals = bolt_proxy_get_dbus_signals;
@@ -109,7 +153,29 @@ bolt_proxy_class_init (BoltProxyClass *klass)
 }
 
 static void
-bolt_proxy_init (BoltProxy *object)
+bolt_proxy_base_init (gpointer g_class)
+{
+  BoltProxyClass *klass = g_class;
+
+  klass->priv = G_TYPE_CLASS_GET_PRIVATE (g_class, BOLT_TYPE_PROXY, BoltProxyClassPrivate);
+  memset (klass->priv, 0, sizeof (BoltProxyClassPrivate));
+
+  klass->priv->wire_convs = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                   NULL,
+                                                   (GDestroyNotify) bolt_wire_conv_unref);
+}
+
+static void
+bolt_proxy_base_finalize (gpointer g_class)
+{
+  BoltProxyClass *klass = g_class;
+  BoltProxyClassPrivate *priv = klass->priv;
+
+  g_hash_table_unref (priv->wire_convs);
+}
+
+static void
+bolt_proxy_init (GTypeInstance *instance, gpointer g_class)
 {
 }
 
@@ -178,6 +244,59 @@ bolt_proxy_handle_dbus_signal (GDBusProxy  *proxy,
 
 }
 
+static BoltWireConv *
+bolt_proxy_get_wire_conv (BoltProxy  *proxy,
+                          GParamSpec *spec,
+                          GError    **error)
+{
+  GDBusInterfaceInfo *info;
+  GDBusPropertyInfo *pi;
+  BoltProxyClass *klass;
+  const char *nick;
+  BoltWireConv *conv;
+
+  klass = BOLT_PROXY_GET_CLASS (proxy);
+
+  nick = g_param_spec_get_nick (spec);
+  conv = g_hash_table_lookup (klass->priv->wire_convs, nick);
+
+  if (conv)
+    return conv;
+
+  info = g_dbus_proxy_get_interface_info (G_DBUS_PROXY (proxy));
+
+  if (info == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "could not find dbus interface info");
+      return NULL;
+    }
+
+  pi = g_dbus_interface_info_lookup_property (info, nick);
+  if (pi == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "could not find dbus property info");
+      return NULL;
+    }
+
+  conv = bolt_wire_conv_for (G_VARIANT_TYPE (pi->signature), spec);
+
+  if (conv == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "could create conversion helper");
+      return NULL;
+    }
+
+  /* nick is valid as long as spec is valid and
+   * a reference to spec is held by conv */
+  g_hash_table_insert (klass->priv->wire_convs,
+                       (gpointer) nick, conv);
+
+  return conv;
+}
+
 /* public methods */
 void
 bolt_proxy_property_getter (GObject    *object,
@@ -196,9 +315,10 @@ bolt_proxy_get_dbus_property (BoltProxy  *proxy,
                               GValue     *value)
 {
   g_autoptr(GVariant) val = NULL;
-  const GVariantType *vt;
-  gboolean handled = FALSE;
+  g_autoptr(GError) err = NULL;
+  BoltWireConv *conv;
   const char *nick;
+  gboolean ok;
 
   nick = g_param_spec_get_nick (spec);
   val = g_dbus_proxy_get_cached_property (G_DBUS_PROXY (proxy), nick);
@@ -216,76 +336,22 @@ bolt_proxy_get_dbus_property (BoltProxy  *proxy,
       return FALSE;
     }
 
-  vt = g_variant_get_type (val);
+  conv = bolt_proxy_get_wire_conv (proxy, spec, &err);
 
-  if (g_variant_type_equal (vt, G_VARIANT_TYPE_STRING) &&
-      G_IS_PARAM_SPEC_ENUM (spec))
+  if (conv == NULL)
     {
-      GParamSpecEnum *enum_spec = G_PARAM_SPEC_ENUM (spec);
-      GEnumValue *ev;
-      const char *str;
-
-      if (G_VALUE_TYPE (value) == 0)
-        g_value_init (value, spec->value_type);
-
-      str = g_variant_get_string (val, NULL);
-      ev = g_enum_get_value_by_nick (enum_spec->enum_class, str);
-
-      handled = ev != NULL;
-
-      if (handled)
-        g_value_set_enum (value, ev->value);
-      else
-        g_value_set_enum (value, enum_spec->default_value);
-    }
-  else if (g_variant_type_equal (vt, G_VARIANT_TYPE_STRING) &&
-           G_IS_PARAM_SPEC_FLAGS (spec))
-    {
-      GParamSpecFlags *flags_spec = G_PARAM_SPEC_FLAGS (spec);
-      GFlagsClass *flags_class = flags_spec->flags_class;
-      const char *str;
-      guint v;
-
-      if (G_VALUE_TYPE (value) == 0)
-        g_value_init (value, spec->value_type);
-
-      str = g_variant_get_string (val, NULL);
-      handled = bolt_flags_class_from_string (flags_class, str, &v, NULL);
-
-      if (handled)
-        g_value_set_flags (value, v);
-      else
-        g_value_set_flags (value, flags_spec->default_value);
-    }
-  else if (g_variant_type_equal (vt, G_VARIANT_TYPE_STRING))
-    {
-      const char *str;
-
-      str = g_variant_get_string (val, NULL);
-
-      if (G_VALUE_TYPE (value) == 0)
-        g_value_init (value, spec->value_type);
-
-      if (str && *str == '\0')
-        str = NULL;
-
-      /* NB: this assumes the lifetime of the GValue is not longer
-       * than the lifetime of the GVariant inside the property cache
-       * of the GDBusProxy object. */
-      g_value_set_static_string (value, str);
-      handled = TRUE;
-    }
-  else
-    {
-      g_dbus_gvariant_to_gvalue (val, value);
-      handled = TRUE;
+      g_warning ("No conversion available for dbus property '%s': %s",
+                 nick, err->message);
+      return FALSE;
     }
 
-  if (handled == FALSE)
-    g_warning ("Failed to convert property '%s' [%s]",
-               spec->name, nick);
+  ok = bolt_wire_conv_from_wire (conv, val, value, &err);
 
-  return handled;
+  if (!ok)
+    g_warning ("Could failed to convert dbus property '%s': %s",
+               nick, err->message);
+
+  return ok;
 }
 
 const char *
