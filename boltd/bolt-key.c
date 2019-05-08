@@ -146,11 +146,21 @@ BoltKey  *
 bolt_key_new (GError **error)
 {
   BoltKey *key;
+  BoltRng rng;
   char data[BOLT_KEY_BYTES];
 
   key = g_object_new (BOLT_TYPE_KEY, NULL);
 
-  bolt_get_random_data (data, BOLT_KEY_BYTES);
+  rng = bolt_get_random_data (data, BOLT_KEY_BYTES);
+
+  /* fail if we can not be sure that we have good enough
+   * random data, which is only guaranteed by getrandom */
+  if (rng != BOLT_RNG_GETRANDOM)
+    {
+      g_set_error (error, BOLT_ERROR_FAILED, BOLT_ERROR_NOKEY,
+                   "failed to create key: no random data");
+      return NULL;
+    }
 
   for (guint i = 0; i < BOLT_KEY_BYTES; i++)
     {
