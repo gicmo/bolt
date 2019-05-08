@@ -1299,48 +1299,93 @@ manager_maybe_import (BoltManager *mgr,
 }
 
 static void
-auto_enroll_done (GObject      *source,
+auto_enroll_done (GObject      *device,
                   GAsyncResult *res,
                   gpointer      user_data)
 {
   g_autoptr(GError) err = NULL;
-  BoltManager *mgr = BOLT_MANAGER (user_data);
-  BoltDevice *dev = BOLT_DEVICE (source);
+  BoltDevice *dev = BOLT_DEVICE (device);
   BoltAuth *auth = BOLT_AUTH (res);
-  BoltKey *key;
+  BoltManager *mgr;
   BoltPolicy policy;
+  BoltKey *key;
   gboolean ok;
 
+  mgr = BOLT_MANAGER (bolt_auth_get_origin (auth));
   ok = bolt_auth_check (auth, &err);
 
   if (!ok)
     {
       bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("auto-enroll"),
-                     "authorization failed");
+                     "failed to authorize the new device");
       return;
     }
-
-  bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-enroll"), "authorized");
 
   key = bolt_auth_get_key (auth);
   policy = bolt_auth_get_policy (auth);
 
   ok = bolt_store_put_device (mgr->store, dev, policy, key, &err);
 
-  if (!ok)
+  if (ok)
+    bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-enroll"), "done");
+  else
     bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("auto-enroll"),
-                   "failed to store device");
+                   "failed to store the device");
+}
+
+static BoltAuth *
+manager_enroll_device_prepare (BoltManager *mgr,
+                               BoltDevice  *dev,
+                               GError     **error)
+{
+  g_autoptr(BoltDevice) parent = NULL;
+  g_autoptr(BoltKey) key = NULL;
+  BoltSecurity level;
+  BoltAuth *auth;
+
+  /* are we even allowed to enroll new devices right now? */
+  if (bolt_auth_mode_is_disabled (mgr->authmode))
+    {
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
+                   "authorization of new devices is disabled");
+      return NULL;
+    }
+
+  /* if the parent is not authorized and we try to authorize,
+   * we will fail and log a warning, so lets check, fail early
+   * and avoid the warning */
+  parent = bolt_manager_get_parent (mgr, dev);
+  if (!bolt_device_is_authorized (parent))
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_AUTHCHAIN,
+                   "parent not authorized, deferring");
+      return NULL;
+    }
+
+  /* determine the maximum security level we can use, i.e.
+   * minimum level that the device *and* host support */
+  if (bolt_device_supports_secure_mode (dev))
+    level = bolt_device_get_security (dev);
+  else
+    level = BOLT_SECURITY_USER;
+
+  /* yay, we are in SECURE mode, we need to create a key */
+  if (level == BOLT_SECURITY_SECURE)
+    key = bolt_key_new ();
+
+  auth = bolt_auth_new (mgr, level, key);
+
+  return auth;
 }
 
 static void
 manager_auto_enroll (BoltManager *mgr,
                      BoltDevice  *dev)
 {
-  g_autoptr(BoltDevice) parent = NULL;
   g_autoptr(BoltAuth) auth = NULL;
-  g_autoptr(BoltKey) key = NULL;
+  g_autoptr(GError) err = NULL;
   BoltStatus status;
-  BoltSecurity level;
+  gboolean have_key;
 
   g_return_if_fail (!bolt_device_get_stored (dev));
 
@@ -1353,39 +1398,20 @@ manager_auto_enroll (BoltManager *mgr,
   if (!bolt_device_has_iommu (dev))
     return;
 
-  if (bolt_auth_mode_is_disabled (mgr->authmode))
+  auth = manager_enroll_device_prepare (mgr, dev, &err);
+
+  if (!auth)
     {
-      bolt_info (LOG_DEV (dev), LOG_TOPIC ("auto-enroll"),
-                 "authorization is globally disabled.");
+      bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-enroll"),
+                "no, pre-check failed: %s", err->message);
       return;
     }
 
-  /* if the parent is not authorized and we try, we
-   * will fail and create a warning, so lets check */
-  parent = bolt_manager_get_parent (mgr, dev);
-  if (!bolt_device_is_authorized (parent))
-    {
-      bolt_info (LOG_DEV (dev), LOG_TOPIC ("auto-enroll"),
-                 "parent not authorized, deferring");
-      return;
-    }
-
-  level = bolt_device_get_security (dev);
-
-  if (level == BOLT_SECURITY_SECURE)
-    {
-      if (bolt_device_supports_secure_mode (dev))
-        key = bolt_key_new ();
-      else
-        level = BOLT_SECURITY_USER;
-    }
-
-  auth = bolt_auth_new (dev, level, key);
-  bolt_auth_set_policy (auth, BOLT_POLICY_IOMMU);
-
+  have_key = bolt_auth_has_key (auth);
   bolt_msg (LOG_DEV (dev), LOG_TOPIC ("auto-enroll"),
-            "enrolling [key: %s]", bolt_yesno (!!key));
+            "yes, key: %s", bolt_yesno (have_key));
 
+  bolt_auth_set_policy (auth, BOLT_POLICY_IOMMU);
   bolt_device_authorize (dev, auth, auto_enroll_done, mgr);
 }
 
@@ -2432,10 +2458,8 @@ handle_enroll_device (BoltExported          *obj,
 {
   g_autoptr(BoltDevice) dev = NULL;
   g_autoptr(BoltAuth) auth = NULL;
-  g_autoptr(BoltKey) key = NULL;
   BoltManager *mgr;
   const char *uid;
-  BoltSecurity level;
   BoltPolicy pol;
   const char *policy;
 
@@ -2480,27 +2504,13 @@ handle_enroll_device (BoltExported          *obj,
   if (bolt_device_is_authorized (dev))
     return enroll_device_store_authorized (mgr, dev, pol, error);
 
-  if (bolt_auth_mode_is_disabled (mgr->authmode))
-    {
-      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_ACCESS_DENIED,
-                   "authorization of new devices is disabled");
-      return NULL;
-    }
+  auth = manager_enroll_device_prepare (mgr, dev, error);
 
-  if (bolt_device_supports_secure_mode (dev))
-    level = bolt_device_get_security (dev);
-  else
-    level = BOLT_SECURITY_USER;
+  if (auth == NULL)
+    return NULL;
 
-  key = NULL;
-  if (level == BOLT_SECURITY_SECURE)
-    key = bolt_key_new ();
-
-  auth = bolt_auth_new (mgr, level, key);
   bolt_auth_set_policy (auth, pol);
-
   bolt_device_authorize (dev, auth, enroll_device_done, inv);
-
   return NULL;
 
 }
