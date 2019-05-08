@@ -1017,7 +1017,7 @@ handle_authorize_done (GObject      *device,
 }
 
 static gboolean
-device_should_uprade_key (BoltDevice *dev)
+device_should_upgrade_key (BoltDevice *dev)
 {
   gboolean upgrade = FALSE;
   const char *reason = NULL;
@@ -1071,7 +1071,7 @@ handle_authorize (BoltExported          *object,
     {
       if (dev->key)
         key = bolt_store_get_key (dev->store, dev->uid, error);
-      else if (device_should_uprade_key (dev))
+      else if (device_should_upgrade_key (dev))
         key = bolt_key_new ();
       else
         level = BOLT_SECURITY_USER;
