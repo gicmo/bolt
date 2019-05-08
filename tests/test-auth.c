@@ -64,7 +64,7 @@ test_auth_basic (TestDummy *tt, gconstpointer user_data)
                       NULL);
   g_assert_nonnull (dev);
 
-  key = bolt_key_new ();
+  key = bolt_key_new (NULL);
   g_assert_nonnull (key);
 
   auth = bolt_auth_new (dev, BOLT_SECURITY_SECURE, key);
@@ -122,7 +122,7 @@ test_auth_error (TestDummy *tt, gconstpointer user_data)
                       NULL);
   g_assert_nonnull (dev);
 
-  key = bolt_key_new ();
+  key = bolt_key_new (NULL);
   g_assert_nonnull (key);
 
   auth = bolt_auth_new (dev, BOLT_SECURITY_SECURE, key);

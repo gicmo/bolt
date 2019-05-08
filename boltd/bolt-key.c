@@ -143,7 +143,7 @@ bolt_key_class_init (BoltKeyClass *klass)
 
 /* public methods */
 BoltKey  *
-bolt_key_new (void)
+bolt_key_new (GError **error)
 {
   BoltKey *key;
   char data[BOLT_KEY_BYTES];

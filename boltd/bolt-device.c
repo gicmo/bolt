@@ -1072,12 +1072,14 @@ handle_authorize (BoltExported          *object,
       if (dev->key)
         key = bolt_store_get_key (dev->store, dev->uid, error);
       else if (device_should_upgrade_key (dev))
-        key = bolt_key_new ();
+        key = bolt_key_new (error);
       else
         level = BOLT_SECURITY_USER;
     }
 
-  /* only happens if the key could not be read */
+  /* happens if the key could not be read (fatal error) or if a new
+   * key could not be generated (should practically never happen).
+   * In both cases 'error' will be set. */
   if (level == BOLT_SECURITY_SECURE && key == NULL)
     return NULL;
 

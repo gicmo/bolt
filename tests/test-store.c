@@ -161,7 +161,7 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_clear_error (&error);
   g_assert_no_error (error);
 
-  key = bolt_key_new ();
+  key = bolt_key_new (NULL);
   g_assert_nonnull (key);
 
   ok = bolt_store_put_device (tt->store, dev, BOLT_POLICY_MANUAL, key, &error);
@@ -317,7 +317,7 @@ test_key (TestStore *tt, gconstpointer user_data)
   guint32 mode;
   int r;
 
-  key = bolt_key_new ();
+  key = bolt_key_new (NULL);
   g_assert_nonnull (key);
 
   g_object_get (key, "fresh", &fresh, NULL);

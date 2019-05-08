@@ -33,7 +33,7 @@ G_DECLARE_FINAL_TYPE (BoltKey, bolt_key, BOLT, KEY, GObject);
 #define BOLT_KEY_BYTES 32
 #define BOLT_KEY_CHARS 64
 
-BoltKey  *        bolt_key_new (void);
+BoltKey  *        bolt_key_new (GError **error);
 
 gboolean          bolt_key_write_to (BoltKey      *key,
                                      int           fd,

@@ -1371,7 +1371,11 @@ manager_enroll_device_prepare (BoltManager *mgr,
 
   /* yay, we are in SECURE mode, we need to create a key */
   if (level == BOLT_SECURITY_SECURE)
-    key = bolt_key_new ();
+    {
+      key = bolt_key_new (error);
+      if (key == NULL)
+        return NULL;
+    }
 
   auth = bolt_auth_new (mgr, level, key);
 
