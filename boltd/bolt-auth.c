@@ -351,6 +351,14 @@ bolt_auth_get_keystate (BoltAuth *auth)
   return bolt_key_get_state (auth->key);
 }
 
+gboolean
+bolt_auth_has_key (BoltAuth *auth)
+{
+  g_return_val_if_fail (BOLT_IS_AUTH (auth), FALSE);
+
+  return auth->key != NULL;
+}
+
 gpointer
 bolt_auth_get_origin (BoltAuth *auth)
 {

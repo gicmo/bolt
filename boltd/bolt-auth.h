@@ -57,6 +57,8 @@ BoltKey *        bolt_auth_get_key (BoltAuth *auth);
 
 BoltKeyState     bolt_auth_get_keystate (BoltAuth *auth);
 
+gboolean         bolt_auth_has_key (BoltAuth *auth);
+
 gpointer         bolt_auth_get_origin (BoltAuth *auth);
 
 BoltPolicy       bolt_auth_get_policy (BoltAuth *auth);
