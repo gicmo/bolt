@@ -45,6 +45,11 @@ struct _BoltProxyClass
   const BoltProxySignal * (*get_dbus_signals) (guint *n);
 };
 
+void              bolt_proxy_property_getter (GObject    *object,
+                                              guint       prop_id,
+                                              GValue     *value,
+                                              GParamSpec *spec);
+
 gboolean          bolt_proxy_get_dbus_property (GObject    *proxy,
                                                 GParamSpec *spec,
                                                 GValue     *value);

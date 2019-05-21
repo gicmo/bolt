@@ -151,6 +151,29 @@ bolt_proxy_handle_dbus_signal (GDBusProxy  *proxy,
 }
 
 /* public methods */
+void
+bolt_proxy_property_getter (GObject    *object,
+                            guint       prop_id,
+                            GValue     *value,
+                            GParamSpec *spec)
+{
+  gboolean ok;
+
+  ok = bolt_proxy_get_dbus_property (object, spec, value);
+
+  if (!ok)
+    {
+      const GValue *def;
+
+      g_debug ("Could not get dbus property '%s'", spec->name);
+
+      def = g_param_spec_get_default_value (spec);
+      if (!def)
+        return;
+
+      g_value_copy (def, value);
+    }
+}
 
 gboolean
 bolt_proxy_get_dbus_property (GObject    *proxy,
