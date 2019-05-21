@@ -48,24 +48,13 @@ G_DEFINE_TYPE (BoltPower,
                bolt_power,
                BOLT_TYPE_PROXY);
 
-static void
-bolt_power_get_property (GObject    *object,
-                         guint       prop_id,
-                         GValue     *value,
-                         GParamSpec *pspec)
-{
-  if (bolt_proxy_get_dbus_property (object, pspec, value))
-    return;
-}
-
-
 
 static void
 bolt_power_class_init (BoltPowerClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
-  gobject_class->get_property = bolt_power_get_property;
+  gobject_class->get_property = bolt_proxy_property_getter;
 
   props[PROP_SUPPORTED] =
     g_param_spec_boolean ("supported",

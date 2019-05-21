@@ -49,24 +49,13 @@ G_DEFINE_TYPE (BoltDomain,
                bolt_domain,
                BOLT_TYPE_PROXY);
 
-static void
-bolt_domain_get_property (GObject    *object,
-                          guint       prop_id,
-                          GValue     *value,
-                          GParamSpec *pspec)
-{
-  if (bolt_proxy_get_dbus_property (object, pspec, value))
-    return;
-}
-
-
 
 static void
 bolt_domain_class_init (BoltDomainClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
-  gobject_class->get_property = bolt_domain_get_property;
+  gobject_class->get_property = bolt_proxy_property_getter;
 
   props[PROP_UID] =
     g_param_spec_string ("uid",

@@ -76,18 +76,6 @@ G_DEFINE_TYPE (BoltClient,
                BOLT_TYPE_PROXY);
 
 
-static void
-bolt_client_get_property (GObject    *object,
-                          guint       prop_id,
-                          GValue     *value,
-                          GParamSpec *pspec)
-{
-  if (bolt_proxy_get_dbus_property (object, pspec, value))
-    return;
-
-  G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-}
-
 static const BoltProxySignal *
 bolt_client_get_dbus_signals (guint *n)
 {
@@ -110,7 +98,7 @@ bolt_client_class_init (BoltClientClass *klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   BoltProxyClass *proxy_class = BOLT_PROXY_CLASS (klass);
 
-  gobject_class->get_property = bolt_client_get_property;
+  gobject_class->get_property = bolt_proxy_property_getter;
 
   proxy_class->get_dbus_signals = bolt_client_get_dbus_signals;
 

@@ -64,24 +64,13 @@ G_DEFINE_TYPE (BoltDevice,
                bolt_device,
                BOLT_TYPE_PROXY);
 
-static void
-bolt_device_get_property (GObject    *object,
-                          guint       prop_id,
-                          GValue     *value,
-                          GParamSpec *pspec)
-{
-  if (bolt_proxy_get_dbus_property (object, pspec, value))
-    return;
-}
-
-
 
 static void
 bolt_device_class_init (BoltDeviceClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
-  gobject_class->get_property = bolt_device_get_property;
+  gobject_class->get_property = bolt_proxy_property_getter;
 
   props[PROP_UID] =
     g_param_spec_string ("uid",
