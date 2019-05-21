@@ -200,6 +200,9 @@ bolt_proxy_get_dbus_property (GObject    *proxy,
       GEnumValue *ev;
       const char *str;
 
+      if (G_VALUE_TYPE (value) == 0)
+        g_value_init (value, spec->value_type);
+
       str = g_variant_get_string (val, NULL);
       ev = g_enum_get_value_by_nick (enum_spec->enum_class, str);
 
@@ -217,6 +220,9 @@ bolt_proxy_get_dbus_property (GObject    *proxy,
       GFlagsClass *flags_class = flags_spec->flags_class;
       const char *str;
       guint v;
+
+      if (G_VALUE_TYPE (value) == 0)
+        g_value_init (value, spec->value_type);
 
       str = g_variant_get_string (val, NULL);
       handled = bolt_flags_class_from_string (flags_class, str, &v, NULL);
