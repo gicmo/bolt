@@ -157,22 +157,9 @@ bolt_proxy_property_getter (GObject    *object,
                             GValue     *value,
                             GParamSpec *spec)
 {
-  gboolean ok;
-
-  ok = bolt_proxy_get_dbus_property (BOLT_PROXY (object),
-                                     spec,
-                                     value);
-
-  if (!ok)
-    {
-      const GValue *def;
-
-      def = g_param_spec_get_default_value (spec);
-      if (!def)
-        return;
-
-      g_value_copy (def, value);
-    }
+  bolt_proxy_get_dbus_property (BOLT_PROXY (object),
+                                spec,
+                                value);
 }
 
 gboolean
@@ -190,7 +177,14 @@ bolt_proxy_get_dbus_property (BoltProxy  *proxy,
 
   if (val == NULL)
     {
+      const GValue *def = g_param_spec_get_default_value (spec);
+
+      if (G_VALUE_TYPE (value) == 0)
+        g_value_init (value, spec->value_type);
+      g_value_copy (def, value);
+
       g_warning ("Unknown property: %s (%s)", spec->name, nick);
+
       return FALSE;
     }
 
