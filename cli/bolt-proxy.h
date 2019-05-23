@@ -50,7 +50,7 @@ void              bolt_proxy_property_getter (GObject    *object,
                                               GValue     *value,
                                               GParamSpec *spec);
 
-gboolean          bolt_proxy_get_dbus_property (GObject    *proxy,
+gboolean          bolt_proxy_get_dbus_property (BoltProxy  *proxy,
                                                 GParamSpec *spec,
                                                 GValue     *value);
 

@@ -159,7 +159,9 @@ bolt_proxy_property_getter (GObject    *object,
 {
   gboolean ok;
 
-  ok = bolt_proxy_get_dbus_property (object, spec, value);
+  ok = bolt_proxy_get_dbus_property (BOLT_PROXY (object),
+                                     spec,
+                                     value);
 
   if (!ok)
     {
@@ -176,7 +178,7 @@ bolt_proxy_property_getter (GObject    *object,
 }
 
 gboolean
-bolt_proxy_get_dbus_property (GObject    *proxy,
+bolt_proxy_get_dbus_property (BoltProxy  *proxy,
                               GParamSpec *spec,
                               GValue     *value)
 {
