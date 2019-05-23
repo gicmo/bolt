@@ -348,6 +348,20 @@ bolt_proxy_get_property_bool (BoltProxy  *proxy,
 }
 
 gboolean
+bolt_proxy_get_bool_by_pspec (gpointer    object,
+                              GParamSpec *spec)
+{
+  g_auto(GValue) val = G_VALUE_INIT;
+  BoltProxy *proxy = object;
+
+  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
+
+  bolt_proxy_get_dbus_property (proxy, spec, &val);
+
+  return g_value_get_boolean (&val);
+}
+
+gboolean
 bolt_proxy_get_property_enum (BoltProxy  *proxy,
                               const char *name,
                               gint       *value)
@@ -384,6 +398,20 @@ bolt_proxy_get_property_enum (BoltProxy  *proxy,
     *value = ev->value;
 
   return TRUE;
+}
+
+gint
+bolt_proxy_get_enum_by_pspec (gpointer    object,
+                              GParamSpec *spec)
+{
+  g_auto(GValue) val = G_VALUE_INIT;
+  BoltProxy *proxy = (BoltProxy *) object;
+
+  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
+
+  bolt_proxy_get_dbus_property (proxy, spec, &val);
+
+  return g_value_get_enum (&val);
 }
 
 gboolean
@@ -425,6 +453,20 @@ bolt_proxy_get_property_flags (BoltProxy  *proxy,
   return ok;
 }
 
+guint
+bolt_proxy_get_flags_by_pspec (gpointer    object,
+                               GParamSpec *spec)
+{
+  g_auto(GValue) val = G_VALUE_INIT;
+  BoltProxy *proxy = (BoltProxy *) object;
+
+  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
+
+  bolt_proxy_get_dbus_property (proxy, spec, &val);
+
+  return g_value_get_flags (&val);
+}
+
 gboolean
 bolt_proxy_get_property_uint32 (BoltProxy  *proxy,
                                 const char *name,
@@ -440,6 +482,20 @@ bolt_proxy_get_property_uint32 (BoltProxy  *proxy,
     *value = g_variant_get_uint32 (var);
 
   return TRUE;
+}
+
+guint32
+bolt_proxy_get_uint32_by_pspec (gpointer    object,
+                                GParamSpec *spec)
+{
+  g_auto(GValue) val = G_VALUE_INIT;
+  BoltProxy *proxy = (BoltProxy *) object;
+
+  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
+
+  bolt_proxy_get_dbus_property (proxy, spec, &val);
+
+  return g_value_get_uint (&val);
 }
 
 gboolean
@@ -459,6 +515,20 @@ bolt_proxy_get_property_int64 (BoltProxy  *proxy,
   return TRUE;
 }
 
+gint64
+bolt_proxy_get_int64_by_pspec (gpointer    object,
+                               GParamSpec *spec)
+{
+  g_auto(GValue) val = G_VALUE_INIT;
+  BoltProxy *proxy = (BoltProxy *) object;
+
+  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
+
+  bolt_proxy_get_dbus_property (proxy, spec, &val);
+
+  return g_value_get_int64 (&val);
+}
+
 gboolean
 bolt_proxy_get_property_uint64 (BoltProxy  *proxy,
                                 const char *name,
@@ -475,6 +545,21 @@ bolt_proxy_get_property_uint64 (BoltProxy  *proxy,
 
   return TRUE;
 }
+
+guint64
+bolt_proxy_get_uint64_by_pspec (gpointer    object,
+                                GParamSpec *spec)
+{
+  g_auto(GValue) val = G_VALUE_INIT;
+  BoltProxy *proxy = (BoltProxy *) object;
+
+  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
+
+  bolt_proxy_get_dbus_property (proxy, spec, &val);
+
+  return g_value_get_uint64 (&val);
+}
+
 
 const char *
 bolt_proxy_get_property_string (BoltProxy  *proxy,
@@ -494,6 +579,26 @@ bolt_proxy_get_property_string (BoltProxy  *proxy,
   return val;
 }
 
+const char *
+bolt_proxy_get_string_by_pspec (gpointer    object,
+                                GParamSpec *spec)
+{
+  g_auto(GValue) val = G_VALUE_INIT;
+  BoltProxy *proxy = (BoltProxy *) object;
+
+  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
+
+  bolt_proxy_get_dbus_property (proxy, spec, &val);
+
+  /* NB: Yes, this is return the string inside the value,
+   * although the value is freed. This therefore makes
+   * the assumption that the GValue's value was initialized
+   * via a static string (g_value_set_static_string). Ergo,
+   * this must always be true for bolt_proxy_get_dbus_property
+   */
+  return g_value_get_string (&val);
+}
+
 char **
 bolt_proxy_get_property_strv (BoltProxy  *proxy,
                               const char *name)
@@ -507,6 +612,20 @@ bolt_proxy_get_property_strv (BoltProxy  *proxy,
     val = g_variant_dup_strv (var, NULL);
 
   return val;
+}
+
+char **
+bolt_proxy_get_strv_by_spec (gpointer    object,
+                             GParamSpec *spec)
+{
+  g_auto(GValue) val = G_VALUE_INIT;
+  BoltProxy *proxy = (BoltProxy *) object;
+
+  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
+
+  bolt_proxy_get_dbus_property (proxy, spec, &val);
+
+  return (char **) g_value_dup_boxed (&val);
 }
 
 gboolean
