@@ -1091,17 +1091,11 @@ bolt_client_new_power_client (BoltClient   *client,
 guint
 bolt_client_get_version (BoltClient *client)
 {
-  const char *key;
   guint val = 0;
-  gboolean ok;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
 
-  key = g_param_spec_get_name (props[PROP_VERSION]);
-  ok = bolt_proxy_get_property_uint32 (BOLT_PROXY (client), key, &val);
-
-  if (!ok)
-    g_warning ("failed to get property '%s'", key);
+  val = bolt_proxy_get_uint32_by_pspec (client, props[PROP_VERSION]);
 
   return val;
 }
@@ -1109,17 +1103,11 @@ bolt_client_get_version (BoltClient *client)
 gboolean
 bolt_client_is_probing (BoltClient *client)
 {
-  const char *key;
   gboolean val = FALSE;
-  gboolean ok;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
 
-  key = g_param_spec_get_name (props[PROP_PROBING]);
-  ok = bolt_proxy_get_property_bool (BOLT_PROXY (client), key, &val);
-
-  if (!ok)
-    g_warning ("failed to get enum property '%s'", key);
+  val = bolt_proxy_get_bool_by_pspec (client, props[PROP_PROBING]);
 
   return val;
 }
@@ -1127,17 +1115,11 @@ bolt_client_is_probing (BoltClient *client)
 BoltPolicy
 bolt_client_get_policy (BoltClient *client)
 {
-  const char *key;
-  gboolean ok;
   gint val = BOLT_POLICY_UNKNOWN;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
 
-  key = g_param_spec_get_name (props[PROP_POLICY]);
-  ok = bolt_proxy_get_property_enum (BOLT_PROXY (client), key, &val);
-
-  if (!ok)
-    g_warning ("failed to get enum property '%s'", key);
+  val = bolt_proxy_get_enum_by_pspec (client, props[PROP_POLICY]);
 
   return val;
 }
@@ -1145,17 +1127,11 @@ bolt_client_get_policy (BoltClient *client)
 BoltSecurity
 bolt_client_get_security (BoltClient *client)
 {
-  const char *key;
-  gboolean ok;
   gint val = BOLT_SECURITY_UNKNOWN;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
 
-  key = g_param_spec_get_name (props[PROP_SECURITY]);
-  ok = bolt_proxy_get_property_enum (BOLT_PROXY (client), key, &val);
-
-  if (!ok)
-    g_warning ("failed to get enum property '%s'", key);
+  val = bolt_proxy_get_enum_by_pspec (client, props[PROP_SECURITY]);
 
   return val;
 }
@@ -1163,17 +1139,11 @@ bolt_client_get_security (BoltClient *client)
 BoltAuthMode
 bolt_client_get_authmode (BoltClient *client)
 {
-  const char *key;
-  gboolean ok;
   guint val = BOLT_AUTH_DISABLED;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
 
-  key = g_param_spec_get_name (props[PROP_AUTHMODE]);
-  ok = bolt_proxy_get_property_flags (BOLT_PROXY (client), key, &val);
-
-  if (!ok)
-    g_warning ("failed to get enum property '%s'", key);
+  val = bolt_proxy_get_flags_by_pspec (client, props[PROP_AUTHMODE]);
 
   return val;
 }
@@ -1181,17 +1151,11 @@ bolt_client_get_authmode (BoltClient *client)
 BoltPowerState
 bolt_client_get_power_state (BoltClient *client)
 {
-  const char *key;
-  gboolean ok;
   gint val = BOLT_FORCE_POWER_UNSET;
 
   g_return_val_if_fail (BOLT_IS_CLIENT (client), val);
 
-  key = g_param_spec_get_name (props[PROP_POWERSTATE]);
-  ok = bolt_proxy_get_property_enum (BOLT_PROXY (client), key, &val);
-
-  if (!ok)
-    g_warning ("failed to get enum property '%s'", key);
+  val = bolt_proxy_get_enum_by_pspec (client, props[PROP_POWERSTATE]);
 
   return val;
 }

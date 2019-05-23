@@ -140,13 +140,11 @@ bolt_domain_new_for_object_path (GDBusConnection *bus,
 const char *
 bolt_domain_get_uid (BoltDomain *domain)
 {
-  const char *key;
   const char *str;
 
   g_return_val_if_fail (BOLT_IS_DOMAIN (domain), NULL);
 
-  key = g_param_spec_get_name (props[PROP_UID]);
-  str = bolt_proxy_get_property_string (BOLT_PROXY (domain), key);
+  str = bolt_proxy_get_string_by_pspec (domain, props[PROP_UID]);
 
   return str;
 }
@@ -154,13 +152,11 @@ bolt_domain_get_uid (BoltDomain *domain)
 const char *
 bolt_domain_get_id (BoltDomain *domain)
 {
-  const char *key;
   const char *str;
 
   g_return_val_if_fail (BOLT_IS_DOMAIN (domain), NULL);
 
-  key = g_param_spec_get_name (props[PROP_ID]);
-  str = bolt_proxy_get_property_string (BOLT_PROXY (domain), key);
+  str = bolt_proxy_get_string_by_pspec (domain, props[PROP_ID]);
 
   return str;
 }
@@ -168,13 +164,11 @@ bolt_domain_get_id (BoltDomain *domain)
 const char *
 bolt_domain_get_syspath (BoltDomain *domain)
 {
-  const char *key;
   const char *str;
 
   g_return_val_if_fail (BOLT_IS_DOMAIN (domain), NULL);
 
-  key = g_param_spec_get_name (props[PROP_SYSPATH]);
-  str = bolt_proxy_get_property_string (BOLT_PROXY (domain), key);
+  str = bolt_proxy_get_string_by_pspec (domain, props[PROP_SYSPATH]);
 
   return str;
 }
@@ -182,17 +176,11 @@ bolt_domain_get_syspath (BoltDomain *domain)
 BoltSecurity
 bolt_domain_get_security (BoltDomain *domain)
 {
-  const char *key;
-  gboolean ok;
   gint val = BOLT_SECURITY_UNKNOWN;
 
   g_return_val_if_fail (BOLT_IS_DOMAIN (domain), val);
 
-  key = g_param_spec_get_name (props[PROP_SECURITY]);
-  ok = bolt_proxy_get_property_enum (BOLT_PROXY (domain), key, &val);
-
-  if (!ok)
-    g_warning ("failed to get enum property '%s'", key);
+  val = bolt_proxy_get_enum_by_pspec (domain, props[PROP_SECURITY]);
 
   return val;
 }
@@ -200,13 +188,11 @@ bolt_domain_get_security (BoltDomain *domain)
 char **
 bolt_domain_get_bootacl (BoltDomain *domain)
 {
-  const char *key;
   char **strv;
 
   g_return_val_if_fail (BOLT_IS_DOMAIN (domain), NULL);
 
-  key = g_param_spec_get_name (props[PROP_BOOTACL]);
-  strv = bolt_proxy_get_property_strv (BOLT_PROXY (domain), key);
+  strv = bolt_proxy_get_strv_by_pspec (domain, props[PROP_BOOTACL]);
 
   return strv;
 }
@@ -224,17 +210,11 @@ bolt_domain_is_online (BoltDomain *domain)
 gboolean
 bolt_domain_has_iommu (BoltDomain *domain)
 {
-  const char *key;
   gboolean val = FALSE;
-  gboolean ok;
 
-  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), val);
 
-  key = g_param_spec_get_name (props[PROP_IOMMU]);
-  ok = bolt_proxy_get_property_bool (BOLT_PROXY (domain), key, &val);
-
-  if (!ok)
-    g_warning ("failed to get bool property '%s'", key);
+  val = bolt_proxy_get_bool_by_pspec (domain, props[PROP_IOMMU]);
 
   return val;
 }

@@ -110,8 +110,8 @@ const char *      bolt_proxy_get_string_by_pspec (gpointer    proxy,
 char **           bolt_proxy_get_property_strv (BoltProxy  *proxy,
                                                 const char *name);
 
-char **           bolt_proxy_get_strv_by_spec (gpointer    proxy,
-                                               GParamSpec *spec);
+char **           bolt_proxy_get_strv_by_pspec (gpointer    proxy,
+                                                GParamSpec *spec);
 
 gboolean          bolt_proxy_set_property (BoltProxy    *proxy,
                                            const char   *name,

@@ -245,6 +245,7 @@ bolt_proxy_get_dbus_property (BoltProxy  *proxy,
        * than the lifetime of the GVariant inside the property cache
        * of the GDBusProxy object. */
       g_value_set_static_string (value, str);
+      handled = TRUE;
     }
   else
     {
@@ -615,8 +616,8 @@ bolt_proxy_get_property_strv (BoltProxy  *proxy,
 }
 
 char **
-bolt_proxy_get_strv_by_spec (gpointer    object,
-                             GParamSpec *spec)
+bolt_proxy_get_strv_by_pspec (gpointer    object,
+                              GParamSpec *spec)
 {
   g_auto(GValue) val = G_VALUE_INIT;
   BoltProxy *proxy = (BoltProxy *) object;

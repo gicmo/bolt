@@ -207,17 +207,11 @@ bolt_power_list_guards (BoltPower    *power,
 gboolean
 bolt_power_is_supported (BoltPower *power)
 {
-  const char *key;
-  gboolean val = FALSE;
-  gboolean ok;
+  gboolean val;
 
-  g_return_val_if_fail (BOLT_IS_POWER (power), val);
+  g_return_val_if_fail (BOLT_IS_POWER (power), FALSE);
 
-  key = g_param_spec_get_name (props[PROP_SUPPORTED]);
-  ok = bolt_proxy_get_property_bool (BOLT_PROXY (power), key, &val);
-
-  if (!ok)
-    g_warning ("failed to get enum property '%s'", key);
+  val = bolt_proxy_get_bool_by_pspec (power, props[PROP_SUPPORTED]);
 
   return val;
 }
@@ -225,17 +219,11 @@ bolt_power_is_supported (BoltPower *power)
 BoltPowerState
 bolt_power_get_state (BoltPower *power)
 {
-  const char *key;
-  gboolean ok;
   gint val = BOLT_FORCE_POWER_UNSET;
 
   g_return_val_if_fail (BOLT_IS_POWER (power), val);
 
-  key = g_param_spec_get_name (props[PROP_STATE]);
-  ok = bolt_proxy_get_property_enum (BOLT_PROXY (power), key, &val);
-
-  if (!ok)
-    g_warning ("failed to get enum property '%s'", key);
+  val = bolt_proxy_get_enum_by_pspec (power, props[PROP_STATE]);
 
   return val;
 }
