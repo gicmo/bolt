@@ -167,8 +167,6 @@ bolt_proxy_property_getter (GObject    *object,
     {
       const GValue *def;
 
-      g_debug ("Could not get dbus property '%s'", spec->name);
-
       def = g_param_spec_get_default_value (spec);
       if (!def)
         return;
@@ -191,7 +189,10 @@ bolt_proxy_get_dbus_property (BoltProxy  *proxy,
   val = g_dbus_proxy_get_cached_property (G_DBUS_PROXY (proxy), nick);
 
   if (val == NULL)
-    return FALSE;
+    {
+      g_warning ("Unknown property: %s (%s)", spec->name, nick);
+      return FALSE;
+    }
 
   vt = g_variant_get_type (val);
 
@@ -239,6 +240,10 @@ bolt_proxy_get_dbus_property (BoltProxy  *proxy,
       g_dbus_gvariant_to_gvalue (val, value);
       handled = TRUE;
     }
+
+  if (handled == FALSE)
+    g_warning ("Failed to convert property '%s' [%s]",
+               spec->name, nick);
 
   return handled;
 }
