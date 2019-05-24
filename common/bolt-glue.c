@@ -154,6 +154,21 @@ struct _BoltWireConv
 
 };
 
+/* helper */
+static inline gboolean
+value_is_initialized (GValue *value)
+{
+  return G_VALUE_TYPE (value) != 0;
+}
+
+static void
+wire_conv_init_value_if_needed (BoltWireConv *conv,
+                                GValue       *value)
+{
+  if (!value_is_initialized (value))
+    g_value_init (value, conv->prop_spec->value_type);
+}
+
 /* internal conversions */
 static GVariant *
 conv_enum_to_str (BoltWireConv *conv,
@@ -183,6 +198,8 @@ conv_enum_from_str (BoltWireConv *conv,
   const char *str;
   gboolean ok;
   gint v;
+
+  wire_conv_init_value_if_needed (conv, value);
 
   es  = G_PARAM_SPEC_ENUM (conv->prop_spec);
   str = g_variant_get_string (wire, NULL);
@@ -228,6 +245,8 @@ conv_flags_from_str (BoltWireConv *conv,
   gboolean ok;
   const char *str;
   guint v;
+
+  wire_conv_init_value_if_needed (conv, value);
 
   fs = G_PARAM_SPEC_FLAGS (conv->prop_spec);
   str = g_variant_get_string (wire, NULL);
@@ -294,7 +313,22 @@ conv_value_from_variant (BoltWireConv *conv,
                          GValue       *value,
                          GError      **error)
 {
+  GType want = value->g_type;
+
   g_dbus_gvariant_to_gvalue (wire, value);
+
+  /* if the value was initialized before, make sure
+   * we got the same type */
+  if (want != 0 && value->g_type != want)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "Can not convert wire from %s to %s",
+                   g_type_name (value->g_type), g_type_name (want));
+      return FALSE;
+    }
+
+  return TRUE;
+}
   return TRUE;
 }
 
@@ -450,7 +484,7 @@ bolt_wire_conv_from_wire (BoltWireConv *conv,
 
   g_return_val_if_fail (conv != NULL, FALSE);
   g_return_val_if_fail (wire != NULL, FALSE);
-  g_return_val_if_fail (G_IS_VALUE (value), FALSE);
+  g_return_val_if_fail (value != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   ok = conv->from_wire (conv, wire, value, error);

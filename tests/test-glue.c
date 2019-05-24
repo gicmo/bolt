@@ -266,9 +266,21 @@ test_wire_conv_enum (TestGlue *tt, gconstpointer data)
                    ==,
                    "three");
 
-  /* from the wire */
+  /* from the wire, value is unset */
+  g_value_unset (&val);
+  g_assert_true (G_VALUE_TYPE (&val) == 0);
+
+  ok = bolt_wire_conv_from_wire (conv, var, &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_cmpint (g_value_get_enum (&val),
+                   ==,
+                   BOLT_TEST_THREE);
+
+  /* from the wire, value is preset */
   g_value_reset (&val);
-  g_assert_cmpint (g_value_get_enum (&val), !=, BOLT_TEST_THREE);
+  g_assert_true (G_VALUE_HOLDS (&val, BOLT_TYPE_TEST_ENUM));
 
   ok = bolt_wire_conv_from_wire (conv, var, &val, &err);
   g_assert_no_error (err);
@@ -340,9 +352,21 @@ test_wire_conv_flags (TestGlue *tt, gconstpointer data)
                    ==,
                    "enabled");
 
-  /* from the wire */
+  /* from the wire, value is unset */
+  g_value_unset (&val);
+  g_assert_true (G_VALUE_TYPE (&val) == 0);
+
+  ok = bolt_wire_conv_from_wire (conv, var, &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_cmpint (g_value_get_flags (&val),
+                   ==,
+                   BOLT_KITT_ENABLED);
+
+  /* from the wire, value is preset */
   g_value_reset (&val);
-  g_assert_cmpint (g_value_get_flags (&val), !=, BOLT_KITT_ENABLED);
+  g_assert_true (G_VALUE_HOLDS (&val, BOLT_TYPE_KITT_FLAGS));
 
   ok = bolt_wire_conv_from_wire (conv, var, &val, &err);
   g_assert_no_error (err);
@@ -475,8 +499,21 @@ test_wire_conv_simple (TestGlue *tt, gconstpointer data)
                     ==,
                     42U);
 
-  /* from the wire */
+  /* from the wire, value is unset */
+  g_value_unset (&val);
+  g_assert_true (G_VALUE_TYPE (&val) == 0);
+
+  ok = bolt_wire_conv_from_wire (conv, var, &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_cmpint (g_value_get_uint64 (&val),
+                   ==,
+                   42U);
+
+  /* from the wire, value is preset */
   g_value_reset (&val);
+  g_assert_true (G_VALUE_HOLDS (&val, G_TYPE_UINT64));
   g_assert_cmpuint (g_value_get_uint64 (&val), !=, 42U);
 
   ok = bolt_wire_conv_from_wire (conv, var, &val, &err);
