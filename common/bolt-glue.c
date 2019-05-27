@@ -329,6 +329,32 @@ conv_value_from_variant (BoltWireConv *conv,
 
   return TRUE;
 }
+
+static GVariant *
+conv_str_to_wire (BoltWireConv *conv,
+                  const GValue *value,
+                  GError      **error)
+{
+  const char *str = g_value_get_string (value);
+
+  if (str == NULL)
+    str = "";
+
+  return g_variant_new_string (str);
+}
+
+static gboolean
+conv_str_from_wire (BoltWireConv *conv,
+                    GVariant     *wire,
+                    GValue       *value,
+                    GError      **error)
+{
+  const char *str = g_variant_get_string (wire, NULL);
+
+  wire_conv_init_value_if_needed (conv, value);
+
+  g_value_set_string (value, str);
+
   return TRUE;
 }
 
@@ -441,6 +467,12 @@ bolt_wire_conv_for (const GVariantType *wire_type,
       conv->conv_type = BOLT_WIRE_CONV_OBJECT_AS_STRING;
       conv->to_wire = conv_obj_to_str;
       conv->from_wire = conv_obj_from_str;
+    }
+  else if (as_str && G_IS_PARAM_SPEC_STRING (prop_spec))
+    {
+      conv->conv_type = BOLT_WIRE_CONV_NATIVE;
+      conv->to_wire = conv_str_to_wire;
+      conv->from_wire = conv_str_from_wire;
     }
   else
     {
