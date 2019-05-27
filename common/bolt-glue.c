@@ -353,7 +353,7 @@ conv_str_from_wire (BoltWireConv *conv,
 
   wire_conv_init_value_if_needed (conv, value);
 
-  g_value_set_string (value, str);
+  g_value_set_static_string (value, str);
 
   return TRUE;
 }
