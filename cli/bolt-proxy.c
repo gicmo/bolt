@@ -229,6 +229,23 @@ bolt_proxy_get_dbus_property (BoltProxy  *proxy,
       else
         g_value_set_flags (value, flags_spec->default_value);
     }
+  else if (g_variant_type_equal (vt, G_VARIANT_TYPE_STRING))
+    {
+      const char *str;
+
+      str = g_variant_get_string (val, NULL);
+
+      if (G_VALUE_TYPE (value) == 0)
+        g_value_init (value, spec->value_type);
+
+      if (str && *str == '\0')
+        str = NULL;
+
+      /* NB: this assumes the lifetime of the GValue is not longer
+       * than the lifetime of the GVariant inside the property cache
+       * of the GDBusProxy object. */
+      g_value_set_static_string (value, str);
+    }
   else
     {
       g_dbus_gvariant_to_gvalue (val, value);
