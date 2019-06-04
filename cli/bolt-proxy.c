@@ -309,45 +309,6 @@ find_property (BoltProxy  *proxy,
   return res;
 }
 
-static GVariant *
-bolt_proxy_get_cached_property (BoltProxy  *proxy,
-                                const char *name)
-{
-  const char *bus_name = NULL;
-  GParamSpec *pspec;
-  GVariant *var;
-
-  g_return_val_if_fail (BOLT_IS_PROXY (proxy), NULL);
-  g_return_val_if_fail (name != NULL, NULL);
-
-  pspec = g_object_class_find_property (G_OBJECT_GET_CLASS (proxy), name);
-
-  if (pspec == NULL)
-    return NULL;
-
-  bus_name = g_param_spec_get_nick (pspec);
-  var = g_dbus_proxy_get_cached_property (G_DBUS_PROXY (proxy), bus_name);
-
-  return var;
-}
-
-gboolean
-bolt_proxy_get_property_bool (BoltProxy  *proxy,
-                              const char *name,
-                              gboolean   *value)
-{
-  g_autoptr(GVariant) var = NULL;
-
-  var = bolt_proxy_get_cached_property (proxy, name);
-
-  if (var == NULL)
-    return FALSE;
-  else if (value)
-    *value = g_variant_get_boolean (var);
-
-  return TRUE;
-}
-
 gboolean
 bolt_proxy_get_bool_by_pspec (gpointer    object,
                               GParamSpec *spec)
@@ -362,44 +323,6 @@ bolt_proxy_get_bool_by_pspec (gpointer    object,
   return g_value_get_boolean (&val);
 }
 
-gboolean
-bolt_proxy_get_property_enum (BoltProxy  *proxy,
-                              const char *name,
-                              gint       *value)
-{
-  g_autoptr(GVariant) var = NULL;
-  const char *str = NULL;
-  const char *bus_name = NULL;
-  GParamSpec *pspec;
-  GEnumValue *ev;
-
-  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
-
-  pspec = g_object_class_find_property (G_OBJECT_GET_CLASS (proxy), name);
-
-  if (pspec == NULL)
-    return FALSE;
-
-  bus_name = g_param_spec_get_nick (pspec);
-  var = g_dbus_proxy_get_cached_property (G_DBUS_PROXY (proxy), bus_name);
-  if (var == NULL)
-    return FALSE;
-
-  str = g_variant_get_string (var, NULL);
-
-  if (str == NULL)
-    return FALSE;
-
-  ev = g_enum_get_value_by_nick (G_PARAM_SPEC_ENUM (pspec)->enum_class, str);
-
-  if (ev == NULL)
-    return FALSE;
-
-  if (value)
-    *value = ev->value;
-
-  return TRUE;
-}
 
 gint
 bolt_proxy_get_enum_by_pspec (gpointer    object,
@@ -413,45 +336,6 @@ bolt_proxy_get_enum_by_pspec (gpointer    object,
   bolt_proxy_get_dbus_property (proxy, spec, &val);
 
   return g_value_get_enum (&val);
-}
-
-gboolean
-bolt_proxy_get_property_flags (BoltProxy  *proxy,
-                               const char *name,
-                               guint      *value)
-{
-  g_autoptr(GVariant) var = NULL;
-  const char *str = NULL;
-  const char *bus_name = NULL;
-  GFlagsClass *flags_class;
-  GParamSpec *pspec;
-  guint v;
-  gboolean ok;
-
-  g_return_val_if_fail (BOLT_IS_PROXY (proxy), FALSE);
-
-  pspec = g_object_class_find_property (G_OBJECT_GET_CLASS (proxy), name);
-
-  if (pspec == NULL || !G_IS_PARAM_SPEC_FLAGS (pspec))
-    return FALSE;
-
-  bus_name = g_param_spec_get_nick (pspec);
-  var = g_dbus_proxy_get_cached_property (G_DBUS_PROXY (proxy), bus_name);
-  if (var == NULL)
-    return FALSE;
-
-  str = g_variant_get_string (var, NULL);
-
-  if (str == NULL)
-    return FALSE;
-
-  flags_class = G_PARAM_SPEC_FLAGS (pspec)->flags_class;
-  ok = bolt_flags_class_from_string (flags_class, str, &v, NULL);
-
-  if (ok && value)
-    *value = v;
-
-  return ok;
 }
 
 guint
@@ -468,23 +352,6 @@ bolt_proxy_get_flags_by_pspec (gpointer    object,
   return g_value_get_flags (&val);
 }
 
-gboolean
-bolt_proxy_get_property_uint32 (BoltProxy  *proxy,
-                                const char *name,
-                                guint      *value)
-{
-  g_autoptr(GVariant) var = NULL;
-
-  var = bolt_proxy_get_cached_property (proxy, name);
-
-  if (var == NULL)
-    return FALSE;
-  else if (value)
-    *value = g_variant_get_uint32 (var);
-
-  return TRUE;
-}
-
 guint32
 bolt_proxy_get_uint32_by_pspec (gpointer    object,
                                 GParamSpec *spec)
@@ -497,23 +364,6 @@ bolt_proxy_get_uint32_by_pspec (gpointer    object,
   bolt_proxy_get_dbus_property (proxy, spec, &val);
 
   return g_value_get_uint (&val);
-}
-
-gboolean
-bolt_proxy_get_property_int64 (BoltProxy  *proxy,
-                               const char *name,
-                               gint64     *value)
-{
-  g_autoptr(GVariant) var = NULL;
-
-  var = bolt_proxy_get_cached_property (proxy, name);
-
-  if (var == NULL)
-    return FALSE;
-  else if (value)
-    *value = g_variant_get_int64 (var);
-
-  return TRUE;
 }
 
 gint64
@@ -530,23 +380,6 @@ bolt_proxy_get_int64_by_pspec (gpointer    object,
   return g_value_get_int64 (&val);
 }
 
-gboolean
-bolt_proxy_get_property_uint64 (BoltProxy  *proxy,
-                                const char *name,
-                                guint64    *value)
-{
-  g_autoptr(GVariant) var = NULL;
-
-  var = bolt_proxy_get_cached_property (proxy, name);
-
-  if (var == NULL)
-    return FALSE;
-  else if (value)
-    *value = g_variant_get_uint64 (var);
-
-  return TRUE;
-}
-
 guint64
 bolt_proxy_get_uint64_by_pspec (gpointer    object,
                                 GParamSpec *spec)
@@ -559,25 +392,6 @@ bolt_proxy_get_uint64_by_pspec (gpointer    object,
   bolt_proxy_get_dbus_property (proxy, spec, &val);
 
   return g_value_get_uint64 (&val);
-}
-
-
-const char *
-bolt_proxy_get_property_string (BoltProxy  *proxy,
-                                const char *name)
-{
-  g_autoptr(GVariant) var = NULL;
-  const char *val = NULL;
-
-  var = bolt_proxy_get_cached_property (proxy, name);
-
-  if (var != NULL)
-    val = g_variant_get_string (var, NULL);
-
-  if (val && *val == '\0')
-    val = NULL;
-
-  return val;
 }
 
 const char *
@@ -598,21 +412,6 @@ bolt_proxy_get_string_by_pspec (gpointer    object,
    * this must always be true for bolt_proxy_get_dbus_property
    */
   return g_value_get_string (&val);
-}
-
-char **
-bolt_proxy_get_property_strv (BoltProxy  *proxy,
-                              const char *name)
-{
-  g_autoptr(GVariant) var = NULL;
-  char **val = NULL;
-
-  var = bolt_proxy_get_cached_property (proxy, name);
-
-  if (var != NULL)
-    val = g_variant_dup_strv (var, NULL);
-
-  return val;
 }
 
 char **

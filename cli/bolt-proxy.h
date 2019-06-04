@@ -59,56 +59,26 @@ gboolean          bolt_proxy_has_name_owner (BoltProxy *proxy);
 const char *      bolt_proxy_get_object_path (BoltProxy *proxy)
 G_DEPRECATED_FOR (g_dbus_proxy_get_object_path);
 
-gboolean          bolt_proxy_get_property_bool (BoltProxy  *proxy,
-                                                const char *name,
-                                                gboolean   *value);
-
 gboolean          bolt_proxy_get_bool_by_pspec (gpointer    proxy,
                                                 GParamSpec *spec);
-
-gboolean          bolt_proxy_get_property_enum (BoltProxy  *proxy,
-                                                const char *name,
-                                                gint       *value);
 
 gint              bolt_proxy_get_enum_by_pspec (gpointer    proxy,
                                                 GParamSpec *spec);
 
-gboolean          bolt_proxy_get_property_flags (BoltProxy  *proxy,
-                                                 const char *name,
-                                                 guint      *value);
-
 guint             bolt_proxy_get_flags_by_pspec (gpointer    proxy,
                                                  GParamSpec *spec);
-
-gboolean          bolt_proxy_get_property_uint32 (BoltProxy  *proxy,
-                                                  const char *name,
-                                                  guint      *value);
 
 guint32           bolt_proxy_get_uint32_by_pspec (gpointer    proxy,
                                                   GParamSpec *spec);
 
-gboolean          bolt_proxy_get_property_int64 (BoltProxy  *proxy,
-                                                 const char *name,
-                                                 gint64     *value);
-
 gint64            bolt_proxy_get_int64_by_pspec (gpointer    proxy,
                                                  GParamSpec *spec);
-
-gboolean          bolt_proxy_get_property_uint64 (BoltProxy  *proxy,
-                                                  const char *name,
-                                                  guint64    *value);
 
 guint64           bolt_proxy_get_uint64_by_pspec (gpointer    proxy,
                                                   GParamSpec *spec);
 
-const char *      bolt_proxy_get_property_string (BoltProxy  *proxy,
-                                                  const char *name);
-
 const char *      bolt_proxy_get_string_by_pspec (gpointer    proxy,
                                                   GParamSpec *spec);
-
-char **           bolt_proxy_get_property_strv (BoltProxy  *proxy,
-                                                const char *name);
 
 char **           bolt_proxy_get_strv_by_pspec (gpointer    proxy,
                                                 GParamSpec *spec);
