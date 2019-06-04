@@ -109,6 +109,16 @@ if systemd.found()
   unitdir = systemd.get_pkgconfig_variable('systemdsystemunitdir')
 endif
 
+profiling = get_option('profiling')
+if profiling
+  args = ['-pg']
+  profiling = compiler.has_multi_arguments(args)
+  if profiling
+    add_project_arguments(args, language: 'c')
+    add_project_link_arguments(args,  language: 'c')
+  endif
+endif
+
 version_split = meson.project_version().split('.')
 version_major = version_split[0]
 version_minor = version_split[1]
@@ -521,6 +531,7 @@ msg = ['',
   '',
   'build manpage:       @0@'.format(build_man),
   'install tests:       @0@'.format(install_tests),
+  'profiling (gprof):   @0@'.format(profiling),
   ''
   ]
 message('\n  '.join(msg))
