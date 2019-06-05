@@ -65,7 +65,7 @@ bolt_power_class_init (BoltPowerClass *klass)
 
   props[PROP_STATE] =
     g_param_spec_enum ("state", "State",
-                       "The force power state.",
+                       "Current force power state.",
                        BOLT_TYPE_POWER_STATE,
                        BOLT_FORCE_POWER_UNSET,
                        G_PARAM_READABLE |
@@ -73,7 +73,7 @@ bolt_power_class_init (BoltPowerClass *klass)
 
   props[PROP_TIMEOUT] =
     g_param_spec_uint ("timeout", "Timeout",
-                       "The force power timeout.",
+                       "Force power timeout.",
                        0, G_MAXINT, 0,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
