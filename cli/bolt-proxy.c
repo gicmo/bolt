@@ -653,3 +653,62 @@ bolt_proxy_set (BoltProxy    *proxy,
 
   return res != NULL;
 }
+
+void
+bolt_proxy_set_async (BoltProxy          *proxy,
+                      GParamSpec         *spec,
+                      const GValue       *value,
+                      GCancellable       *cancellable,
+                      GAsyncReadyCallback callback,
+                      gpointer            user_data)
+{
+  g_autoptr(GVariant) val = NULL;
+  GError *err;
+  BoltWireConv *conv;
+  const char *name;
+  const char *iface;
+
+  g_return_if_fail (BOLT_IS_PROXY (proxy));
+  g_return_if_fail (G_IS_PARAM_SPEC (spec));
+  g_return_if_fail (G_IS_VALUE (value));
+  g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
+
+  conv = bolt_proxy_get_wire_conv (proxy, spec, &err);
+
+  if (conv != NULL)
+    val = bolt_wire_conv_to_wire (conv, value, &err);
+
+  if (val == NULL)
+    {
+      g_task_report_error (proxy, callback, user_data, NULL, err);
+      return;
+    }
+
+  name = g_param_spec_get_nick (spec);
+  iface = g_dbus_proxy_get_interface_name (G_DBUS_PROXY (proxy));
+
+  g_dbus_proxy_call (G_DBUS_PROXY (proxy),
+                     "org.freedesktop.DBus.Properties.Set",
+                     g_variant_new ("(ssv)",
+                                    iface,
+                                    name,
+                                    val),
+                     G_DBUS_CALL_FLAGS_NONE,
+                     -1,
+                     cancellable,
+                     callback,
+                     user_data);
+}
+
+gboolean
+bolt_proxy_set_finish (GAsyncResult *res,
+                       GError      **error)
+{
+  g_autoptr(GVariant) val = NULL;
+  BoltProxy *proxy;
+
+  proxy = (BoltProxy *) g_async_result_get_source_object (res);
+  val = g_dbus_proxy_call_finish (G_DBUS_PROXY (proxy), res, error);
+
+  return val != NULL;
+}

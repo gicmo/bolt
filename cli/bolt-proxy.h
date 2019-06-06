@@ -115,4 +115,14 @@ gboolean         bolt_proxy_set (BoltProxy    *proxy,
                                  GCancellable *cancellable,
                                  GError      **error);
 
+void             bolt_proxy_set_async (BoltProxy          *proxy,
+                                       GParamSpec         *spec,
+                                       const GValue       *value,
+                                       GCancellable       *cancellable,
+                                       GAsyncReadyCallback callback,
+                                       gpointer            user_data);
+
+gboolean         bolt_proxy_set_finish (GAsyncResult *res,
+                                        GError      **error);
+
 G_END_DECLS
