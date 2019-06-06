@@ -1168,33 +1168,21 @@ bolt_client_set_authmode_async (BoltClient         *client,
                                 GAsyncReadyCallback callback,
                                 gpointer            user_data)
 {
-  g_autofree char *str = NULL;
-  GError *err = NULL;
-  GParamSpec *pspec;
-  GParamSpecFlags *flags_pspec;
-  GFlagsClass *flags_class;
+  g_auto(GValue) val = G_VALUE_INIT;
 
   g_return_if_fail (BOLT_IS_CLIENT (client));
   g_return_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable));
   g_return_if_fail (callback != NULL);
 
-  pspec = props[PROP_AUTHMODE];
-  flags_pspec = G_PARAM_SPEC_FLAGS (pspec);
-  flags_class = flags_pspec->flags_class;
-  str = bolt_flags_class_to_string (flags_class, mode, &err);
+  g_value_init (&val, BOLT_TYPE_AUTH_MODE);
+  g_value_set_flags (&val, mode);
 
-  if (str == NULL)
-    {
-      g_task_report_error (client, callback, user_data, NULL, err);
-      return;
-    }
-
-  bolt_proxy_set_property_async (BOLT_PROXY (client),
-                                 g_param_spec_get_nick (pspec),
-                                 g_variant_new ("s", str),
-                                 cancellable,
-                                 callback,
-                                 user_data);
+  bolt_proxy_set_async (BOLT_PROXY (client),
+                        props[PROP_AUTHMODE],
+                        &val,
+                        cancellable,
+                        callback,
+                        user_data);
 }
 
 gboolean
