@@ -138,7 +138,7 @@ bolt_client_class_init (BoltClientClass *klass)
                         "Current authentication mode.",
                         BOLT_TYPE_AUTH_MODE,
                         BOLT_AUTH_ENABLED,
-                        G_PARAM_READABLE |
+                        G_PARAM_READWRITE |
                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_POWERSTATE] =

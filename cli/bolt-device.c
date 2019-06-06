@@ -188,7 +188,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
     g_param_spec_string ("label", "Label",
                          "The name given by bolt or the user.",
                          NULL,
-                         G_PARAM_READABLE |
+                         G_PARAM_READWRITE |
                          G_PARAM_STATIC_STRINGS);
 
   g_object_class_install_properties (gobject_class,
