@@ -99,6 +99,7 @@ bolt_client_class_init (BoltClientClass *klass)
   BoltProxyClass *proxy_class = BOLT_PROXY_CLASS (klass);
 
   gobject_class->get_property = bolt_proxy_property_getter;
+  gobject_class->set_property = bolt_proxy_property_setter;
 
   proxy_class->get_dbus_signals = bolt_client_get_dbus_signals;
 

@@ -71,6 +71,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
   gobject_class->get_property = bolt_proxy_property_getter;
+  gobject_class->set_property = bolt_proxy_property_setter;
 
   props[PROP_UID] =
     g_param_spec_string ("uid", "Uid",
