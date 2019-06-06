@@ -348,7 +348,7 @@ bolt_proxy_get_dbus_property (BoltProxy  *proxy,
   ok = bolt_wire_conv_from_wire (conv, val, value, &err);
 
   if (!ok)
-    g_warning ("Could failed to convert dbus property '%s': %s",
+    g_warning ("Failed to convert dbus property '%s': %s",
                nick, err->message);
 
   return ok;
