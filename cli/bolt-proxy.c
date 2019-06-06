@@ -712,3 +712,36 @@ bolt_proxy_set_finish (GAsyncResult *res,
 
   return val != NULL;
 }
+
+static void
+set_async_done (GObject      *source_object,
+                GAsyncResult *res,
+                gpointer      user_data)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GParamSpec) spec = user_data;
+  gboolean ok;
+
+  ok = bolt_proxy_set_finish (res, &err);
+
+  if (!ok)
+    g_warning ("Error setting property '%s': %s",
+               spec->name, err->message);
+}
+
+void
+bolt_proxy_property_setter (GObject      *object,
+                            guint         prop_id,
+                            const GValue *value,
+                            GParamSpec   *spec)
+{
+  g_return_if_fail (BOLT_IS_PROXY (object));
+  g_return_if_fail (value != NULL);
+  g_return_if_fail (G_IS_PARAM_SPEC (spec));
+
+  bolt_proxy_set_async (BOLT_PROXY (object),
+                        spec, value,
+                        NULL,
+                        set_async_done,
+                        g_param_spec_ref (spec));
+}

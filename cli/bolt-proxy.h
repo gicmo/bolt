@@ -125,4 +125,9 @@ void             bolt_proxy_set_async (BoltProxy          *proxy,
 gboolean         bolt_proxy_set_finish (GAsyncResult *res,
                                         GError      **error);
 
+void              bolt_proxy_property_setter (GObject      *object,
+                                              guint         prop_id,
+                                              const GValue *value,
+                                              GParamSpec   *spec);
+
 G_END_DECLS
