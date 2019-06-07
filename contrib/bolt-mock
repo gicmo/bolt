@@ -199,6 +199,7 @@ class MockSysfs(object):
             d = dom.find_device(name_or_id)
             if d is not None:
                 return d
+        return None
 
     def domain_add(self, security, bootacl):
         index = self._gen_domain_id()
