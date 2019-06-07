@@ -194,6 +194,12 @@ class MockSysfs(object):
                 return i
         raise ValueError('too many domains in use')
 
+    def find_domain(self, name_or_id):
+        for name, dom in self.sysfs.domains.items():
+            if name == target or dom.uid == target:
+                return dom
+        return None
+
     def find_device(self, name_or_id):
         for name, dom in self.domains.items():
             d = dom.find_device(name_or_id)
@@ -566,11 +572,7 @@ class World(object):
     def controller_rm(self, args, parser):
         '''removes a new domain+host combination'''
         target = args.id
-        domain = None
-        for name, dom in self.sysfs.domains.items():
-            if name == target or dom.uid == target:
-                domain = dom
-                break
+        domain = self.sysfs.find_domain(target)
         if domain is None:
             print('Could not find controller')
             return
