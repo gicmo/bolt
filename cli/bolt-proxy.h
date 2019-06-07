@@ -109,4 +109,10 @@ void              bolt_proxy_set_property_async (BoltProxy          *proxy,
 gboolean         bolt_proxy_set_property_finish (GAsyncResult *res,
                                                  GError      **error);
 
+gboolean         bolt_proxy_set (BoltProxy    *proxy,
+                                 GParamSpec   *spec,
+                                 const GValue *value,
+                                 GCancellable *cancellable,
+                                 GError      **error);
+
 G_END_DECLS
