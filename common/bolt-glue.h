@@ -28,6 +28,11 @@ G_BEGIN_DECLS
 GParamSpec *          bolt_param_spec_override (GObjectClass *object_class,
                                                 const char   *name);
 
+gboolean              bolt_str_parse_by_pspec (GParamSpec *spec,
+                                               const char *str,
+                                               GValue     *val,
+                                               GError    **error);
+
 GPtrArray *           bolt_properties_for_type (GType target);
 
 gboolean              bolt_properties_find (GPtrArray   *specs,

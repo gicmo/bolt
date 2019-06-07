@@ -69,6 +69,111 @@ bolt_param_spec_override (GObjectClass *klass,
   return g_param_spec_override (name, base);
 }
 
+gboolean
+bolt_str_parse_by_pspec (GParamSpec *spec,
+                         const char *str,
+                         GValue     *val,
+                         GError    **error)
+{
+  gboolean ok;
+
+  if (val->g_type == 0)
+    g_value_init (val, spec->value_type);
+
+  g_return_val_if_fail (val->g_type == spec->value_type, FALSE);
+
+  if (G_IS_PARAM_SPEC_BOOLEAN (spec))
+    {
+      gboolean v;
+
+      ok = bolt_str_parse_as_boolean (str, &v, error);
+      if (!ok)
+        return FALSE;
+
+      g_value_set_boolean (val, (gboolean) v);
+    }
+  else if (G_IS_PARAM_SPEC_UINT (spec))
+    {
+      GParamSpecUInt *s = G_PARAM_SPEC_UINT (spec);
+      guint64 v;
+
+      ok = bolt_str_parse_as_uint64 (str, &v, error);
+      if (!ok)
+        return FALSE;
+
+      if (v < s->minimum || v > s->maximum || v > G_MAXUINT32)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                       "'%" G_GUINT64_FORMAT "' out of range for property",
+                       v);
+          return FALSE;
+        }
+
+      g_value_set_uint (val, (guint32) v);
+    }
+  else if (G_IS_PARAM_SPEC_UINT64 (spec))
+    {
+      GParamSpecUInt64 *s = G_PARAM_SPEC_UINT64 (spec);
+      guint64 v;
+
+      ok = bolt_str_parse_as_uint64 (str, &v, error);
+      if (!ok)
+        return FALSE;
+
+      if (v < s->minimum || v > s->maximum)
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                       "'%" G_GUINT64_FORMAT "' out of range for property",
+                       v);
+          return FALSE;
+        }
+
+      g_value_set_uint64 (val, (guint64) v);
+    }
+  else if (G_IS_PARAM_SPEC_ENUM (spec))
+    {
+      GParamSpecEnum *s = G_PARAM_SPEC_ENUM (spec);
+      gint v;
+
+      ok = bolt_enum_class_from_string (s->enum_class, str, &v, error);
+      if (!ok)
+        return FALSE;
+
+      g_value_set_enum (val, v);
+    }
+  else if (G_IS_PARAM_SPEC_FLAGS (spec))
+    {
+      GParamSpecFlags *s = G_PARAM_SPEC_FLAGS (spec);
+      guint v;
+
+      ok = bolt_flags_class_from_string (s->flags_class, str, &v, error);
+      if (!ok)
+        return FALSE;
+
+      g_value_set_flags (val, v);
+    }
+  else if (G_IS_PARAM_SPEC_STRING (spec))
+    {
+      g_value_set_string (val, str);
+    }
+  else if (G_IS_PARAM_SPEC_BOXED (spec) && spec->value_type == G_TYPE_STRV)
+    {
+      g_auto(GStrv) strv = NULL;
+
+      strv = g_strsplit (str, ",", -1);
+      g_value_take_boxed (val, g_steal_pointer (&strv));
+    }
+  else
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "parsing of '%s' is not supported",
+                   g_type_name (spec->value_type));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 GPtrArray *
 bolt_properties_for_type (GType target)
 {
