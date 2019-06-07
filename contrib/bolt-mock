@@ -153,6 +153,10 @@ class Device(SysfsDev):
                    'vendor',
                    'vendor_name']
 
+    search_fields = ('uid',
+                     'sysname',
+                     'device_name')
+
     def __init__(self, uid, sysname, syspath):
         super(Device, self).__init__(sysname, syspath)
         self.uid = uid
@@ -160,11 +164,12 @@ class Device(SysfsDev):
         self.is_host = False
         self.children = []
 
-    def find_device(self, name_or_id):
-        if self.sysname == name_or_id or self.uid == name_or_id:
-            return self
+    def find_device(self, identifier, fields=search_fields):
+        for i in [getattr(self, f) for f in fields]:
+            if i == identifier:
+                return self
         for c in self.children:
-            d = c.find_device(name_or_id)
+            d = c.find_device(identifier)
             if d is not None:
                 return d
         return None
