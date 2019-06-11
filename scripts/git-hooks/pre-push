@@ -1,0 +1,32 @@
+#!/bin/sh
+# Based on ".git/hooks/pre-push.sample"
+
+remote="$1"
+url="$2" # unused
+
+z40=0000000000000000000000000000000000000000
+
+while read local_ref local_sha remote_ref remote_sha
+do
+    if [ "$local_sha" = $z40 ]; then
+        # ignore deletes
+        continue
+    fi
+
+    if [ "$remote_sha" = $z40 ]; then
+        # new branch, examine new commits starting $remote
+        remote_sha=$(git rev-parse "$remote")
+    fi
+
+    range="$remote_sha..$local_sha"
+
+    # check for fixup! commit
+    commit=`git rev-list -n 1 --grep '^fixup! ' "$range"`
+    if [ -n "$commit" ]; then
+        echo >&2 "'fixup!' commit in $local_ref, not pushing"
+        exit 1
+    fi
+
+done
+
+exit 0
