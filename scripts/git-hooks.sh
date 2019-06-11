@@ -12,8 +12,18 @@ cd "$SRCDIR"
 declare -a HOOKS=()
 readarray -t HOOKS < <(find "$HOOKDIR" -maxdepth 1 -type f -exec basename {} \;)
 
+# helpers
+ensure_destdir () {
+    if [ ! -d "$DESTDIR" ]; then
+        echo "$DESTDIR does not exist"
+        exit 2
+    fi
+}
+
 # individual commands
 check () {
+    ensure_destdir
+
     for hook in ${HOOKS[@]}; do
         echo -n "$hook "
         DEST="$DESTDIR/$hook"
@@ -26,6 +36,8 @@ check () {
 }
 
 install () {
+    ensure_destdir
+
     RESULT=0
     for hook in ${HOOKS[@]}; do
         DEST="$DESTDIR/$hook"
@@ -42,6 +54,8 @@ install () {
 }
 
 uninstall () {
+    ensure_destdir
+
     for hook in ${HOOKS[@]}; do
         DEST="$DESTDIR/$hook"
         if [ ! -x "$DEST" ]; then
