@@ -1,0 +1,4 @@
+#!/usr/bin/sh
+
+exec 1>&2
+exec git diff-index --check --cached HEAD --
