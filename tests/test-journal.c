@@ -420,10 +420,13 @@ test_journal_op_stringops (TestJournal *tt, gconstpointer user_data)
     }
 
   op = bolt_journal_op_from_string ("XXX", &error);
+  g_assert_cmpint (op, ==, BOLT_JOURNAL_FAILED);
   g_assert_error (error, BOLT_ERROR, BOLT_ERROR_FAILED);
   g_clear_pointer (&error, g_error_free);
 
+
   op = bolt_journal_op_from_string ("", &error);
+  g_assert_cmpint (op, ==, BOLT_JOURNAL_FAILED);
   g_assert_error (error, BOLT_ERROR, BOLT_ERROR_FAILED);
 }
 
