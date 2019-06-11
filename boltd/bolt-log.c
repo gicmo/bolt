@@ -474,14 +474,15 @@ bolt_log_stdstream (const BoltLogCtx *ctx,
   const char *message;
   const GLogField *f;
   char the_time[TIME_MAXFMT];
-  time_t now;
+  struct tm lt;
   struct tm *tm;
+  time_t now;
 
   g_return_val_if_fail (ctx != NULL, G_LOG_WRITER_UNHANDLED);
   g_return_val_if_fail (ctx->message != NULL, G_LOG_WRITER_UNHANDLED);
 
   time (&now);
-  tm = localtime (&now);
+  tm = localtime_r (&now, &lt);
 
   if (tm && strftime (the_time, sizeof (the_time), "%T", tm) > 0)
     g_fprintf (out, "%s%s%s ", gray, the_time, normal);
