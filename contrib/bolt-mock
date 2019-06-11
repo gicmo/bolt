@@ -212,7 +212,7 @@ class MockSysfs(object):
                 return d
         return None
 
-    def domain_add(self, security, bootacl):
+    def domain_add(self, security, bootacl, iommu):
         index = self._gen_domain_id()
         sysname = 'domain%d' % index
 
@@ -223,6 +223,9 @@ class MockSysfs(object):
 
         if bootacl is not None:
             props += ['boot_acl', bootacl]
+
+        if iommu is not None:
+            props += ['iommu_dma_protection', str(iommu) + '\n']
 
         syspath = self.testbed.add_device('thunderbolt', sysname, None,
                                           props,
@@ -576,10 +579,11 @@ class World(object):
         '''create a new domain+host combination'''
         security = args.security
         bootacl = args.bootacl
+        iommu = args.iommu
         uid = args.uuid or str(uuid.uuid4())
         print(uid)
 
-        domain = self.sysfs.domain_add(security, bootacl)
+        domain = self.sysfs.domain_add(security, bootacl, iommu)
         domain.show()
 
         name = args.name
