@@ -574,6 +574,15 @@ class World(object):
         print('rundir: %s' % self.daemon.rundir)
         print('boltd %s' % ('running' if self.daemon.is_running else 'stopped'))
 
+    @arg('file', type=argparse.FileType('r'), default=None)
+    @command
+    def load(self, args, context):
+        '''Load and execute a commands from a file'''
+        for line in args.file:
+            line = line.strip()
+            print('@ %s' % line)
+            self.handle_line(line)
+
     @command
     def controller(self, args, context):
         '''control controllers. hah!'''
