@@ -841,6 +841,7 @@ test_bootacl_update_udev (TestBootacl *tt, gconstpointer user)
 
       used = bolt_domain_bootacl_get_used (dom, &n_used);
       g_assert_cmpuint (n_used, ==, i + 1);
+      g_assert_nonnull (used);
 
       have = bolt_domain_get_bootacl (dom);
       bolt_assert_strv_equal (have, acl, -1);
