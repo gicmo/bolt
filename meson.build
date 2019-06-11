@@ -185,6 +185,15 @@ if git.found()
   endif
 endif
 
+# git hooks
+
+git_hooks = find_program(join_paths(srcdir, 'scripts', 'git-hooks.sh'))
+res = run_command(git_hooks, 'install')
+if res.returncode() != 0
+  lines = ['git hooks:'] + res.stdout().strip().split('\n')
+  message('\n  '.join(lines))
+endif
+
 # common static library
 #  contains code shared by daemon, command line tools
 common_deps = [glib, gio, libudev, unix]
