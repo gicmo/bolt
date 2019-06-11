@@ -46,11 +46,6 @@ except ImportError as e:
     sys.stderr.write('Missing depdendencies: %s\n' % str(e))
     sys.exit(1)
 
-try:
-    from subprocess import DEVNULL
-except ImportError:
-    DEVNULL = open(os.devnull, 'wb')
-
 DBUS_NAME = 'org.freedesktop.bolt'
 DBUS_PATH = '/org/freedesktop/bolt'
 DBUS_IFACE_PREFIX = 'org.freedesktop.bolt1.'
