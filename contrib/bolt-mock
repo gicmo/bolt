@@ -507,27 +507,39 @@ class World(object):
         self.sysfs = sysfs
         self.daemon = daemon
 
+    def handle_line(self, line):
+        if len(line) == 0:
+            return True
+        if line == 'exit':
+            return False
+        if line.startswith('#'):
+            return True
+
+        argv = shlex.split(line)
+        idx = [i for i, arg in enumerate(argv) if arg.startswith('#')]
+        if len(idx):
+            argv = argv[:idx[0]]
+
+        cmd = self.commands.get(argv[0], None)
+        if cmd is None:
+            print('unknown command')
+            return True
+        try:
+            cmd(self, argv[1:])
+        except SystemExit:
+            return True
+        return True
+
     def loop(self):
-        while True:
-            line = input('> ')
-            if len(line) == 0:
-                continue
-            if line == 'exit':
-                break
-            if line.startswith('#'):
-                continue
-            argv = shlex.split(line)
-            idx = [i for i, arg in enumerate(argv) if arg.startswith('#')]
-            if len(idx):
-                argv = argv[:idx[0]]
-            cmd = self.commands.get(argv[0], None)
-            if cmd is None:
-                print('unknown command')
-                continue
+        do_loop = True
+        while do_loop:
             try:
-                cmd(self, argv[1:])
-            except SystemExit:
-                continue
+                line = input('> ')
+            except EOFError:
+                print('Bye.')
+                break
+
+            do_loop = self.handle_line(line)
 
     @command
     def help(self, args, context):
