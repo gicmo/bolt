@@ -60,7 +60,7 @@ DBUS_IFACE_DOMAIN = DBUS_IFACE_PREFIX + 'Domain'
 SERVICE_FILE = '/usr/share/dbus-1/system-services/org.freedesktop.bolt.service'
 
 
-class SysfsDev(object):
+class SysfsDev:
     known_attrs = []
 
     def __init__(self, sysname, syspath):
@@ -183,7 +183,7 @@ class Device(SysfsDev):
         print('%sauthorized %s' % (pf, self.authorized), file=file)
 
 
-class MockSysfs(object):
+class MockSysfs:
 
     def __init__(self):
         self.testbed = UMockdev.Testbed.new()
@@ -201,7 +201,7 @@ class MockSysfs(object):
 
     def find_domain(self, name_or_id):
         for name, dom in self.sysfs.domains.items():
-            if name == target or dom.uid == target:
+            if target in (name, dom.uid):
                 return dom
         return None
 
@@ -289,7 +289,7 @@ class MockSysfs(object):
         dev.sysname = None
 
 
-class Store(object):
+class Store:
     def __init__(self, path=None):
         self.path = path
         self.mocked = False
@@ -309,7 +309,7 @@ class Store(object):
         self.mocked = True
 
 
-class Daemon(object):
+class Daemon:
     def __init__(self, store, sysfs):
         self._discover_binary()
         self.rundir = tempfile.mkdtemp()
@@ -419,8 +419,8 @@ class Daemon(object):
         return self._boltd is not None
 
 
-class Command(object):
-    class SubCommand(object):
+class Command:
+    class SubCommand:
         def __init__(self, name, desc, parser, handler):
             self.name = name
             self.desc = desc
@@ -501,14 +501,14 @@ def collect_args(klass):
 
 
 @collect_args
-class World(object):
+class World:
     def __init__(self, store, sysfs, daemon):
         self.store = store
         self.sysfs = sysfs
         self.daemon = daemon
 
     def handle_line(self, line):
-        if len(line) == 0:
+        if not line:
             return True
         if line == 'exit':
             return False
@@ -517,7 +517,7 @@ class World(object):
 
         argv = shlex.split(line)
         idx = [i for i, arg in enumerate(argv) if arg.startswith('#')]
-        if len(idx):
+        if not idx:
             argv = argv[:idx[0]]
 
         cmd = self.commands.get(argv[0], None)
