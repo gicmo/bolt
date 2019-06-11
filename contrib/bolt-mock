@@ -639,6 +639,15 @@ class World(object):
         print('disconnecting %s' % device.uid)
         self.sysfs.remove(device)
 
+    @parse_known
+    @command
+    def boltctl(self, args, context):
+        '''Invoke boltctl'''
+        boltctl = self.daemon.paths['boltctl']
+        bc_args = context['unknown'] or []
+        argv = [boltctl] + bc_args
+        subprocess.call(argv)
+
 
 def main():
     readline.set_history_length(1000)
