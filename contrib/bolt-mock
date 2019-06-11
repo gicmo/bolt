@@ -140,10 +140,10 @@ class Domain(SysfsDev):
 @SysfsDev.bridge
 class Device(SysfsDev):
     known_attrs = ['authorized',
-                   'boot'
+                   'boot',
                    'device',
                    'device_name',
-                   'key'
+                   'key',
                    'unique_id',
                    'vendor',
                    'vendor_name']
