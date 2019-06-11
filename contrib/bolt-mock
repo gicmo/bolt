@@ -511,7 +511,12 @@ class World(object):
                 continue
             if line == 'exit':
                 break
+            if line.startswith('#'):
+                continue
             argv = shlex.split(line)
+            idx = [i for i, arg in enumerate(argv) if arg.startswith('#')]
+            if len(idx):
+                argv = argv[:idx[0]]
             cmd = self.commands.get(argv[0], None)
             if cmd is None:
                 print('unknown command')
