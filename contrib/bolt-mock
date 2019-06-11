@@ -440,13 +440,18 @@ class Command(object):
         self.use_parse_known = False
 
     def __call__(self, obj, argv):
-        args = self.parser.parse_args(argv)
+        if self.use_parse_known:
+            args, rest = self.parser.parse_known_args(argv)
+        else:
+            args = self.parser.parse_args(argv)
+            rest = None
+        context = {'parser': self.parser, 'unknown': rest}
         if args.show_help:
             print(self.parser.format_help())
         elif hasattr(args, 'func'):
-            args.func(obj, args, self.parser)
+            args.func(obj, args, context)
         else:
-            self.hanlder(obj, args, self.parser)
+            self.hanlder(obj, args, context)
 
     def subcommand(self, handler):
         if self.subparsers is None:
@@ -478,6 +483,11 @@ def arg(name_or_flags, *args, **kwargs):
         return func
 
     return decorator
+
+
+def parse_known(func):
+    func.use_parse_known = True
+    return func
 
 
 def collect_args(klass):
@@ -512,13 +522,13 @@ class World(object):
                 continue
 
     @command
-    def help(self, args, parser):
+    def help(self, args, context):
         for name, cmd in self.commands.items():
             print('%s - %s ' % (name, cmd.desc))
 
     @arg('--verbose', action='store_true')
     @command
-    def start(self, args, parser):
+    def start(self, args, context):
         '''start the bolt daemon'''
         if self.daemon.is_running:
             print('boltd already running')
@@ -527,7 +537,7 @@ class World(object):
             self.daemon.start(args)
 
     @command
-    def stop(self, args, parser):
+    def stop(self, args, context):
         '''stops the bolt daemon'''
         if not self.daemon.is_running:
             print('boltd not running')
@@ -536,7 +546,7 @@ class World(object):
             self.daemon.stop()
 
     @command
-    def status(self, args, parser):
+    def status(self, args, context):
         '''Show overall status'''
         print('sysfs: %s' % self.sysfs.root)
         print('store: %s' % self.store.path)
@@ -545,8 +555,9 @@ class World(object):
         print('boltd %s' % ('running' if self.daemon.is_running else 'stopped'))
 
     @command
-    def controller(self, args, parser):
+    def controller(self, args, context):
         '''control controllers. hah!'''
+        parser = context['parser']
         print(parser.format_help())
 
     @arg('--security', type=str, default='secure')
@@ -556,7 +567,7 @@ class World(object):
     @arg('--vendor', type=str, default='GNOME.org')
     @arg('--name', type=str, default='Laptop')
     @controller.subcommand
-    def controller_new(self, args, parser):
+    def controller_new(self, args, context):
         '''create a new domain+host combination'''
         security = args.security
         bootacl = args.bootacl
@@ -598,7 +609,7 @@ class World(object):
     @arg('name', type=str)
     @arg('parent', type=str)
     @device.subcommand
-    def device_new(self, args, parser):
+    def device_new(self, args, context):
         '''create a new device combination'''
         parent = self.sysfs.find_device(args.parent)
         if parent is None:
@@ -619,7 +630,7 @@ class World(object):
 
     @arg('id', type=str, help='name or uuid')
     @device.subcommand
-    def device_rm(self, args, parser):
+    def device_rm(self, args, context):
         '''removes a device'''
         device = self.sysfs.find_device(args.id)
         if device is None:
