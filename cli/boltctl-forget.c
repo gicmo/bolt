@@ -48,8 +48,9 @@ forget (BoltClient *client, int argc, char **argv)
     {
       g_autoptr(GPtrArray) devices = NULL;
 
-      if (argc > 1)
-        return usage_error_too_many_args ();
+      ok = check_argc (argc, 0, 0, &error);
+      if (!ok)
+        return usage_error (error);
 
       devices = bolt_client_list_devices (client, NULL, &error);
       if (devices == NULL)

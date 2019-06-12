@@ -175,8 +175,12 @@ describe_properties (GType type)
 static int
 do_describe (BoltClient *client, int argc, char **argv)
 {
-  if (argc > 2)
-    return usage_error_too_many_args ();
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+
+  ok = check_argc (argc, 0, 1, &err);
+  if (!ok)
+    return usage_error (err);
 
   if (argc == 1) /* boltctl config --describe */
     {
@@ -186,8 +190,6 @@ do_describe (BoltClient *client, int argc, char **argv)
     }
   else if (argc == 2) /* boltctl config --describe {global,device,domain} */
     {
-      g_autoptr(GError) err = NULL;
-      gboolean ok;
       GType type;
 
       ok = type_for_name (argv[1], &type, &err);
@@ -294,10 +296,9 @@ config (BoltClient *client, int argc, char **argv)
     return do_describe (client, argc, argv);
 
   /* get or set */
-  if (argc < 2)
-    return usage_error_need_arg ("KEY");
-  else if (argc > 4)
-    return usage_error_too_many_args ();
+  ok = check_argc (argc, 1, 3, &err);
+  if (!ok)
+    return usage_error (err);
 
   ok = parse_option (argv[1], &type, &pstr, &err);
   if (!ok)
