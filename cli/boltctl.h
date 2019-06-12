@@ -45,6 +45,11 @@ int                 subcommand_run (const SubCommand *cmd,
                                     int               argc,
                                     char            **argv);
 
+gboolean check_argc (int      argc,
+                     int      lower,
+                     int      upper,
+                     GError **error);
+
 int      usage_error (GError *error);
 int      usage_error_need_arg (const char *arg);
 int      usage_error_too_many_args (void);

@@ -36,6 +36,39 @@
 #include <locale.h>
 #include <stdlib.h>
 
+gboolean
+check_argc (int      argc,
+            int      lower,
+            int      upper,
+            GError **error)
+{
+  argc--; /* discard argv[0] */
+
+  if (lower == upper && argc != upper)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "unexpected number of arguments: %d, wanted %d",
+                   argc, upper);
+      return FALSE;
+    }
+  else if (argc < lower)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "not enough arguments: %d, wanted at least %d",
+                   argc, lower);
+      return FALSE;
+    }
+  else if (argc > upper)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "too many arguments: %d, wanted at most %d",
+                   argc, lower);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 int
 usage_error (GError *error)
 {
