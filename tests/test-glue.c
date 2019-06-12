@@ -219,6 +219,244 @@ test_props_basic (TestGlue *tt, gconstpointer data)
 }
 
 static void
+test_parse_str_by_pspec_bool (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(GParamSpec) spec;
+  g_autoptr(GError) err = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  gboolean ok;
+
+  spec = g_param_spec_boolean ("Test", NULL, NULL, TRUE, G_PARAM_STATIC_STRINGS);
+
+  /* ok: true */
+  ok = bolt_str_parse_by_pspec (spec, "true", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_BOOLEAN (&val));
+  g_assert_true (g_value_get_boolean (&val));
+
+  /* ok: false */
+  g_value_reset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "false", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_BOOLEAN (&val));
+  g_assert_false (g_value_get_boolean (&val));
+
+  /* error */
+  g_value_unset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "narf", &val, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_clear_error (&err);
+}
+
+static void
+test_parse_str_by_pspec_uint (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(GParamSpec) spec;
+  g_autoptr(GError) err = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  gboolean ok;
+
+  spec = g_param_spec_uint ("UInt", NULL, NULL,
+                            10, 100, 11,
+                            G_PARAM_STATIC_STRINGS);
+
+  /* ok: 10 */
+  ok = bolt_str_parse_by_pspec (spec, "10", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_UINT (&val));
+  g_assert_cmpuint (g_value_get_uint (&val), ==, 10);
+
+  /* ok: false */
+  g_value_reset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "0x2A", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_UINT (&val));
+  g_assert_cmpuint (g_value_get_uint (&val), ==, 0x2A);
+
+  /* error: out of bounds */
+  g_value_unset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "111", &val, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  /* error: not a number */
+  g_value_unset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "narf", &val, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_clear_error (&err);
+}
+
+static void
+test_parse_str_by_pspec_uint64 (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(GParamSpec) spec;
+  g_autoptr(GError) err = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  gboolean ok;
+
+  spec = g_param_spec_uint64 ("UInt64", NULL, NULL,
+                              10, 100, 11,
+                              G_PARAM_STATIC_STRINGS);
+
+  /* ok: 10 */
+  ok = bolt_str_parse_by_pspec (spec, "10", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_UINT64 (&val));
+  g_assert_cmpuint (g_value_get_uint64 (&val), ==, 10);
+
+  /* ok: false */
+  g_value_reset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "0x2A", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_UINT64 (&val));
+  g_assert_cmpuint (g_value_get_uint64 (&val), ==, 0x2A);
+
+  /* error: out of bounds */
+  g_value_unset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "111", &val, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  /* error: not a number */
+  g_value_unset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "narf", &val, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_clear_error (&err);
+}
+
+static void
+test_parse_str_by_pspec_enum (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(GParamSpec) spec;
+  g_autoptr(GError) err = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  gboolean ok;
+
+  spec = g_param_spec_enum ("Enum", NULL, NULL,
+                            BOLT_TYPE_TEST_ENUM,
+                            BOLT_TEST_ONE,
+                            G_PARAM_STATIC_STRINGS);
+
+  /* ok: valid enum value */
+  ok = bolt_str_parse_by_pspec (spec, "two", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_ENUM (&val));
+  g_assert_cmpint (g_value_get_enum (&val), ==, BOLT_TEST_TWO);
+
+  /* ok: valid enum value */
+  g_value_unset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "unknown", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_ENUM (&val));
+  g_assert_cmpint (g_value_get_enum (&val), ==, BOLT_TEST_UNKNOWN);
+
+  /* error: invalid value */
+  g_value_unset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "six", &val, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_clear_error (&err);
+}
+
+static void
+test_parse_str_by_pspec_flags (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(GParamSpec) spec;
+  g_autoptr(GError) err = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  gboolean ok;
+
+  spec = g_param_spec_flags ("Flags", NULL, NULL,
+                             BOLT_TYPE_KITT_FLAGS,
+                             BOLT_KITT_DEFAULT,
+                             G_PARAM_STATIC_STRINGS);
+
+  /* ok: valid enum value */
+  ok = bolt_str_parse_by_pspec (spec, "enabled", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_FLAGS (&val));
+  g_assert_cmpuint (g_value_get_flags (&val), ==, BOLT_KITT_ENABLED);
+
+  /* ok: valid enum value */
+  g_value_unset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "sspm|turbo-boost", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_FLAGS (&val));
+  g_assert_cmpuint (g_value_get_flags (&val),
+                    ==,
+                    BOLT_KITT_SSPM |
+                    BOLT_KITT_TURBO_BOOST);
+
+  /* error: invalid value */
+  g_value_unset (&val);
+  ok = bolt_str_parse_by_pspec (spec, "six", &val, &err);
+  g_assert_nonnull (err);
+  g_assert_false (ok);
+  g_clear_error (&err);
+}
+
+static void
+test_parse_str_by_pspec_string (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(GParamSpec) spec;
+  g_autoptr(GError) err = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  gboolean ok;
+
+  spec = g_param_spec_string ("String", NULL, NULL,
+                              "default",
+                              G_PARAM_STATIC_STRINGS);
+
+  /* ok: valid string */
+  ok = bolt_str_parse_by_pspec (spec, "enabled", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_STRING (&val));
+  g_assert_cmpstr (g_value_get_string (&val), ==, "enabled");
+}
+
+static void
+test_parse_str_by_pspec_strv (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(GParamSpec) spec;
+  g_autoptr(GError) err = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  char **strv = NULL;
+  gboolean ok;
+
+  spec = g_param_spec_boxed ("StringVector", NULL, NULL,
+                             G_TYPE_STRV,
+                             G_PARAM_STATIC_STRINGS);
+
+  /* ok: valid enum value */
+  ok = bolt_str_parse_by_pspec (spec, "a,b,c", &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (G_VALUE_HOLDS_BOXED (&val));
+  strv = g_value_get_boxed (&val);
+  g_assert_cmpuint (g_strv_length (strv), ==, 3);
+  g_assert_cmpstr (strv[0], ==, "a");
+  g_assert_cmpstr (strv[1], ==, "b");
+  g_assert_cmpstr (strv[2], ==, "c");
+}
+
+
+static void
 test_wire_conv_enum (TestGlue *tt, gconstpointer data)
 {
   g_autoptr(BoltWireConv) conv = NULL;
@@ -545,6 +783,55 @@ main (int argc, char **argv)
               test_glue_setup,
               test_props_basic,
               test_glue_teardown);
+
+  g_test_add ("/common/str_parse_by_pspec/bool",
+              TestGlue,
+              NULL,
+              NULL,
+              test_parse_str_by_pspec_bool,
+              NULL);
+
+  g_test_add ("/common/str_parse_by_pspec/uint",
+              TestGlue,
+              NULL,
+              NULL,
+              test_parse_str_by_pspec_uint,
+              NULL);
+
+  g_test_add ("/common/str_parse_by_pspec/uint64",
+              TestGlue,
+              NULL,
+              NULL,
+              test_parse_str_by_pspec_uint64,
+              NULL);
+
+  g_test_add ("/common/str_parse_by_pspec/enum",
+              TestGlue,
+              NULL,
+              NULL,
+              test_parse_str_by_pspec_enum,
+              NULL);
+
+  g_test_add ("/common/str_parse_by_pspec/flags",
+              TestGlue,
+              NULL,
+              NULL,
+              test_parse_str_by_pspec_flags,
+              NULL);
+
+  g_test_add ("/common/str_parse_by_pspec/string",
+              TestGlue,
+              NULL,
+              NULL,
+              test_parse_str_by_pspec_string,
+              NULL);
+
+  g_test_add ("/common/str_parse_by_pspec/strv",
+              TestGlue,
+              NULL,
+              NULL,
+              test_parse_str_by_pspec_strv,
+              NULL);
 
   g_test_add ("/common/wire_conv/enum",
               TestGlue,
