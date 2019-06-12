@@ -2429,6 +2429,43 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
             self.assertEqual(remote.stored, False)
 
+        # boltctl config: describe properties
+        out, _, res = self.boltctl('config', '--describe')
+        out = str(out)
+        self.assertEqual(res, 0)
+        self.assertNotEqual(len(out), 0)
+        self.assertIn('auth-mode', out)
+        self.assertIn('domain.bootacl', out)
+        self.assertIn('device.label', out)
+
+        out, _, res = self.boltctl('config', 'auth-mode')
+        out = str(out)
+        self.assertEqual(res, 0)
+        self.assertNotEqual(len(out), 0)
+        self.assertIn('enabled', out)
+
+        with self.client.record() as tape:
+            _, _, res = self.boltctl('config', 'auth-mode', 'disabled')
+            self.assertEqual(res, 0)
+            res = tape.wait_for_event('property',
+                                      'AuthMode',
+                                      'disabled')
+            self.assertTrue(res)
+        self.assertEqual(self.client.auth_mode, 'disabled')
+
+        # boltctl config: set device name
+        target = ssd2.unique_id
+        remote = self.client.device_by_uid(target)
+        with remote.record() as tape:
+            _, _, res = self.boltctl('config', 'device.label', target, 'Nobody')
+            self.assertEqual(res, 0)
+            res = tape.wait_for_event('property',
+                                      'Label',
+                                      'Nobody')
+            self.assertTrue(res)
+        self.assertEqual(remote.label, 'Nobody')
+
+        # all done
         self.daemon_stop()
 
 
