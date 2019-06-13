@@ -101,7 +101,7 @@ bolt_str_parse_by_pspec (GParamSpec *spec,
       if (!ok)
         return FALSE;
 
-      if (v < s->minimum || v > s->maximum || v > G_MAXUINT32)
+      if (v < s->minimum || v > s->maximum)
         {
           g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
                        "'%" G_GUINT64_FORMAT "' out of range for property",
@@ -109,7 +109,7 @@ bolt_str_parse_by_pspec (GParamSpec *spec,
           return FALSE;
         }
 
-      g_value_set_uint (val, (guint32) v);
+      g_value_set_uint (val, (guint) v);
     }
   else if (G_IS_PARAM_SPEC_UINT64 (spec))
     {
