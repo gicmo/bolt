@@ -68,6 +68,19 @@ will also be removed from the 'BootACL'. When a controller is offline,
 changes to the 'BootACL' will be written to a journal and synchronized
 back when the controller is online again.
 
+'IOMMU' support: if the hardware and firmware support using the input–output
+memory management unit (IOMMU) to restrict direct memory access
+to certain safe regions, boltd will detect that feature and change its
+behavior: As long as iommu support is active, as inidcated by the
+iommu_dma_protection sysfs attribute of the domain controller, new devices
+will be automatically enrolled with the 'iommu' policy and existing
+devices with 'iommu' (or 'auto') policy will be automatically authorized
+by boltd without any user interaction. When iommu is not active, devices
+that were enrolled with the 'iommu' policy will not be authorized
+automatically. The status of iommu support can be inspected by using
+*boltctl domains*.
+
+
 OPTIONS
 -------
 
