@@ -330,6 +330,7 @@ test_error (TestRng *tt, gconstpointer user_data)
 
   ok = bolt_error_propagate_stripped (&target, &source);
   g_assert_error (target, BOLT_ERROR, BOLT_ERROR_BADKEY);
+  g_assert_false (ok);
   g_assert_false (g_dbus_error_is_remote_error (target));
   g_assert_cmpstr (target->message, ==, buserr->message);
 
