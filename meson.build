@@ -270,7 +270,7 @@ install_data(['data/org.freedesktop.bolt.xml'],
 )
 
 install_data(['data/org.freedesktop.bolt.conf'],
-  install_dir : join_paths(sysconfdir, 'dbus-1', 'system.d')
+  install_dir : join_paths(datadir, 'dbus-1', 'system.d')
 )
 
 service_file = configure_file(
@@ -531,6 +531,7 @@ run_target('uncrustify',
 msg = ['',
   'version:             @0@'.format(meson.project_version()),
   'sysconfdir:          @0@'.format(sysconfdir),
+  'datadir:             @0@'.format(datadir),
   'statedir:            @0@'.format(statedir),
   'db name:             @0@'.format(dbname),
   'database path:       @0@'.format(dbdir),

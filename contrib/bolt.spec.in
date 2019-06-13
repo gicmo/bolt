@@ -77,7 +77,7 @@ where thunderbolt domains and devices can be simulated.
 %{_libexecdir}/boltd
 %{_unitdir}/%{name}.service
 %{_udevrulesdir}/*-%{name}.rules
-%{_sysconfdir}/dbus-1/system.d/org.freedesktop.bolt.conf
+%{_datadir}/dbus-1/system.d/org.freedesktop.bolt.conf
 %{_datadir}/dbus-1/interfaces/org.freedesktop.bolt.xml
 %{_datadir}/polkit-1/actions/org.freedesktop.bolt.policy
 %{_datadir}/polkit-1/rules.d/org.freedesktop.bolt.rules
