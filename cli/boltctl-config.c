@@ -129,7 +129,7 @@ property_get (BoltProxy *proxy, GParamSpec *spec, GError **error)
   if (val == NULL)
     return EXIT_FAILURE;
 
-  g_print ("%s\n", val ? : "");
+  g_print ("%s\n", val);
   return EXIT_SUCCESS;
 }
 
