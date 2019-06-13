@@ -72,7 +72,7 @@ where thunderbolt domains and devices can be simulated.
 
 %files
 %license COPYING
-%doc README.md BUGS.md INSTALL.md HACKING.md
+%doc README.md CHANGELOG.md BUGS.md INSTALL.md HACKING.md
 %{_bindir}/boltctl
 %{_libexecdir}/boltd
 %{_unitdir}/%{name}.service
