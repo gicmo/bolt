@@ -1,7 +1,7 @@
 Version 0.8
 -----------
 _I owe it to the MM U!_
-Released: 2019-06-13
+Released: 2019-06-14
 
 * New Features:
   - **IOMMU support**: adapt behavior iommu support is present and active [#128]
@@ -30,7 +30,7 @@ Released: 2019-06-13
 Version 0.7
 -----------
 _The Known Unknowns_
-Released: 2010-01-01
+Released: 2019-01-01
 
 
 * Features:
