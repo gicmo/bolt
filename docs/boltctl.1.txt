@@ -9,6 +9,7 @@ SYNOPSIS
 --------
 [verse]
 *boltctl* 'authorize' 'DEVICE'
+*boltctl* 'config'
 *boltctl* 'domains'
 *boltctl* 'enroll' 'DEVICE'
 *boltctl* 'forget' 'DEVICE'
@@ -69,6 +70,24 @@ Normally, when attempting to authorize an already authorized device
 *boltctl* will do nothing and return a successful status code. When
 using this option, the attempt will fail and result in a negative
 exit code if the device is already authorized.
+
+config --describe [global|domain|device]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+List global, domain, or all (if nothing is specified) properties. The
+format is 3 columns: permission, name, description. Permission indicates
+if the property is only readable or can also be written.
+
+config 'KEY' ['VALLUE']
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Get or set, if 'VALUE' is specified, a global property.
+
+config '<domain|device>.KEY' 'TARGET' ['VALLUE']
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Get or set, if 'VALUE' is specified, a domain or device property,
+where 'TARGET' is the unique id of the domain or the device.
 
 domains [-v | --verbose]
 ~~~~~~~~~~~~~~~~~~~~~~~~
