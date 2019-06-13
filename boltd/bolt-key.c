@@ -149,8 +149,6 @@ bolt_key_new (GError **error)
   BoltRng rng;
   char data[BOLT_KEY_BYTES];
 
-  key = g_object_new (BOLT_TYPE_KEY, NULL);
-
   rng = bolt_get_random_data (data, BOLT_KEY_BYTES);
 
   /* fail if we can not be sure that we have good enough
@@ -161,6 +159,8 @@ bolt_key_new (GError **error)
                    "failed to create key: no random data");
       return NULL;
     }
+
+  key = g_object_new (BOLT_TYPE_KEY, NULL);
 
   for (guint i = 0; i < BOLT_KEY_BYTES; i++)
     {
