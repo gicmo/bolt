@@ -247,7 +247,6 @@ parse_option (const char *opt_str,
 
 /* */
 typedef enum {
-  ACTION_UNKNOWN = 0,
   ACTION_GET = 1,
   ACTION_SET = 2,
 } Action;
@@ -276,7 +275,7 @@ config (BoltClient *client, int argc, char **argv)
   gboolean describe = FALSE;
   gboolean ok = FALSE;
   GParamSpec *prop;
-  Action action = ACTION_UNKNOWN;
+  Action action;
   GType type = 0;
   int res = EXIT_FAILURE;
   GOptionEntry options[] = {
@@ -340,20 +339,11 @@ config (BoltClient *client, int argc, char **argv)
   if (target == NULL)
     return usage_error (err); /* must be set if target == NULL */
 
-  switch (action)
-    {
-    case ACTION_GET:
-      res = property_get (target, prop, &err);
-      break;
-
-    case ACTION_SET:
-      res = property_set (target, prop, value, &err);
-      break;
-
-    case ACTION_UNKNOWN:
-      res = usage_error_need_arg ("KEY");
-      break;
-    }
+  /* action must either be GET or SET */
+  if (action == ACTION_GET)
+    res = property_get (target, prop, &err);
+  else if (action == ACTION_SET)
+    res = property_set (target, prop, value, &err);
 
   if (res == EXIT_FAILURE)
     g_printerr ("%s\n", err->message);
