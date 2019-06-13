@@ -625,7 +625,7 @@ bolt_proxy_set (BoltProxy    *proxy,
   g_return_val_if_fail (G_IS_PARAM_SPEC (spec), FALSE);
   g_return_val_if_fail (G_IS_VALUE (value), FALSE);
   g_return_val_if_fail (!cancellable || G_IS_CANCELLABLE (cancellable), FALSE);
-  g_return_val_if_fail (error != NULL || *error == NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   conv = bolt_proxy_get_wire_conv (proxy, spec, error);
 
