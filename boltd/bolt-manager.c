@@ -1379,6 +1379,11 @@ manager_enroll_device_prepare (BoltManager *mgr,
 
   auth = bolt_auth_new (mgr, level, key);
 
+  /* bolt_auth_new is a wrapper around g_object_new and
+   * therefore cannot realistically fail. This assertion
+   * convinces clang's static analysis of that fact. */
+  g_assert (auth != NULL);
+
   return auth;
 }
 
