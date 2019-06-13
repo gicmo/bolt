@@ -44,7 +44,10 @@ The core of bolt is a system daemon (`boltd`) that interfaces with
 sysfs and exposes devices via D-Bus to clients. It also has a database
 of previously authorized devices (and their keys) and will, depending
 on the policy set for the individual devices, automatically authorize
-newly connected devices without user interaction.
+newly connected devices without user interaction. The daemon supports
+syncing the devices database with the pre-boot access control list
+firmware feature. It also adapts its behavior when iommu support is
+detected.
 
 boltctl - command line client
 -----------------------------
