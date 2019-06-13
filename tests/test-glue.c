@@ -221,7 +221,7 @@ test_props_basic (TestGlue *tt, gconstpointer data)
 static void
 test_parse_str_by_pspec_bool (TestGlue *tt, gconstpointer data)
 {
-  g_autoptr(GParamSpec) spec;
+  g_autoptr(GParamSpec) spec = NULL;
   g_autoptr(GError) err = NULL;
   g_auto(GValue) val = G_VALUE_INIT;
   gboolean ok;
@@ -254,7 +254,7 @@ test_parse_str_by_pspec_bool (TestGlue *tt, gconstpointer data)
 static void
 test_parse_str_by_pspec_uint (TestGlue *tt, gconstpointer data)
 {
-  g_autoptr(GParamSpec) spec;
+  g_autoptr(GParamSpec) spec = NULL;
   g_autoptr(GError) err = NULL;
   g_auto(GValue) val = G_VALUE_INIT;
   gboolean ok;
@@ -296,7 +296,7 @@ test_parse_str_by_pspec_uint (TestGlue *tt, gconstpointer data)
 static void
 test_parse_str_by_pspec_uint64 (TestGlue *tt, gconstpointer data)
 {
-  g_autoptr(GParamSpec) spec;
+  g_autoptr(GParamSpec) spec = NULL;
   g_autoptr(GError) err = NULL;
   g_auto(GValue) val = G_VALUE_INIT;
   gboolean ok;
@@ -338,7 +338,7 @@ test_parse_str_by_pspec_uint64 (TestGlue *tt, gconstpointer data)
 static void
 test_parse_str_by_pspec_enum (TestGlue *tt, gconstpointer data)
 {
-  g_autoptr(GParamSpec) spec;
+  g_autoptr(GParamSpec) spec = NULL;
   g_autoptr(GError) err = NULL;
   g_auto(GValue) val = G_VALUE_INIT;
   gboolean ok;
@@ -374,7 +374,7 @@ test_parse_str_by_pspec_enum (TestGlue *tt, gconstpointer data)
 static void
 test_parse_str_by_pspec_flags (TestGlue *tt, gconstpointer data)
 {
-  g_autoptr(GParamSpec) spec;
+  g_autoptr(GParamSpec) spec = NULL;
   g_autoptr(GError) err = NULL;
   g_auto(GValue) val = G_VALUE_INIT;
   gboolean ok;
@@ -413,7 +413,7 @@ test_parse_str_by_pspec_flags (TestGlue *tt, gconstpointer data)
 static void
 test_parse_str_by_pspec_string (TestGlue *tt, gconstpointer data)
 {
-  g_autoptr(GParamSpec) spec;
+  g_autoptr(GParamSpec) spec = NULL;
   g_autoptr(GError) err = NULL;
   g_auto(GValue) val = G_VALUE_INIT;
   gboolean ok;
@@ -433,7 +433,7 @@ test_parse_str_by_pspec_string (TestGlue *tt, gconstpointer data)
 static void
 test_parse_str_by_pspec_strv (TestGlue *tt, gconstpointer data)
 {
-  g_autoptr(GParamSpec) spec;
+  g_autoptr(GParamSpec) spec = NULL;
   g_autoptr(GError) err = NULL;
   g_auto(GValue) val = G_VALUE_INIT;
   char **strv = NULL;
