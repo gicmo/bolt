@@ -219,6 +219,11 @@ handle_authorize_property (BoltExported          *exported,
       if (bolt_streq (name, "label"))
         action = "org.freedesktop.bolt.manage";
     }
+  else if (bolt_streq (type_name, "BoltDomain"))
+    {
+      if (bolt_streq (name, "bootacl"))
+        action = "org.freedesktop.bolt.manage";
+    }
   else if (bolt_streq (type_name, "BoltManager"))
     {
       if (bolt_streq (name, "auth-mode"))

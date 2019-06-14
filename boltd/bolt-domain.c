@@ -36,6 +36,12 @@
 
 static void bolt_domain_bootacl_open_log (BoltDomain *domain);
 
+/* dbus property setter */
+static gboolean handle_set_bootacl (BoltExported *obj,
+                                    const char   *name,
+                                    const GValue *value,
+                                    GError      **error);
+
 struct _BoltDomain
 {
   BoltExported object;
@@ -296,6 +302,10 @@ bolt_domain_class_init (BoltDomainClass *klass)
                                          PROP_EXPORTED,
                                          PROP_LAST,
                                          props);
+
+  bolt_exported_class_property_setter (exported_class,
+                                       props[PROP_BOOTACL],
+                                       handle_set_bootacl);
 
   signals[SIGNAL_BOOTACL_CHANGED] =
     g_signal_new ("bootacl-changed",
@@ -1231,4 +1241,28 @@ bolt_domain_clear (BoltDomain **list)
     iter = bolt_domain_remove (iter, iter);
 
   *list = iter;
+}
+
+/* dbus property setter */
+static gboolean
+handle_set_bootacl (BoltExported *obj,
+                    const char   *name,
+                    const GValue *value,
+                    GError      **error)
+{
+  BoltDomain *domain = BOLT_DOMAIN (obj);
+  GStrv acl;
+  gboolean ok;
+
+  acl = (GStrv) g_value_get_boxed (value);
+
+  if (!bolt_uuidv_check (acl, TRUE, error))
+    return FALSE;
+
+  /* does check if we can actually update the boot-acl,
+   * i.e. calls bolt_domain_bootacl_can_update */
+  ok = bolt_domain_bootacl_set (domain, acl, error);
+
+  // maybe adjust the G_IO_ERROR to a G_DBUS_ERROR ?
+  return ok;
 }
