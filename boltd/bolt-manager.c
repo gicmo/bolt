@@ -904,6 +904,8 @@ manager_register_domain (BoltManager *mgr,
   g_signal_connect_object (domain, "notify::security",
                            G_CALLBACK (handle_domain_security_changed),
                            mgr, G_CONNECT_SWAPPED);
+
+  bolt_bouncer_add_client (mgr->bouncer, domain);
 }
 
 static void
