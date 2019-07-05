@@ -1050,7 +1050,7 @@ bolt_domain_bootacl_set (BoltDomain *domain,
     ok = bolt_journal_put_diff (log, diff, error);
 
   if (!ok)
-    return TRUE;
+    return FALSE;
 
   tmp = g_strdupv (acl);
   bolt_domain_bootacl_update (domain, &tmp, diff);
