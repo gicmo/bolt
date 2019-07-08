@@ -346,7 +346,7 @@ config (BoltClient *client, int argc, char **argv)
     res = property_set (target, prop, value, &err);
 
   if (res == EXIT_FAILURE)
-    g_printerr ("%s\n", err->message);
+    report_error (NULL, err);
 
   return res;
 }
