@@ -103,6 +103,31 @@ usage_error_too_many_args (void)
   return usage_error (error);
 }
 
+int
+report_error (const char *prefix, GError *error)
+{
+  g_printerr ("%s:", g_get_application_name ());
+  g_printerr ("%s error: %s", bolt_color (ANSI_RED), bolt_color (ANSI_NORMAL));
+
+  if (prefix)
+    g_printerr ("%s", prefix);
+
+  if (error)
+    {
+      if (g_dbus_error_is_remote_error (error))
+        g_dbus_error_strip_remote_error (error);
+
+      if (prefix)
+        g_printerr (": ");
+
+      g_printerr ("%s", error->message);
+    }
+
+  g_printerr ("\n");
+
+  return EXIT_FAILURE;
+}
+
 
 /* device related commands */
 static gboolean
