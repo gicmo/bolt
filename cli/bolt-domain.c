@@ -91,7 +91,7 @@ bolt_domain_class_init (BoltDomainClass *klass)
     g_param_spec_boxed ("bootacl", "BootACL",
                         "Pre-boot access control list (uuids).",
                         G_TYPE_STRV,
-                        G_PARAM_READABLE |
+                        G_PARAM_READWRITE |
                         G_PARAM_STATIC_STRINGS);
 
   props[PROP_IOMMU] =
