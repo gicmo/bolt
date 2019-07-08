@@ -457,10 +457,7 @@ main (int argc, char **argv)
   client = bolt_client_new (&error);
 
   if (!client)
-    {
-      g_error ("Could not create client: %s", error->message);
-      return EXIT_FAILURE;
-    }
+    return report_error ("could not create client", error);
 
   cmd = subcommands_find (subcommands, cmdname, &error);
 
