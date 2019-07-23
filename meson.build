@@ -262,7 +262,8 @@ daemon_sources = files([
   'boltd/bolt-log.c',
   'boltd/bolt-store.c',
   'boltd/bolt-sysfs.c',
-  'boltd/bolt-udev.c'
+  'boltd/bolt-udev.c',
+  'boltd/bolt-watchdog.c'
 ])
 
 install_data(['data/org.freedesktop.bolt.xml'],
