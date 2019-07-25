@@ -24,6 +24,9 @@
 
 G_BEGIN_DECLS
 
+#define BOLT_MSEC_PER_SEC 1000LL   /* number of milli-seconds (ms) in a second (s) */
+#define BOLT_USEC_PER_MSEC 1000LL  /* number of micro-seconds (µs) in a ms */
+
 char *       bolt_epoch_format (guint64     seconds,
                                 const char *format);
 
