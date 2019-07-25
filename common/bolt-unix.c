@@ -24,6 +24,8 @@
 
 #include "bolt-error.h"
 #include "bolt-io.h"
+#include "bolt-names.h"
+#include "bolt-str.h"
 
 #include <gio/gio.h>
 
@@ -133,4 +135,34 @@ bolt_sd_notify_literal (const char *state,
     }
 
   return TRUE;
+}
+
+int
+bolt_sd_watchdog_enabled (guint64 *timeout,
+                          GError **error)
+{
+  const char *str;
+  guint64 val = 0;
+  gboolean ok;
+
+  str = g_getenv (BOLT_SD_WATCHDOG_USEC);
+
+  if (str == NULL)
+    return 0;
+
+  ok = bolt_str_parse_as_uint64 (str, &val, error);
+
+  if (ok && (val == 0 || val == (guint64) - 1))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "invalid value '%" G_GUINT64_FORMAT "'", val);
+      ok = FALSE;
+    }
+
+  if (!ok)
+    g_prefix_error (error, "failed to parse WATCHDOG_USEC: ");
+  else if (timeout)
+    *timeout = val;
+
+  return ok ? 1 : -1;
 }

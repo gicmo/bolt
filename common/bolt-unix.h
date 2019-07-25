@@ -30,4 +30,8 @@ gboolean     bolt_pid_is_alive (pid_t pid);
 gboolean     bolt_sd_notify_literal (const char *state,
                                      gboolean   *sent,
                                      GError    **error);
+
+int         bolt_sd_watchdog_enabled (guint64 *timeout,
+                                      GError **error);
+
 G_END_DECLS
