@@ -24,6 +24,7 @@
 
 #include "bolt-io.h"
 #include "bolt-macros.h"
+#include "bolt-names.h"
 #include "bolt-str.h"
 #include "bolt-test.h"
 
@@ -290,6 +291,43 @@ test_sd_notify (TestNotify *tt, gconstpointer user)
   g_free (msg);
 }
 
+static void
+test_sd_watchdog_enabled (TestDummy *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *tmp = NULL;
+  guint64 val;
+  int r;
+
+  /* no env variable */
+  g_assert_null (g_getenv (BOLT_SD_WATCHDOG_USEC));
+
+  r = bolt_sd_watchdog_enabled (&val, &err);
+  g_assert_no_error (err);
+  g_assert_cmpint (r, ==, 0);
+
+  /* empty env variable [error] */
+  g_setenv (BOLT_SD_WATCHDOG_USEC, "", TRUE);
+  r = bolt_sd_watchdog_enabled (&val, &err);
+  g_assert_nonnull (err);
+  g_assert_cmpint (r, <, 0);
+  g_clear_error (&err);
+
+  /* invalid env variable [error] */
+  g_setenv (BOLT_SD_WATCHDOG_USEC, "NOT-A-NUMBER", TRUE);
+  r = bolt_sd_watchdog_enabled (&val, &err);
+  g_assert_nonnull (err);
+  g_assert_cmpint (r, <, 0);
+  g_clear_error (&err);
+
+  /* valid number, finally */
+  tmp = g_strdup_printf ("%d", 42 * G_USEC_PER_SEC);
+  g_setenv (BOLT_SD_WATCHDOG_USEC, tmp, TRUE);
+  r = bolt_sd_watchdog_enabled (&val, &err);
+  g_assert_no_error (err);
+  g_assert_cmpint (r, >, 0);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -310,6 +348,13 @@ main (int argc, char **argv)
               test_notify_setup,
               test_sd_notify,
               test_notify_teardown);
+
+  g_test_add ("/common/unix/sd_watchdog_enabled",
+              TestDummy,
+              NULL,
+              NULL,
+              test_sd_watchdog_enabled,
+              NULL);
 
   return g_test_run ();
 }
