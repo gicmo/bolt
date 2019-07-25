@@ -30,6 +30,7 @@
 #include "bolt-store.h"
 #include "bolt-str.h"
 #include "bolt-sysfs.h"
+#include "bolt-time.h"
 #include "bolt-udev.h"
 #include "bolt-unix.h"
 
@@ -38,7 +39,6 @@
 #include <libudev.h>
 #include <string.h>
 
-#define MSEC_PER_USEC 1000LL
 #define PROBING_SETTLE_TIME_MS 2000 /* in milli-seconds */
 
 typedef struct udev_device udev_device;
@@ -1990,7 +1990,7 @@ probing_timeout (gpointer user_data)
 
   /* dt is in microseconds, probing timeout in
    * milli seconds  */
-  timeout = mgr->probing_tsettle * MSEC_PER_USEC;
+  timeout = mgr->probing_tsettle * BOLT_USEC_PER_MSEC;
   if (dt < timeout)
     return G_SOURCE_CONTINUE;
 
