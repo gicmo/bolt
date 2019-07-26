@@ -1733,6 +1733,61 @@ test_strv_rotate_left (TestRng *tt, gconstpointer user_data)
   g_assert_true (target == &a[4]);
 }
 
+#ifndef MAKE_GSTRV
+#define MAKE_GSTRV(...) (GStrv) (const char *[]){ __VA_ARGS__}
+#endif
+
+static void
+test_uuidv_check (TestRng *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  char *empty[] = {NULL};
+  const char *empty_entries[] = {"884c6edd-7118-4b21-b186-b02d396ecca0", "", NULL};
+  const char *valid[] = {"884c6edd-7118-4b21-b186-b02d396ecca0", NULL};
+  const GStrv invalid[] = {
+    MAKE_GSTRV ("\n", NULL),
+    MAKE_GSTRV ("884c6eddx7118x4b21xb186-b02d396ecca0", NULL),
+    MAKE_GSTRV ("884c6edd-4b21-b186-b02d396ecca0", NULL),
+    MAKE_GSTRV ("884c6edd-7118-4b21-b186-b02d396ecca0", "a", NULL),
+  };
+  gboolean ok;
+
+  ok = bolt_uuidv_check (NULL, TRUE, &err);
+  g_assert_true (ok);
+
+  ok = bolt_uuidv_check (empty, TRUE, &err);
+  g_assert_true (ok);
+
+  ok = bolt_uuidv_check ((GStrv) empty_entries, TRUE, &err);
+  g_assert_true (ok);
+
+  ok = bolt_uuidv_check (NULL, FALSE, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  ok = bolt_uuidv_check (empty, FALSE, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  ok = bolt_uuidv_check ((GStrv) empty_entries, FALSE, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  ok = bolt_uuidv_check ((GStrv) valid, TRUE, &err);
+  g_assert_true (ok);
+
+  for (gsize i = 0; i < G_N_ELEMENTS (invalid); i++)
+    {
+      ok = bolt_uuidv_check (invalid[i], FALSE, &err);
+      g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
+      g_assert_false (ok);
+      g_clear_error (&err);
+    }
+}
+
 static void
 test_term_fancy (TestRng *tt, gconstpointer user_data)
 {
@@ -2055,6 +2110,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_strv_rotate_left,
+              NULL);
+
+  g_test_add ("/common/uuidv/check",
+              TestRng,
+              NULL,
+              NULL,
+              test_uuidv_check,
               NULL);
 
   g_test_add ("/common/term/fancy",
