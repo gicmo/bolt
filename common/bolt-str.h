@@ -48,6 +48,10 @@ void    bolt_strv_permute (char **strv);
 
 #define  bolt_strv_isempty(strv) ((strv) == NULL || *(strv) == NULL)
 
+gboolean bolt_uuidv_check (const GStrv uuidv,
+                           gboolean    empty_ok,
+                           GError    **error);
+
 #define bolt_strzero(str) (str == NULL || *str == '\0')
 
 #define bolt_yesno(val) val ? "yes" : "no"

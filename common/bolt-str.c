@@ -216,6 +216,39 @@ bolt_strv_permute (char **strv)
     }
 }
 
+gboolean
+bolt_uuidv_check (const GStrv uuidv,
+                  gboolean    empty_ok,
+                  GError    **error)
+{
+  if (bolt_strv_isempty (uuidv))
+    {
+      if (empty_ok)
+        return TRUE;
+
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                           "provided uuid array is empty");
+      return FALSE;
+    }
+
+  for (char * const *p = uuidv; *p; p++)
+    {
+      const char *uuid = *p;
+
+      if (bolt_strzero (uuid) && empty_ok)
+        continue;
+
+      if (!g_uuid_string_is_valid (uuid))
+        {
+          g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                       "entry '%s' is not a valid UUID", uuid);
+          return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
 char *
 bolt_strdup_validate (const char *string)
 {
