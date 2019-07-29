@@ -447,7 +447,11 @@ foreach t: tests
     test_env.prepend('LD_PRELOAD', 'libumockdev-preload.so.0')
   endif
 
-  test(test_name, test_exec, env: test_env, timeout: 120)
+  test(test_name,
+       test_exec,
+       args: ['-m', get_option('tests-speed')],
+       env: test_env,
+       timeout: 120)
 endforeach
 
 test_it = find_program(join_paths(srcdir, 'tests', 'test-integration'))

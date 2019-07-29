@@ -6,3 +6,4 @@ option('man', type: 'combo', choices: ['auto', 'true', 'false'], value: 'auto', 
 option('privileged-group', type: 'string', value: 'wheel', description: 'Name of privileged group')
 option('profiling', type: 'boolean', value: 'false', description: 'Build with profiling support')
 option('systemd', type: 'boolean', value: 'true', description: 'DEPRECATED')
+option('tests-speed', type: 'combo', choices: ['quick', 'slow'], value: 'quick', description : 'Which tests to run')
