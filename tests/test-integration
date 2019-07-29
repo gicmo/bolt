@@ -23,9 +23,11 @@
 from __future__ import print_function
 
 import binascii
+import errno
 import gc
 import os
 import shutil
+import socket
 import sys
 import subprocess
 import unittest
@@ -910,6 +912,69 @@ class Parameterize(object):
         return decorator
 
 
+# Systemd integration tests
+class SdNotify:
+    def __init__(self, tmpdir):
+        assert(tmpdir is not None)
+        soflags = socket.SOCK_DGRAM | socket.SOCK_CLOEXEC | socket.SOCK_NONBLOCK
+        self.sock = socket.socket(socket.AF_UNIX, soflags)
+        self.path = os.path.join(tmpdir, 'bolt_notify_socket')
+        self.sock.bind(self.path)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_PASSCRED, 1)
+        self.msgs = []
+
+    def read_msg(self):
+        rflags = socket.MSG_DONTWAIT | socket.MSG_CMSG_CLOEXEC | socket.MSG_TRUNC
+        try:
+            msg, ac, flags, addr = self.sock.recvmsg(4096, 0, rflags)
+        except OSError as e:
+            if e.errno != errno.EINTR and e.errno != errno.EAGAIN:
+                raise e
+            msg = None
+
+        if msg is None:
+            return None
+        msg = msg.decode('utf-8')
+        self.msgs.append(msg)
+        return msg
+
+    def fetch_msgs(self):
+        count = 0
+        while self.read_msg():
+            count += 1
+        return count
+
+    def wait_for(self, event, timeout=None):
+        timeout = timeout or get_timeout()
+        timeout_count = timeout * 10
+        timeout_sleep = 0.1
+
+        while timeout_count > 0:
+
+            count = self.fetch_msgs()
+            if count:
+                matches = [msg for msg in self.msgs if msg.startswith(event)]
+                if matches:
+                    return matches
+
+            time.sleep(timeout_sleep)
+            timeout_count -= 1
+
+        # debug print
+        for msg in self.msgs:
+            print(msg)
+
+        raise TimeoutError("Timeout waiting for '%s'" % event)
+
+    def close(self):
+        self.path = None
+        if self.sock is None:
+            return
+        self.sock.shutdown(socket.SHUT_WR)
+        self.sock.close()
+        self.sock = None
+
+
 # Test Suite
 @Parameterize.enable
 class BoltTest(dbusmock.DBusTestCase):
@@ -976,6 +1041,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.daemon = None
         self.polkitd = None
         self.valgrind = False
+        self.sdnotify = None
 
     def tearDown(self):
         shutil.rmtree(self.dbpath)
@@ -983,6 +1049,9 @@ class BoltTest(dbusmock.DBusTestCase):
         del self.testbed
         self.daemon_stop()
         self.polkitd_stop()
+        if self.sdnotify is not None:
+            self.sdnotify.close()
+            self.sdnotify = None
         # Gross work-around for some flaky behavior where tests will fail
         # with some obscure error in umockdev, but only if all the tests
         # executed in one go. Maybe some cleanup issue. Needs further
@@ -1001,13 +1070,16 @@ class BoltTest(dbusmock.DBusTestCase):
         return proxy.Get('(ss)', interface, name)
 
     # daemon helper
-    def daemon_start(self):
+    def daemon_start(self, sdnotify=False):
         timeout = get_timeout('daemon_start')  # seconds
         env = os.environ.copy()
         env['G_DEBUG'] = 'fatal-criticals'
         env['UMOCKDEV_DIR'] = self.testbed.get_root_dir()
         env['STATE_DIRECTORY'] = self.dbpath
         env['RUNTIME_DIRECTORY'] = self.rundir
+        if sdnotify:
+            self.sdnotify = SdNotify(self.rundir)
+            env['NOTIFY_SOCKET'] = self.sdnotify.path
         argv = [self.paths['daemon'], '-v']
         valgrind = os.getenv('VALGRIND')
         if valgrind is not None:
@@ -2312,6 +2384,19 @@ class BoltTest(dbusmock.DBusTestCase):
                                       val)
             self.assertTrue(res)
         self.assertEqual(remote.label, val)
+
+        self.daemon_stop()
+
+    def test_sdnotify(self):
+        c, host = self.add_domain_host(security='secure', iommu='1')
+
+        self.daemon_start(sdnotify=True)
+        self.polkitd_start()
+
+        assert(self.sdnotify)
+
+        msgs = self.sdnotify.wait_for('STATUS')
+        self.assertTrue(msgs is not None)
 
         self.daemon_stop()
 
