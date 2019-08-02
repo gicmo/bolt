@@ -1467,6 +1467,25 @@ test_str_set (TestRng *tt, gconstpointer user_data)
   g_assert_cmpstr (target, ==, "Hallo Welt");
 }
 
+static void
+test_strv_make_n (TestRng *tt, gconstpointer user_data)
+{
+  g_auto(GStrv) empty = NULL;
+  g_auto(GStrv) full = NULL;
+  const char *check[] = {"voll", "voll", NULL};
+
+  empty = bolt_strv_make_n (0, "nichts");
+  g_assert_nonnull (empty);
+  g_assert_null (*empty);
+
+  full = bolt_strv_make_n (2, "voll");
+  g_assert_nonnull (full);
+  g_assert_nonnull (*full);
+  g_assert_cmpuint (bolt_gstrv_length0 (full), ==, 2);
+  bolt_assert_strv_equal (full, (GStrv) check, -1);
+}
+
+
 #define MAKE_GSTRV(...) (GStrv) (const char *[]){ __VA_ARGS__}
 
 static void
@@ -2071,6 +2090,13 @@ main (int argc, char **argv)
               test_str_set,
               NULL);
 
+  g_test_add ("/common/strv/make_n",
+              TestRng,
+              NULL,
+              NULL,
+              test_strv_make_n,
+              NULL);
+
   g_test_add ("/common/strv/equal",
               TestRng,
               NULL,
@@ -2084,6 +2110,8 @@ main (int argc, char **argv)
               NULL,
               test_strv_length,
               NULL);
+
+
 
   g_test_add ("/common/strv/contains",
               TestRng,
