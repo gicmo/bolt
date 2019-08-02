@@ -454,6 +454,26 @@ class BoltDomain(ProxyWrapper):
                                          DBUS_IFACE_DOMAIN,
                                          path)
 
+    @property
+    def bootacl(self):
+        res = getattr(self, 'BootACL')
+        if res is not None and len(res) < 1:
+            return None
+        return res
+
+    @bootacl.setter
+    def bootacl(self, value):
+        value = GLib.Variant("as", value)
+
+        self._proxy.call_sync('org.freedesktop.DBus.Properties.Set',
+                              GLib.Variant("(ssv)",
+                                           (DBUS_IFACE_DOMAIN,
+                                            "BootACL",
+                                            value)),
+                              0,
+                              -1,
+                              None)
+
 
 @Signal.enable
 class BoltClient(ProxyWrapper):
@@ -1520,7 +1540,7 @@ class BoltTest(dbusmock.DBusTestCase):
         client = self.client
 
         domain = client.domain_by_id(domain_id)
-        bootacl = domain.BootACL
+        bootacl = domain.bootacl
         print('domain [%s] bootacl: %s' % (domain.uid, bootacl))
 
         devs = tree.peripherals
@@ -2015,7 +2035,7 @@ class BoltTest(dbusmock.DBusTestCase):
         client = self.client
         domain = client.domain_by_id(tree.unique_id)
         self.assertIsNotNone(domain)
-        self.assertIsNotNone(domain.BootACL)
+        self.assertIsNotNone(domain.bootacl)
 
         to_enroll = tree.collect(TbDevice.is_unauthorized)
 
@@ -2075,9 +2095,9 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertTrue(remote.AuthorizeTime <= now)
 
             if policy == BoltClient.POLICY_AUTO:
-                self.assertIn(d.unique_id, domain.BootACL)
+                self.assertIn(d.unique_id, domain.bootacl)
             else:
-                self.assertNotIn(d.unique_id, domain.BootACL)
+                self.assertNotIn(d.unique_id, domain.bootacl)
             policies[d.unique_id] = policy
 
         # we disconnect the tree, but since the devices are connected
@@ -2325,14 +2345,14 @@ class BoltTest(dbusmock.DBusTestCase):
 
         # now we actually forget the device
         for remote in devices:
-            self.assertIn(remote.uid, domain.BootACL)
+            self.assertIn(remote.uid, domain.bootacl)
             with domain.record() as tape:
                 client.forget(remote.uid)
                 res = tape.wait_for_event('property',
                                           'BootACL',
                                           None)
                 self.assertTrue(res)
-            self.assertNotIn(remote.uid, domain.BootACL)
+            self.assertNotIn(remote.uid, domain.bootacl)
 
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 0)
