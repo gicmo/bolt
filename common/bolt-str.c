@@ -94,6 +94,15 @@ bolt_strv_length (char * const *strv)
   return l;
 }
 
+guint
+bolt_gstrv_length0 (const GStrv strv)
+{
+  if (strv == NULL)
+    return 0;
+
+  return g_strv_length ((char **) strv);
+}
+
 char **
 bolt_strv_contains (GStrv haystack, const char *needle)
 {

@@ -1486,6 +1486,7 @@ test_strv_length (TestRng *tt, gconstpointer user_data)
   for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
     {
       g_assert_cmpuint (bolt_strv_length (table[i].strv), ==, table[i].l);
+      g_assert_cmpuint (bolt_gstrv_length0 (table[i].strv), ==, table[i].l);
 
       if (table[i].l == 0)
         g_assert_true (bolt_strv_isempty (table[i].strv));
