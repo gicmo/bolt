@@ -1513,7 +1513,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.daemon_stop()
 
-    def test_domain_bootacl_init(self):
+    def test_domain_bootacl(self):
 
         ssd1 = TbDevice('SSD1',)
         cable1 = TbDevice('Cable1', children=[ssd1])
@@ -1546,6 +1546,58 @@ class BoltTest(dbusmock.DBusTestCase):
         devs = tree.peripherals
         for d in devs:
             self.assertIn(d.unique_id, bootacl)
+
+        # try to set the bootacl, without PolKit allowing it
+        with self.assertRaises(GLib.GError) as cm:
+            domain.bootacl = ['']
+            err = cm.exception
+            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+            self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.manage'])
+
+        # try to set an invalid bootacl
+        with self.assertRaises(GLib.GError) as cm:
+            domain.bootacl = ['']
+            err = cm.exception
+            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+            self.assertEqual(err.code, int(Gio.IOError.INVALID_ARGUMENT))
+
+        # try to set an invalid bootacl, 2nd time
+        with self.assertRaises(GLib.GError) as cm:
+            domain.bootacl = None
+            err = cm.exception
+            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+            self.assertEqual(err.code, int(Gio.IOError.INVALID_ARGUMENT))
+
+        # remove all entries
+        with domain.record() as tape:
+            domain.bootacl = ['']*len(bootacl)
+            res = tape.wait_for_event('property',
+                                      'BootACL',
+                                      None)
+            self.assertTrue(res)
+            bootacl = domain.bootacl
+            print('domain [%s] bootacl: %s' % (domain.uid, bootacl))
+            self.assertTrue(all([x == '' for x in bootacl]))
+
+        bootacl_new = ['']*len(bootacl)
+        uuids = ["884c6edd-7118-4b21-b186-b02d396ecca0",
+                 "58796843-4a8b-4578-921a-acc654984bfb",
+                 "0cc8556f-c73b-41c0-990e-f1e317360626"]
+
+        for i, u in enumerate(uuids):
+            bootacl_new[i] = u
+
+        with domain.record() as tape:
+            domain.bootacl = bootacl_new
+            res = tape.wait_for_event('property',
+                                      'BootACL',
+                                      None)
+            self.assertTrue(res)
+            bootacl = domain.bootacl
+            print('domain [%s] bootacl: %s' % (domain.uid, bootacl))
+            for entry in uuids:
+                self.assertIn(entry, uuids)
 
         self.daemon_stop()
 
