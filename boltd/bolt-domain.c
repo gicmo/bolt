@@ -1025,7 +1025,6 @@ bolt_domain_bootacl_set (BoltDomain *domain,
   guint ours, theirs;
 
   g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
-  g_return_val_if_fail (acl != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   ok = bolt_domain_bootacl_can_update (domain, error);
@@ -1035,7 +1034,7 @@ bolt_domain_bootacl_set (BoltDomain *domain,
   online = domain->syspath != NULL;
   log = domain->acllog;
 
-  theirs = g_strv_length (acl);
+  theirs = bolt_gstrv_length0 (acl);
   ours = g_strv_length (domain->bootacl);
 
   if (ours != theirs)
