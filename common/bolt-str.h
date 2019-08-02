@@ -34,6 +34,8 @@ void bolt_str_erase_clear (char **str);
 #define bolt_strcaseeq(s1, s2) (g_ascii_strcasecmp ((s1), (s2)) == 0)
 
 GStrv    bolt_strv_from_ptr_array (GPtrArray **array);
+GStrv    bolt_strv_make_n (guint       size,
+                           const char *init);
 gsize    bolt_strv_length (char * const *strv);
 guint    bolt_gstrv_length0 (const GStrv strv);
 char **  bolt_strv_contains (GStrv       haystack,

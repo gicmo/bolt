@@ -80,6 +80,18 @@ bolt_strv_from_ptr_array (GPtrArray **array)
   return (GStrv) g_ptr_array_free (a, FALSE);
 }
 
+GStrv
+bolt_strv_make_n (guint size, const char *init)
+{
+  GPtrArray *a;
+
+  a = g_ptr_array_sized_new (size + 1);
+  for (guint i = 0; i < size; i++)
+    g_ptr_array_add (a, g_strdup (init));
+
+  return bolt_strv_from_ptr_array (&a);
+}
+
 gsize
 bolt_strv_length (char * const *strv)
 {
