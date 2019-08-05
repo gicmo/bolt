@@ -68,7 +68,7 @@ bolt_sd_notify_literal (const char *state,
   if (sent)
     *sent = FALSE;
 
-  env = g_getenv ("NOTIFY_SOCKET");
+  env = g_getenv (BOLT_SD_NOTIFY_SOCKET);
 
   if (env == NULL)
     return TRUE;

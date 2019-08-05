@@ -243,7 +243,7 @@ test_notify_enable_watch (TestNotify *tt)
 static void
 test_notify_set_environment (TestNotify *tt)
 {
-  g_setenv ("NOTIFY_SOCKET", tt->socket_path, TRUE);
+  g_setenv (BOLT_SD_NOTIFY_SOCKET, tt->socket_path, TRUE);
 }
 
 static void
@@ -266,7 +266,7 @@ test_sd_notify (TestNotify *tt, gconstpointer user)
   g_assert_false (sent);
 
   /* invalid/unsupported destinations */
-  g_setenv ("NOTIFY_SOCKET", "INVALID SOCKET", TRUE);
+  g_setenv (BOLT_SD_NOTIFY_SOCKET, "INVALID SOCKET", TRUE);
   ok = bolt_sd_notify_literal (ref, &sent, &err);
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED);
   g_assert_false (ok);
@@ -278,7 +278,7 @@ test_sd_notify (TestNotify *tt, gconstpointer user)
   g_assert_cmpuint (l, <, 1024);
   verylong = g_strnfill (l, 'a');
 
-  g_setenv ("NOTIFY_SOCKET", verylong, TRUE);
+  g_setenv (BOLT_SD_NOTIFY_SOCKET, verylong, TRUE);
   ok = bolt_sd_notify_literal (ref, &sent, &err);
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
   g_assert_false (ok);
@@ -286,7 +286,7 @@ test_sd_notify (TestNotify *tt, gconstpointer user)
   g_clear_error (&err);
 
   /* peer does not exist */
-  g_setenv ("NOTIFY_SOCKET", "@NONEXISTANTABSTRACT", TRUE);
+  g_setenv (BOLT_SD_NOTIFY_SOCKET, "@NONEXISTANTABSTRACT", TRUE);
   ok = bolt_sd_notify_literal (ref, &sent, &err);
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_CONNECTION_REFUSED);
   g_assert_false (ok);
