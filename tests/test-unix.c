@@ -171,7 +171,6 @@ static void
 test_notify_setup (TestNotify *tt, gconstpointer data)
 {
   g_autoptr(GError) err = NULL;
-  g_autoptr(GSource) source = NULL;
   bolt_autoclose int fd = -1;
   static const int one = 1;
   struct sockaddr_un sau = {AF_UNIX, {'\0', }};
@@ -200,14 +199,8 @@ test_notify_setup (TestNotify *tt, gconstpointer data)
   r = setsockopt (fd, SOL_SOCKET, SO_PASSCRED, &one, sizeof (one));
   g_assert_cmpint (r, >, -1);
 
-  source = g_unix_fd_source_new (fd, G_IO_IN);
-  g_assert_nonnull (source);
-
-  g_source_set_callback (source, got_notification, tt, NULL);
-  tt->socket_watch = g_source_attach (source, NULL);
-
-  tt->socket_fd = bolt_steal (&fd, -1);
   g_queue_init (&tt->messages);
+  tt->socket_fd = bolt_steal (&fd, -1);
 
   g_debug ("notification socket at '%s'", sau.sun_path);
 }
@@ -228,6 +221,23 @@ test_notify_teardown (TestNotify *tt, gconstpointer user)
 
   g_clear_pointer (&tt->tmpdir, bolt_tmp_dir_destroy);
   g_queue_free_full (&tt->messages, g_free);
+}
+
+static void test_notify_enable_watch (TestNotify *tt) G_GNUC_UNUSED;
+
+static void
+test_notify_enable_watch (TestNotify *tt)
+{
+  g_autoptr(GSource) source = NULL;
+
+  g_assert_nonnull (tt);
+  g_assert_cmpuint (tt->socket_fd, >, -1);
+
+  source = g_unix_fd_source_new (tt->socket_fd, G_IO_IN);
+  g_assert_nonnull (source);
+
+  g_source_set_callback (source, got_notification, tt, NULL);
+  tt->socket_watch = g_source_attach (source, NULL);
 }
 
 static void
