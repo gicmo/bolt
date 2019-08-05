@@ -241,6 +241,12 @@ test_notify_enable_watch (TestNotify *tt)
 }
 
 static void
+test_notify_set_environment (TestNotify *tt)
+{
+  g_setenv ("NOTIFY_SOCKET", tt->socket_path, TRUE);
+}
+
+static void
 test_sd_notify (TestNotify *tt, gconstpointer user)
 {
   g_autoptr(GError) err = NULL;
@@ -288,7 +294,7 @@ test_sd_notify (TestNotify *tt, gconstpointer user)
   g_clear_error (&err);
 
   /* finally the VALID socket */
-  g_setenv ("NOTIFY_SOCKET", tt->socket_path, TRUE);
+  test_notify_set_environment (tt);
 
   ok = bolt_sd_notify_literal (ref, &sent, &err);
   g_assert_no_error (err);
