@@ -51,3 +51,7 @@
 
 /* use structure logging f  */
 #define G_LOG_USE_STRUCTURED 1
+
+/* glib version checking */
+#mesondefine GLIB_VERSION_MIN_REQUIRED
+#mesondefine GLIB_VERSION_MAX_ALLOWED

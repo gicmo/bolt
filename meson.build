@@ -71,7 +71,12 @@ req_man = build_man == 'true'
 
 gnome  = import('gnome')
 
-glib    = dependency('glib-2.0', version: '>= 2.52.0')
+# version requirements
+glib_min = [2, 52]
+glib_req = '>= @0@.@1@.0'.format(glib_min[0], glib_min[1])
+
+# dependency objects
+glib    = dependency('glib-2.0', version: glib_req)
 gio     = dependency('gio-2.0')
 libudev = dependency('libudev')
 unix    = dependency('gio-unix-2.0')
@@ -152,6 +157,10 @@ if polkit.version().version_compare('>= 0.114')
 endif
 
 conf.set('IS_COVERITY_BUILD', get_option('coverity'))
+
+glib_chk = 'GLIB_VERSION_@0@_@1@'.format(glib_min[0], glib_min[1])
+conf.set('GLIB_VERSION_MIN_REQUIRED', glib_chk)
+conf.set('GLIB_VERSION_MAX_ALLOWED', glib_chk)
 
 config_h = configure_file(
   input: 'config.h.in',
