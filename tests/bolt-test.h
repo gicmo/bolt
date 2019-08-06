@@ -57,3 +57,14 @@ G_DEFINE_AUTO_CLEANUP_FREE_FUNC (BoltTmpDir, bolt_tmp_dir_destroy, NULL)
         }                                                                             \
     } G_STMT_END
 /* *INDENT-ON* */
+
+/* Notification Socket */
+typedef struct NotifySocket NotifySocket;
+
+NotifySocket * notify_socket_new (void);
+void           notify_socket_free (NotifySocket *ns);
+
+char *         notify_socket_revmsg (NotifySocket *ns,
+                                     gboolean      queue);
+void           notify_socket_enable_watch (NotifySocket *ns);
+void           notify_socket_set_environment (NotifySocket *ns);
