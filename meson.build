@@ -72,7 +72,7 @@ req_man = build_man == 'true'
 gnome  = import('gnome')
 
 # version requirements
-glib_min = [2, 52]
+glib_min = [2, 56]
 glib_req = '>= @0@.@1@.0'.format(glib_min[0], glib_min[1])
 
 # dependency objects
