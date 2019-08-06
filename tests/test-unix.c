@@ -73,7 +73,8 @@ test_pid_is_alive (TestDummy *tt, gconstpointer user_data)
   g_assert_false (ok);
 }
 
-typedef struct TestNotify
+
+typedef struct NotifySocket
 {
   BoltTmpDir tmpdir;
   char      *socket_path;
@@ -83,7 +84,7 @@ typedef struct TestNotify
   /* */
   guint  counter;
   GQueue messages;
-} TestNotify;
+} NotifySocket;
 
 union ctrlmsg
 {
@@ -92,7 +93,7 @@ union ctrlmsg
 };
 
 static char *
-test_notify_revmsg (TestNotify *tt, gboolean queue)
+notify_socket_revmsg (NotifySocket *ns, gboolean queue)
 {
   char data[4096];
   char *msg;
@@ -111,7 +112,7 @@ test_notify_revmsg (TestNotify *tt, gboolean queue)
   ssize_t r;
 
   /* MSG_TRUNC: return the real size */
-  r = recvmsg (tt->socket_fd, &hdr, MSG_DONTWAIT | MSG_CMSG_CLOEXEC | MSG_TRUNC);
+  r = recvmsg (ns->socket_fd, &hdr, MSG_DONTWAIT | MSG_CMSG_CLOEXEC | MSG_TRUNC);
 
   if (r < 0)
     {
@@ -132,7 +133,7 @@ test_notify_revmsg (TestNotify *tt, gboolean queue)
 
   data[r] = '\0';
 
-  tt->counter++;
+  ns->counter++;
   msg = g_strdup (data);
 
   for (struct cmsghdr *c = CMSG_FIRSTHDR (&hdr);
@@ -147,7 +148,7 @@ test_notify_revmsg (TestNotify *tt, gboolean queue)
     }
 
   if (queue)
-    g_queue_push_tail (&tt->messages, msg);
+    g_queue_push_tail (&ns->messages, msg);
 
   g_debug ("got message: '%s' [%s]", msg, bolt_yesno (queue));
   if (ucred != NULL)
@@ -160,16 +161,18 @@ test_notify_revmsg (TestNotify *tt, gboolean queue)
 static gboolean
 got_notification (gpointer user_data)
 {
-  TestNotify *tt = (TestNotify *) user_data;
+  NotifySocket *ns = (NotifySocket *) user_data;
 
-  test_notify_revmsg (tt, TRUE);
+  notify_socket_revmsg (ns, TRUE);
 
   return TRUE;
 }
 
-static void
-test_notify_setup (TestNotify *tt, gconstpointer data)
+static NotifySocket *
+notify_socket_new (void)
 {
+  NotifySocket *ns = NULL;
+
   g_autoptr(GError) err = NULL;
   bolt_autoclose int fd = -1;
   static const int one = 1;
@@ -177,16 +180,18 @@ test_notify_setup (TestNotify *tt, gconstpointer data)
   size_t socklen;
   int r;
 
-  tt->tmpdir = bolt_tmp_dir_make ("bolt.unix.XXXXXX", &err);
+  ns = g_new0 (NotifySocket, 1);
+
+  ns->tmpdir = bolt_tmp_dir_make ("bolt.unix.XXXXXX", &err);
   g_assert_no_error (err);
-  g_assert_nonnull (tt->tmpdir);
+  g_assert_nonnull (ns->tmpdir);
 
   fd = socket (AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
   g_assert_cmpint (fd, >, -1);
 
-  tt->socket_path = g_build_filename (tt->tmpdir, "notify_socket", NULL);
+  ns->socket_path = g_build_filename (ns->tmpdir, "notify_socket", NULL);
 
-  strncpy (sau.sun_path, tt->socket_path, sizeof (sau.sun_path) - 1);
+  strncpy (sau.sun_path, ns->socket_path, sizeof (sau.sun_path) - 1);
 
   socklen =
     offsetof (struct sockaddr_un, sun_path)
@@ -199,51 +204,70 @@ test_notify_setup (TestNotify *tt, gconstpointer data)
   r = setsockopt (fd, SOL_SOCKET, SO_PASSCRED, &one, sizeof (one));
   g_assert_cmpint (r, >, -1);
 
-  g_queue_init (&tt->messages);
-  tt->socket_fd = bolt_steal (&fd, -1);
+  g_queue_init (&ns->messages);
+  ns->socket_fd = bolt_steal (&fd, -1);
 
   g_debug ("notification socket at '%s'", sau.sun_path);
+  return ns;
+}
+
+static void
+notify_socket_free (NotifySocket *ns)
+{
+  g_autoptr(GError) err = NULL;
+
+  g_clear_handle_id (&ns->socket_watch, g_source_remove);
+
+  if (ns->socket_fd > -1)
+    {
+      bolt_close (ns->socket_fd, &err);
+      g_assert_no_error (err);
+      ns->socket_fd = -1;
+    }
+
+  g_clear_pointer (&ns->tmpdir, bolt_tmp_dir_destroy);
+  g_queue_free_full (&ns->messages, g_free);
+  g_free (ns);
+}
+
+static void notify_socket_enable_watch (NotifySocket *ns) G_GNUC_UNUSED;
+
+static void
+notify_socket_enable_watch (NotifySocket *ns)
+{
+  g_autoptr(GSource) source = NULL;
+
+  g_assert_nonnull (ns);
+  g_assert_cmpuint (ns->socket_fd, >, -1);
+
+  source = g_unix_fd_source_new (ns->socket_fd, G_IO_IN);
+  g_assert_nonnull (source);
+
+  g_source_set_callback (source, got_notification, ns, NULL);
+  ns->socket_watch = g_source_attach (source, NULL);
+}
+
+static void
+notify_socket_set_environment (NotifySocket *ns)
+{
+  g_setenv (BOLT_SD_NOTIFY_SOCKET, ns->socket_path, TRUE);
+}
+
+typedef struct TestNotify
+{
+  NotifySocket *ns;
+} TestNotify;
+
+static void
+test_notify_setup (TestNotify *tt, gconstpointer data)
+{
+  tt->ns = notify_socket_new ();
 }
 
 static void
 test_notify_teardown (TestNotify *tt, gconstpointer user)
 {
-  g_autoptr(GError) err = NULL;
-
-  g_clear_handle_id (&tt->socket_watch, g_source_remove);
-
-  if (tt->socket_fd > -1)
-    {
-      bolt_close (tt->socket_fd, &err);
-      g_assert_no_error (err);
-      tt->socket_fd = -1;
-    }
-
-  g_clear_pointer (&tt->tmpdir, bolt_tmp_dir_destroy);
-  g_queue_free_full (&tt->messages, g_free);
-}
-
-static void test_notify_enable_watch (TestNotify *tt) G_GNUC_UNUSED;
-
-static void
-test_notify_enable_watch (TestNotify *tt)
-{
-  g_autoptr(GSource) source = NULL;
-
-  g_assert_nonnull (tt);
-  g_assert_cmpuint (tt->socket_fd, >, -1);
-
-  source = g_unix_fd_source_new (tt->socket_fd, G_IO_IN);
-  g_assert_nonnull (source);
-
-  g_source_set_callback (source, got_notification, tt, NULL);
-  tt->socket_watch = g_source_attach (source, NULL);
-}
-
-static void
-test_notify_set_environment (TestNotify *tt)
-{
-  g_setenv (BOLT_SD_NOTIFY_SOCKET, tt->socket_path, TRUE);
+  g_clear_pointer (&tt->ns, notify_socket_free);
 }
 
 static void
@@ -294,14 +318,14 @@ test_sd_notify (TestNotify *tt, gconstpointer user)
   g_clear_error (&err);
 
   /* finally the VALID socket */
-  test_notify_set_environment (tt);
+  notify_socket_set_environment (tt->ns);
 
   ok = bolt_sd_notify_literal (ref, &sent, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
   g_assert_true (sent);
 
-  msg = test_notify_revmsg (tt, FALSE);
+  msg = notify_socket_revmsg (tt->ns, FALSE);
   g_assert_nonnull (msg);
   g_assert_cmpstr (msg, ==, ref);
   g_free (msg);
