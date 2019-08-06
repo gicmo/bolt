@@ -29,6 +29,6 @@ G_BEGIN_DECLS
 #define BOLT_TYPE_WATCHDOG bolt_watchdog_get_type ()
 G_DECLARE_FINAL_TYPE (BoltWatchdog, bolt_watchdog, BOLT, WATCHDOG, GObject);
 
-BoltWatchdog  *             bolt_watchdog_new (void);
+BoltWatchdog  *             bolt_watchdog_new (GError **error);
 
 G_END_DECLS
