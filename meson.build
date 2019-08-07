@@ -558,6 +558,7 @@ msg = ['',
   'build manpage:       @0@'.format(build_man),
   'install tests:       @0@'.format(install_tests),
   'profiling (gprof):   @0@'.format(profiling),
+  'tests speed:         @0@'.format(get_option('tests-speed')),
   ''
   ]
 message('\n  '.join(msg))
