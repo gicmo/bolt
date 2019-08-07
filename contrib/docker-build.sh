@@ -7,7 +7,7 @@ export PYTHONPATH="/usr/share/glib-2.0"
 
 rm -rf /build
 mkdir /build
-meson -Db_coverage=true . /build
+meson -Db_coverage=true -Dtests-speed=slow . /build
 ninja -C /build
 meson test -C /build --verbose
 
