@@ -255,3 +255,12 @@ notify_socket_set_environment (NotifySocket *ns)
 {
   g_setenv (BOLT_SD_NOTIFY_SOCKET, ns->socket_path, TRUE);
 }
+
+void
+notify_socket_make_pollfd (NotifySocket *ns,
+                           GPollFD      *fd)
+{
+  memset (fd, 0, sizeof (GPollFD));
+  fd->fd = ns->socket_fd;
+  fd->events =  G_IO_IN | G_IO_HUP | G_IO_ERR;
+}

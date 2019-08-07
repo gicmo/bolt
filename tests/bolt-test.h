@@ -68,3 +68,5 @@ char *         notify_socket_revmsg (NotifySocket *ns,
                                      gboolean      queue);
 void           notify_socket_enable_watch (NotifySocket *ns);
 void           notify_socket_set_environment (NotifySocket *ns);
+void           notify_socket_make_pollfd (NotifySocket *ns,
+                                          GPollFD      *fd);
