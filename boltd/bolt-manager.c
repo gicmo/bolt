@@ -33,6 +33,7 @@
 #include "bolt-time.h"
 #include "bolt-udev.h"
 #include "bolt-unix.h"
+#include "bolt-watchdog.h"
 
 #include "bolt-manager.h"
 
@@ -242,6 +243,9 @@ struct _BoltManager
   guint      probing_timeout; /* signal id & indicator */
   gint64     probing_tstamp;  /* time stamp of last activity */
   guint      probing_tsettle; /* how long to indicate after the last activity */
+
+  /* watchdog */
+  BoltWatchdog *dog;
 };
 
 enum {
@@ -288,6 +292,8 @@ bolt_manager_finalize (GObject *object)
 
   g_clear_object (&mgr->power);
   g_clear_object (&mgr->bouncer);
+
+  g_clear_object (&mgr->dog);
 
   G_OBJECT_CLASS (bolt_manager_parent_class)->finalize (object);
 }
@@ -474,6 +480,11 @@ bolt_manager_initialize (GInitable    *initable,
     return FALSE;
 
   bolt_bouncer_add_client (mgr->bouncer, mgr);
+
+  /* watchdog setup */
+  mgr->dog = bolt_watchdog_new (error);
+  if (mgr->dog == NULL)
+    return FALSE;
 
   /* udev setup*/
   bolt_info (LOG_TOPIC ("udev"), "initializing udev");
