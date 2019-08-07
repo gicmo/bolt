@@ -10,6 +10,7 @@ ExecStart=@libexecdir@/boltd
 #Environment="G_MESSAGES_DEBUG=all"
 Restart=on-failure
 NotifyAccess=main
+WatchdogSec=3min
 
 MemoryDenyWriteExecute=yes
 PrivateTmp=yes
