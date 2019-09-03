@@ -6,6 +6,7 @@ services:
   - docker
 
 env:
+  - OS=alpine
   - OS=debian
   - OS=arch
   - OS=fedora
