@@ -19,4 +19,8 @@ script:
   - docker run -e -t -v `pwd`:/src -v `pwd`/build-$OS:/build bolt-$OS ./contrib/docker-build.sh
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash) -f build-fedora/meson-logs/coverage.info
+  - if [[ "$OS" == "fedora" ]]; then
+      CE=`bash <(curl -s https://codecov.io/env)`;
+      curl -o codecov  https://codecov.io/bash && chmod a+x codecov;
+      docker run $CE -e OS -t -v `pwd`:/src -v `pwd`/build-$OS:/build bolt-$OS ./codecov -f /build/meson-logs/coverage.info;
+    fi
