@@ -8,6 +8,10 @@ services:
     - docker build -t bolt-$OS -f ./contrib/Dockerfile-$OS .
     - mkdir build-$OS
     - docker run -e -t -v `pwd`:/src -v `pwd`/build-$OS:/build bolt-$OS ./contrib/docker-build.sh
+  artifacts:
+    paths:
+    - build-$OS/meson-logs
+    expire_in: 1 week
 
 fedora:
   stage: build
