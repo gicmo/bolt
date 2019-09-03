@@ -22,5 +22,5 @@ RUN pacman -S --noconfirm \
 
 RUN pip3 install python-dbusmock
 
-RUN mkdir /src
+RUN mkdir /src /build
 WORKDIR /src

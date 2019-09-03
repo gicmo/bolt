@@ -21,5 +21,5 @@ RUN dnf --enablerepo=updates-testing -y install \
     systemd-devel \
     umockdev-devel
 
-RUN mkdir /src
+RUN mkdir /src /build
 WORKDIR /src

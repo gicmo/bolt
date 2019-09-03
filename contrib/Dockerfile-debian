@@ -20,5 +20,5 @@ RUN apt-get update -q && apt-get install -y \
     systemd \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir /src
+RUN mkdir /src /build
 WORKDIR /src
