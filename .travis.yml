@@ -15,4 +15,5 @@ install:
 - docker build -t bolt-$OS -f ./contrib/Dockerfile-$OS .
 
 script:
-- docker run -e -t -v `pwd`:/src bolt-$OS ./contrib/docker-build.sh
+  - mkdir build-$OS
+  - docker run -e -t -v `pwd`:/src -v `pwd`/build-$OS:/build bolt-$OS ./contrib/docker-build.sh
