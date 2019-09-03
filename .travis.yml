@@ -17,3 +17,6 @@ install:
 script:
   - mkdir build-$OS
   - docker run -e -t -v `pwd`:/src -v `pwd`/build-$OS:/build bolt-$OS ./contrib/docker-build.sh
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash) -f build-fedora/meson-logs/coverage.info
