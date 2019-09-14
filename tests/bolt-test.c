@@ -1,5 +1,5 @@
 /*
- * Copyright © 2018 Red Hat, Inc
+ * Copyright © 2018-2019 Red Hat, Inc
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -31,6 +31,7 @@
 #include <glib-unix.h>
 
 #include <errno.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -263,4 +264,82 @@ notify_socket_make_pollfd (NotifySocket *ns,
   memset (fd, 0, sizeof (GPollFD));
   fd->fd = ns->socket_fd;
   fd->events =  G_IO_IN | G_IO_HUP | G_IO_ERR;
+}
+
+/* Version parsing, checking */
+static gboolean
+parse_one (const char  *str,
+           BoltVersion *version,
+           int         *index,
+           GError     **error)
+{
+  gboolean ok;
+  gint64 v;
+  int i = *index;
+
+  ok = g_ascii_string_to_signed (str,
+                                 10, /* base */
+                                 0, G_MAXINT,
+                                 &v,
+                                 error);
+
+  if (!ok)
+    return FALSE;
+
+  version->triplet[i] = (int) v;
+  *index = i + 1;
+
+  return TRUE;
+}
+
+gboolean
+bolt_version_parse (const char  *str,
+                    BoltVersion *version,
+                    GError     **error)
+{
+  g_autofree char *tmp = NULL;
+  gboolean ok = FALSE;
+  char *data = NULL;
+  char *delim = NULL;
+  int index = 0;
+
+  g_return_val_if_fail (str != NULL, FALSE);
+  g_return_val_if_fail (version != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  bolt_version_clear (version);
+
+  /* so we manipulate the string */
+  tmp = data = g_strdup (str);
+
+  delim = strchr (data, '-');
+
+  if (delim)
+    {
+      *delim = '\0';
+      version->suffix = g_strdup (delim + 1);
+    }
+
+  while (index < 2 && (delim = strchr (data, '.')) != NULL)
+    {
+      *delim = '\0';
+      ok = parse_one (data, version, &index, error);
+
+      if (!ok)
+        return FALSE;
+
+      data = delim + 1;
+    }
+
+  return parse_one (data, version, &index, error);
+}
+
+void
+bolt_version_clear (BoltVersion *version)
+{
+  version->major = -1;
+  version->minor = -1;
+  version->patch = -1;
+
+  g_clear_pointer (&version->suffix, g_free);
 }

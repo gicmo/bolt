@@ -1,5 +1,5 @@
 /*
- * Copyright © 2018 Red Hat, Inc
+ * Copyright © 2018-2019 Red Hat, Inc
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -70,3 +70,31 @@ void           notify_socket_enable_watch (NotifySocket *ns);
 void           notify_socket_set_environment (NotifySocket *ns);
 void           notify_socket_make_pollfd (NotifySocket *ns,
                                           GPollFD      *fd);
+
+/* Version parsing, checking */
+
+typedef struct BoltVersion_ BoltVersion;
+struct BoltVersion_
+{
+  union
+  {
+    struct
+    {
+      int major;
+      int minor;
+      int patch;
+    };
+
+    int triplet[3];
+  };
+
+  char *suffix;
+};
+
+gboolean   bolt_version_parse (const char  *str,
+                               BoltVersion *version,
+                               GError     **error);
+
+void       bolt_version_clear (BoltVersion *version);
+
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (BoltVersion, bolt_version_clear);

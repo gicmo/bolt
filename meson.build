@@ -224,7 +224,7 @@ common_sources = [
   'common/bolt-str.c',
   'common/bolt-term.c',
   'common/bolt-time.c',
-  'common/bolt-unix.c'
+  'common/bolt-unix.c',
 ]
 
 common_enums = gnome.mkenums_simple('bolt-enum-types',
@@ -419,6 +419,7 @@ tests = [
   ['test-store', [libdaemon]],
   ['test-journal', [libdaemon]],
   ['test-watchdog', [libdaemon]],
+  ['test-self']
 ]
 
 if mockdev.found()
