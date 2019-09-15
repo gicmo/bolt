@@ -93,6 +93,8 @@ struct BoltVersion_
   char *suffix;
 };
 
+#define BOLT_VERSION_INIT(ma, mi, pa) {.major = (ma), .minor = (mi), .patch = (pa), .suffix = NULL}
+
 gboolean   bolt_version_parse (const char  *str,
                                BoltVersion *version,
                                GError     **error);
