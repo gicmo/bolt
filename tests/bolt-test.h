@@ -22,6 +22,8 @@
 
 #include <glib.h>
 
+G_BEGIN_DECLS
+
 typedef char *BoltTmpDir;
 
 BoltTmpDir    bolt_tmp_dir_make (const char *pattern,
@@ -98,3 +100,5 @@ gboolean   bolt_version_parse (const char  *str,
 void       bolt_version_clear (BoltVersion *version);
 
 G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (BoltVersion, bolt_version_clear);
+
+G_END_DECLS
