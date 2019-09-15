@@ -131,6 +131,52 @@ test_version_compare (TestDummy *tt, gconstpointer user_data)
     }
 }
 
+static void
+test_version_check (TestDummy *tt, gconstpointer user_data)
+{
+  struct VersionTest
+  {
+    BoltVersion version;
+
+    int         major;
+    int         minor;
+    int         patch;
+
+    gboolean    res;
+  } ftt[] = {
+    { BOLT_VERSION_INIT (1,  2,  3),  1, -1, -1, TRUE},
+    { BOLT_VERSION_INIT (1,  2,  3),  1,  0, -1, TRUE},
+    { BOLT_VERSION_INIT (1,  2,  3),  1,  0,  0, TRUE},
+    { BOLT_VERSION_INIT (1,  2,  3),  1,  2,  0, TRUE},
+    { BOLT_VERSION_INIT (1,  2,  3),  1,  2,  3, TRUE},
+
+    { BOLT_VERSION_INIT (1,  2,  3),  1,  2,  4, FALSE},
+    { BOLT_VERSION_INIT (1,  2,  3),  1,  3,  2, FALSE},
+    { BOLT_VERSION_INIT (1,  2,  3),  2,  0,  0, FALSE},
+    { BOLT_VERSION_INIT (1,  2,  3),  2,  3,  0, FALSE},
+    { BOLT_VERSION_INIT (1,  2,  3),  2,  3,  4, FALSE},
+    { BOLT_VERSION_INIT (1,  2,  3),  2, -1, -1, FALSE},
+    { BOLT_VERSION_INIT (1,  2,  3),  2,  0, -1, FALSE},
+
+    { BOLT_VERSION_INIT (2, -1, -1),  2, -1, -1, TRUE},
+    { BOLT_VERSION_INIT (2, -1, -1),  1,  9,  9, TRUE},
+    { BOLT_VERSION_INIT (2, -1, -1),  2,  0,  0, FALSE},
+
+  };
+
+  for (guint i = 0; i < G_N_ELEMENTS (ftt); i++)
+    {
+      gboolean res;
+
+      res = bolt_version_check (&(ftt[i].version),
+                                ftt[i].major,
+                                ftt[i].minor,
+                                ftt[i].patch);
+
+      g_assert_true (res == ftt[i].res);
+    }
+}
+
 int
 main (int argc, char **argv)
 {
@@ -150,6 +196,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_version_compare,
+              NULL);
+
+  g_test_add ("/self/version/check",
+              TestDummy,
+              NULL,
+              NULL,
+              test_version_check,
               NULL);
 
   return g_test_run ();

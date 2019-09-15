@@ -365,3 +365,16 @@ bolt_version_compare (BoltVersion *a,
 
   return 0; /* all components equal */
 }
+
+gboolean
+bolt_version_check (BoltVersion *base,
+                    int          major,
+                    int          minor,
+                    int          patch)
+{
+  BoltVersion ref = BOLT_VERSION_INIT (major, minor, patch);
+
+  g_return_val_if_fail (base != NULL, FALSE);
+
+  return bolt_version_compare (base, &ref) >= 0;
+}

@@ -104,6 +104,11 @@ void       bolt_version_clear (BoltVersion *version);
 int        bolt_version_compare (BoltVersion *a,
                                  BoltVersion *b);
 
+gboolean   bolt_version_check (BoltVersion *version,
+                               int          major,
+                               int          minor,
+                               int          patch);
+
 G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (BoltVersion, bolt_version_clear);
 
 G_END_DECLS
