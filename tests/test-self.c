@@ -88,6 +88,49 @@ test_version_parse (TestDummy *tt, gconstpointer user_data)
     }
 }
 
+static void
+test_version_compare (TestDummy *tt, gconstpointer user_data)
+{
+  struct VersionTest
+  {
+    BoltVersion a;
+    BoltVersion b;
+
+    int         res;
+  } ftt[] = {
+    /*  x.-.- */
+    { BOLT_VERSION_INIT ( 1, -1, -1),  BOLT_VERSION_INIT ( 0, -1, -1),  1},
+    { BOLT_VERSION_INIT ( 1, -1, -1),  BOLT_VERSION_INIT ( 1, -1, -1),  0},
+    { BOLT_VERSION_INIT ( 1, -1, -1),  BOLT_VERSION_INIT (42, -1, -1), -1},
+
+    { BOLT_VERSION_INIT ( 1,  5, -1),  BOLT_VERSION_INIT ( 1, -1, -1),  1},
+    { BOLT_VERSION_INIT ( 1,  5, -1),  BOLT_VERSION_INIT ( 5,  1, -1), -1},
+
+    /*  x.y.- */
+    { BOLT_VERSION_INIT ( 1,  5, -1),  BOLT_VERSION_INIT ( 0,  5, -1),  1},
+    { BOLT_VERSION_INIT ( 1,  5, -1),  BOLT_VERSION_INIT ( 1,  0, -1),  1},
+    { BOLT_VERSION_INIT ( 1,  5, -1),  BOLT_VERSION_INIT ( 2,  0, -1), -1},
+
+    /*  x.y.z */
+    { BOLT_VERSION_INIT ( 1,  2,  3),  BOLT_VERSION_INIT ( 1,  0,  0),  1},
+    { BOLT_VERSION_INIT ( 1,  2,  3),  BOLT_VERSION_INIT ( 1,  2,  2),  1},
+    { BOLT_VERSION_INIT ( 1,  2,  3),  BOLT_VERSION_INIT ( 1,  2,  3),  0},
+    { BOLT_VERSION_INIT ( 1,  2,  3),  BOLT_VERSION_INIT ( 1,  2,  4), -1},
+    { BOLT_VERSION_INIT ( 1,  2,  3),  BOLT_VERSION_INIT ( 2,  0,  0), -1},
+    { BOLT_VERSION_INIT ( 1,  2,  3),  BOLT_VERSION_INIT ( 2,  0, -1), -1},
+    { BOLT_VERSION_INIT ( 1,  2,  3),  BOLT_VERSION_INIT ( 2, -1, -1), -1},
+  };
+
+  for (guint i = 0; i < G_N_ELEMENTS (ftt); i++)
+    {
+      int res = bolt_version_compare (&(ftt[i].a), &(ftt[i].b));
+      g_assert_cmpint (res, ==, ftt[i].res);
+
+      res = bolt_version_compare (&(ftt[i].b), &(ftt[i].a));
+      g_assert_cmpint (res, ==, -1 * ftt[i].res);
+    }
+}
+
 int
 main (int argc, char **argv)
 {
@@ -100,6 +143,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_version_parse,
+              NULL);
+
+  g_test_add ("/self/version/compare",
+              TestDummy,
+              NULL,
+              NULL,
+              test_version_compare,
               NULL);
 
   return g_test_run ();

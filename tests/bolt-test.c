@@ -343,3 +343,25 @@ bolt_version_clear (BoltVersion *version)
 
   g_clear_pointer (&version->suffix, g_free);
 }
+
+/* strcmp semantics */
+int
+bolt_version_compare (BoltVersion *a,
+                      BoltVersion *b)
+{
+  g_return_val_if_fail (a != NULL, -1);
+  g_return_val_if_fail (b != NULL,  1);
+
+  for (int i = 0; i < 3; i++)
+    {
+      int ac = a->triplet[i];
+      int bc = b->triplet[i];
+
+      if (ac < bc)
+        return -1;
+      else if (ac > bc)
+        return 1;
+    }
+
+  return 0; /* all components equal */
+}

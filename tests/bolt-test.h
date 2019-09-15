@@ -101,6 +101,9 @@ gboolean   bolt_version_parse (const char  *str,
 
 void       bolt_version_clear (BoltVersion *version);
 
+int        bolt_version_compare (BoltVersion *a,
+                                 BoltVersion *b);
+
 G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (BoltVersion, bolt_version_clear);
 
 G_END_DECLS
