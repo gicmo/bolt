@@ -122,4 +122,7 @@ gboolean   bolt_version_check (BoltVersion *version,
 
 G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (BoltVersion, bolt_version_clear);
 
+gboolean  bolt_check_kernel_version (int major,
+                                     int minor);
+
 G_END_DECLS

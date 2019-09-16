@@ -1101,6 +1101,31 @@ test_bootacl_allocate (TestBootacl *tt, gconstpointer user)
     }
 }
 
+static void
+test_check_kernel_version (TestSysfs *tt, gconstpointer user)
+{
+  gboolean ok;
+
+  /* simulate read errors */
+  ok = mock_sysfs_set_osrelease (tt->sysfs, NULL);
+  g_assert_true (ok);
+  g_assert_false (bolt_check_kernel_version (1, 0));
+
+  /* short kernel version */
+  ok = mock_sysfs_set_osrelease (tt->sysfs, "1.0");
+  g_assert_true (ok);
+  g_assert_true (bolt_check_kernel_version (1, 0));
+  g_assert_false (bolt_check_kernel_version (1, 1));
+  g_assert_false (bolt_check_kernel_version (2, 0));
+
+  /* more realistic kernel version */
+  ok = mock_sysfs_set_osrelease (tt->sysfs, "1.0.0-111.fc1");
+  g_assert_true (ok);
+  g_assert_true (bolt_check_kernel_version (1, 0));
+  g_assert_false (bolt_check_kernel_version (1, 1));
+  g_assert_false (bolt_check_kernel_version (2, 0));
+}
+
 int
 main (int argc, char **argv)
 {
@@ -1180,6 +1205,13 @@ main (int argc, char **argv)
               test_bootacl_setup,
               test_bootacl_allocate,
               test_bootacl_tear_down);
+
+  g_test_add ("/self/check-kernel-version",
+              TestSysfs,
+              NULL,
+              test_sysfs_setup,
+              test_check_kernel_version,
+              test_sysfs_tear_down);
 
   return g_test_run ();
 }

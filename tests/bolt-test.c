@@ -378,3 +378,41 @@ bolt_version_check (BoltVersion *base,
 
   return bolt_version_compare (base, &ref) >= 0;
 }
+
+gboolean
+bolt_check_kernel_version (int major, int minor)
+{
+  g_autoptr(GError) err = NULL;
+  g_autofree char *data = NULL;
+  g_auto(BoltVersion) ver = BOLT_VERSION_INIT (1, 0, 0);
+  gboolean ok;
+  gsize length;
+
+  ok = g_file_get_contents ("/proc/sys/kernel/osrelease",
+                            &data,
+                            &length,
+                            &err);
+
+  if (!ok)
+    {
+      g_message ("Could not read kernel version: %s", err->message);
+      return FALSE;
+    }
+
+  while (length > 1 && data[length - 1] == '\n')
+    data[--length] = '\0';
+
+  ok = bolt_version_parse (data, &ver, &err);
+  if (!ok)
+    {
+      g_message ("Could not parse kernel version (%s): %s",
+                 data, err->message);
+      return FALSE;
+    }
+
+  g_debug ("Read kernel version: %d.%d.%d (%s)",
+           ver.major, ver.minor, ver.patch,
+           (ver.suffix ? : ""));
+
+  return bolt_version_check (&ver, major, minor, -1);
+}
