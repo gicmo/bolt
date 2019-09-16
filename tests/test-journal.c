@@ -24,6 +24,7 @@
 
 #include "bolt-dbus.h"
 #include "bolt-fs.h"
+#include "bolt-test.h"
 
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -300,6 +301,11 @@ test_journal_diff (TestJournal *tt, gconstpointer user_data)
     {(char *) "ffff", BOLT_JOURNAL_ADDED,   0},
   };
   guint k;
+
+  /* bolt_journal_put_diff uses bolt_copy_bytes, which in trun uses
+  * copy_file_range(2) internally, which was added in linux 4.5. */
+  skip_test_unless (bolt_check_kernel_version (4, 5) || g_test_thorough (),
+                    "linux kernel < 4.5, copy_file_range syscall missing");
 
   j = bolt_journal_new (tt->root, "diff", &err);
 

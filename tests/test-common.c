@@ -981,6 +981,11 @@ test_io_copy_bytes (TestIO *tt, gconstpointer user_data)
   int from = -1;
   int to = -1;
 
+  /* bolt_copy_bytes uses copy_file_range(2) internally, which
+   * was added in linux 4.5. */
+  skip_test_unless (bolt_check_kernel_version (4, 5) || g_test_thorough (),
+                    "linux kernel < 4.5, copy_file_range syscall missing");
+
   chk = g_checksum_new (G_CHECKSUM_SHA256);
 
   source = g_build_filename (tt->path, "copy_bytes_source", NULL);
