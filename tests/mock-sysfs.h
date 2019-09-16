@@ -102,4 +102,7 @@ const char *     mock_sysfs_device_get_parent (MockSysfs  *ms,
 gboolean         mock_sysfs_device_remove (MockSysfs  *ms,
                                            const char *id);
 
+gboolean         mock_sysfs_set_osrelease (MockSysfs  *ms,
+                                           const char *version);
+
 G_END_DECLS

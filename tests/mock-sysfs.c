@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "bolt-io.h"
+#include "bolt-fs.h"
 #include "bolt-names.h"
 #include "bolt-str.h"
 
@@ -28,10 +29,12 @@
 
 #include <umockdev.h>
 
+#include <gio/gio.h>
 #include <glib/gstdio.h>
 
 #include <errno.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 typedef struct _MockDevice MockDevice;
 struct _MockDevice
@@ -834,4 +837,63 @@ mock_sysfs_device_remove (MockSysfs  *ms,
   mock_device_destroy (dev);
 
   return TRUE;
+}
+
+gboolean
+mock_sysfs_set_osrelease (MockSysfs  *ms,
+                          const char *version)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GFile) target = NULL;
+  g_autofree char *data = NULL;
+  g_autofree char *path = NULL;
+  const char *root;
+  gboolean ok;
+  gsize n;
+  int r;
+
+  root = umockdev_testbed_get_root_dir (ms->bed);
+  target = g_file_new_build_filename (root, "proc/sys/kernel/osrelease", NULL);
+
+  ok = bolt_fs_make_parent_dirs (target, &err);
+  if (!ok)
+    {
+      g_debug ("Failed to make parent dirs: %s", err->message);
+      return FALSE;
+    }
+
+  if (version != NULL)
+    data = g_strdup_printf ("%s\n", version);
+  else
+    data = g_strdup ("<broken>\n");
+
+  n = strlen (data);
+
+  /* make sure we can write the file, if it fails,
+   * we will indirectly catch it in the write */
+  path = g_file_get_path (target);
+  chmod (path, 0644);
+
+  ok = g_file_replace_contents (target,
+                                data, n,
+                                NULL,
+                                FALSE,
+                                0,
+                                NULL,
+                                NULL,
+                                &err);
+
+  if (!ok)
+    g_debug ("Failed to set osrelease: %s", err->message);
+
+  /* make the file non-readable if version == NULL,
+   * so to simulate read errors */
+  if (version == NULL)
+    {
+      r = chmod (path, 0000);
+      if (r != 0)
+        g_debug ("Failed to set mode: %s", g_strerror (errno));
+    }
+
+  return ok;
 }
