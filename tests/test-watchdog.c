@@ -173,11 +173,7 @@ test_watchdog_timeout (TestWatchdog *tt, gconstpointer user_data)
   guint pulse;
   guint n = 10;
 
-  if (!g_test_slow ())
-    {
-      g_test_skip ("slow tests disabled");
-      return;
-    }
+  skip_test_unless (g_test_slow (), "slow tests disabled");
 
   notify_socket_set_environment (tt->ns);
   g_setenv (BOLT_SD_WATCHDOG_USEC, tt->timestr, TRUE);

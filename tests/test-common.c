@@ -1811,11 +1811,8 @@ test_uuidv_check (TestRng *tt, gconstpointer user_data)
 static void
 test_term_fancy (TestRng *tt, gconstpointer user_data)
 {
-  if (bolt_is_fancy_terminal () == 0)
-    {
-      g_test_skip ("Terminal is not fancy");
-      return;
-    }
+  skip_test_unless (bolt_is_fancy_terminal (),
+                    "Terminal is not fancy");
 
   g_assert_cmpstr (bolt_color (ANSI_NORMAL), !=, "");
   g_assert_cmpstr (bolt_glyph (WARNING_SIGN), !=, "");
@@ -1824,11 +1821,8 @@ test_term_fancy (TestRng *tt, gconstpointer user_data)
 static void
 test_term_plain (TestRng *tt, gconstpointer user_data)
 {
-  if (bolt_is_fancy_terminal () != 0)
-    {
-      g_test_skip ("Terminal is too fancy");
-      return;
-    }
+  skip_test_if (bolt_is_fancy_terminal (),
+                "Terminal is too fancy");
 
   g_assert_cmpstr (bolt_color (ANSI_NORMAL), ==, "");
   g_assert_cmpstr (bolt_glyph (WARNING_SIGN), !=, "");

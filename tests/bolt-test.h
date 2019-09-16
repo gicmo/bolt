@@ -58,6 +58,17 @@ G_DEFINE_AUTO_CLEANUP_FREE_FUNC (BoltTmpDir, bolt_tmp_dir_destroy, NULL)
                                       va__, sa__[il__], "!=", sb__[il__]);            \
         }                                                                             \
     } G_STMT_END
+
+#define skip_test_if(condition, message) G_STMT_START {    \
+    if (condition)                                         \
+      {                                                    \
+        g_test_skip (message);                             \
+        return;                                            \
+      }                                                    \
+  } G_STMT_END
+
+#define skip_test_unless(condition, message) skip_test_if(!(condition), message)
+
 /* *INDENT-ON* */
 
 /* Notification Socket */
