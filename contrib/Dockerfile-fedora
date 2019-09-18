@@ -5,6 +5,7 @@ ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
 RUN dnf --enablerepo=updates-testing -y update
 RUN dnf --enablerepo=updates-testing -y install \
+    clang-analyzer \
     gcc \
     glib2-devel \
     gtk-doc \
