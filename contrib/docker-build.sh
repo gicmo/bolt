@@ -13,3 +13,7 @@ meson test -C /build --verbose
 if [[ -x "$(command -v lcov)" ]]; then
     ninja -C /build coverage
 fi
+
+if [[ -x "$(command -v scan-build)" ]]; then
+    ninja -C /build scan-build
+fi
