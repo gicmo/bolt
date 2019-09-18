@@ -504,6 +504,7 @@ bolt_power_guard_monitor (BoltPowerGuard *guard,
   g_io_channel_set_buffered (ch, FALSE);
   g_io_channel_set_flags (ch, G_IO_FLAG_NONBLOCK, NULL);
   fd = -1; /* the GIOChannel owns the fd, via _close_on_unref () */
+  (void) fd; /* The above is an intentional dead store */
 
   /* writer */
   fd = bolt_open (guard->fifo, O_WRONLY | O_CLOEXEC | O_NONBLOCK, 0, error);
