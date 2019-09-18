@@ -536,6 +536,8 @@ bolt_verify_uid (int         dirfd,
 
   if (have == NULL)
     {
+      /* make clang's static analyzer happy */
+      g_return_val_if_fail (err != NULL, FALSE);
       g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
                    "unique id verification failed: %s",
                    err->message);
