@@ -15,5 +15,5 @@ if [[ -x "$(command -v lcov)" ]]; then
 fi
 
 if [[ -x "$(command -v scan-build)" ]]; then
-    ninja -C /build scan-build
+    SCANBUILD="scan-build --status-bugs" ninja -C /build scan-build
 fi
