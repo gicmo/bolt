@@ -311,6 +311,7 @@ bolt_version_parse (const char  *str,
 
   /* so we manipulate the string */
   tmp = data = g_strdup (str);
+  (void) tmp; /* 'dead' store for g_autofree */
 
   delim = strchr (data, '-');
 
