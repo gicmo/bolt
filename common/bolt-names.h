@@ -65,6 +65,7 @@ G_BEGIN_DECLS
 
 /* sysfs */
 #define BOLT_SYSFS_IOMMU "iommu_dma_protection"
+#define BOLT_SYSFS_GENERATION "generation"
 
 /* environment variables */
 #define BOLT_ENV_DBPATH "BOLT_DBPATH"
