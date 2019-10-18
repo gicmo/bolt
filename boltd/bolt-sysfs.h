@@ -62,6 +62,7 @@ typedef struct _BoltDevInfo
   gint64      ctim;
   const char *syspath;
   const char *parent;       /* the uid */
+  guint       generation;
 
 } BoltDevInfo;
 

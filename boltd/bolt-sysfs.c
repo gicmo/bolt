@@ -227,6 +227,7 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
 {
   struct udev_device *parent;
   int auth;
+  int gen;
 
   g_return_val_if_fail (udev != NULL, FALSE);
   g_return_val_if_fail (info != NULL, FALSE);
@@ -235,6 +236,7 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
   info->ctim = -1;
   info->full = FALSE;
   info->parent = NULL;
+  info->generation = 0;
 
   auth = sysfs_get_sysattr_value_as_int (udev, "authorized");
   info->authorized = auth;
@@ -262,6 +264,10 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
 
   if (parent != NULL)
     info->parent = udev_device_get_sysattr_value (parent, "unique_id");
+
+  gen = sysfs_get_sysattr_value_as_int (udev, BOLT_SYSFS_GENERATION);
+  if (gen > 0)
+    info->generation = gen;
 
   return TRUE;
 }
