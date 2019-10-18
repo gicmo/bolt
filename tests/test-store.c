@@ -138,6 +138,7 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_assert_cmpstr (bolt_device_get_uid (stored), ==, bolt_device_get_uid (dev));
   g_assert_cmpstr (bolt_device_get_name (stored), ==, bolt_device_get_name (dev));
   g_assert_cmpstr (bolt_device_get_vendor (stored), ==, bolt_device_get_vendor (dev));
+  g_assert_cmpuint (bolt_device_get_generation (stored), ==, 0);
 
   g_assert_cmpuint (bolt_device_get_policy (stored), ==, BOLT_POLICY_AUTO);
   g_assert_cmpuint (bolt_device_get_stored (stored), ==, TRUE);
@@ -151,6 +152,7 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
                       "uid", uid,
                       "name", "Laptop",
                       "vendor", "GNOME.org",
+                      "generation", 4,
                       "status", BOLT_STATUS_DISCONNECTED,
                       NULL);
 
@@ -176,6 +178,7 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_assert_cmpstr (bolt_device_get_name (stored), ==, bolt_device_get_name (dev));
   g_assert_cmpstr (bolt_device_get_vendor (stored), ==, bolt_device_get_vendor (dev));
 
+  g_assert_cmpuint (bolt_device_get_generation (stored), ==, 4);
   g_assert_cmpuint (bolt_device_get_policy (stored), ==, BOLT_POLICY_MANUAL);
   g_assert_cmpuint (bolt_device_get_stored (stored), ==, TRUE);
   g_assert_cmpuint (bolt_device_get_keystate (stored), ==, 1);
