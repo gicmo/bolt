@@ -1303,8 +1303,8 @@ manager_maybe_import (BoltManager *mgr,
   ok = bolt_store_put_device (mgr->store,
                               dev,
                               policy,
-                              key, &
-                              err);
+                              key,
+                              &err);
 
   if (!ok)
     bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("import"),
