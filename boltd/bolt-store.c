@@ -488,6 +488,7 @@ bolt_store_put_device (BoltStore  *store,
   guint64 ctime;
   guint64 atime;
   gint64 stime;
+  guint64 gen;
   gsize len;
   guint keystate = 0;
 
@@ -520,6 +521,10 @@ bolt_store_put_device (BoltStore  *store,
 
   g_key_file_set_string (kf, DEVICE_GROUP, "name", bolt_device_get_name (device));
   g_key_file_set_string (kf, DEVICE_GROUP, "vendor", bolt_device_get_vendor (device));
+
+  gen = bolt_device_get_generation (device);
+  if (gen)
+    g_key_file_set_uint64 (kf, USER_GROUP, "generation", gen);
 
   type = bolt_device_get_device_type (device);
   g_key_file_set_string (kf, DEVICE_GROUP, "type", bolt_device_type_to_string (type));
@@ -612,6 +617,7 @@ bolt_store_get_device (BoltStore  *store,
   guint64 stime;
   guint64 atime = 0;
   guint64 ctime = 0;
+  guint gen;
   gsize len;
 
   g_return_val_if_fail (BOLT_IS_STORE (store), NULL);
@@ -638,6 +644,11 @@ bolt_store_get_device (BoltStore  *store,
   typestr = g_key_file_get_string (kf, DEVICE_GROUP, "type", NULL);
   polstr = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
   label = g_key_file_get_string (kf, USER_GROUP, "label", NULL);
+
+  gen = g_key_file_get_int64 (kf, USER_GROUP, "generation", &err);
+  if (err != NULL && !bolt_err_notfound (err))
+    bolt_warn_err (err, LOG_TOPIC ("store"), "invalid generation");
+  g_clear_error (&err);
 
   type = bolt_enum_from_string (BOLT_TYPE_DEVICE_TYPE, typestr, &err);
   if (type == BOLT_DEVICE_UNKNOWN_TYPE)
@@ -682,7 +693,6 @@ bolt_store_get_device (BoltStore  *store,
         stime = g_file_info_get_attribute_uint64 (info, "time::changed");
     }
 
-
   key = bolt_store_have_key (store, uid);
 
   if (name == NULL || vendor == NULL)
@@ -702,6 +712,7 @@ bolt_store_get_device (BoltStore  *store,
                        "uid", uid,
                        "name", name,
                        "vendor", vendor,
+                       "generation", gen,
                        "type", type,
                        "status", BOLT_STATUS_DISCONNECTED,
                        "store", store,
