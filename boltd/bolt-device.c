@@ -64,6 +64,7 @@ struct _BoltDevice
   char          *uid;
   char          *name;
   char          *vendor;
+  guint          gen;
 
   BoltDeviceType type;
   BoltStatus     status;
@@ -100,6 +101,7 @@ enum {
   PROP_UID,
   PROP_NAME,
   PROP_VENDOR,
+  PROP_GEN,
   PROP_TYPE,
   PROP_STATUS,
 
@@ -204,6 +206,10 @@ bolt_device_get_property (GObject    *object,
       g_value_set_enum (value, dev->status);
       break;
 
+    case PROP_GEN:
+      g_value_set_uint (value, dev->gen);
+      break;
+
     case PROP_AUTHFLAGS:
       g_value_set_flags (value, dev->aflags);
       break;
@@ -281,6 +287,10 @@ bolt_device_set_property (GObject      *object,
     case PROP_VENDOR:
       g_clear_pointer (&dev->vendor, g_free);
       dev->vendor = g_value_dup_string (value);
+      break;
+
+    case PROP_GEN:
+      dev->gen = g_value_get_uint (value);
       break;
 
     case PROP_TYPE:
@@ -396,6 +406,14 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          G_PARAM_READWRITE |
                          G_PARAM_CONSTRUCT_ONLY |
                          G_PARAM_STATIC_STRINGS);
+
+  props[PROP_GEN] =
+    g_param_spec_uint ("generation",
+                       "Generation",
+                       NULL,
+                       0, G_MAXUINT, 0,
+                       G_PARAM_READWRITE |
+                       G_PARAM_STATIC_STRINGS);
 
   props[PROP_TYPE] =
     g_param_spec_enum ("type",
@@ -1147,6 +1165,7 @@ bolt_device_new_for_udev (struct udev_device *udev,
                       "name", name,
                       "vendor", vendor,
                       "type", type,
+                      "generation", info.generation,
                       "status", status,
                       "authflags", aflags,
                       "sysfs-path", info.syspath,
@@ -1249,6 +1268,7 @@ bolt_device_connected (BoltDevice         *dev,
   at = bolt_status_is_authorized (status) ? ct : 0;
 
   g_object_set (G_OBJECT (dev),
+                "generation", info.generation,
                 "parent", info.parent,
                 "sysfs-path", info.syspath,
                 "domain", domain,
@@ -1475,6 +1495,14 @@ bolt_device_get_vendor (BoltDevice *dev)
   g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
 
   return dev->vendor;
+}
+
+guint
+bolt_device_get_generation (BoltDevice *dev)
+{
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), 0);
+
+  return dev->gen;
 }
 
 BoltDeviceType

@@ -321,6 +321,14 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="Generation" type="u" access="read">
+      <doc:doc><doc:description><doc:para>
+        The generation of the Thunderbolt controller associated
+	with the device. It will contain 4 for USB4, 3 for
+	Thunderbolt 3.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <property name="Status" type="s" access="read">
       <doc:doc><doc:description><doc:para>
         The current status of the device.

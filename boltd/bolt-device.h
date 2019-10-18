@@ -98,6 +98,8 @@ guint64           bolt_device_get_conntime (BoltDevice *dev);
 
 gint64            bolt_device_get_storetime (BoltDevice *dev);
 
+guint             bolt_device_get_generation (BoltDevice *dev);
+
 gboolean          bolt_device_has_iommu (BoltDevice *dev);
 
 gboolean          bolt_device_has_key (BoltDevice *dev);
