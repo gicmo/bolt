@@ -15,5 +15,10 @@ if [[ -x "$(command -v lcov)" ]]; then
 fi
 
 if [[ -x "$(command -v scan-build)" ]]; then
-    SCANBUILD="scan-build --status-bugs" ninja -C /build scan-build
+    ninja -C /build scan-build
+
+    if [[ -n "$(ls -A /build/meson-logs/scanbuild/)" ]]; then
+        echo "Scan build log found, assuming defects exist"
+        exit 1
+    fi
 fi
