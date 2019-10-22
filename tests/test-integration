@@ -656,6 +656,7 @@ class TbDevice(Device):
     udev_attrs = ['authorized',
                   'device',
                   'device_name',
+                  'generation',
                   'key',
                   'unique_id',
                   'vendor',
@@ -663,7 +664,7 @@ class TbDevice(Device):
 
     udev_props = ['DEVTYPE']
 
-    def __init__(self, name, authorized=0, vendor=None, uid=None, children=None, key='\n'):
+    def __init__(self, name, authorized=0, vendor=None, uid=None, children=None, key='\n', gen=None):
         super(TbDevice, self).__init__(name, children or [])
         self.unique_id = uid or str(uuid.uuid4())
         self.device_name = 'Thunderbolt ' + name
@@ -672,6 +673,7 @@ class TbDevice(Device):
         self.vendor = self._make_id(self.vendor_name)
         self.authorized = authorized
         self.key = key
+        self.generation = gen
 
     def _make_id(self, name):
         return '0x%X' % binascii.crc32(name.encode('utf-8'))
@@ -747,10 +749,11 @@ class TbDevice(Device):
 
 
 class TbHost(TbDevice):
-    def __init__(self, children):
+    def __init__(self, children, gen=None):
         super(TbHost, self).__init__('Laptop',
                                      authorized=1,
                                      uid='3b7d4bad-4fdf-44ff-8730-ffffdeadbabe',
+                                     gen=gen,
                                      children=children)
 
     def connect(self, bed):
@@ -1221,6 +1224,12 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.assertEqual(local.bolt_status, remote.status)
         self.assertEqual(local.bolt_authflags, remote.authflags)
+
+        if local.generation is not None:
+            self.assertEqual(local.generation, remote.generation)
+        else:
+            self.assertEqual(0, remote.generation)
+
         return True
 
     def add_domain_host(self, domain=0, security='secure', uid=None, bootacl=15, iommu=None):
@@ -2458,6 +2467,26 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(remote.label, val)
 
         self.daemon_stop()
+
+    def test_device_generation(self):
+        dock = TbDevice('Dock', gen=3)
+        ssd1 = TbDevice('SSD1', gen=1)
+        ssd2 = TbDevice('SSD2', gen=2)
+        ssd2 = TbDevice('Ethernet', gen=None)
+        tree = TbDomain(security=TbDomain.SECURITY_SECURE,
+                        host=TbHost([
+                            dock,
+                            ssd1,
+                            ssd2
+                        ], gen=4))
+
+        tree.connect_tree(self.testbed)
+        self.daemon_start()
+
+        for d in tree.devices:
+            remote = self.client.device_by_uid(d.unique_id)
+            self.assertDeviceEqual(d, remote)
+            print("local: %d, remote: %d" % (d.generation or 0, remote.generation))
 
     def test_sdnotify(self):
         c, host = self.add_domain_host(security='secure', iommu='1')
