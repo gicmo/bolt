@@ -70,7 +70,7 @@ gboolean              bolt_wire_conv_from_wire (BoltWireConv *conv,
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (BoltWireConv, bolt_wire_conv_unref)
 
 #if !GLIB_CHECK_VERSION (2, 57, 1)
-G_DEFINE_AUTOPTR_CLEANUP_FUNC(GParamSpec, g_param_spec_unref)
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (GParamSpec, g_param_spec_unref)
 #endif
 
 G_END_DECLS
