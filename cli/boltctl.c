@@ -179,11 +179,13 @@ print_device (BoltDevice *dev, gboolean verbose)
   gboolean stored;
   gboolean pcie;
   char buf[256];
+  guint gen;
 
   path = g_dbus_proxy_get_object_path (G_DBUS_PROXY (dev));
   uid = bolt_device_get_uid (dev);
   name = bolt_device_get_name (dev);
   vendor = bolt_device_get_vendor (dev);
+  gen = bolt_device_get_generation (dev);
   type = bolt_device_get_device_type (dev);
   status = bolt_device_get_status (dev);
   aflags = bolt_device_get_authflags (dev);
@@ -261,6 +263,7 @@ print_device (BoltDevice *dev, gboolean verbose)
   g_print ("   %s uuid:          %s\n", tree_branch, format_uid (uid));
   if (verbose)
     g_print ("   %s dbus path:     %s\n", tree_branch, path);
+  g_print ("   %s generation:    %d\n", tree_branch, gen);
   g_print ("   %s status:        %s\n", tree_branch, status_text);
 
   if (bolt_status_is_connected (status))
