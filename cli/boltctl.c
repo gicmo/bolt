@@ -154,6 +154,31 @@ format_timestamp (BoltDevice *dev,
   return ts > 0;
 }
 
+static gboolean
+format_generation (guint generation, char *buffer, size_t n)
+{
+  switch (generation)
+    {
+    case 1:
+    case 2:
+    case 3:
+      g_snprintf (buffer, n, "Thunderbolt %u", generation);
+      return TRUE;
+
+    case 4:
+      g_snprintf (buffer, n, "USB4");
+      return TRUE;
+
+    case 0:
+      g_snprintf (buffer, n, "Unknown");
+      return FALSE;
+
+    default:
+      g_snprintf (buffer, n, "%u", generation);
+      return TRUE;
+    }
+}
+
 void
 print_device (BoltDevice *dev, gboolean verbose)
 {
@@ -263,7 +288,8 @@ print_device (BoltDevice *dev, gboolean verbose)
   g_print ("   %s uuid:          %s\n", tree_branch, format_uid (uid));
   if (verbose)
     g_print ("   %s dbus path:     %s\n", tree_branch, path);
-  g_print ("   %s generation:    %d\n", tree_branch, gen);
+  if (format_generation (gen, buf, sizeof (buf)) || verbose)
+    g_print ("   %s generation:    %s\n", tree_branch, buf);
   g_print ("   %s status:        %s\n", tree_branch, status_text);
 
   if (bolt_status_is_connected (status))
