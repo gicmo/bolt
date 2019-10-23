@@ -143,6 +143,7 @@ class Device(SysfsDev):
                    'boot',
                    'device',
                    'device_name',
+                   'generation'
                    'key',
                    'unique_id',
                    'vendor',
@@ -229,15 +230,19 @@ class MockSysfs:
         self.domains[sysname] = domain
         return domain
 
-    def host_add(self, domain, uid, name, vendor):
+    def host_add(self, domain, uid, name, vendor, generation):
         sysname = "%d-0" % domain.index
+        attributes = ['device_name', name,
+                      'device', '0x23',
+                      'vendor_name', vendor,
+                      'vendor', '0x23',
+                      'authorized', '1',
+                      'unique_id', uid]
+        if generation is not None:
+            attributes += ['generation', str(generation)]
+
         syspath = self.testbed.add_device('thunderbolt', sysname, domain.syspath,
-                                          ['device_name', name,
-                                           'device', '0x23',
-                                           'vendor_name', vendor,
-                                           'vendor', '0x23',
-                                           'authorized', '1',
-                                           'unique_id', uid],
+                                          attributes,
                                           ['DEVTYPE', 'thunderbolt_device'])
         host = Device(uid, sysname, syspath)
         host.is_host = True
@@ -245,7 +250,7 @@ class MockSysfs:
         host.domain = domain
         return host
 
-    def device_add(self, parent, uid, name, vendor, authorized, key, boot):
+    def device_add(self, parent, uid, name, vendor, authorized, key, boot, gen):
         domain = parent.domain
         serial = domain.gen_serial()
         sysname = "%d-%d" % (domain.index, serial)
@@ -265,6 +270,9 @@ class MockSysfs:
 
         if boot is not None:
             props += ['boot', str(boot)]
+
+        if gen is not None:
+            props += ['generation', str(gen)]
 
         syspath = self.testbed.add_device('thunderbolt',
                                           sysname, parent.syspath,
@@ -588,6 +596,7 @@ class World:
     @arg('--uuid', type=str, default=None)
     @arg('--iommu', type=str, choices=[None, '0', '1'], default=None)
     @arg('--bootacl', type=str, default=None)
+    @arg('--generation', type=int, default=3)
     @arg('--vendor', type=str, default='GNOME.org')
     @arg('--name', type=str, default='Laptop')
     @controller.subcommand
@@ -596,6 +605,7 @@ class World:
         security = args.security
         bootacl = args.bootacl
         iommu = args.iommu
+        gen = args.generation
         uid = args.uuid or str(uuid.uuid4())
         print(uid)
 
@@ -605,7 +615,7 @@ class World:
         name = args.name
         vendor = args.vendor
 
-        host = self.sysfs.host_add(domain, uid, name, vendor)
+        host = self.sysfs.host_add(domain, uid, name, vendor, gen)
         host.show()
 
     @arg('id', type=str, help='name or uuid')
@@ -631,6 +641,7 @@ class World:
     @arg('--authorized', type=int, choices=[0, 1], default=0)
     @arg('--uuid', type=str, default=None)
     @arg('--vendor', type=str, default='GNOME.org')
+    @arg('--generation', type=int, default=3)
     @arg('name', type=str)
     @arg('parent', type=str)
     @device.subcommand
@@ -649,7 +660,8 @@ class World:
                                        args.vendor,
                                        args.authorized,
                                        args.key,
-                                       args.boot)
+                                       args.boot,
+                                       args.generation)
 
         device.show()
 
