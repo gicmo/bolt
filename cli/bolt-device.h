@@ -55,6 +55,8 @@ const char *      bolt_device_get_name (BoltDevice *dev);
 
 const char *      bolt_device_get_vendor (BoltDevice *dev);
 
+guint             bolt_device_get_generation (BoltDevice *dev);
+
 BoltDeviceType    bolt_device_get_device_type (BoltDevice *dev);
 
 gboolean          bolt_device_is_host (BoltDevice *dev);

@@ -40,6 +40,7 @@ enum {
   PROP_UID,
   PROP_NAME,
   PROP_VENDOR,
+  PROP_GEN,
   PROP_TYPE,
   PROP_STATUS,
   PROP_AUTHFLAGS,
@@ -93,6 +94,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
+  props[PROP_GEN] =
+    g_param_spec_uint ("generation",
+                       "Generation",
+                       NULL,
+                       0, G_MAXUINT, 0,
+                       G_PARAM_READWRITE |
+                       G_PARAM_STATIC_STRINGS);
 
   props[PROP_TYPE] =
     g_param_spec_enum ("type", "Type",
@@ -347,6 +355,18 @@ bolt_device_get_vendor (BoltDevice *dev)
   str = bolt_proxy_get_string_by_pspec (dev, props[PROP_VENDOR]);
 
   return str;
+}
+
+guint
+bolt_device_get_generation (BoltDevice *dev)
+{
+  guint32 val = 0;
+
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), 0);
+
+  val = bolt_proxy_get_uint32_by_pspec (dev, props[PROP_GEN]);
+
+  return (guint) val;
 }
 
 BoltDeviceType
