@@ -1245,10 +1245,28 @@ manager_auto_authorize (BoltManager *mgr,
 }
 
 static void
+manager_do_import_device (BoltManager *mgr,
+                          BoltDevice  *dev,
+                          BoltPolicy   policy)
+{
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+
+  ok = bolt_store_put_device (mgr->store,
+                              dev,
+                              policy,
+                              NULL,
+                              &err);
+
+  if (!ok)
+    bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("import"),
+                   "failed to store device");
+}
+
+static void
 manager_maybe_import (BoltManager *mgr,
                       BoltDevice  *dev)
 {
-  g_autoptr(GError) err = NULL;
   BoltSecurity level;
   BoltPolicy policy;
   const char *secstr;
@@ -1257,17 +1275,16 @@ manager_maybe_import (BoltManager *mgr,
   gboolean boot, pcie;
   gboolean import;
   gboolean iommu;
-  gboolean ok;
+
+  /* This function is intentionally more verbose then it
+   * could be, but since it is security critical, it is
+   * better to be clear than concise */
 
   if (bolt_device_get_device_type (dev) == BOLT_DEVICE_HOST)
     return;
 
   g_return_if_fail (!bolt_device_get_stored (dev));
   g_return_if_fail (bolt_device_is_authorized (dev));
-
-  /* This function is intentionally more verbose then it
-   * could be, but since it is security critical, it is
-   * better to be clear than concise */
 
   level = bolt_device_get_security (dev);
   iommu = bolt_device_has_iommu (dev);
@@ -1296,18 +1313,8 @@ manager_maybe_import (BoltManager *mgr,
             secstr, bolt_yesno (boot),
             (import ? polstr : "no import"));
 
-  if (!import)
-    return;
-
-  ok = bolt_store_put_device (mgr->store,
-                              dev,
-                              policy,
-                              NULL,
-                              &err);
-
-  if (!ok)
-    bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("import"),
-                   "failed to store device");
+  if (import)
+    manager_do_import_device (mgr, dev, policy);
 }
 
 static void
