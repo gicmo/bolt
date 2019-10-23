@@ -1280,11 +1280,15 @@ manager_maybe_import (BoltManager *mgr,
    * could be, but since it is security critical, it is
    * better to be clear than concise */
 
-  if (bolt_device_get_device_type (dev) == BOLT_DEVICE_HOST)
-    return;
-
   g_return_if_fail (!bolt_device_get_stored (dev));
   g_return_if_fail (bolt_device_is_authorized (dev));
+
+  if (bolt_device_get_device_type (dev) == BOLT_DEVICE_HOST)
+    {
+      /* Store the host device, which is always authorized */
+      manager_do_import_device (mgr, dev, BOLT_POLICY_MANUAL);
+      return;
+    }
 
   level = bolt_device_get_security (dev);
   iommu = bolt_device_has_iommu (dev);
