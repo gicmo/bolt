@@ -785,9 +785,13 @@ class TbDomain(Device):
 
     @property
     def unique_id(self):
+        return self.host and self.host.unique_id
+
+    @property
+    def host(self):
         if len(self.children) < 1:
             return None
-        return self.children[0].unique_id
+        return self.children[0]
 
     @property
     def devices(self):
