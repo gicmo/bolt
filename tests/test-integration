@@ -1589,6 +1589,8 @@ class BoltTest(dbusmock.DBusTestCase):
         bootacl = domain.bootacl
         print('domain [%s] bootacl: %s' % (domain.uid, bootacl))
 
+        self.assertNotIn(host.unique_id, bootacl)
+
         devs = tree.peripherals
         for d in devs:
             self.assertIn(d.unique_id, bootacl)
