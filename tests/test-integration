@@ -362,6 +362,9 @@ class BoltDevice(ProxyWrapper):
     NOKEY = 1 << 2
     BOOT = 1 << 3
 
+    HOST = 'host'
+    PERIPHERAL = 'peripheral'
+
     def __init__(self, bus, path):
         super(BoltDevice, self).__init__(bus,
                                          DBUS_IFACE_DEVICE,
@@ -404,6 +407,10 @@ class BoltDevice(ProxyWrapper):
         print(res, file=sys.stderr)
         keys = [x.strip() for x in res.split('|')]
         return reduce(lambda r, x: r | mapping.get(x, 0), keys, 0)
+
+    @property
+    def device_type(self):
+        return getattr(self, 'type')
 
     @property
     def key(self):
