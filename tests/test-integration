@@ -556,6 +556,10 @@ class BoltClient(ProxyWrapper):
         bus = self._proxy.get_connection()
         return BoltDevice(bus, object_path)
 
+    def list_peripherals(self):
+        devs = self.list_devices()
+        return list(filter(lambda d: d.device_type == BoltDevice.PERIPHERAL, devs))
+
     def enroll(self, uid, policy=POLICY_DEFAULT, flags=""):
         object_path = self.EnrollDevice("(sss)", uid, policy, flags)
         if object_path is None:
@@ -1367,7 +1371,7 @@ class BoltTest(dbusmock.DBusTestCase):
         chk.sync()  # check for the signals
         chk.close()
 
-        devices = self.client.list_devices()
+        devices = self.client.list_peripherals()
         self.assertEqual(len(devices), 0)
         self.daemon_stop()
 
@@ -2176,17 +2180,14 @@ class BoltTest(dbusmock.DBusTestCase):
         # the daemon should have them in its database now
         tree.disconnect(self.testbed)
 
-        devices = self.client.list_devices()
-
-        # the host itself is not stored in the daemon
-        expected_number = len(tree.devices) - 1
-        devices = self.client.list_devices()
+        expected_number = len(tree.peripherals)
+        devices = self.client.list_peripherals()
         tries = 0
         while expected_number != len(devices) and tries < 3:
             time.sleep(.2)
             tries += 1
-            devices = self.client.list_devices()
-            self.assertEqual(len(devices), expected_number)
+            devices = self.client.list_peripherals()
+        self.assertEqual(len(devices), expected_number)
 
         tree.connect(self.testbed)              # we connect the domain again
         tree.children[0].connect(self.testbed)  # and the host too
@@ -2390,13 +2391,13 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertEqual(remote.policy, policy)
 
         tree.disconnect(self.testbed)
-        expected_number = len(tree.devices) - 1  # host is not stored
-        devices = self.client.list_devices()
+        expected_number = len(tree.peripherals)
+        devices = self.client.list_peripherals()
         tries = 0
         while expected_number != len(devices) and tries < 3:
             time.sleep(.2)
             tries += 1
-            devices = self.client.list_devices()
+            devices = self.client.list_peripherals()
         self.assertEqual(len(devices), expected_number)
 
         for remote in devices:
@@ -2426,7 +2427,7 @@ class BoltTest(dbusmock.DBusTestCase):
                 self.assertTrue(res)
             self.assertNotIn(remote.uid, domain.bootacl)
 
-        devices = self.client.list_devices()
+        devices = self.client.list_peripherals()
         self.assertEqual(len(devices), 0)
 
     def test_device_label(self):
