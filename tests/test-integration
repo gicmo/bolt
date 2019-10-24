@@ -443,6 +443,11 @@ class BoltDevice(ProxyWrapper):
                                     None)
         return res is not None
 
+    @staticmethod
+    def gen_object_path(object_id):
+        base = os.path.join(DBUS_PATH, "devices")
+        return BoltClient.gen_object_path(base, object_id)
+
 
 class BoltDomain(ProxyWrapper):
     SECURITY_NONE = 'none'
@@ -570,6 +575,19 @@ class BoltClient(ProxyWrapper):
     def forget(self, uid):
         self.ForgetDevice("(s)", uid)
         return True
+
+    @staticmethod
+    def gen_object_path(base, object_id):
+        oid = None
+        if object_id:
+            oid = object_id.replace('-', '_')
+        if base and oid:
+            return os.path.join('/', base, oid)
+        elif base:
+            return os.path.join('/', base)
+        elif oid:
+            return os.path.join('/', oid)
+        return '/'
 
 
 # Mock Device Tree
@@ -735,6 +753,10 @@ class TbDevice(Device):
     @staticmethod
     def is_unauthorized(d):
         return isinstance(d, TbDevice) and d.authorized == 0
+
+    @property
+    def bus_path(self):
+        return BoltDevice.gen_object_path(self.unique_id)
 
     def reload_auth(self):
         authorized = self.authorized
