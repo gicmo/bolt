@@ -515,9 +515,13 @@ bolt_store_put_device (BoltStore  *store,
                                   G_KEY_FILE_KEEP_COMMENTS,
                                   &err);
 
-  if (!ok && bolt_err_exists (err))
-    bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DEV_UID (uid),
-                   "could not load previously stored device");
+  if (!ok)
+    {
+      if (!bolt_err_notfound (err))
+        bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DEV_UID (uid),
+                       "could not load previously stored device");
+      g_clear_error (&err);
+    }
 
   g_key_file_set_string (kf, DEVICE_GROUP, "name", bolt_device_get_name (device));
   g_key_file_set_string (kf, DEVICE_GROUP, "vendor", bolt_device_get_vendor (device));
@@ -554,8 +558,6 @@ bolt_store_put_device (BoltStore  *store,
 
   if (key)
     {
-      g_clear_error (&err);
-
       ok = bolt_store_put_key (store, uid, key, &err);
 
       if (!ok)
