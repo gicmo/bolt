@@ -96,7 +96,7 @@ guint64           bolt_device_get_authtime (BoltDevice *dev);
 
 guint64           bolt_device_get_conntime (BoltDevice *dev);
 
-gint64            bolt_device_get_storetime (BoltDevice *dev);
+guint64           bolt_device_get_storetime (BoltDevice *dev);
 
 guint             bolt_device_get_generation (BoltDevice *dev);
 

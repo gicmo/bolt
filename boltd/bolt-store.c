@@ -487,7 +487,7 @@ bolt_store_put_device (BoltStore  *store,
   gboolean ok;
   guint64 ctime;
   guint64 atime;
-  gint64 stime;
+  guint64 stime;
   guint64 gen;
   gsize len;
   guint keystate = 0;
@@ -542,8 +542,8 @@ bolt_store_put_device (BoltStore  *store,
 
   stime = bolt_device_get_storetime (device);
 
-  if (stime < 1)
-    stime = (gint64) bolt_now_in_seconds ();
+  if (stime == 0)
+    stime = bolt_now_in_seconds ();
 
   g_key_file_set_uint64 (kf, USER_GROUP, "storetime", stime);
 

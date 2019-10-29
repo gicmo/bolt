@@ -1537,7 +1537,7 @@ bolt_device_get_conntime (BoltDevice *dev)
   return dev->conntime;
 }
 
-gint64
+guint64
 bolt_device_get_storetime (BoltDevice *dev)
 {
   g_return_val_if_fail (BOLT_IS_DEVICE (dev), 0);
