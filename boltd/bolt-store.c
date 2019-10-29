@@ -490,7 +490,7 @@ bolt_store_put_device (BoltStore  *store,
   guint64 stime;
   guint64 gen;
   gsize len;
-  guint keystate = 0;
+  guint keystate;
 
   g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
   g_return_val_if_fail (BOLT_IS_DEVICE (device), FALSE);
@@ -556,6 +556,7 @@ bolt_store_put_device (BoltStore  *store,
   if (!data)
     return FALSE;
 
+  keystate = bolt_device_get_keystate (device);
   if (key)
     {
       ok = bolt_store_put_key (store, uid, key, &err);
