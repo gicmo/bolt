@@ -242,6 +242,68 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
 }
 
 static void
+test_store_update (TestStore *tt, gconstpointer user_data)
+{
+  g_autoptr(BoltDevice) dev = NULL;
+  g_autoptr(BoltKey) key = NULL;
+  g_autoptr(GError) err = NULL;
+  char uid[] = "fbc83890-e9bf-45e5-a777-b3728490989c";
+  BoltKeyState keystate;
+  BoltPolicy policy;
+  gboolean ok;
+  guint64 storetime;
+
+  policy = BOLT_POLICY_IOMMU;
+  dev = g_object_new (BOLT_TYPE_DEVICE,
+                      "uid", uid,
+                      "name", "Laptop",
+                      "vendor", "GNOME.org",
+                      "status", BOLT_STATUS_DISCONNECTED,
+                      "generation", 1,
+                      NULL);
+
+  key = bolt_key_new (NULL);
+  g_assert_nonnull (key);
+
+  ok = bolt_store_put_device (tt->store,
+                              dev,
+                              policy,
+                              key,
+                              &err);
+
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  keystate = bolt_device_get_keystate (dev);
+  g_assert_cmpuint (keystate, ==, BOLT_KEY_NEW);
+  g_assert_cmpuint (bolt_device_get_policy (dev), ==, policy);
+
+  storetime = bolt_device_get_storetime (dev);
+
+  g_object_set (G_OBJECT (dev),
+                "generation", 3,
+                "label", "My Laptop",
+                NULL);
+
+  /* update the device. generation and label should
+   * change, but the rest should stay the same, esp.
+   * keystate and also storetime should not change */
+  ok = bolt_store_put_device (tt->store,
+                              dev,
+                              BOLT_POLICY_IOMMU,
+                              NULL,
+                              &err);
+
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  keystate = bolt_device_get_keystate (dev);
+  g_assert_cmpuint (keystate, ==, BOLT_KEY_NEW);
+  g_assert_cmpuint (bolt_device_get_policy (dev), ==, policy);
+  g_assert_cmpuint (bolt_device_get_storetime (dev), ==, storetime);
+}
+
+static void
 test_store_config (TestStore *tt, gconstpointer user_data)
 {
   g_autoptr(GKeyFile) kf = NULL;
@@ -699,6 +761,13 @@ main (int argc, char **argv)
               NULL,
               test_store_setup,
               test_store_basic,
+              test_store_tear_down);
+
+  g_test_add ("/daemon/store/update",
+              TestStore,
+              NULL,
+              test_store_setup,
+              test_store_update,
               test_store_tear_down);
 
   g_test_add ("/daemon/store/config",
