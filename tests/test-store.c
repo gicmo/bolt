@@ -287,10 +287,11 @@ test_store_update (TestStore *tt, gconstpointer user_data)
 
   /* update the device. generation and label should
    * change, but the rest should stay the same, esp.
-   * keystate and also storetime should not change */
+   * keystate and also storetime should not change.
+   * Also, BOLT_POLICY_DEFAULT should be ignored */
   ok = bolt_store_put_device (tt->store,
                               dev,
-                              BOLT_POLICY_IOMMU,
+                              BOLT_POLICY_DEFAULT,
                               NULL,
                               &err);
 
