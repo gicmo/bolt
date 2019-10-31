@@ -7,6 +7,7 @@ RUN dnf --enablerepo=updates-testing -y update
 RUN dnf --enablerepo=updates-testing -y install \
     clang-analyzer \
     gcc \
+    git \
     glib2-devel \
     gtk-doc \
     lcov \
@@ -20,7 +21,8 @@ RUN dnf --enablerepo=updates-testing -y install \
     rpm-build \
     redhat-rpm-config \
     systemd-devel \
-    umockdev-devel
+    umockdev-devel \
+    uncrustify
 
 RUN mkdir /src /build
 WORKDIR /src
