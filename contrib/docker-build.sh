@@ -22,3 +22,7 @@ if [[ -x "$(command -v scan-build)" ]]; then
         exit 1
     fi
 fi
+
+if [[ -x "$(command -v lcov)" ]]; then
+    scripts/uncrustify.sh --check
+fi
