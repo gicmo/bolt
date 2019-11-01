@@ -1395,6 +1395,11 @@ class BoltTest(dbusmock.DBusTestCase):
 
         devices = self.client.list_peripherals()
         self.assertEqual(len(devices), 0)
+
+        # host device should be stored
+        remote = self.client.device_by_uid(tree.host.unique_id)
+        self.assertEqual(remote.stored, True)
+        self.assertEqual(remote.policy, BoltClient.POLICY_MANUAL)
         self.daemon_stop()
 
     def test_auth_mode(self):
