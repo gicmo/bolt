@@ -1249,7 +1249,6 @@ manager_maybe_import (BoltManager *mgr,
                       BoltDevice  *dev)
 {
   g_autoptr(GError) err = NULL;
-  g_autoptr(BoltKey) key = NULL;
   BoltSecurity level;
   BoltPolicy policy;
   const char *secstr;
@@ -1294,7 +1293,7 @@ manager_maybe_import (BoltManager *mgr,
 
   bolt_msg (LOG_DEV (dev), LOG_TOPIC ("import"),
             "%s mode, boot: %s, key: %s -> %s",
-            secstr, bolt_yesno (boot), bolt_yesno (key),
+            secstr, bolt_yesno (boot),
             (import ? polstr : "no import"));
 
   if (!import)
@@ -1303,7 +1302,7 @@ manager_maybe_import (BoltManager *mgr,
   ok = bolt_store_put_device (mgr->store,
                               dev,
                               policy,
-                              key,
+                              NULL,
                               &err);
 
   if (!ok)
