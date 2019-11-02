@@ -47,11 +47,11 @@ OPTIONS
 	'short';;
 	Truncate all UUIDs so only the first 13 characters are printed.
 	'alias';;
-	All UUIDs are replaced by a random string that is dervied from the
+	All UUIDs are replaced by a random string that is derived from the
 	UUID, therefore the devices can be uniquely identified without
 	revealing the original UUID.
 	N;;
-	If a integer 'N' is specified, all UUIDs are truncted to only show up
+	If a integer 'N' is specified, all UUIDs are truncated to only show up
 	to 'N'.
 
 COMMANDS
@@ -78,12 +78,12 @@ List global, domain, or all (if nothing is specified) properties. The
 format is 3 columns: permission, name, description. Permission indicates
 if the property is only readable or can also be written.
 
-config 'KEY' ['VALLUE']
+config 'KEY' ['VALUE']
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Get or set, if 'VALUE' is specified, a global property.
 
-config '<domain|device>.KEY' 'TARGET' ['VALLUE']
+config '<domain|device>.KEY' 'TARGET' ['VALUE']
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Get or set, if 'VALUE' is specified, a domain or device property,

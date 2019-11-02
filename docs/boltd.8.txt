@@ -71,7 +71,7 @@ back when the controller is online again.
 'IOMMU' support: if the hardware and firmware support using the input–output
 memory management unit (IOMMU) to restrict direct memory access
 to certain safe regions, boltd will detect that feature and change its
-behavior: As long as iommu support is active, as inidcated by the
+behavior: As long as iommu support is active, as indicated by the
 iommu_dma_protection sysfs attribute of the domain controller, new devices
 will be automatically enrolled with the 'iommu' policy and existing
 devices with 'iommu' (or 'auto') policy will be automatically authorized
@@ -96,7 +96,7 @@ OPTIONS
 *--journal*::
   Force logging to the journal.
 
-*-v, --verbosee*::
+*-v, --verbose*::
   Print debug output.
 
 
