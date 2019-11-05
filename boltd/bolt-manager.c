@@ -154,6 +154,10 @@ static void          handle_device_status_changed (BoltDevice  *dev,
                                                    BoltStatus   old,
                                                    BoltManager *mgr);
 
+static void          handle_device_generation_changed (BoltDevice  *dev,
+                                                       GParamSpec  *unused,
+                                                       BoltManager *mgr);
+
 static void          handle_power_state_changed (GObject    *gobject,
                                                  GParamSpec *pspec,
                                                  gpointer    user_data);
@@ -229,6 +233,7 @@ struct _BoltManager
   BoltPower   *power;
   BoltSecurity security;
   BoltAuthMode authmode;
+  guint        generation;
 
   /* policy enforcer */
   BoltBouncer *bouncer;
@@ -257,6 +262,7 @@ enum {
   PROP_SECURITY,
   PROP_AUTHMODE,
   PROP_POWERSTATE,
+  PROP_GENERATION,
 
   PROP_LAST,
   PROP_EXPORTED = PROP_VERSION
@@ -331,6 +337,10 @@ bolt_manager_get_property (GObject    *object,
 
     case PROP_POWERSTATE:
       g_value_set_enum (value, bolt_power_get_state (mgr->power));
+      break;
+
+    case PROP_GENERATION:
+      g_value_set_uint (value, mgr->generation);
       break;
 
     default:
@@ -408,6 +418,12 @@ bolt_manager_class_init (BoltManagerClass *klass)
     g_param_spec_enum ("power-state", "PowerState", NULL,
                        BOLT_TYPE_POWER_STATE,
                        BOLT_FORCE_POWER_UNSET,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_STRINGS);
+
+  props[PROP_GENERATION] =
+    g_param_spec_uint ("generation", "Generation", NULL,
+                       0, G_MAXUINT, 0,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
 
@@ -620,6 +636,24 @@ manager_maybe_set_security (BoltManager *mgr,
                  bolt_security_to_string (mgr->security),
                  bolt_security_to_string (security));
     }
+}
+
+static void
+manager_maybe_set_generation (BoltManager *mgr,
+                              guint        gen)
+{
+  guint check;
+
+  check = MAX (mgr->generation, gen);
+
+  if (mgr->generation >= check)
+    return;
+
+  bolt_info ("global 'generation' set to '%d'", check);
+
+  mgr->generation = check;
+  g_object_notify_by_pspec (G_OBJECT (mgr),
+                            props[PROP_GENERATION]);
 }
 
 /* domain related function */
@@ -979,6 +1013,16 @@ manager_register_device (BoltManager *mgr,
   g_signal_connect_object (dev, "status-changed",
                            G_CALLBACK (handle_device_status_changed),
                            mgr, 0);
+
+  if (bolt_device_get_device_type (dev) == BOLT_DEVICE_HOST)
+    {
+      guint generation = bolt_device_get_generation (dev);
+      manager_maybe_set_generation (mgr, generation);
+      g_signal_connect_object (dev, "notify::generation",
+                               G_CALLBACK (handle_device_generation_changed),
+                               mgr, 0);
+    }
+
 }
 
 static void
@@ -1975,6 +2019,21 @@ handle_device_status_changed (BoltDevice  *dev,
     }
 }
 
+static void
+handle_device_generation_changed (BoltDevice  *dev,
+                                  GParamSpec  *unused,
+                                  BoltManager *mgr)
+{
+  guint gen = bolt_device_get_generation (dev);
+
+  bolt_debug (LOG_DEV (dev), LOG_TOPIC ("generation"),
+              "updated to: %u", gen);
+
+  if (bolt_device_get_device_type (dev) != BOLT_DEVICE_HOST)
+    return;
+
+  manager_maybe_set_generation (mgr, gen);
+}
 
 static void
 handle_power_state_changed (GObject    *gobject,
