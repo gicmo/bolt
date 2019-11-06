@@ -1250,6 +1250,7 @@ bolt_device_connected (BoltDevice         *dev,
   BoltAuthFlags aflags;
   BoltDevInfo info;
   BoltStatus status;
+  gboolean change;
   gboolean ok;
   guint64 ct, at;
 
@@ -1270,6 +1271,8 @@ bolt_device_connected (BoltDevice         *dev,
   ct = (guint64) info.ctim;
   at = bolt_status_is_authorized (status) ? ct : 0;
 
+  change = info.generation != dev->gen;
+
   g_object_set (G_OBJECT (dev),
                 "generation", info.generation,
                 "parent", info.parent,
@@ -1282,6 +1285,24 @@ bolt_device_connected (BoltDevice         *dev,
                 NULL);
 
   bolt_info (LOG_DEV (dev), "parent is %.13s...", dev->parent);
+
+  if (change && dev->store)
+    {
+      bolt_info (LOG_DEV (dev), LOG_TOPIC ("store"),
+                 "updating device");
+
+      ok = bolt_store_put_device (dev->store,
+                                  dev,
+                                  BOLT_POLICY_DEFAULT,
+                                  NULL,
+                                  &err);
+      if (!ok)
+        {
+          bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("store"),
+                         "failed to update device");
+          g_clear_error (&err);
+        }
+    }
 
   bolt_store_put_times (dev->store, dev->uid, NULL,
                         "conntime", ct,
