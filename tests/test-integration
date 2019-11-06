@@ -2531,6 +2531,31 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.assertEqual(self.client.generation, 4)
 
+    def test_device_generation_update(self):
+        dock = TbDevice('Dock', gen=0)
+        host = TbHost([dock], gen=0)
+        tree = TbDomain(security=TbDomain.SECURITY_SECURE, host=host)
+
+        self.store_device(host)
+        self.store_device(dock)
+        self.daemon_start()
+
+        self.assertEqual(self.client.generation, 0)
+
+        remote = self.client.device_by_uid(host.unique_id)
+        self.assertEqual(remote.device_type, BoltDevice.HOST)
+
+        with self.client.record() as tape:
+            host.generation = 4
+            dock.generation = 3
+
+            tree.connect_tree(self.testbed)
+
+            res = tape.wait_for_event('property',
+                                      'Generation',
+                                      4)
+            self.assertTrue(res)
+
     def test_sdnotify(self):
         c, host = self.add_domain_host(security='secure', iommu='1')
 
