@@ -528,7 +528,7 @@ bolt_store_put_device (BoltStore  *store,
 
   gen = bolt_device_get_generation (device);
   if (gen)
-    g_key_file_set_uint64 (kf, USER_GROUP, "generation", gen);
+    g_key_file_set_uint64 (kf, DEVICE_GROUP, "generation", gen);
 
   type = bolt_device_get_device_type (device);
   g_key_file_set_string (kf, DEVICE_GROUP, "type", bolt_device_type_to_string (type));
@@ -651,7 +651,7 @@ bolt_store_get_device (BoltStore  *store,
   polstr = g_key_file_get_string (kf, USER_GROUP, "policy", NULL);
   label = g_key_file_get_string (kf, USER_GROUP, "label", NULL);
 
-  gen = g_key_file_get_int64 (kf, USER_GROUP, "generation", &err);
+  gen = g_key_file_get_int64 (kf, DEVICE_GROUP, "generation", &err);
   if (err != NULL && !bolt_err_notfound (err))
     bolt_warn_err (err, LOG_TOPIC ("store"), "invalid generation");
   g_clear_error (&err);
