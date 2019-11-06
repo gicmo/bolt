@@ -1342,7 +1342,7 @@ class BoltTest(dbusmock.DBusTestCase):
         df['device'] = {
             'name': dev.device_name,
             'vendor': dev.vendor_name,
-            'type': 'peripheral'
+            'type': 'host' if isinstance(dev, TbHost) else 'peripheral'
         }
 
         df['user'] = {
