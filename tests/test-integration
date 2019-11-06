@@ -2529,6 +2529,8 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertDeviceEqual(d, remote)
             print("local: %d, remote: %d" % (d.generation or 0, remote.generation))
 
+        self.assertEqual(self.client.generation, 4)
+
     def test_sdnotify(self):
         c, host = self.add_domain_host(security='secure', iommu='1')
 
