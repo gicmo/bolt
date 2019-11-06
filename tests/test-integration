@@ -1334,7 +1334,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(len(x), 1)
         return x[0]
 
-    def store_device(self, dev, policy='auto', key=None):
+    def store_put_device(self, dev, policy='auto', key=None):
         df = configparser.ConfigParser()
         df.optionxform = lambda option: option
 
@@ -1579,10 +1579,10 @@ class BoltTest(dbusmock.DBusTestCase):
 
         tree.connect_tree(self.testbed)
 
-        self.store_device(cable1, key=None)
-        self.store_device(ssd1, key='known')
-        self.store_device(cable2, key='known')
-        self.store_device(ssd2, key='known')
+        self.store_put_device(cable1, key=None)
+        self.store_put_device(ssd1, key='known')
+        self.store_put_device(cable2, key='known')
+        self.store_put_device(ssd2, key='known')
 
         domain_id = host.unique_id
 
@@ -1866,14 +1866,14 @@ class BoltTest(dbusmock.DBusTestCase):
                         ]))
         tree.connect_tree(self.testbed)
 
-        self.store_device(cable1, key=None)
-        self.store_device(ssd1, key='known')
-        self.store_device(cable2, key='known')
-        self.store_device(ssd2, key='known')
-        self.store_device(cable3, key='known', policy='manual')
-        self.store_device(dock1, key='known')
-        self.store_device(cable4, key='known', policy='iommu')
-        self.store_device(dock2, key=None, policy='iommu')
+        self.store_put_device(cable1, key=None)
+        self.store_put_device(ssd1, key='known')
+        self.store_put_device(cable2, key='known')
+        self.store_put_device(ssd2, key='known')
+        self.store_put_device(cable3, key='known', policy='manual')
+        self.store_put_device(dock1, key='known')
+        self.store_put_device(cable4, key='known', policy='iommu')
+        self.store_put_device(dock2, key=None, policy='iommu')
 
         self.daemon_start()
 
@@ -1946,10 +1946,10 @@ class BoltTest(dbusmock.DBusTestCase):
                         ]))
         tree.connect_tree(self.testbed)
 
-        self.store_device(cable1, key=None, policy='iommu')
-        self.store_device(ssd1, key='known', policy='iommu')
-        self.store_device(cable2, key='known', policy='iommu')
-        self.store_device(ssd2, key='known', policy='auto')
+        self.store_put_device(cable1, key=None, policy='iommu')
+        self.store_put_device(ssd1, key='known', policy='iommu')
+        self.store_put_device(cable2, key='known', policy='iommu')
+        self.store_put_device(ssd2, key='known', policy='auto')
 
         self.daemon_start()
 
@@ -2364,8 +2364,8 @@ class BoltTest(dbusmock.DBusTestCase):
                         ]))
 
         tree.connect_tree(self.testbed)
-        self.store_device(dock)
-        self.store_device(ssd2)
+        self.store_put_device(dock)
+        self.store_put_device(ssd2)
 
         self.daemon_start()
         self.polkitd_start()
@@ -2536,8 +2536,8 @@ class BoltTest(dbusmock.DBusTestCase):
         host = TbHost([dock], gen=0)
         tree = TbDomain(security=TbDomain.SECURITY_SECURE, host=host)
 
-        self.store_device(host)
-        self.store_device(dock)
+        self.store_put_device(host)
+        self.store_put_device(dock)
         self.daemon_start()
 
         self.assertEqual(self.client.generation, 0)
