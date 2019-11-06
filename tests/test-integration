@@ -1369,6 +1369,27 @@ class BoltTest(dbusmock.DBusTestCase):
         with open(path, 'w') as f:
             f.write(key)
 
+    def store_get_device(self, uid):
+        path = os.path.join(self.dbpath, 'devices', uid)
+        df = configparser.ConfigParser()
+        df.read(path)
+
+        device = df['device']
+        name = device['name']
+        vendor = device['vendor']
+        generation = None
+        if 'generation' in device:
+            generation = int(device['generation'])
+
+        dtype = device['type']
+        if dtype == 'host':
+            dev = TbHost([], gen=generation)
+        elif dtype == 'peripheral':
+            dev = TbDevice(name, vendor=vendor, uid=uid, gen=generation)
+        else:
+            raise ValueError('Unknown device type')
+        return dev
+
     # the actual tests
     def test_basic(self):
         self.daemon_start()
