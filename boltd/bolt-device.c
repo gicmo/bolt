@@ -1258,8 +1258,11 @@ bolt_device_connected (BoltDevice         *dev,
 
   ok = bolt_sysfs_info_for_device (udev, TRUE, &info, &err);
   if (!ok)
-    bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("udev"),
-                   "failed to get device info");
+    {
+      bolt_warn_err (err, LOG_DEV (dev), LOG_TOPIC ("udev"),
+                     "failed to get device info");
+      g_clear_error (&err);
+    }
 
   status = bolt_status_from_info (&info);
   aflags = bolt_auth_flags_from_info (&info, domain, NULL);
