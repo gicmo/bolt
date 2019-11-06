@@ -279,8 +279,8 @@ class Recorder(object):
                 loop.quit()
 
         def got_timeout():
-            print('WARNING: timeout reached! Waiting list: ',
-                  str(lst), file=sys.stderr)
+            print('WARNING: timeout reached! Want: %s, Have: %s' %
+                  (str(lst), str(self.events)), file=sys.stderr)
             loop.quit()
 
         self.event += got_event
