@@ -296,6 +296,15 @@ class Recorder(object):
             return True
         return self.wait_for_events([t])
 
+    def wait_for_props(self, **kwargs):
+        events = []
+        for name, details in kwargs.items():
+            t = self.Event('property', name, details, None)
+            if self.have_event(t):
+                continue
+            events.append(t)
+        return self.wait_for_events(events)
+
 
 @Signal.enable
 class ProxyWrapper(object):
@@ -1443,9 +1452,7 @@ class BoltTest(dbusmock.DBusTestCase):
         # disable the authorization
         with client.record() as tape:
             client.auth_mode = 'disabled'
-            res = tape.wait_for_event('property',
-                                      'AuthMode',
-                                      'disabled')
+            res = tape.wait_for_props(AuthMode='disabled')
             self.assertTrue(res)
         self.assertEqual(client.auth_mode, 'disabled')
 
@@ -1477,9 +1484,7 @@ class BoltTest(dbusmock.DBusTestCase):
         # enable the authorization again now
         with client.record() as tape:
             client.auth_mode = 'enabled'
-            res = tape.wait_for_event('property',
-                                      'AuthMode',
-                                      'enabled')
+            res = tape.wait_for_props(AuthMode='enabled')
             self.assertTrue(res)
         self.assertEqual(client.auth_mode, 'enabled')
 
@@ -1487,9 +1492,7 @@ class BoltTest(dbusmock.DBusTestCase):
         for remote, uid in remotes:
             with remote.record() as tape:
                 client.enroll(uid, policy)
-                res = tape.wait_for_event('property',
-                                          'Stored',
-                                          True)
+                res = tape.wait_for_props(Stored=True)
                 self.assertTrue(res)
                 self.assertEqual(remote.policy, client.default_policy)
             now = int(time.time())
@@ -1514,7 +1517,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(self.client.security_level, 'unknown')
         with self.client.record() as tape:
             d, dom, host = make_domain(0, 'user')
-            tape.wait_for_event('property', 'SecurityLevel', 'user')
+            tape.wait_for_props(SecurityLevel='user')
             self.assertEqual(self.client.security_level, 'user')
         self.daemon_stop()
         self.remove_domain_host(dom, host)
@@ -1546,9 +1549,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
             with remote.record() as tape:
                 self.remove_domain_host(domain, host)
-                res = tape.wait_for_event('property',
-                                          'SysfsPath',
-                                          '')
+                res = tape.wait_for_props(SysfsPath='')
                 self.assertTrue(res)
 
         for d in range(4):
@@ -1557,9 +1558,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
             with remote.record() as tape:
                 name, domain, host = make_domain(d, 'secure')
-                res = tape.wait_for_event('property',
-                                          'SysfsPath',
-                                          domain)
+                res = tape.wait_for_props(SysfsPath=domain)
                 self.assertTrue(res)
 
         remotes = self.client.list_domains()
@@ -1583,7 +1582,7 @@ class BoltTest(dbusmock.DBusTestCase):
         with self.client.record() as tape:
             security = 'secure'
             dom, host = self.add_domain_host(0, security=security, uid=uid)
-            tape.wait_for_event('property', 'SecurityLevel', security)
+            tape.wait_for_props(SecurityLevel=security)
             self.assertEqual(self.client.security_level, security)
 
         self.daemon_stop()
@@ -1649,9 +1648,7 @@ class BoltTest(dbusmock.DBusTestCase):
         # remove all entries
         with domain.record() as tape:
             domain.bootacl = ['']*len(bootacl)
-            res = tape.wait_for_event('property',
-                                      'BootACL',
-                                      None)
+            res = tape.wait_for_props(BootACL=None)
             self.assertTrue(res)
             bootacl = domain.bootacl
             print('domain [%s] bootacl: %s' % (domain.uid, bootacl))
@@ -1667,9 +1664,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         with domain.record() as tape:
             domain.bootacl = bootacl_new
-            res = tape.wait_for_event('property',
-                                      'BootACL',
-                                      None)
+            res = tape.wait_for_props(BootACL=None)
             self.assertTrue(res)
             bootacl = domain.bootacl
             print('domain [%s] bootacl: %s' % (domain.uid, bootacl))
@@ -1832,7 +1827,7 @@ class BoltTest(dbusmock.DBusTestCase):
             tape = remote.record()
             remote.authorize()
             d.reload_auth()  # will emit the uevent, so the daemon can update
-            res = tape.wait_for_event('property', 'Status', 'authorized')
+            res = tape.wait_for_props(Status='authorized')
             self.assertTrue(res)
             self.assertDeviceEqual(d, remote)
             # make sure AuthorizeTime is correct
@@ -1857,13 +1852,9 @@ class BoltTest(dbusmock.DBusTestCase):
         remote = self.client.device_by_uid(d.unique_id)
         with remote.record() as tape:
             client.enroll(d.unique_id, 'manual')
-            res = tape.wait_for_event('property',
-                                      'Stored',
-                                      True)
+            res = tape.wait_for_props(Stored=True)
             d.disconnect(self.testbed)
-            res = tape.wait_for_event('property',
-                                      'Status',
-                                      'disconnected')
+            res = tape.wait_for_props(Status='disconnected')
             self.assertTrue(res)
             err = None
             with self.assertRaises(GLib.GError) as cm:
@@ -1910,7 +1901,7 @@ class BoltTest(dbusmock.DBusTestCase):
         tape = remote_ssd2.record()
         with remote_ssd2.record() as tape:
             if remote_ssd2.status != BoltDevice.AUTHORIZED:
-                res = tape.wait_for_event('property', 'Status', 'authorized')
+                res = tape.wait_for_props(Status='authorized')
                 self.assertTrue(res)
 
         self.assertEqual(remote_ssd2.status, BoltDevice.AUTHORIZED)
@@ -1945,11 +1936,11 @@ class BoltTest(dbusmock.DBusTestCase):
         tape_ssd1 = remote_ssd1.record()
         with remote_c1.record() as tape:
             cable1.authorize('1')
-            res = tape.wait_for_event('property', 'Status', 'authorized')
+            res = tape.wait_for_props(Status='authorized')
             self.assertTrue(res)
         self.assertEqual(remote_c1.status, BoltDevice.AUTHORIZED)
 
-        res = tape_ssd1.wait_for_event('property', 'Status', 'authorized')
+        res = tape_ssd1.wait_for_props(Status='authorized')
         events = tape_ssd1.close()
         self.assertTrue(Recorder.events_list_contains(events, 'property', 'Status', 'authorizing'))
         self.assertTrue(res)
@@ -1986,7 +1977,7 @@ class BoltTest(dbusmock.DBusTestCase):
         tape = remote_ssd2.record()
         with remote_ssd2.record() as tape:
             if remote_ssd2.status != BoltDevice.AUTHORIZED:
-                res = tape.wait_for_event('property', 'Status', 'authorized')
+                res = tape.wait_for_props(Status='authorized')
                 self.assertTrue(res)
 
         self.assertEqual(remote_ssd2.status, BoltDevice.AUTHORIZED)
@@ -2145,9 +2136,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
             with remote.record() as tape:
                 if remote.status != BoltDevice.AUTHORIZED:
-                    res = tape.wait_for_event('property',
-                                              'Stored',
-                                              True)
+                    res = tape.wait_for_props(Stored=True)
                     self.assertTrue(res)
 
             self.assertEqual(remote.status, BoltDevice.AUTHORIZED)
@@ -2194,9 +2183,7 @@ class BoltTest(dbusmock.DBusTestCase):
                 policy = BoltClient.POLICY_AUTO
                 with domain.record() as tape:
                     remote = client.enroll(d.unique_id, policy)
-                    res = tape.wait_for_event('property',
-                                              'BootACL',
-                                              None)
+                    res = tape.wait_for_props(BootACL=None)
                     self.assertTrue(res)
             else:
                 policy = BoltClient.POLICY_MANUAL
@@ -2262,9 +2249,7 @@ class BoltTest(dbusmock.DBusTestCase):
                     status = 'authorized'
                 else:
                     status = 'connected'
-                res = tape.wait_for_event('property',
-                                          'Status',
-                                          status)
+                res = tape.wait_for_props(Status=status)
                 local.reload_auth()  # will emit the uevent, so the daemon can update
                 self.assertTrue(res)
                 self.assertDeviceEqual(local, remote)
@@ -2299,9 +2284,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
             with remote.record() as tape:
                 client.enroll(uid, policy)
-                res = tape.wait_for_event('property',
-                                          'Stored',
-                                          True)
+                res = tape.wait_for_props(Stored=True)
                 self.assertTrue(res)
             self.assertEqual(remote.policy, client.default_policy)
             now = int(time.time())
@@ -2326,9 +2309,7 @@ class BoltTest(dbusmock.DBusTestCase):
         # disable the authorization globally
         with client.record() as tape:
             client.auth_mode = 'disabled'
-            res = tape.wait_for_event('property',
-                                      'AuthMode',
-                                      'disabled')
+            res = tape.wait_for_props(AuthMode='disabled')
             self.assertTrue(res)
         self.assertEqual(client.auth_mode, 'disabled')
 
@@ -2353,9 +2334,7 @@ class BoltTest(dbusmock.DBusTestCase):
         # enable the authorization again now
         with client.record() as tape:
             client.auth_mode = 'enabled'
-            res = tape.wait_for_event('property',
-                                      'AuthMode',
-                                      'enabled')
+            res = tape.wait_for_props(AuthMode='enabled')
             self.assertTrue(res)
         self.assertEqual(client.auth_mode, 'enabled')
 
@@ -2364,9 +2343,7 @@ class BoltTest(dbusmock.DBusTestCase):
         for remote, uid in remotes:
             with remote.record() as tape:
                 client.enroll(uid, policy)
-                res = tape.wait_for_event('property',
-                                          'Stored',
-                                          True)
+                res = tape.wait_for_props(Stored=True)
                 self.assertTrue(res)
                 self.assertEqual(remote.policy, client.POLICY_IOMMU)
             now = int(time.time())
@@ -2408,19 +2385,19 @@ class BoltTest(dbusmock.DBusTestCase):
 
         with remote_dock.record() as tape:
             remote_dock.authorize()
-            res = tape.wait_for_event('property', 'Key', 'new')
+            res = tape.wait_for_props(Key='new')
             self.assertTrue(res)
         self.assertEqual(remote_dock.key, BoltDevice.KEY_NEW)
 
         with remote_ssd1.record() as tape:
             remote_ssd1.authorize()
-            res = tape.wait_for_event('property', 'Status', 'authorized')
+            res = tape.wait_for_props(Status='authorized')
             self.assertTrue(res)
         self.assertEqual(remote_ssd1.key, BoltDevice.KEY_MISSING)
 
         with remote_ssd2.record() as tape:
             remote_ssd2.authorize()
-            res = tape.wait_for_event('property', 'Status', 'authorized')
+            res = tape.wait_for_props(Status='authorized')
             self.assertTrue(res)
         self.assertEqual(remote_ssd2.key, BoltDevice.KEY_MISSING)
 
@@ -2474,9 +2451,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertIn(remote.uid, domain.bootacl)
             with domain.record() as tape:
                 client.forget(remote.uid)
-                res = tape.wait_for_event('property',
-                                          'BootACL',
-                                          None)
+                res = tape.wait_for_props(BootACL=None)
                 self.assertTrue(res)
             self.assertNotIn(remote.uid, domain.bootacl)
 
@@ -2525,9 +2500,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         with remote.record() as tape:
             remote.label = val
-            res = tape.wait_for_event('property',
-                                      'Label',
-                                      val)
+            res = tape.wait_for_props(Label=val)
             self.assertTrue(res)
         self.assertEqual(remote.label, val)
 
@@ -2575,9 +2548,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
             tree.connect_tree(self.testbed)
 
-            res = tape.wait_for_event('property',
-                                      'Generation',
-                                      4)
+            res = tape.wait_for_props(Generation=4)
             self.assertTrue(res)
 
         self.daemon_stop()
@@ -2734,9 +2705,7 @@ class BoltTest(dbusmock.DBusTestCase):
         with self.client.record() as tape:
             _, _, res = self.boltctl('config', 'auth-mode', 'disabled')
             self.assertEqual(res, 0)
-            res = tape.wait_for_event('property',
-                                      'AuthMode',
-                                      'disabled')
+            res = tape.wait_for_props(AuthMode='disabled')
             self.assertTrue(res)
         self.assertEqual(self.client.auth_mode, 'disabled')
 
@@ -2746,9 +2715,7 @@ class BoltTest(dbusmock.DBusTestCase):
         with remote.record() as tape:
             _, _, res = self.boltctl('config', 'device.label', target, 'Nobody')
             self.assertEqual(res, 0)
-            res = tape.wait_for_event('property',
-                                      'Label',
-                                      'Nobody')
+            res = tape.wait_for_props(Label='Nobody')
             self.assertTrue(res)
         self.assertEqual(remote.label, 'Nobody')
 
