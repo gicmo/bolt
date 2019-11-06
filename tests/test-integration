@@ -1350,6 +1350,9 @@ class BoltTest(dbusmock.DBusTestCase):
             'policy': policy
         }
 
+        if dev.generation:
+            df['device']['generation'] = dev.generation
+
         path = os.path.join(self.dbpath, 'devices', uid)
         with open(path, 'w') as f:
             df.write(f)
