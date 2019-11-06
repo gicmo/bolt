@@ -2580,6 +2580,15 @@ class BoltTest(dbusmock.DBusTestCase):
                                       4)
             self.assertTrue(res)
 
+        self.daemon_stop()
+
+        # ensure that the updates are written to the store
+        stored = self.store_get_device(host.unique_id)
+        self.assertEqual(stored.generation, 4)
+
+        stored = self.store_get_device(dock.unique_id)
+        self.assertEqual(stored.generation, 3)
+
     def test_sdnotify(self):
         c, host = self.add_domain_host(security='secure', iommu='1')
 
