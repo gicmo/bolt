@@ -861,7 +861,7 @@ class TreeChecker:
         self.tree = tree
         self.remote_devices = {}
         devices = client.list_devices()
-        [self._register_device(d) for d in devices]
+        _ = [self._register_device(d) for d in devices]
         client.device_added += self._on_device_added
         client.device_removed += self._on_device_removed
         tree.device_connected += self._on_udev_connected
