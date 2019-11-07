@@ -2429,7 +2429,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         for remote in devices:
             with self.assertRaises(GLib.GError) as cm:
-                client.forget(d.unique_id)
+                client.forget(remote.uid)
             err = cm.exception
             self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
             self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
