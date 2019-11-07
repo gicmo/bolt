@@ -283,6 +283,11 @@ class Recorder(object):
                   (str(lst), str(self.events)), file=sys.stderr)
             loop.quit()
 
+        # check if we did receive the events already
+        lst = list(filter(lambda x: not self.have_event(x), lst))
+        if not lst:
+            return True
+
         self.event += got_event
         timeout = timeout or get_timeout()
         GLib.timeout_add(timeout*1000, got_timeout)
@@ -291,18 +296,11 @@ class Recorder(object):
         return len(lst) == 0
 
     def wait_for_event(self, what, name, details=None):
-        t = self.Event(what, name, details, None)
-        if self.have_event(t):
-            return True
-        return self.wait_for_events([t])
+        event = self.Event(what, name, details, None)
+        return self.wait_for_events([event])
 
     def wait_for_props(self, **kwargs):
-        events = []
-        for name, details in kwargs.items():
-            t = self.Event('property', name, details, None)
-            if self.have_event(t):
-                continue
-            events.append(t)
+        events = [self.Event('property', name, details, None) for name, details in kwargs.items()]
         return self.wait_for_events(events)
 
 
