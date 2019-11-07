@@ -193,14 +193,12 @@ class Signal:
         return klass
 
 
-@Signal.enable
 class Recorder:
     Event = namedtuple('Event', ['what', 'name', 'details', 'time'])
 
-    signals = ['event']
-
     def __init__(self, target):
         self.recording = True
+        self.event = Signal('event')
         self.events = []
         self.target = target
         self.target.g_properties_changed += self._on_props_changed
