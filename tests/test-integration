@@ -139,7 +139,7 @@ class Signal:
         if 'filter' in self._bridge:
             res, args, kwargs = self._bridge['filter'](args, kwargs)
             if not res:
-                return
+                return False
         return self.emit(*args, **kwargs)
 
     def __call__(self, *args, **kwargs):
@@ -160,7 +160,7 @@ class Signal:
 
         def install(l):
             if l is None:
-                return
+                return l
             if l in methods:
                 print('WARNING: signal "%s" will overwrite method' % l, file=sys.stderr)
 
@@ -208,7 +208,7 @@ class Recorder:
 
     def close(self):
         if not self.recording:
-            return
+            return None
         self.target.g_properties_changed -= self._on_props_changed
         self.target.g_signal -= self._on_signal
         self.recording = False
@@ -630,6 +630,7 @@ class Device:
             found = c.first(predicate)
             if found:
                 return found
+        return None
 
     @property
     def parent(self):
@@ -725,6 +726,7 @@ class TbDevice(Device):
             return BoltDevice.CONNECTED
         elif self.authorized in [1, 2]:
             return BoltDevice.AUTHORIZED
+        return BoltDevice.UNKNOWN
 
     @property
     def bolt_authflags(self):
