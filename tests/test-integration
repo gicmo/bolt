@@ -676,8 +676,8 @@ class Device:
         bed.uevent(self.syspath, "remove")
         bed.remove_device(self.syspath)
         self.authorized = 0
-        if hasattr(self, 'key') and self.key is not None:
-            self.key = "\n"
+        if getattr(self, 'key', None) is not None:
+            setattr(self, 'key', "\n")
         self.root.device_disconnected(self)
         self.syspath = None
         self.testbed = None
