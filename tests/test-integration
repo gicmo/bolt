@@ -230,25 +230,25 @@ class Recorder:
     def _on_props_changed(self, props):
         now = time.time()
         for k, v in props.items():
-            e = self.Event('property', k, v, now)
-            self._add_event(e)
+            event = self.Event('property', k, v, now)
+            self._add_event(event)
 
     def _on_signal(self, _proxy, _sender, signal, _params):
         now = time.time()
-        e = self.Event('signal', signal, None, now)
-        self._add_event(e)
+        event = self.Event('signal', signal, None, now)
+        self._add_event(event)
 
     def _add_event(self, event):
         self.events.append(event)
         self.event.emit(event)
 
     @staticmethod
-    def event_match(e, target):
-        if e.what != target.what or e.name != target.name:
+    def event_match(event, target):
+        if event.what != target.what or event.name != target.name:
             return False
         if target.details is None:
             return True
-        return e.details == target.details
+        return event.details == target.details
 
     @staticmethod
     def events_list_has_event(events, target):
@@ -259,18 +259,18 @@ class Recorder:
         target = Recorder.Event(what, name, details, None)
         return list(filter(lambda x: Recorder.event_match(x, target), events))
 
-    def events_filter(self, e):
-        return self.events_list_has_event(self.events, e)
+    def events_filter(self, event):
+        return self.events_list_has_event(self.events, event)
 
-    def have_event(self, e):
-        return len(self.events_filter(e)) > 0
+    def have_event(self, event):
+        return len(self.events_filter(event)) > 0
 
     def wait_for_events(self, lst, timeout=None):
         loop = GLib.MainLoop()
 
         def got_event(event):
-            for idx, e in enumerate(lst):
-                if self.event_match(event, e):
+            for idx, current in enumerate(lst):
+                if self.event_match(event, current):
                     del lst[idx]
                     break
             if not lst:
