@@ -702,7 +702,8 @@ class TbDevice(Device):
         self.key = key
         self.generation = gen
 
-    def _make_id(self, name):
+    @staticmethod
+    def _make_id(name):
         return '0x%X' % binascii.crc32(name.encode('utf-8'))
 
     @property
@@ -1228,7 +1229,8 @@ class BoltTest(dbusmock.DBusTestCase):
         return stdout, stderr, ret
 
     # mock tree stuff
-    def default_mock_tree(self, acl=None):
+    @staticmethod
+    def default_mock_tree(acl=None):
         # default mock tree
         mt = TbDomain(host=TbHost([
             TbDevice('Cable1'),
@@ -1237,7 +1239,8 @@ class BoltTest(dbusmock.DBusTestCase):
         ]), acl=acl)
         return mt
 
-    def simple_mock_tree(self):
+    @staticmethod
+    def simple_mock_tree():
         mt = TbDomain(host=TbHost([
             TbDevice('Dock')
         ]))
