@@ -2728,7 +2728,7 @@ def list_tests():
         yield machine, human
 
 
-if __name__ == '__main__':
+def main():
     if len(sys.argv) == 2 and sys.argv[1] == "list-tests":
         for machine, human in list_tests():
             print("%s %s" % (machine, human), end="\n")
@@ -2739,3 +2739,7 @@ if __name__ == '__main__':
         os.execvp(wrapped[0], wrapped)
 
     unittest.main(verbosity=2)
+
+
+if __name__ == '__main__':
+    main()
