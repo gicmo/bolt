@@ -88,7 +88,7 @@ def get_timeout(topic='default'):
     return lut[topic]
 
 
-class Signal(object):
+class Signal:
     def __init__(self, name):
         self.name = name
         self.callbacks = set()
@@ -203,7 +203,7 @@ class Signal(object):
 
 
 @Signal.enable
-class Recorder(object):
+class Recorder:
     Event = namedtuple('Event', ['what', 'name', 'details', 'time'])
 
     signals = ['event']
@@ -305,7 +305,7 @@ class Recorder(object):
 
 
 @Signal.enable
-class ProxyWrapper(object):
+class ProxyWrapper:
     signals = ['g_properties_changed', 'g_signal']
 
     def __init__(self, bus, iname, path):
@@ -599,7 +599,7 @@ class BoltClient(ProxyWrapper):
 
 # Mock Device Tree
 @Signal.enable
-class Device(object):
+class Device:
     subsystem = "unknown"
     udev_attrs = []
     udev_props = []
@@ -862,7 +862,7 @@ class TbDomain(Device):
         return self.first(finder)
 
 
-class TreeChecker(object):
+class TreeChecker:
 
     def __init__(self, client, tree):
         self.client = client
@@ -950,7 +950,7 @@ class TreeChecker(object):
         self.tree.device_disconnected.disconnect_all()
 
 
-class Parameterize(object):
+class Parameterize:
     # class is used for namespacing
 
     @staticmethod
