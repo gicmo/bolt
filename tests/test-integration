@@ -1689,6 +1689,7 @@ class BoltTest(dbusmock.DBusTestCase):
         # prepare the basic setup
         _, host = self.add_domain_host()
 
+        # pylint: disable=bad-whitespace
         devs = [
             # name              vendor           label                         notes
             ['GNOME.org Cable', 'GNOME.org',     'GNOME.org Cable'     ''],  # duplicated vendor name
@@ -1698,6 +1699,7 @@ class BoltTest(dbusmock.DBusTestCase):
             ['HP TB3 Dock',     'HP Inc.',       'HP TB3 Dock'         ''],  # cleanup company names
             ['TB Gadget',       'Apple, Inc.',   'Apple TB Gadget'     ''],  # cleanup company names
         ]
+        # pylint: enable=bad-whitespace
 
         devs = [{'name': d[0], 'vendor': d[1], 'label': d[2], 'id': i+1} for i, d in enumerate(devs)]
 
@@ -2056,11 +2058,13 @@ class BoltTest(dbusmock.DBusTestCase):
         ]
 
         if not iommu:
+            # pylint: disable=bad-whitespace
             devs += [
                 # check we are not auto-importing un-authorized devices
                 {'authorized': 0, 'key': None, 'boot': 0, 'policy': None},
                 {'authorized': 0, 'key': '',   'boot': 0, 'policy': None},
             ]
+            # pylint: enable=bad-whitespace
 
         self.device_import_test('user', devs, iommu)
 
@@ -2069,6 +2073,7 @@ class BoltTest(dbusmock.DBusTestCase):
         # like test_device_auto_import but in SECURE mode
         key = self.key
 
+        # pylint: disable=bad-whitespace
         devs = [
             # no boot flag, not importing
             {'authorized': 1, 'key': None, 'boot': 0, 'policy': None},
@@ -2086,6 +2091,7 @@ class BoltTest(dbusmock.DBusTestCase):
                 {'authorized': 0, 'key': None, 'boot': 0, 'policy': None},
                 {'authorized': 0, 'key': '',   'boot': 0, 'policy': None},
             ]
+         # pylint: enable=bad-whitespace
 
         self.device_import_test('secure', devs, iommu)
 
