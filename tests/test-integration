@@ -1617,24 +1617,24 @@ class BoltTest(dbusmock.DBusTestCase):
         # try to set the bootacl, without PolKit allowing it
         with self.assertRaises(GLib.GError) as cm:
             domain.bootacl = ['']
-            err = cm.exception
-            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
-            self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
+        err = cm.exception
+        self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+        self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
         self.polkitd.SetAllowed(['org.freedesktop.bolt.manage'])
 
         # try to set an invalid bootacl
         with self.assertRaises(GLib.GError) as cm:
             domain.bootacl = ['']
-            err = cm.exception
-            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
-            self.assertEqual(err.code, int(Gio.IOError.INVALID_ARGUMENT))
+        err = cm.exception
+        self.assertEqual(err.domain, GLib.quark_to_string(Gio.io_error_quark()))
+        self.assertEqual(err.code, int(Gio.IOErrorEnum.INVALID_ARGUMENT))
 
         # try to set an invalid bootacl, 2nd time
         with self.assertRaises(GLib.GError) as cm:
             domain.bootacl = None
-            err = cm.exception
-            self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
-            self.assertEqual(err.code, int(Gio.IOError.INVALID_ARGUMENT))
+        err = cm.exception
+        self.assertEqual(err.domain, GLib.quark_to_string(Gio.io_error_quark()))
+        self.assertEqual(err.code, int(Gio.IOErrorEnum.INVALID_ARGUMENT))
 
         # remove all entries
         with domain.record() as tape:
