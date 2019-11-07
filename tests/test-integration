@@ -329,8 +329,7 @@ class ProxyWrapper:
             value = self._proxy.get_cached_property(name)
             if value is not None:
                 return value.unpack()
-            else:
-                return value
+            return value
 
         return getattr(self._proxy, name)
 
@@ -505,7 +504,7 @@ class BoltClient(ProxyWrapper):
         if signal == 'DeviceAdded':
             self.device_added.emit(BoltDevice(bus, params[0]))
             return True
-        elif signal == 'DeviceRemoved':
+        if signal == 'DeviceRemoved':
             self.device_removed.emit(params[0])
             return True
         return False
@@ -581,9 +580,9 @@ class BoltClient(ProxyWrapper):
             oid = object_id.replace('-', '_')
         if base and oid:
             return os.path.join('/', base, oid)
-        elif base:
+        if base:
             return os.path.join('/', base)
-        elif oid:
+        if oid:
             return os.path.join('/', oid)
         return '/'
 
@@ -722,9 +721,9 @@ class TbDevice(Device):
     def bolt_status(self):
         if self.syspath is None:
             return BoltDevice.DISCONNECTED
-        elif self.authorized == 0:
+        if self.authorized == 0:
             return BoltDevice.CONNECTED
-        elif self.authorized in [1, 2]:
+        if self.authorized in [1, 2]:
             return BoltDevice.AUTHORIZED
         return BoltDevice.UNKNOWN
 
