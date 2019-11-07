@@ -187,7 +187,7 @@ class Signal:
             def getter(self):
                 return get_signal(self)
 
-            def setter(self, value):
+            def setter(self, _value):
                 return get_signal(self)
 
             p = property(getter, setter)
@@ -233,7 +233,7 @@ class Recorder:
             e = self.Event('property', k, v, now)
             self._add_event(e)
 
-    def _on_signal(self, proxy, sender, signal, params):
+    def _on_signal(self, _proxy, _sender, signal, _params):
         now = time.time()
         e = self.Event('signal', signal, None, now)
         self._add_event(e)
@@ -315,7 +315,7 @@ class ProxyWrapper:
                                              iname,
                                              None)
 
-        def props_changed(args, kwargs):
+        def props_changed(args, _kwargs):
             return True, [args[1].unpack()], {}
 
         self.g_properties_changed.bridge(self._proxy,
@@ -507,7 +507,7 @@ class BoltClient(ProxyWrapper):
                                          DBUS_PATH)
         self._proxy.connect('g-signal', self._on_dbus_signal)
 
-    def _on_dbus_signal(self, proxy, sender, signal, params):
+    def _on_dbus_signal(self, _proxy, _sender, signal, params):
         bus = self._proxy.get_connection()
         if signal == 'DeviceAdded':
             self.device_added.emit(BoltDevice(bus, params[0]))
@@ -991,7 +991,7 @@ class SdNotify:
     def read_msg(self):
         rflags = socket.MSG_DONTWAIT | socket.MSG_CMSG_CLOEXEC | socket.MSG_TRUNC
         try:
-            msg, ac, flags, addr = self.sock.recvmsg(4096, 0, rflags)
+            msg, _ac, _flags, _addr = self.sock.recvmsg(4096, 0, rflags)
         except OSError as e:
             if e.errno != errno.EINTR and e.errno != errno.EAGAIN:
                 raise e
@@ -1044,7 +1044,7 @@ class SdNotify:
 @Parameterize.enable
 class BoltTest(dbusmock.DBusTestCase):
     @staticmethod
-    def path_from_service_file(sf):
+    def path_from_service_file(_sf):
         with open(SERVICE_FILE) as f:
                 for line in f:
                     if not line.startswith('Exec='):
@@ -1432,7 +1432,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.daemon_stop()
 
     def test_auth_mode(self):
-        dc, host = self.add_domain_host(security='secure')
+        _, host = self.add_domain_host(security='secure')
 
         self.daemon_start()
         self.polkitd_start()
@@ -1452,8 +1452,8 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertTrue(res)
         self.assertEqual(client.auth_mode, 'disabled')
 
-        d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=0, key='', boot='0')
-        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=0, key=None, boot='0')
+        _, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=0, key='', boot='0')
+        _, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=0, key=None, boot='0')
 
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 3)
@@ -1577,7 +1577,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         with self.client.record() as tape:
             security = 'secure'
-            dom, host = self.add_domain_host(0, security=security, uid=uid)
+            self.add_domain_host(0, security=security, uid=uid)
             tape.wait_for_props(SecurityLevel=security)
             self.assertEqual(self.client.security_level, security)
 
@@ -1687,7 +1687,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def test_basic_device_name(self):
         # prepare the basic setup
-        dc, host = self.add_domain_host()
+        _, host = self.add_domain_host()
 
         devs = [
             # name              vendor           label                         notes
@@ -1701,7 +1701,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
         devs = [{'name': d[0], 'vendor': d[1], 'label': d[2], 'id': i+1} for i, d in enumerate(devs)]
 
-        for i, d in enumerate(devs):
+        for d in devs:
             did, name, vendor = d['id'], d['name'], d['vendor']
             path, uid = self.add_device(host, did, name, vendor)
             d['path'] = path
@@ -1989,7 +1989,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.daemon_stop()
 
     def device_import_test(self, security, devs, iommu):
-        dc, host = self.add_domain_host(security=security, iommu=iommu)
+        _, host = self.add_domain_host(security=security, iommu=iommu)
 
         for i, d in enumerate(devs):
             did = i + 1
@@ -2253,9 +2253,9 @@ class BoltTest(dbusmock.DBusTestCase):
     def test_enroll_authorized(self):
         key = self.key
 
-        dc, host = self.add_domain_host()
-        d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=2, key=key, boot='0')
-        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=1, key=None, boot='0')
+        _, host = self.add_domain_host()
+        _, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=2, key=key, boot='0')
+        _, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=1, key=None, boot='0')
 
         self.daemon_start()
         self.polkitd_start()
@@ -2292,7 +2292,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.daemon_stop()
 
     def test_enroll_iommu(self):
-        dc, host = self.add_domain_host(security='secure', iommu='1')
+        _, host = self.add_domain_host(security='secure', iommu='1')
 
         self.daemon_start()
         self.polkitd_start()
@@ -2309,8 +2309,8 @@ class BoltTest(dbusmock.DBusTestCase):
             self.assertTrue(res)
         self.assertEqual(client.auth_mode, 'disabled')
 
-        d1, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=0, key='', boot='0')
-        d2, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=0, key=None, boot='0')
+        _, d1_uid = self.add_device(host, 1, "Dock", "GNOME.org", authorized=0, key='', boot='0')
+        _, d2_uid = self.add_device(host, 2, "Dock2", "GNOME.org", authorized=0, key=None, boot='0')
 
         devices = self.client.list_devices()
         self.assertEqual(len(devices), 3)
@@ -2557,7 +2557,7 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(stored.generation, 3)
 
     def test_sdnotify(self):
-        c, host = self.add_domain_host(security='secure', iommu='1')
+        self.add_domain_host(security='secure', iommu='1')
 
         self.daemon_start(sdnotify=True)
         self.polkitd_start()
