@@ -20,8 +20,6 @@
 # Authors:
 #       Christian J. Kellner <christian@kellner.me>
 
-from __future__ import print_function
-
 import binascii
 import errno
 import gc
