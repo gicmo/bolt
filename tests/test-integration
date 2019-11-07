@@ -90,27 +90,20 @@ class Signal:
     def __init__(self, name):
         self.name = name
         self.callbacks = set()
-        self.notify = None
         self._bridge = None
 
     def connect(self, callback):
         self.callbacks.add(callback)
-        if self.notify is not None:
-            self.notify(self, 'connect', len(self.callbacks))
         if len(self.callbacks) == 1:
             self._bridge_build()
 
     def disconnect(self, callback):
         self.callbacks.remove(callback)
-        if self.notify is not None:
-            self.notify(self, 'disconnect', len(self.callbacks))
         if not self.callbacks:
             self._bridge_destory()
 
     def disconnect_all(self):
         self.callbacks = set()
-        if self.notify is not None:
-            self.notify(self, 'disconnect', 0)
         self._bridge_destory()
 
     def emit(self, *args, **kwargs):
