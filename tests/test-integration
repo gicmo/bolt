@@ -106,7 +106,7 @@ class Signal:
         self.callbacks.remove(callback)
         if self.notify is not None:
             self.notify(self, 'disconnect', len(self.callbacks))
-        if len(self.callbacks) == 0:
+        if not self.callbacks:
             self._bridge_destory()
 
     def disconnect_all(self):
@@ -275,7 +275,7 @@ class Recorder:
                 if self.event_match(event, e):
                     del lst[idx]
                     break
-            if len(lst) == 0:
+            if not lst:
                 loop.quit()
 
         def got_timeout():
@@ -431,7 +431,7 @@ class BoltDevice(ProxyWrapper):
     @property
     def label(self):
         res = getattr(self, 'Label')
-        if res is not None and len(res) < 1:
+        if not res:
             return None
         return res
 
@@ -476,7 +476,7 @@ class BoltDomain(ProxyWrapper):
     @property
     def bootacl(self):
         res = getattr(self, 'BootACL')
-        if res is not None and len(res) < 1:
+        if not res:
             return None
         return res
 
@@ -522,7 +522,7 @@ class BoltClient(ProxyWrapper):
     @property
     def auth_mode(self):
         res = getattr(self, 'AuthMode')
-        if res is not None and len(res) < 1:
+        if not res:
             return None
         return res
 
@@ -829,7 +829,7 @@ class TbDomain(Device):
 
     @property
     def host(self):
-        if len(self.children) < 1:
+        if not self.children:
             return None
         return self.children[0]
 
