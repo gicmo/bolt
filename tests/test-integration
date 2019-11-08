@@ -221,9 +221,9 @@ class Recorder:
             event = self.Event('property', k, v, now)
             self._add_event(event)
 
-    def _on_signal(self, _proxy, _sender, signal, _params):
+    def _on_signal(self, _proxy, _sender, signal, params):
         now = time.time()
-        event = self.Event('signal', signal, None, now)
+        event = self.Event('signal', signal, params, now)
         self._add_event(event)
 
     def _add_event(self, event):
