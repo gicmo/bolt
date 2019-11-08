@@ -26,3 +26,7 @@ fi
 if [[ -x "$(command -v lcov)" ]]; then
     scripts/uncrustify.sh --check
 fi
+
+if [[ -x $(command -v pylint) ]]; then
+    pylint tests/test-integration
+fi
