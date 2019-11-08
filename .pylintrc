@@ -1,0 +1,3 @@
+[MASTER]
+disable=missing-docstring,invalid-name,duplicate-code,superfluous-parens,too-many-locals,attribute-defined-outside-init,too-many-arguments
+max-line-length=120
