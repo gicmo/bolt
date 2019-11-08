@@ -52,12 +52,6 @@ except ImportError as e:
     sys.stderr.write('Skipping integration test due to missing depdendencies: %s\n' % str(e))
     sys.exit(1)
 
-
-try:
-    from subprocess import DEVNULL
-except ImportError:
-    DEVNULL = open(os.devnull, 'wb')
-
 DBUS_NAME = 'org.freedesktop.bolt'
 DBUS_PATH = '/org/freedesktop/bolt'
 DBUS_IFACE_PREFIX = 'org.freedesktop.bolt1.'
@@ -1182,7 +1176,7 @@ class BoltTest(dbusmock.DBusTestCase):
 
     def polkitd_start(self):
         self._polkitd, self._polkitd_obj = self.spawn_server_template(
-            'polkitd', {}, stdout=DEVNULL)
+            'polkitd', {}, stdout=subprocess.DEVNULL)
         self.polkitd = dbus.Interface(self._polkitd_obj, dbusmock.MOCK_IFACE)
 
     def polkitd_stop(self):
