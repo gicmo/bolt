@@ -19,6 +19,9 @@
 # License along with this library. If not, see <http://www.gnu.org/licenses/>.
 # Authors:
 #       Christian J. Kellner <christian@kellner.me>
+#
+# pylint: disable=too-many-lines, too-many-statements, too-many-public-methods
+# pylint: disable=too-many-instance-attributes
 
 import binascii
 import errno
