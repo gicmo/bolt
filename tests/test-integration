@@ -1389,6 +1389,10 @@ class BoltTest(dbusmock.DBusTestCase):
 
     # the actual tests
     def test_basic(self):
+        def make_events(name, devices):
+            paths = [GLib.Variant("(o)", (dev.bus_path, )) for dev in devices]
+            return [Recorder.Event('signal', name, path, None) for path in paths]
+
         self.daemon_start()
         version = self.client.version
         assert version is not None
@@ -1397,11 +1401,15 @@ class BoltTest(dbusmock.DBusTestCase):
         policy = self.client.default_policy
         self.assertIn(policy, [self.client.POLICY_AUTO,
                                self.client.POLICY_MANUAL])
-        # connect all device
+
+        # connect all device and make sure we get the proper events
         tree = self.default_mock_tree()
-        chk = TreeChecker(self.client, tree)
-        tree.connect_tree(self.testbed)
-        chk.sync()  # check for the signals
+
+        with self.client.record() as tape:
+            events = make_events('DeviceAdded', tree.devices)
+            tree.connect_tree(self.testbed)
+            res = tape.wait_for_events(events)
+            self.assertTrue(res)
 
         devices = self.client.list_devices()
         self.assertEqual(len(devices), len(tree.devices))
@@ -1409,10 +1417,12 @@ class BoltTest(dbusmock.DBusTestCase):
             local = tree.find(False, unique_id=remote.uid)
             self.assertDeviceEqual(local, remote)
 
-        # disconnect all devices again
-        tree.disconnect(self.testbed)
-        chk.sync()  # check for the signals
-        chk.close()
+        # disconnect all devices again (don't check the host, i.e. peripherals only)
+        with self.client.record() as tape:
+            events = make_events('DeviceRemoved', tree.peripherals)
+            tree.disconnect(self.testbed)
+            res = tape.wait_for_events(events)
+            self.assertTrue(res)
 
         devices = self.client.list_peripherals()
         self.assertEqual(len(devices), 0)
