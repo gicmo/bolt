@@ -1014,7 +1014,7 @@ manager_register_device (BoltManager *mgr,
                            G_CALLBACK (handle_device_status_changed),
                            mgr, 0);
 
-  if (bolt_device_get_device_type (dev) == BOLT_DEVICE_HOST)
+  if (bolt_device_is_host (dev))
     {
       guint generation = bolt_device_get_generation (dev);
       manager_maybe_set_generation (mgr, generation);
@@ -1327,7 +1327,7 @@ manager_maybe_import (BoltManager *mgr,
   g_return_if_fail (!bolt_device_get_stored (dev));
   g_return_if_fail (bolt_device_is_authorized (dev));
 
-  if (bolt_device_get_device_type (dev) == BOLT_DEVICE_HOST)
+  if (bolt_device_is_host (dev))
     {
       /* Store the host device, which is always authorized */
       manager_do_import_device (mgr, dev, BOLT_POLICY_MANUAL);
@@ -2029,7 +2029,7 @@ handle_device_generation_changed (BoltDevice  *dev,
   bolt_debug (LOG_DEV (dev), LOG_TOPIC ("generation"),
               "updated to: %u", gen);
 
-  if (bolt_device_get_device_type (dev) != BOLT_DEVICE_HOST)
+  if (!bolt_device_is_host (dev))
     return;
 
   manager_maybe_set_generation (mgr, gen);
