@@ -1537,6 +1537,14 @@ bolt_device_get_device_type (BoltDevice *dev)
   return dev->type;
 }
 
+gboolean
+bolt_device_is_host (BoltDevice *dev)
+{
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), BOLT_DEVICE_UNKNOWN_TYPE);
+
+  return dev->type == BOLT_DEVICE_HOST;
+}
+
 const char *
 bolt_device_get_label (BoltDevice *dev)
 {
