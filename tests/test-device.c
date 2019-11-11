@@ -44,6 +44,7 @@ test_device_basic (TestDevice *tt, gconstpointer user_data)
   g_autoptr(BoltKey) key = NULL;
   g_autoptr(GError) err = NULL;
   char uid[] = "fbc83890-e9bf-45e5-a777-b3728490989c";
+  BoltDeviceType devtype = BOLT_DEVICE_PERIPHERAL;
   BoltKeyState keystate;
   BoltSecurity sl;
   guint gen;
@@ -53,6 +54,7 @@ test_device_basic (TestDevice *tt, gconstpointer user_data)
                       "uid", uid,
                       "name", "Laptop",
                       "vendor", "GNOME.org",
+                      "type", BOLT_DEVICE_HOST,
                       "status", BOLT_STATUS_DISCONNECTED,
                       "generation", 3,
                       NULL);
@@ -64,6 +66,7 @@ test_device_basic (TestDevice *tt, gconstpointer user_data)
                 "domain", &dom,
                 "security", &sl,
                 "generation", &gen,
+                "type", &devtype,
                 NULL);
 
   g_assert_null (store);
@@ -72,6 +75,8 @@ test_device_basic (TestDevice *tt, gconstpointer user_data)
   g_assert_cmpint (sl, ==, BOLT_SECURITY_UNKNOWN);
   g_assert_cmpint (gen, ==, 3);
   g_assert_cmpint (gen, ==, bolt_device_get_generation (dev));
+  g_assert_cmpint (devtype, ==, BOLT_DEVICE_HOST);
+  g_assert_true (bolt_device_is_host (dev));
 
   keystate = bolt_device_get_keystate (dev);
   g_assert_cmpint (keystate, ==, BOLT_KEY_MISSING);
