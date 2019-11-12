@@ -384,7 +384,7 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
-    <property name="Policy" type="s" access="read">
+    <property name="Policy" type="s" access="readwrite">
       <doc:doc><doc:description><doc:para>
         The authorization policy of the device.
       </doc:para></doc:description></doc:doc>

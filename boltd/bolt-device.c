@@ -49,6 +49,11 @@ static gboolean handle_set_label (BoltExported *obj,
                                   const GValue *value,
                                   GError      **error);
 
+static gboolean handle_set_policy (BoltExported *obj,
+                                   const char   *name,
+                                   const GValue *value,
+                                   GError      **error);
+
 /* dbus method calls */
 static GVariant *  handle_authorize (BoltExported          *object,
                                      GVariant              *params,
@@ -542,6 +547,10 @@ bolt_device_class_init (BoltDeviceClass *klass)
                                        props[PROP_LABEL],
                                        handle_set_label);
 
+  bolt_exported_class_property_setter (exported_class,
+                                       props[PROP_POLICY],
+                                       handle_set_policy);
+
   bolt_exported_class_export_method (exported_class,
                                      "Authorize",
                                      handle_authorize);
@@ -988,6 +997,45 @@ handle_set_label (BoltExported *obj,
 
       nick = dev->label;
       dev->label = g_steal_pointer (&old);
+    }
+
+  return ok;
+}
+
+static gboolean
+handle_set_policy (BoltExported *obj,
+                   const char   *name,
+                   const GValue *value,
+                   GError      **error)
+{
+  BoltDevice *dev = BOLT_DEVICE (obj);
+  BoltPolicy before = dev->policy;
+  BoltPolicy policy = g_value_get_enum (value);
+  gboolean ok;
+
+  if (policy == BOLT_POLICY_UNKNOWN ||
+      policy == BOLT_POLICY_DEFAULT)
+    {
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "invalid policy (%d)", policy);
+      return FALSE;
+    }
+  else if (dev->store == NULL)
+    {
+      g_set_error_literal (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                           "device is not stored");
+      return FALSE;
+    }
+
+  if (policy == dev->policy)
+    return TRUE;
+
+  ok = bolt_store_put_device (dev->store, dev, policy, NULL, error);
+
+  if (!ok)
+    {
+      bolt_warn_err (*error, LOG_DEV (dev), "failed to store device");
+      dev->policy = before;
     }
 
   return ok;

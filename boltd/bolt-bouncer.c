@@ -218,6 +218,8 @@ handle_authorize_property (BoltExported          *exported,
     {
       if (bolt_streq (name, "label"))
         action = "org.freedesktop.bolt.manage";
+      else if (bolt_streq (name, "policy"))
+        action = "org.freedesktop.bolt.manage";
     }
   else if (bolt_streq (type_name, "BoltDomain"))
     {
