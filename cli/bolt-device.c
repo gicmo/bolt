@@ -174,7 +174,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        "What to do when the device is connected?",
                        BOLT_TYPE_POLICY,
                        BOLT_POLICY_DEFAULT,
-                       G_PARAM_READABLE |
+                       G_PARAM_READWRITE |
                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_KEY] =
