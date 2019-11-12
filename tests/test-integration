@@ -363,6 +363,17 @@ class BoltDevice(ProxyWrapper):
                                          DBUS_IFACE_DEVICE,
                                          path)
 
+    def _set_property(self, name, value):
+        if isinstance(value, str):
+            value = GLib.Variant("s", value)
+        target = GLib.Variant("(ssv)", (DBUS_IFACE_DEVICE, name, value))
+        res = self._proxy.call_sync('org.freedesktop.DBus.Properties.Set',
+                                    target,
+                                    0,
+                                    -1,
+                                    None)
+        return res is not None
+
     @property
     def is_connected(self):
         return self.status > self.DISCONNECTED
@@ -423,18 +434,8 @@ class BoltDevice(ProxyWrapper):
 
     @label.setter
     def label(self, value):
-        if isinstance(value, str):
-            value = GLib.Variant("s", value)
+        return self._set_property('Label', value)
 
-        res = self._proxy.call_sync('org.freedesktop.DBus.Properties.Set',
-                                    GLib.Variant("(ssv)",
-                                                 (DBUS_IFACE_DEVICE,
-                                                  "Label",
-                                                  value)),
-                                    0,
-                                    -1,
-                                    None)
-        return res is not None
 
     @staticmethod
     def gen_object_path(object_id):
