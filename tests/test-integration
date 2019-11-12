@@ -437,6 +437,14 @@ class BoltDevice(ProxyWrapper):
     def label(self, value):
         return self._set_property('Label', value)
 
+    @property
+    def policy(self):
+        res = getattr(self, 'Policy')
+        return res if res else None
+
+    @policy.setter
+    def policy(self, value):
+        return self._set_property('Policy', value)
 
     @staticmethod
     def gen_object_path(object_id):
@@ -2422,6 +2430,66 @@ class BoltTest(dbusmock.DBusTestCase):
         self.assertEqual(remote.label, val)
 
         self.daemon_stop()
+
+    def test_device_policy(self):
+        dock = TbDevice('Dock', gen=3)
+        tree = TbDomain(security=TbDomain.SECURITY_SECURE,
+                        host=TbHost([dock]))
+
+        tree.connect_tree(self.testbed)
+        self.daemon_start()
+        self.polkitd_start()
+
+        client = self.client
+        remote = client.device_by_uid(dock.unique_id)
+
+        # we are not allowed to manage the device
+        with self.assertRaises(GLib.GError) as cm:
+            remote.policy = 'iommu'
+        err = cm.exception
+        print(err.message)
+        self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+        self.assertEqual(err.code, int(Gio.DBusError.ACCESS_DENIED))
+
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.manage',
+                                 'org.freedesktop.bolt.enroll'])
+
+        # device is not stored
+        with self.assertRaises(GLib.GError) as cm:
+            remote.policy = 'iommu'
+        err = cm.exception
+        self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+        self.assertEqual(err.code, int(Gio.DBusError.INVALID_ARGS))
+
+        # enroll the device with manual policy
+        policy = BoltClient.POLICY_MANUAL
+        with remote.record() as tape:
+            remote = client.enroll(dock.unique_id, policy)
+            dock.reload_auth()
+            tape.wait_for_props(Stored=True)
+        self.assertEqual(remote.policy, BoltClient.POLICY_MANUAL)
+
+        # policy is invalid
+        with self.assertRaises(GLib.GError) as cm:
+            remote.policy = 'foobar'
+        err = cm.exception
+        self.assertEqual(err.domain, GLib.quark_to_string(Gio.DBusError.quark()))
+        self.assertEqual(err.code, int(Gio.DBusError.INVALID_ARGS))
+
+        # check store update failures
+        with self.assertRaises(GLib.GError) as cm, \
+             self.store_deny_device(dock.unique_id):
+            remote.policy = 'iommu'
+        err = cm.exception
+        self.assertEqual(err.domain, GLib.quark_to_string(Gio.io_error_quark()))
+        self.assertEqual(err.code, int(Gio.IOErrorEnum.PERMISSION_DENIED))
+        self.assertEqual(remote.policy, BoltClient.POLICY_MANUAL)
+
+        # finally a valid update
+        with remote.record() as tape:
+            remote.policy = 'iommu'
+            tape.wait_for_props(Policy='iommu')
+        self.assertEqual(remote.policy, BoltClient.POLICY_IOMMU)
 
     def test_device_generation(self):
         dock = TbDevice('Dock', gen=3)
