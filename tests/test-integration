@@ -37,6 +37,7 @@ import tempfile
 import time
 
 from collections import namedtuple
+from contextlib import contextmanager
 from functools import reduce
 from itertools import chain
 
@@ -1300,6 +1301,20 @@ class BoltTest(dbusmock.DBusTestCase):
         else:
             raise ValueError('Unknown device type')
         return dev
+
+    @contextmanager
+    def store_deny_device(self, uid):
+        path = os.path.join(self.dbpath, 'devices', uid)
+        fd = os.open(path, os.O_RDWR)
+        mode = os.fstat(fd).st_mode
+        try:
+            print('store: denying access to %s' % uid, file=sys.stderr)
+            os.fchmod(fd, 0)
+            yield fd
+        finally:
+            print('store: restoring access to %s' % uid, file=sys.stderr)
+            os.fchmod(fd, mode & 0o7777)
+            os.close(fd)
 
     # the actual tests
     def test_basic(self):
