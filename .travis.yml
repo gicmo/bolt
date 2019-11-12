@@ -16,4 +16,4 @@ install:
 
 script:
   - mkdir build-$OS
-  - docker run -e -t -v `pwd`:/src -v `pwd`/build-$OS:/build bolt-$OS ./contrib/docker-build.sh
+  - docker run --cap-drop=dac_override -e -t -v `pwd`:/src -v `pwd`/build-$OS:/build bolt-$OS ./contrib/docker-build.sh
