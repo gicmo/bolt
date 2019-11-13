@@ -2,10 +2,17 @@
 set -e
 set -x
 
+# prepare
 export LC_ALL=C.UTF-8
 export PYTHONPATH="/usr/share/glib-2.0"
 
 rm -rf /build/*
+
+# info
+ls -la /build
+whoami
+
+# actual building
 meson -Db_coverage=true -Dtests-speed=slow . /build
 ninja -C /build
 meson test -C /build --verbose
