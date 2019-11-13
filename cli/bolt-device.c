@@ -95,9 +95,8 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
   props[PROP_GEN] =
-    g_param_spec_uint ("generation",
-                       "Generation",
-                       NULL,
+    g_param_spec_uint ("generation", "Generation",
+                       "The generation of the controller chip.",
                        0, G_MAXUINT, 0,
                        G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
