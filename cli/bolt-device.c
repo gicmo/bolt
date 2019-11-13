@@ -99,7 +99,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
                        "Generation",
                        NULL,
                        0, G_MAXUINT, 0,
-                       G_PARAM_READWRITE |
+                       G_PARAM_READABLE |
                        G_PARAM_STATIC_STRINGS);
 
   props[PROP_TYPE] =
