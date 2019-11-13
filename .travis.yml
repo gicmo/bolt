@@ -12,7 +12,7 @@ env:
   - OS=fedora
 
 install:
-- docker build -t bolt-$OS -f ./contrib/Dockerfile-$OS .
+  - docker build -t bolt-$OS -f ./contrib/Dockerfile-$OS .
 
 script:
   - mkdir build-$OS
