@@ -1175,8 +1175,11 @@ class BoltTest(dbusmock.DBusTestCase):
 
         domain = GLib.quark_to_string(want.quark())
         code = int(want)
-        self.assertEqual(have.domain, domain)
-        self.assertEqual(have.code, code)
+        if have.domain == domain and have.code == code:
+            return
+
+        msg = "want: [%s (%d)], have [%s]" % (want, code, have)
+        raise self.failureException(msg)
 
     def assertDeviceEqual(self, local, remote):
         self.assertTrue(local and remote)
