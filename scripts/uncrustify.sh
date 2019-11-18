@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 SRCROOT=`git rev-parse --show-toplevel`
 CFG="$SRCROOT/scripts/uncrustify.cfg"
 echo "srcroot: $SRCROOT"
