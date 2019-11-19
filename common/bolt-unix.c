@@ -78,7 +78,7 @@ bolt_sd_notify_literal (const char *state,
   if (len > sizeof (sau.sun_path) - 1)
     {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
-                   "unix domain socket to long: %s", env);
+                   "unix domain socket path too long: %s", env);
       return FALSE;
     }
 
