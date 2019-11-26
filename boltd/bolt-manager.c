@@ -1357,7 +1357,7 @@ manager_maybe_import (BoltManager *mgr,
   polstr = bolt_policy_to_string (policy);
 
   bolt_msg (LOG_DEV (dev), LOG_TOPIC ("import"),
-            "%s mode, boot: %s, key: %s -> %s",
+            "%s mode, boot: %s -> %s",
             secstr, bolt_yesno (boot),
             (import ? polstr : "no import"));
 
