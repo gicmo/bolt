@@ -1886,17 +1886,22 @@ test_list_nh (TestRng *tt, gconstpointer user_data)
       g_assert_true (l[i].prev->next == &l[i]);
     }
 
-  c = 0;
-  bolt_nhlist_iter_init (&iter, l);
-  while ((k = bolt_nhlist_iter_next (&iter)))
+  /* start in the middle */
+  for (guint i = 0; i < 10; i++)
     {
-      BoltList *p = bolt_nhlist_iter_node (&iter);
-      g_assert_true (k == n + (c % 10));
-      g_assert_true (k == p);
-      c++;
-    }
+      c = 0;
+      bolt_nhlist_iter_init (&iter, &n[i]);
+      while ((k = bolt_nhlist_iter_next (&iter)))
+        {
+          BoltList *p = bolt_nhlist_iter_node (&iter);
+          g_assert_true (k == n + ((c + i) % 10));
+          g_assert_true (k == p);
+          c++;
+        }
 
-  g_assert_cmpuint (c, ==, 10);
+      g_assert_cmpuint (c, ==, 10);
+      g_debug ("start[%u] %p: count: %u", i, &n[i], c);
+    }
 }
 
 static void
