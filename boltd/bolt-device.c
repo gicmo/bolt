@@ -1022,8 +1022,8 @@ handle_set_policy (BoltExported *obj,
     }
   else if (dev->store == NULL)
     {
-      g_set_error_literal (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
-                           "device is not stored");
+      g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
+                   "device is not stored");
       return FALSE;
     }
 
@@ -1037,6 +1037,11 @@ handle_set_policy (BoltExported *obj,
       bolt_warn_err (*error, LOG_DEV (dev), "failed to store device");
       dev->policy = before;
     }
+
+  if (policy == BOLT_POLICY_AUTO)
+    bolt_domain_foreach (dev->domain, bolt_bootacl_add, dev);
+  else if (policy == BOLT_POLICY_MANUAL)
+    bolt_domain_foreach (dev->domain, bolt_bootacl_del, dev);
 
   return ok;
 }
