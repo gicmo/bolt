@@ -1700,3 +1700,62 @@ bolt_device_load_key (BoltDevice *dev,
   *key = k;
   return TRUE;
 }
+
+/* bolt_domain_foreach helpers */
+void
+bolt_bootacl_add (gpointer domain,
+                  gpointer device)
+{
+  g_autoptr(GError) err = NULL;
+  BoltDomain *dom = BOLT_DOMAIN (domain);
+  BoltDevice *dev = BOLT_DEVICE (device);
+  const char *uid = bolt_device_get_uid (dev);
+  gboolean ok;
+
+  bolt_info (LOG_TOPIC ("bootacl"),
+             LOG_DOM (dom), LOG_DEV (dev),
+             "adding %.17s... ", uid);
+
+  if (!bolt_domain_supports_bootacl (dom))
+    return;
+
+  if (bolt_domain_bootacl_contains (dom, uid))
+    return;
+
+  ok = bolt_domain_bootacl_add (dom, uid, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("bootacl"),
+                     LOG_DOM (dom), LOG_DEV_UID (uid),
+                     "could not add device");
+    }
+}
+
+void
+bolt_bootacl_del (gpointer domain,
+                  gpointer device)
+{
+  g_autoptr(GError) err = NULL;
+  BoltDomain *dom = BOLT_DOMAIN (domain);
+  BoltDevice *dev = BOLT_DEVICE (device);
+  const char *uid = bolt_device_get_uid (dev);
+  gboolean ok;
+
+  bolt_info (LOG_TOPIC ("bootacl"),
+             LOG_DOM (dom), LOG_DEV (dev),
+             "removing %.17s...", uid);
+
+  if (!bolt_domain_supports_bootacl (dom))
+    return;
+
+  if (!bolt_domain_bootacl_contains (dom, uid))
+    return;
+
+  ok = bolt_domain_bootacl_del (dom, uid, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("bootacl"),
+                     LOG_DEV_UID (uid), LOG_DOM (dom),
+                     "could not remove device");
+    }
+}

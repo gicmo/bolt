@@ -118,4 +118,11 @@ gboolean          bolt_device_load_key (BoltDevice *dev,
                                         BoltKey   **key,
                                         GError    **error);
 
+/* bolt_domain_foreach helpers */
+void              bolt_bootacl_add (gpointer domain,
+                                    gpointer device);
+
+void              bolt_bootacl_del (gpointer domain,
+                                    gpointer device);
+
 G_END_DECLS
