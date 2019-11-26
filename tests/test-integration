@@ -2432,9 +2432,17 @@ class BoltTest(dbusmock.DBusTestCase):
     def test_device_policy(self):
         dock = TbDevice('Dock', gen=3)
         tree = TbDomain(security=TbDomain.SECURITY_SECURE,
+                        acl=16,
                         host=TbHost([dock]))
-
         tree.connect_tree(self.testbed)
+
+        # multiple domain controller for bootacl checks
+        ssd = TbDevice('SSD', gen=4)
+        dom2 = TbDomain(security=TbDomain.SECURITY_SECURE,
+                        index=1, acl=16,
+                        host=TbHost([ssd], name="Laptop1"))
+        dom2.connect_tree(self.testbed)
+
         self.daemon_start()
         self.polkitd_start()
 
@@ -2479,6 +2487,35 @@ class BoltTest(dbusmock.DBusTestCase):
             remote.policy = 'iommu'
             tape.wait_for_props(Policy='iommu')
         self.assertEqual(remote.policy, BoltClient.POLICY_IOMMU)
+
+        # enroll the ssd with manual policy
+        remote = client.device_by_uid(ssd.unique_id)
+        policy = BoltClient.POLICY_MANUAL
+        with remote.record() as tape:
+            remote = client.enroll(ssd.unique_id, policy)
+            ssd.reload_auth()
+            tape.wait_for_props(Stored=True)
+        self.assertEqual(remote.policy, BoltClient.POLICY_MANUAL)
+
+        # policy -> auto, check that it got added to the bootacl
+        with remote.record() as tape:
+            remote.policy = 'auto'
+            tape.wait_for_props(Policy='auto')
+        self.assertEqual(remote.policy, BoltClient.POLICY_AUTO)
+
+        for dom in [tree, dom2]:
+            domain = self.client.domain_by_id(dom.unique_id)
+            self.assertIn(ssd.unique_id, domain.bootacl)
+
+        # policy -> manual, check it got removed from the bootacl
+        with remote.record() as tape:
+            remote.policy = 'auto'
+            tape.wait_for_props(Policy='auto')
+        self.assertEqual(remote.policy, BoltClient.POLICY_AUTO)
+
+        for dom in [tree, dom2]:
+            domain = self.client.domain_by_id(dom.unique_id)
+            self.assertIn(ssd.unique_id, domain.bootacl)
 
     def test_device_generation(self):
         dock = TbDevice('Dock', gen=3)
