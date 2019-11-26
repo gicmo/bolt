@@ -788,10 +788,9 @@ class TbDevice(Device):
 
 
 class TbHost(TbDevice):
-    def __init__(self, children, gen=None):
-        super(TbHost, self).__init__('Laptop',
+    def __init__(self, children, name='Laptop', gen=None):
+        super(TbHost, self).__init__(name,
                                      authorized=1,
-                                     uid='3b7d4bad-4fdf-44ff-8730-ffffdeadbabe',
                                      gen=gen,
                                      children=children)
 
@@ -817,6 +816,8 @@ class TbDomain(Device):
         assert host
         assert isinstance(host, TbHost)
         name = 'domain%d' % index
+        if host.unique_id is None:
+            host.unique_id = '3b7d4bad-4fdf-44ff-8730-ffffdeadbab%d' % index
         super(TbDomain, self).__init__(name, children=[host])
         self.security = security
         self.boot_acl = ','*(acl-1) if isinstance(acl, int) else acl
