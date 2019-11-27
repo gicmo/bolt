@@ -104,6 +104,8 @@ handle_device_changed (GObject    *gobject,
   g_value_init (&prop_val, G_PARAM_SPEC_VALUE_TYPE (pspec));
   g_value_init (&str_val, G_TYPE_STRING);
 
+  g_print ("%" G_GINT64_FORMAT " ", g_get_real_time ());
+
   g_object_get_property (G_OBJECT (dev), prop_name, &prop_val);
   g_print ("[%s] %30s | %10s -> ", uid, dev_name, prop_name);
 
@@ -127,8 +129,8 @@ handle_device_added (BoltClient *cli,
   GDBusConnection *bus;
   BoltDevice *dev;
   GPtrArray *devices = user_data;
-
-  g_print (" DeviceAdded: %s\n", opath);
+  const char *name;
+  const char *uid;
 
   bus = g_dbus_proxy_get_connection (G_DBUS_PROXY (cli));
   dev = bolt_device_new_for_object_path (bus, opath, NULL, &err);
@@ -138,6 +140,12 @@ handle_device_added (BoltClient *cli,
       g_warning ("Could not create proxy object for %s", opath);
       return;
     }
+
+  uid = bolt_device_get_uid (dev);
+  name = bolt_device_get_name (dev);
+
+  g_print ("%" G_GINT64_FORMAT " ", g_get_real_time ());
+  g_print ("[%s] %30s | DeviceAdded @ %s\n", uid, name, opath);
 
   g_ptr_array_add (devices, dev);
   g_signal_connect (dev, "notify",
@@ -152,8 +160,8 @@ handle_device_removed (BoltClient *cli,
 {
   GPtrArray *devices = user_data;
   BoltDevice *device = NULL;
-
-  g_print (" DeviceRemoved: %s\n", opath);
+  const char *name;
+  const char *uid;
 
   for (guint i = 0; i < devices->len; i++)
     {
@@ -173,6 +181,12 @@ handle_device_removed (BoltClient *cli,
       return;
     }
 
+  uid = bolt_device_get_uid (device);
+  name = bolt_device_get_name (device);
+
+  g_print ("%" G_GINT64_FORMAT " ", g_get_real_time ());
+  g_print ("[%s] %30s | DeviceRemoved @ %s\n", uid, name, opath);
+
   g_signal_handlers_block_by_func (device, handle_device_changed, devices);
   g_ptr_array_remove_fast (devices, device);
 }
@@ -183,6 +197,8 @@ handle_probing_changed (BoltClient *client,
                         gpointer    user_data)
 {
   gboolean probing = bolt_client_is_probing (client);
+
+  g_print ("%" G_GINT64_FORMAT " ", g_get_real_time ());
 
   if (probing)
     g_print ("Probing started\n");
