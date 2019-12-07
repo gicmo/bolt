@@ -85,12 +85,19 @@ enum {
 
 static GParamSpec *guard_props[PROP_GUARD_LAST] = { NULL, };
 
+enum {
+  GUARD_SIGNAL_RELEASED,
+  SIGNAL_LAST
+};
+
+static guint guard_signals[SIGNAL_LAST] = {0};
+
 G_DEFINE_TYPE (BoltPowerGuard,
                bolt_power_guard,
                G_TYPE_OBJECT);
 
 static void
-bolt_power_guard_finalize (GObject *object)
+bolt_power_guard_dispose (GObject *object)
 {
   BoltPowerGuard *guard = BOLT_POWER_GUARD (object);
 
@@ -99,7 +106,18 @@ bolt_power_guard_finalize (GObject *object)
 
   /* release the lock we have to force power,
    * we must be intact for method call */
-  bolt_power_release (guard->power, guard);
+  if (guard->power)
+    bolt_power_release (guard->power, guard);
+
+  g_clear_object (&guard->power);
+
+  G_OBJECT_CLASS (bolt_power_guard_parent_class)->dispose (object);
+}
+
+static void
+bolt_power_guard_finalize (GObject *object)
+{
+  BoltPowerGuard *guard = BOLT_POWER_GUARD (object);
 
   if (guard->watch)
     g_source_remove (guard->watch);
@@ -107,7 +125,6 @@ bolt_power_guard_finalize (GObject *object)
   g_clear_pointer (&guard->fifo, g_free);
   g_clear_pointer (&guard->who, g_free);
   g_clear_pointer (&guard->id, g_free);
-  g_clear_object (&guard->power);
 
   G_OBJECT_CLASS (bolt_power_guard_parent_class)->finalize (object);
 }
@@ -202,6 +219,7 @@ bolt_power_guard_class_init (BoltPowerGuardClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
+  gobject_class->dispose = bolt_power_guard_dispose;
   gobject_class->finalize = bolt_power_guard_finalize;
   gobject_class->get_property = bolt_power_guard_get_property;
   gobject_class->set_property = bolt_power_guard_set_property;
