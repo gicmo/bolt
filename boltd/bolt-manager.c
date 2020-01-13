@@ -2044,6 +2044,16 @@ device_is_thunderbolt_root (struct udev_device *dev)
 }
 
 static gboolean
+device_is_wakeup (struct udev_device *dev)
+{
+  const char *subsys;
+
+  subsys = udev_device_get_subsystem (dev);
+
+  return bolt_streq (subsys, "wakeup");
+}
+
+static gboolean
 probing_add_root (BoltManager        *mgr,
                   struct udev_device *dev)
 {
@@ -2078,6 +2088,12 @@ manager_probing_device_added (BoltManager        *mgr,
   syspath = udev_device_get_syspath (dev);
 
   if (syspath == NULL)
+    return;
+
+  /* ignore events for wakeup devices which get removed
+   * and added at random time without any connection to
+   * any physical thunderbolt device */
+  if (device_is_wakeup (dev))
     return;
 
   roots = mgr->probing_roots;
