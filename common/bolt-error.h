@@ -36,7 +36,7 @@ G_BEGIN_DECLS
  *
  * Error codes used inside Bolt.
  */
-enum {
+typedef enum {
   BOLT_ERROR_FAILED = 0,
   BOLT_ERROR_UDEV,
   BOLT_ERROR_NOKEY,
