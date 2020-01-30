@@ -42,6 +42,11 @@
 #define DEFAULT_STATEDIR "power"
 #define STATE_FILENAME "on"
 
+typedef enum GuardState {
+  GUARD_STATE_ACTIVE = 0,
+  GUARD_STATE_RELEASED = 1
+} GuardState;
+
 typedef struct udev_device udev_device;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
 
@@ -56,7 +61,7 @@ struct _BoltPowerGuard
   GObject object;
 
   /* book-keeping */
-  BoltPower *power;
+  GuardState state;
   char      *path;
 
   char      *fifo;
@@ -71,7 +76,6 @@ struct _BoltPowerGuard
 enum {
   PROP_GUARD_0,
 
-  PROP_POWER,
   PROP_PATH,
   PROP_FIFO,
 
@@ -104,12 +108,13 @@ bolt_power_guard_dispose (GObject *object)
   /* remove our state file */
   bolt_power_guard_remove (guard);
 
-  /* release the lock we have to force power,
-   * we must be intact for method call */
-  if (guard->power)
-    bolt_power_release (guard->power, guard);
-
-  g_clear_object (&guard->power);
+  if (guard->state != GUARD_STATE_RELEASED)
+    {
+      /* signal to clients to that we have been released.
+       * NB: we must be intact for method call */
+      guard->state = GUARD_STATE_RELEASED;
+      g_signal_emit (object, guard_signals[GUARD_SIGNAL_RELEASED], 0);
+    }
 
   G_OBJECT_CLASS (bolt_power_guard_parent_class)->dispose (object);
 }
@@ -139,10 +144,6 @@ bolt_power_guard_get_property (GObject    *object,
 
   switch (prop_id)
     {
-    case PROP_POWER:
-      g_value_set_object (value, guard->power);
-      break;
-
     case PROP_PATH:
       g_value_set_string (value, guard->path);
       break;
@@ -179,10 +180,6 @@ bolt_power_guard_set_property (GObject      *object,
 
   switch (prop_id)
     {
-    case PROP_POWER:
-      guard->power = g_value_dup_object (value);
-      break;
-
     case PROP_PATH:
       guard->path = g_value_dup_string (value);
       break;
@@ -210,8 +207,9 @@ bolt_power_guard_set_property (GObject      *object,
 
 
 static void
-bolt_power_guard_init (BoltPowerGuard *power)
+bolt_power_guard_init (BoltPowerGuard *guard)
 {
+  guard->state = GUARD_STATE_ACTIVE;
 }
 
 static void
@@ -223,14 +221,6 @@ bolt_power_guard_class_init (BoltPowerGuardClass *klass)
   gobject_class->finalize = bolt_power_guard_finalize;
   gobject_class->get_property = bolt_power_guard_get_property;
   gobject_class->set_property = bolt_power_guard_set_property;
-
-  guard_props[PROP_POWER] =
-    g_param_spec_object ("power",
-                         NULL, NULL,
-                         BOLT_TYPE_POWER,
-                         G_PARAM_READWRITE |
-                         G_PARAM_CONSTRUCT_ONLY |
-                         G_PARAM_STATIC_STRINGS);
 
   guard_props[PROP_PATH] =
     g_param_spec_string ("path",
@@ -276,6 +266,16 @@ bolt_power_guard_class_init (BoltPowerGuardClass *klass)
   g_object_class_install_properties (gobject_class,
                                      PROP_GUARD_LAST,
                                      guard_props);
+
+  guard_signals[GUARD_SIGNAL_RELEASED] =
+    g_signal_new ("released",
+                  G_TYPE_FROM_CLASS (gobject_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  NULL,
+                  G_TYPE_NONE,
+                  0);
 }
 
 static gboolean
@@ -368,7 +368,6 @@ bolt_power_guard_load (BoltPower  *power,
     g_clear_pointer (&fifo, g_free);
 
   return g_object_new (BOLT_TYPE_POWER_GUARD,
-                       "power", power,
                        "path", path,
                        "fifo", fifo,
                        "id", id,
@@ -999,6 +998,10 @@ bolt_power_recover_guards (BoltPower *power,
                  "guard '%s' for '%s' (pid %lu) recovered",
                  guard->id, guard->who, (gulong) guard->pid);
 
+      g_signal_connect_object (guard, "released",
+                               (GCallback) bolt_power_release,
+                               power, G_CONNECT_SWAPPED);
+
       g_hash_table_insert (power->guards, guard->id, guard);
     }
 
@@ -1495,16 +1498,19 @@ bolt_power_acquire_full (BoltPower  *power,
     pid = getpid ();
 
   guard = g_object_new (BOLT_TYPE_POWER_GUARD,
-                        "power", power,
                         "id", id,
                         "who", who,
                         "pid", pid,
                         NULL);
 
-  /* NB: we don't take a ref here, because we want the
-   * guard to act as RAII guard, i.e. when the client
-   * releases the last reference to the guard, we call
-   * the _release() function in the finalizer */
+  g_signal_connect_object (guard, "released",
+                           (GCallback) bolt_power_release,
+                           power, G_CONNECT_SWAPPED);
+
+  /* NB: we don't take a ref here, because we want the guard to
+   * act as RAII guard, i.e. when the client releases the last
+   * reference to the guard, the "released" signal will be
+   * triggered and thus bolt_power_release() will be called */
   g_hash_table_insert (power->guards, guard->id, guard);
 
   bolt_info (LOG_TOPIC ("power"), "guard '%s' for '%s' active",

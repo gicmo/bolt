@@ -114,7 +114,6 @@ test_power_basic (TestPower *tt, gconstpointer user)
   g_autoptr(BoltUdev) udev = NULL;
   g_autoptr(GFile) statedir = NULL;
   g_autoptr(BoltPowerGuard) guard = NULL;
-  g_autoptr(BoltPower) guard_power = NULL;
   g_autofree char *guard_id = NULL;
   g_autofree char *guard_who = NULL;
   g_autofree char *guard_path = NULL;
@@ -194,7 +193,6 @@ test_power_basic (TestPower *tt, gconstpointer user)
   g_object_get (guard,
                 "id", &guard_id,
                 "who", &guard_who,
-                "power", &guard_power,
                 "path", &guard_path,
                 "pid", &guard_pid,
                 "fifo", &guard_fifo,
@@ -202,7 +200,6 @@ test_power_basic (TestPower *tt, gconstpointer user)
 
   g_assert_nonnull (guard_id);
   g_assert_nonnull (guard_who);
-  g_assert_nonnull (guard_power);
   g_assert_nonnull (guard_path);
 
   g_assert_cmpstr (guard_id, ==, "1");
