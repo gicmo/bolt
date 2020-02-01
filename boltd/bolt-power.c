@@ -312,24 +312,20 @@ bolt_power_guard_save (BoltPowerGuard *guard,
 }
 
 static BoltPowerGuard *
-bolt_power_guard_load (BoltPower  *power,
+bolt_power_guard_load (const char *statedir,
                        const char *name,
                        GError    **error)
 {
   g_autoptr(GError) err = NULL;
-  g_autoptr(GFile) guardfile = NULL;
   g_autoptr(GKeyFile) kf = NULL;
   g_autofree char *path = NULL;
   g_autofree char *who = NULL;
   g_autofree char *id = NULL;
   g_autofree char *fifo = NULL;
-  GFile *statedir;
   gboolean ok;
   gulong pid;
 
-  statedir = bolt_power_get_statedir (power);
-  guardfile = g_file_get_child (statedir, name);
-  path = g_file_get_path (guardfile);
+  path = g_build_filename (statedir, name, NULL);
 
   kf = g_key_file_new ();
   ok = g_key_file_load_from_file (kf, path, 0, error);
@@ -941,7 +937,7 @@ bolt_power_recover_guards (BoltPower *power,
       if (!g_str_has_suffix (name, ".guard"))
         continue;
 
-      guard = bolt_power_guard_load (power, name, &err);
+      guard = bolt_power_guard_load (statedir, name, &err);
 
       if (guard == NULL)
         {
