@@ -380,7 +380,6 @@ static void
 bolt_power_guard_remove (BoltPowerGuard *guard)
 {
   g_autoptr(GError) err = NULL;
-  g_autofree char *parent = NULL;
   gboolean ok;
 
   /* we are not saved */
@@ -404,13 +403,6 @@ bolt_power_guard_remove (BoltPowerGuard *guard)
                      guard->id, guard->path);
       return;
     }
-
-  /* we try to remove the parent dir, which will most
-   * likely fail, because it is not empty, but that we
-   * just ignore
-   */
-  parent = g_path_get_dirname (guard->path);
-  (void) rmdir (parent);
 
   g_clear_pointer (&guard->path, g_free);
   g_object_notify_by_pspec (G_OBJECT (guard),
