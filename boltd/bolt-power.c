@@ -926,7 +926,7 @@ bolt_power_recover_guards (BoltPower *power,
 
   statedir = g_file_get_path (power->statedir);
 
-  dir = g_dir_open (statedir, 0, &err);
+  dir = g_dir_open (statedir, 0, error);
   if (dir == NULL)
     return FALSE;
 
