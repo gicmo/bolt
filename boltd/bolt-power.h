@@ -31,19 +31,19 @@ G_BEGIN_DECLS
 /* forward declaration */
 struct udev;
 
-/* BoltPowerGuard */
+/* BoltGuard */
 
-#define BOLT_TYPE_POWER_GUARD bolt_power_guard_get_type ()
-G_DECLARE_FINAL_TYPE (BoltPowerGuard, bolt_power_guard, BOLT, POWER_GUARD, GObject);
+#define BOLT_TYPE_GUARD bolt_guard_get_type ()
+G_DECLARE_FINAL_TYPE (BoltGuard, bolt_guard, BOLT, GUARD, GObject);
 
-int                 bolt_power_guard_monitor (BoltPowerGuard *guard,
-                                              GError        **error);
+int                 bolt_guard_monitor (BoltGuard *guard,
+                                        GError   **error);
 
-const char *        bolt_power_guard_get_id (BoltPowerGuard *guard);
+const char *        bolt_guard_get_id (BoltGuard *guard);
 
-const char *        bolt_power_guard_get_who (BoltPowerGuard *guard);
+const char *        bolt_guard_get_who (BoltGuard *guard);
 
-guint               bolt_power_guard_get_pid (BoltPowerGuard *guard);
+guint               bolt_guard_get_pid (BoltGuard *guard);
 
 /* BoltPower */
 
@@ -58,12 +58,12 @@ gboolean            bolt_power_can_force (BoltPower *power);
 
 BoltPowerState      bolt_power_get_state (BoltPower *power);
 
-BoltPowerGuard *    bolt_power_acquire_full (BoltPower  *power,
+BoltGuard *         bolt_power_acquire_full (BoltPower  *power,
                                              const char *who,
                                              pid_t       pid,
                                              GError    **error);
 
-BoltPowerGuard *    bolt_power_acquire (BoltPower *power,
+BoltGuard *         bolt_power_acquire (BoltPower *power,
                                         GError   **error);
 
 GList *             bolt_power_list_guards (BoltPower *power);

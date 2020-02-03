@@ -113,7 +113,7 @@ test_power_basic (TestPower *tt, gconstpointer user)
   g_autoptr(GError) err = NULL;
   g_autoptr(BoltUdev) udev = NULL;
   g_autoptr(GFile) statedir = NULL;
-  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(BoltGuard) guard = NULL;
   g_autofree char *guard_id = NULL;
   g_autofree char *guard_who = NULL;
   g_autofree char *guard_path = NULL;
@@ -206,9 +206,9 @@ test_power_basic (TestPower *tt, gconstpointer user)
   g_assert_cmpstr (guard_who, ==, "boltd");
   g_assert_cmpuint (guard_pid, ==, getpid ());
 
-  g_assert_cmpstr (guard_id, ==, bolt_power_guard_get_id (guard));
-  g_assert_cmpstr (guard_who, ==, bolt_power_guard_get_who (guard));
-  g_assert_cmpuint (guard_pid, ==, bolt_power_guard_get_pid (guard));
+  g_assert_cmpstr (guard_id, ==, bolt_guard_get_id (guard));
+  g_assert_cmpstr (guard_who, ==, bolt_guard_get_who (guard));
+  g_assert_cmpuint (guard_pid, ==, bolt_guard_get_pid (guard));
 
   /* set of OFF */
   g_clear_object (&guard);
@@ -229,7 +229,7 @@ test_power_multiple (TestPower *tt, gconstpointer user)
 {
   g_autoptr(BoltPower) power = NULL;
   g_autoptr(GError) err = NULL;
-  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(BoltGuard) guard = NULL;
   GPtrArray *guards = NULL;
   BoltPowerState state;
   gboolean supported;
@@ -264,7 +264,7 @@ test_power_multiple (TestPower *tt, gconstpointer user)
   /* add one and remove it, nothing should change */
   for (guint i = 0; i < 5; i++)
     {
-      g_autoptr(BoltPowerGuard) g = NULL;
+      g_autoptr(BoltGuard) g = NULL;
 
       state = bolt_power_get_state (power);
       g_assert (state == BOLT_FORCE_POWER_ON);
@@ -299,7 +299,7 @@ test_power_multiple (TestPower *tt, gconstpointer user)
   guards = g_ptr_array_new_with_free_func (g_object_unref);
   for (guint i = 0; i < 5; i++)
     {
-      BoltPowerGuard *g = bolt_power_acquire (power, &err);
+      BoltGuard *g = bolt_power_acquire (power, &err);
       g_ptr_array_add (guards, g);
     }
 
@@ -342,7 +342,7 @@ test_power_timeout (TestPower *tt, gconstpointer user)
 {
   g_autoptr(BoltPower) power = NULL;
   g_autoptr(GError) err = NULL;
-  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(BoltGuard) guard = NULL;
   g_autoptr(GMainLoop) loop = NULL;
   BoltPowerState state;
   gboolean supported;
@@ -407,7 +407,7 @@ static void
 test_power_recover_state (TestPower *tt, gconstpointer user)
 {
   g_autoptr(BoltPower) power = NULL;
-  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(BoltGuard) guard = NULL;
   g_autoptr(GError) err = NULL;
   BoltPowerState state;
   GFile *guarddir;
@@ -467,7 +467,7 @@ static void
 test_power_recover_guards_ok (TestPower *tt, gconstpointer user)
 {
   g_autoptr(BoltPower) power = NULL;
-  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(BoltGuard) guard = NULL;
   g_autoptr(GError) err = NULL;
   BoltPowerState state;
   const char *fp;
@@ -522,7 +522,7 @@ static void
 test_power_recover_guards_fail (TestPower *tt, gconstpointer user)
 {
   g_autoptr(BoltPower) power = NULL;
-  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(BoltGuard) guard = NULL;
   g_autoptr(GError) err = NULL;
   BoltPowerState state;
   const char *fp;
@@ -591,7 +591,7 @@ test_power_guards_fifo (TestPower *tt, gconstpointer user)
 {
   g_autoptr(BoltPower) power = NULL;
   g_autoptr(GError) err = NULL;
-  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(BoltGuard) guard = NULL;
   g_autoptr(GMainLoop) loop = NULL;
   BoltPowerState state;
   gboolean on;
@@ -615,7 +615,7 @@ test_power_guards_fifo (TestPower *tt, gconstpointer user)
   state = bolt_power_get_state (power);
   g_assert (state == BOLT_FORCE_POWER_ON);
 
-  fd = bolt_power_guard_monitor (guard, &err);
+  fd = bolt_guard_monitor (guard, &err);
   g_assert_no_error (err);
   g_assert_cmpint (fd, >, -1);
 

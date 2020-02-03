@@ -176,7 +176,7 @@ static void          manager_probing_activity (BoltManager *mgr,
                                                gboolean     weak);
 
 /* force powering */
-static BoltPowerGuard *  manager_maybe_power_controller (BoltManager *mgr);
+static BoltGuard *   manager_maybe_power_controller (BoltManager *mgr);
 
 /* config */
 static void          manager_load_user_config (BoltManager *mgr);
@@ -479,7 +479,7 @@ bolt_manager_initialize (GInitable    *initable,
                          GCancellable *cancellable,
                          GError      **error)
 {
-  g_autoptr(BoltPowerGuard) power = NULL;
+  g_autoptr(BoltGuard) power = NULL;
   BoltManager *mgr;
   struct udev_enumerate *enumerate;
   struct udev_list_entry *l, *devices;
@@ -534,7 +534,7 @@ bolt_manager_initialize (GInitable    *initable,
 
   if (power != NULL)
     bolt_info (LOG_TOPIC ("manager"), "acquired power guard '%s'",
-               bolt_power_guard_get_id (power));
+               bolt_guard_get_id (power));
 
   /* TODO: error checking */
   enumerate =  bolt_udev_new_enumerate (mgr->udev, NULL);
@@ -2167,11 +2167,11 @@ manager_probing_domain_added (BoltManager        *mgr,
   probing_add_root (mgr, p);
 }
 
-static BoltPowerGuard *
+static BoltGuard *
 manager_maybe_power_controller (BoltManager *mgr)
 {
   g_autoptr(GError) err = NULL;
-  BoltPowerGuard *guard = NULL;
+  BoltGuard *guard = NULL;
   gboolean can_force_power;
   int n;
 

@@ -50,13 +50,13 @@ typedef enum GuardState {
 typedef struct udev_device udev_device;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
 
-static void       bolt_power_release (BoltPower      *power,
-                                      BoltPowerGuard *guard);
+static void       bolt_power_release (BoltPower *power,
+                                      BoltGuard *guard);
 
-/* BoltPowerGuard  */
-static void       bolt_power_guard_remove (BoltPowerGuard *guard);
+/* BoltGuard  */
+static void       bolt_guard_remove (BoltGuard *guard);
 
-struct _BoltPowerGuard
+struct _BoltGuard
 {
   GObject object;
 
@@ -96,17 +96,17 @@ enum {
 
 static guint guard_signals[SIGNAL_LAST] = {0};
 
-G_DEFINE_TYPE (BoltPowerGuard,
-               bolt_power_guard,
+G_DEFINE_TYPE (BoltGuard,
+               bolt_guard,
                G_TYPE_OBJECT);
 
 static void
-bolt_power_guard_dispose (GObject *object)
+bolt_guard_dispose (GObject *object)
 {
-  BoltPowerGuard *guard = BOLT_POWER_GUARD (object);
+  BoltGuard *guard = BOLT_GUARD (object);
 
   /* remove our state file */
-  bolt_power_guard_remove (guard);
+  bolt_guard_remove (guard);
 
   if (guard->state != GUARD_STATE_RELEASED)
     {
@@ -116,13 +116,13 @@ bolt_power_guard_dispose (GObject *object)
       g_signal_emit (object, guard_signals[GUARD_SIGNAL_RELEASED], 0);
     }
 
-  G_OBJECT_CLASS (bolt_power_guard_parent_class)->dispose (object);
+  G_OBJECT_CLASS (bolt_guard_parent_class)->dispose (object);
 }
 
 static void
-bolt_power_guard_finalize (GObject *object)
+bolt_guard_finalize (GObject *object)
 {
-  BoltPowerGuard *guard = BOLT_POWER_GUARD (object);
+  BoltGuard *guard = BOLT_GUARD (object);
 
   if (guard->watch)
     g_source_remove (guard->watch);
@@ -131,16 +131,16 @@ bolt_power_guard_finalize (GObject *object)
   g_clear_pointer (&guard->who, g_free);
   g_clear_pointer (&guard->id, g_free);
 
-  G_OBJECT_CLASS (bolt_power_guard_parent_class)->finalize (object);
+  G_OBJECT_CLASS (bolt_guard_parent_class)->finalize (object);
 }
 
 static void
-bolt_power_guard_get_property (GObject    *object,
-                               guint       prop_id,
-                               GValue     *value,
-                               GParamSpec *pspec)
+bolt_guard_get_property (GObject    *object,
+                         guint       prop_id,
+                         GValue     *value,
+                         GParamSpec *pspec)
 {
-  BoltPowerGuard *guard = BOLT_POWER_GUARD (object);
+  BoltGuard *guard = BOLT_GUARD (object);
 
   switch (prop_id)
     {
@@ -171,12 +171,12 @@ bolt_power_guard_get_property (GObject    *object,
 
 
 static void
-bolt_power_guard_set_property (GObject      *object,
-                               guint         prop_id,
-                               const GValue *value,
-                               GParamSpec   *pspec)
+bolt_guard_set_property (GObject      *object,
+                         guint         prop_id,
+                         const GValue *value,
+                         GParamSpec   *pspec)
 {
-  BoltPowerGuard *guard = BOLT_POWER_GUARD (object);
+  BoltGuard *guard = BOLT_GUARD (object);
 
   switch (prop_id)
     {
@@ -207,20 +207,20 @@ bolt_power_guard_set_property (GObject      *object,
 
 
 static void
-bolt_power_guard_init (BoltPowerGuard *guard)
+bolt_guard_init (BoltGuard *guard)
 {
   guard->state = GUARD_STATE_ACTIVE;
 }
 
 static void
-bolt_power_guard_class_init (BoltPowerGuardClass *klass)
+bolt_guard_class_init (BoltGuardClass *klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
-  gobject_class->dispose = bolt_power_guard_dispose;
-  gobject_class->finalize = bolt_power_guard_finalize;
-  gobject_class->get_property = bolt_power_guard_get_property;
-  gobject_class->set_property = bolt_power_guard_set_property;
+  gobject_class->dispose = bolt_guard_dispose;
+  gobject_class->finalize = bolt_guard_finalize;
+  gobject_class->get_property = bolt_guard_get_property;
+  gobject_class->set_property = bolt_guard_set_property;
 
   guard_props[PROP_PATH] =
     g_param_spec_string ("path",
@@ -279,9 +279,9 @@ bolt_power_guard_class_init (BoltPowerGuardClass *klass)
 }
 
 static gboolean
-bolt_power_guard_save (BoltPowerGuard *guard,
-                       GFile          *guarddir,
-                       GError        **error)
+bolt_guard_save (BoltGuard *guard,
+                 GFile     *guarddir,
+                 GError   **error)
 {
   g_autoptr(GFile) guardfile = NULL;
   g_autoptr(GKeyFile) kf = NULL;
@@ -311,10 +311,10 @@ bolt_power_guard_save (BoltPowerGuard *guard,
   return ok;
 }
 
-static BoltPowerGuard *
-bolt_power_guard_load (const char *statedir,
-                       const char *name,
-                       GError    **error)
+static BoltGuard *
+bolt_guard_load (const char *statedir,
+                 const char *name,
+                 GError    **error)
 {
   g_autoptr(GError) err = NULL;
   g_autoptr(GKeyFile) kf = NULL;
@@ -363,7 +363,7 @@ bolt_power_guard_load (const char *statedir,
   if (!g_file_test (fifo, G_FILE_TEST_EXISTS))
     g_clear_pointer (&fifo, g_free);
 
-  return g_object_new (BOLT_TYPE_POWER_GUARD,
+  return g_object_new (BOLT_TYPE_GUARD,
                        "path", path,
                        "fifo", fifo,
                        "id", id,
@@ -373,7 +373,7 @@ bolt_power_guard_load (const char *statedir,
 }
 
 static void
-bolt_power_guard_remove (BoltPowerGuard *guard)
+bolt_guard_remove (BoltGuard *guard)
 {
   g_autoptr(GError) err = NULL;
   gboolean ok;
@@ -406,7 +406,7 @@ bolt_power_guard_remove (BoltPowerGuard *guard)
 }
 
 static void
-bolt_power_guard_fifo_cleanup (BoltPowerGuard *guard)
+bolt_guard_fifo_cleanup (BoltGuard *guard)
 {
   g_autoptr(GError) err = NULL;
   gboolean ok;
@@ -427,13 +427,13 @@ bolt_power_guard_fifo_cleanup (BoltPowerGuard *guard)
 }
 
 static gboolean
-bolt_power_guard_mkfifo (BoltPowerGuard *guard,
-                         GError        **error)
+bolt_guard_mkfifo (BoltGuard *guard,
+                   GError   **error)
 {
   g_autoptr(GError) err = NULL;
   int r;
 
-  g_return_val_if_fail (BOLT_IS_POWER_GUARD (guard), FALSE);
+  g_return_val_if_fail (BOLT_IS_GUARD (guard), FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
   if (guard->fifo == NULL)
@@ -454,7 +454,7 @@ power_guard_has_event (GIOChannel  *source,
                        GIOCondition condition,
                        gpointer     data)
 {
-  BoltPowerGuard *guard = data;
+  BoltGuard *guard = data;
 
   bolt_info (LOG_TOPIC ("power"), "got event for guard '%s' (%x)",
              guard->id, (guint) condition);
@@ -465,7 +465,7 @@ power_guard_has_event (GIOChannel  *source,
 static void
 guard_watch_release (gpointer data)
 {
-  BoltPowerGuard *guard = data;
+  BoltGuard *guard = data;
 
   if (guard->fifo == NULL)
     {
@@ -473,7 +473,7 @@ guard_watch_release (gpointer data)
       return;
     }
 
-  bolt_power_guard_fifo_cleanup (guard);
+  bolt_guard_fifo_cleanup (guard);
 
   bolt_debug (LOG_TOPIC ("power"),
               "released watch reference for guard '%s'",
@@ -483,17 +483,17 @@ guard_watch_release (gpointer data)
 }
 
 int
-bolt_power_guard_monitor (BoltPowerGuard *guard,
-                          GError        **error)
+bolt_guard_monitor (BoltGuard *guard,
+                    GError   **error)
 {
   g_autoptr(GIOChannel) ch = NULL;
   gboolean ok;
   int fd;
 
-  g_return_val_if_fail (BOLT_IS_POWER_GUARD (guard), -1);
+  g_return_val_if_fail (BOLT_IS_GUARD (guard), -1);
   g_return_val_if_fail (error == NULL || *error == NULL, -1);
 
-  ok = bolt_power_guard_mkfifo (guard, error);
+  ok = bolt_guard_mkfifo (guard, error);
   if (!ok)
     return -1;
 
@@ -528,25 +528,25 @@ bolt_power_guard_monitor (BoltPowerGuard *guard,
 }
 
 const char *
-bolt_power_guard_get_id (BoltPowerGuard *guard)
+bolt_guard_get_id (BoltGuard *guard)
 {
-  g_return_val_if_fail (BOLT_IS_POWER_GUARD (guard), NULL);
+  g_return_val_if_fail (BOLT_IS_GUARD (guard), NULL);
 
   return guard->id;
 }
 
 const char *
-bolt_power_guard_get_who (BoltPowerGuard *guard)
+bolt_guard_get_who (BoltGuard *guard)
 {
-  g_return_val_if_fail (BOLT_IS_POWER_GUARD (guard), NULL);
+  g_return_val_if_fail (BOLT_IS_GUARD (guard), NULL);
 
   return guard->who;
 }
 
 guint
-bolt_power_guard_get_pid (BoltPowerGuard *guard)
+bolt_guard_get_pid (BoltGuard *guard)
 {
-  g_return_val_if_fail (BOLT_IS_POWER_GUARD (guard), 0);
+  g_return_val_if_fail (BOLT_IS_GUARD (guard), 0);
 
   return (guint) guard->pid;
 }
@@ -845,7 +845,7 @@ bolt_power_initialize (GInitable    *initable,
                        GError      **error)
 {
   g_autoptr(GError) err = NULL;
-  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(BoltGuard) guard = NULL;
   g_autofree char *statedir = NULL;
   BoltPower *power = BOLT_POWER (initable);
   gboolean on = FALSE;
@@ -932,12 +932,12 @@ bolt_power_recover_guards (BoltPower *power,
 
   while ((name = g_dir_read_name (dir)) != NULL)
     {
-      BoltPowerGuard *guard;
+      BoltGuard *guard;
 
       if (!g_str_has_suffix (name, ".guard"))
         continue;
 
-      guard = bolt_power_guard_load (statedir, name, &err);
+      guard = bolt_guard_load (statedir, name, &err);
 
       if (guard == NULL)
         {
@@ -958,14 +958,14 @@ bolt_power_recover_guards (BoltPower *power,
           bolt_info (LOG_TOPIC ("power"),
                      "ignoring guard '%s for '%s': process dead",
                      guard->id, guard->who);
-          bolt_power_guard_fifo_cleanup (guard);
+          bolt_guard_fifo_cleanup (guard);
           continue;
         }
 
       if (guard->fifo)
         {
           int fd;
-          fd = bolt_power_guard_monitor (guard, &err);
+          fd = bolt_guard_monitor (guard, &err);
 
           if (fd < 0)
             {
@@ -1039,7 +1039,7 @@ bolt_power_reaper_timeout (gpointer user_data)
   for (GList *l = keys; l != NULL; l = l->next)
     {
       gpointer id = l->data;
-      BoltPowerGuard *g = g_hash_table_lookup (power->guards, id);
+      BoltGuard *g = g_hash_table_lookup (power->guards, id);
 
       if (bolt_pid_is_alive (g->pid))
         continue;
@@ -1259,7 +1259,7 @@ bolt_power_gen_guard_id (BoltPower *power,
 }
 
 static void
-bolt_power_release (BoltPower *power, BoltPowerGuard *guard)
+bolt_power_release (BoltPower *power, BoltGuard *guard)
 {
   gboolean ok;
 
@@ -1306,7 +1306,7 @@ handle_force_power (BoltExported          *object,
                     GDBusMethodInvocation *invocation,
                     GError               **error)
 {
-  g_autoptr(BoltPowerGuard) guard = NULL;
+  g_autoptr(BoltGuard) guard = NULL;
   g_autoptr(GUnixFDList) fds = NULL;
   g_autoptr(GError) err = NULL;
   g_autoptr(GVariant) res = NULL;
@@ -1351,7 +1351,7 @@ handle_force_power (BoltExported          *object,
   if (guard == NULL)
     return NULL;
 
-  fd = bolt_power_guard_monitor (guard, error);
+  fd = bolt_guard_monitor (guard, error);
   if (fd == -1)
     return NULL;
 
@@ -1379,11 +1379,11 @@ handle_list_guards (BoltExported          *object,
 
   for (GList *l = guards; l != NULL; l = l->next)
     {
-      BoltPowerGuard *g = BOLT_POWER_GUARD (l->data);
+      BoltGuard *g = BOLT_GUARD (l->data);
       g_variant_builder_add (&b, "(ssu)",
-                             bolt_power_guard_get_id (g),
-                             bolt_power_guard_get_who (g),
-                             bolt_power_guard_get_pid (g));
+                             bolt_guard_get_id (g),
+                             bolt_guard_get_who (g),
+                             bolt_guard_get_pid (g));
     }
 
   return g_variant_new ("(a(ssu))", &b);
@@ -1427,7 +1427,7 @@ bolt_power_get_state (BoltPower *power)
   return power->state;
 }
 
-BoltPowerGuard *
+BoltGuard *
 bolt_power_acquire (BoltPower *power,
                     GError   **error)
 {
@@ -1436,7 +1436,7 @@ bolt_power_acquire (BoltPower *power,
   return bolt_power_acquire_full (power, who, 0, error);
 }
 
-BoltPowerGuard *
+BoltGuard *
 bolt_power_acquire_full (BoltPower  *power,
                          const char *who,
                          pid_t       pid,
@@ -1444,7 +1444,7 @@ bolt_power_acquire_full (BoltPower  *power,
 {
   g_autoptr(GError) err = NULL;
   g_autofree char *id = NULL;
-  BoltPowerGuard *guard;
+  BoltGuard *guard;
   gboolean ok;
 
   g_return_val_if_fail (BOLT_IS_POWER (power), NULL);
@@ -1485,7 +1485,7 @@ bolt_power_acquire_full (BoltPower  *power,
   if (pid == 0)
     pid = getpid ();
 
-  guard = g_object_new (BOLT_TYPE_POWER_GUARD,
+  guard = g_object_new (BOLT_TYPE_GUARD,
                         "id", id,
                         "who", who,
                         "pid", pid,
@@ -1511,7 +1511,7 @@ bolt_power_acquire_full (BoltPower  *power,
 
   /* guard is saved so we can recover our state if we
    * were to crash or restarted */
-  ok = bolt_power_guard_save (guard, power->statedir, &err);
+  ok = bolt_guard_save (guard, power->statedir, &err);
   if (!ok)
     bolt_warn_err (err, LOG_TOPIC ("power"),
                    "could not save guard '%s'", guard->id);
