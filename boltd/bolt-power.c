@@ -932,7 +932,7 @@ bolt_power_recover_guards (BoltPower *power,
 
   while ((name = g_dir_read_name (dir)) != NULL)
     {
-      BoltGuard *guard;
+      g_autoptr(BoltGuard) guard = NULL;
 
       if (!g_str_has_suffix (name, ".guard"))
         continue;
@@ -991,6 +991,7 @@ bolt_power_recover_guards (BoltPower *power,
                                power, G_CONNECT_SWAPPED);
 
       g_hash_table_insert (power->guards, guard->id, guard);
+      guard = NULL;
     }
 
   return TRUE;
