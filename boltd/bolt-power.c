@@ -278,100 +278,6 @@ bolt_guard_class_init (BoltGuardClass *klass)
                   0);
 }
 
-static gboolean
-bolt_guard_save (BoltGuard *guard,
-                 GFile     *guarddir,
-                 GError   **error)
-{
-  g_autoptr(GFile) guardfile = NULL;
-  g_autoptr(GKeyFile) kf = NULL;
-  g_autofree char *path = NULL;
-  g_autofree char *name = NULL;
-  gboolean ok;
-
-  name = g_strdup_printf ("%s.guard", guard->id);
-  guardfile = g_file_get_child (guarddir, name);
-  path = g_file_get_path (guardfile);
-
-  kf = g_key_file_new ();
-
-  g_key_file_set_string (kf, "guard", "id", guard->id);
-  g_key_file_set_string (kf, "guard", "who", guard->who);
-  g_key_file_set_uint64 (kf, "guard", "pid", guard->pid);
-
-  ok = g_key_file_save_to_file (kf, path, error);
-
-  if (ok)
-    {
-      guard->path = g_steal_pointer (&path);
-      g_object_notify_by_pspec (G_OBJECT (guard),
-                                guard_props[PROP_PATH]);
-    }
-
-  return ok;
-}
-
-static BoltGuard *
-bolt_guard_load (const char *statedir,
-                 const char *name,
-                 GError    **error)
-{
-  g_autoptr(GError) err = NULL;
-  g_autoptr(GKeyFile) kf = NULL;
-  g_autofree char *path = NULL;
-  g_autofree char *who = NULL;
-  g_autofree char *id = NULL;
-  g_autofree char *fifo = NULL;
-  gboolean ok;
-  gulong pid;
-
-  path = g_build_filename (statedir, name, NULL);
-
-  kf = g_key_file_new ();
-  ok = g_key_file_load_from_file (kf, path, 0, error);
-
-  if (!ok)
-    return NULL;
-
-  id = g_key_file_get_string (kf, "guard", "id", &err);
-
-  if (id == NULL)
-    {
-      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
-                   "could not read 'id' field: %s", err->message);
-      return NULL;
-    }
-
-  who = g_key_file_get_string (kf, "guard", "who", &err);
-  if (who == NULL)
-    {
-      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_FAILED,
-                           "field missing ('who')");
-      return NULL;
-    }
-
-  pid = (gulong) g_key_file_get_uint64 (kf, "guard", "pid", &err);
-  if (err != NULL)
-    {
-      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_FAILED,
-                           "field missing ('pid')");
-      return NULL;
-    }
-
-  fifo = g_strdup_printf ("%s.fifo", path);
-
-  if (!g_file_test (fifo, G_FILE_TEST_EXISTS))
-    g_clear_pointer (&fifo, g_free);
-
-  return g_object_new (BOLT_TYPE_GUARD,
-                       "path", path,
-                       "fifo", fifo,
-                       "id", id,
-                       "who", who,
-                       "pid", pid,
-                       NULL);
-}
-
 static void
 bolt_guard_remove (BoltGuard *guard)
 {
@@ -627,6 +533,100 @@ bolt_guard_recover (const char *statedir,
     }
 
   return g_steal_pointer (&guards);
+}
+
+gboolean
+bolt_guard_save (BoltGuard *guard,
+                 GFile     *guarddir,
+                 GError   **error)
+{
+  g_autoptr(GFile) guardfile = NULL;
+  g_autoptr(GKeyFile) kf = NULL;
+  g_autofree char *path = NULL;
+  g_autofree char *name = NULL;
+  gboolean ok;
+
+  name = g_strdup_printf ("%s.guard", guard->id);
+  guardfile = g_file_get_child (guarddir, name);
+  path = g_file_get_path (guardfile);
+
+  kf = g_key_file_new ();
+
+  g_key_file_set_string (kf, "guard", "id", guard->id);
+  g_key_file_set_string (kf, "guard", "who", guard->who);
+  g_key_file_set_uint64 (kf, "guard", "pid", guard->pid);
+
+  ok = g_key_file_save_to_file (kf, path, error);
+
+  if (ok)
+    {
+      guard->path = g_steal_pointer (&path);
+      g_object_notify_by_pspec (G_OBJECT (guard),
+                                guard_props[PROP_PATH]);
+    }
+
+  return ok;
+}
+
+BoltGuard *
+bolt_guard_load (const char *statedir,
+                 const char *name,
+                 GError    **error)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GKeyFile) kf = NULL;
+  g_autofree char *path = NULL;
+  g_autofree char *who = NULL;
+  g_autofree char *id = NULL;
+  g_autofree char *fifo = NULL;
+  gboolean ok;
+  gulong pid;
+
+  path = g_build_filename (statedir, name, NULL);
+
+  kf = g_key_file_new ();
+  ok = g_key_file_load_from_file (kf, path, 0, error);
+
+  if (!ok)
+    return NULL;
+
+  id = g_key_file_get_string (kf, "guard", "id", &err);
+
+  if (id == NULL)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "could not read 'id' field: %s", err->message);
+      return NULL;
+    }
+
+  who = g_key_file_get_string (kf, "guard", "who", &err);
+  if (who == NULL)
+    {
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                           "field missing ('who')");
+      return NULL;
+    }
+
+  pid = (gulong) g_key_file_get_uint64 (kf, "guard", "pid", &err);
+  if (err != NULL)
+    {
+      g_set_error_literal (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                           "field missing ('pid')");
+      return NULL;
+    }
+
+  fifo = g_strdup_printf ("%s.fifo", path);
+
+  if (!g_file_test (fifo, G_FILE_TEST_EXISTS))
+    g_clear_pointer (&fifo, g_free);
+
+  return g_object_new (BOLT_TYPE_GUARD,
+                       "path", path,
+                       "fifo", fifo,
+                       "id", id,
+                       "who", who,
+                       "pid", pid,
+                       NULL);
 }
 /* ****************************************************************** */
 /* BoltPower */

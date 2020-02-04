@@ -47,6 +47,16 @@ guint               bolt_guard_get_pid (BoltGuard *guard);
 
 GPtrArray *         bolt_guard_recover (const char *statedir,
                                         GError    **error);
+
+gboolean            bolt_guard_save (BoltGuard *guard,
+                                     GFile     *guarddir,
+                                     GError   **error);
+
+BoltGuard *         bolt_guard_load (const char *statedir,
+                                     const char *name,
+                                     GError    **error);
+
+
 /* BoltPower */
 
 #define BOLT_TYPE_POWER bolt_power_get_type ()
