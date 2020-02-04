@@ -45,6 +45,8 @@ const char *        bolt_guard_get_who (BoltGuard *guard);
 
 guint               bolt_guard_get_pid (BoltGuard *guard);
 
+GPtrArray *         bolt_guard_recover (const char *statedir,
+                                        GError    **error);
 /* BoltPower */
 
 #define BOLT_TYPE_POWER bolt_power_get_type ()

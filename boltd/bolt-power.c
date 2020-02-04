@@ -551,6 +551,83 @@ bolt_guard_get_pid (BoltGuard *guard)
   return (guint) guard->pid;
 }
 
+GPtrArray *
+bolt_guard_recover (const char *statedir,
+                    GError    **error)
+{
+
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GDir) dir   = NULL;
+  g_autoptr(GPtrArray) guards = NULL;
+  const char *name;
+
+  g_return_val_if_fail (statedir != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  dir = g_dir_open (statedir, 0, error);
+  if (dir == NULL)
+    return NULL;
+
+  guards = g_ptr_array_new_with_free_func (g_object_unref);
+
+  while ((name = g_dir_read_name (dir)) != NULL)
+    {
+      g_autoptr(BoltGuard) guard = NULL;
+
+      if (!g_str_has_suffix (name, ".guard"))
+        continue;
+
+      guard = bolt_guard_load (statedir, name, &err);
+
+      if (guard == NULL)
+        {
+          bolt_warn_err (err, LOG_TOPIC ("power"),
+                         "could not load guard '%s'", name);
+          g_clear_error (&err);
+          continue;
+        }
+
+      /* internal guards are discarded */
+      if (bolt_streq (guard->who, "boltd"))
+        {
+          bolt_info (LOG_TOPIC ("power"), "ignoring boltd guard");
+          continue;
+        }
+      else if (!bolt_pid_is_alive (guard->pid))
+        {
+          bolt_info (LOG_TOPIC ("power"),
+                     "ignoring guard '%s for '%s': process dead",
+                     guard->id, guard->who);
+          bolt_guard_fifo_cleanup (guard);
+          continue;
+        }
+
+      if (guard->fifo)
+        {
+          int fd;
+          fd = bolt_guard_monitor (guard, &err);
+
+          if (fd < 0)
+            {
+              bolt_warn_err (err, "could not monitor guard '%d'",
+                             guard->id);
+              g_clear_error (&err);
+            }
+          else
+            {
+              (void) close (fd);
+
+              /* monitoring adds a reference that we don't want */
+              g_object_unref (guard);
+            }
+        }
+
+      g_ptr_array_add (guards, guard);
+      guard = NULL;
+    }
+
+  return g_steal_pointer (&guards);
+}
 /* ****************************************************************** */
 /* BoltPower */
 
@@ -919,79 +996,32 @@ static gboolean
 bolt_power_recover_guards (BoltPower *power,
                            GError   **error)
 {
-  g_autoptr(GError) err = NULL;
-  g_autoptr(GDir) dir   = NULL;
+  g_autoptr(GPtrArray) guards = NULL;
   g_autofree char *statedir = NULL;
-  const char *name;
 
   statedir = g_file_get_path (power->statedir);
 
-  dir = g_dir_open (statedir, 0, error);
-  if (dir == NULL)
+  guards = bolt_guard_recover (statedir, error);
+  if (guards == NULL)
     return FALSE;
 
-  while ((name = g_dir_read_name (dir)) != NULL)
+  for (guint i = 0; i < guards->len; i++)
     {
-      g_autoptr(BoltGuard) guard = NULL;
-
-      if (!g_str_has_suffix (name, ".guard"))
-        continue;
-
-      guard = bolt_guard_load (statedir, name, &err);
-
-      if (guard == NULL)
-        {
-          bolt_warn_err (err, LOG_TOPIC ("power"),
-                         "could not load guard '%s'", name);
-          g_clear_error (&err);
-          continue;
-        }
-
-      /* internal guards are discarded */
-      if (bolt_streq (guard->who, "boltd"))
-        {
-          bolt_info (LOG_TOPIC ("power"), "ignoring boltd guard");
-          continue;
-        }
-      else if (!bolt_pid_is_alive (guard->pid))
-        {
-          bolt_info (LOG_TOPIC ("power"),
-                     "ignoring guard '%s for '%s': process dead",
-                     guard->id, guard->who);
-          bolt_guard_fifo_cleanup (guard);
-          continue;
-        }
-
-      if (guard->fifo)
-        {
-          int fd;
-          fd = bolt_guard_monitor (guard, &err);
-
-          if (fd < 0)
-            {
-              bolt_warn_err (err, "could not monitor guard '%d'",
-                             guard->id);
-              g_clear_error (&err);
-            }
-          else
-            {
-              (void) close (fd);
-
-              /* monitoring adds a reference that we don't want */
-              g_object_unref (guard);
-            }
-        }
+      BoltGuard *guard = g_ptr_array_index (guards, i);
+      const char *id = bolt_guard_get_id (guard);
+      const char *who = bolt_guard_get_who (guard);
+      const guint pid = bolt_guard_get_pid (guard);
 
       bolt_info (LOG_TOPIC ("power"),
-                 "guard '%s' for '%s' (pid %lu) recovered",
-                 guard->id, guard->who, (gulong) guard->pid);
+                 "guard '%s' for '%s' (pid %u) recovered",
+                 id, who, pid);
 
       g_signal_connect_object (guard, "released",
                                (GCallback) bolt_power_release,
                                power, G_CONNECT_SWAPPED);
 
-      g_hash_table_insert (power->guards, guard->id, guard);
-      guard = NULL;
+      g_hash_table_insert (power->guards, guard->id,
+                           (gpointer) g_object_ref (guard));
     }
 
   return TRUE;
