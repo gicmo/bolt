@@ -777,14 +777,25 @@ handle_force_power (BoltExported          *object,
 
   g_variant_get (params, "(&s&s)", &who, &flags);
 
-  /* TODO: log errors */
   guard = bolt_power_acquire_full (power, who, (pid_t) pid, error);
   if (guard == NULL)
-    return NULL;
+    {
+      bolt_warn_err (*error, LOG_TOPIC ("power"),
+                     "failed to acquire power for %s (pid %u)",
+                     who, pid);
+      return NULL;
+    }
 
+  /* monitor will add a reference to guard, so freeing one
+   * via the auto pointer is expected and in fact desired */
   fd = bolt_guard_monitor (guard, error);
   if (fd == -1)
-    return NULL;
+    {
+      bolt_warn_err (*error, LOG_TOPIC ("power"),
+                     "failed to monitor guard %s for %s (pid %u)",
+                     bolt_guard_get_id (guard), who, pid);
+      return NULL;
+    }
 
   fds = g_unix_fd_list_new_from_array (&fd, 1);
   g_dbus_method_invocation_return_value_with_unix_fd_list (invocation,
