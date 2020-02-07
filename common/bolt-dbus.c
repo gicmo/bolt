@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "bolt-dbus.h"
+#include "bolt-error.h"
 
 #include "bolt-dbus-resource.h"
 #include "bolt-str.h"
@@ -100,4 +101,40 @@ bolt_dbus_interface_info_lookup (const char *resource_name,
   info = bolt_dbus_interface_info_find (xml, interface_name, error);
 
   return info;
+}
+
+gboolean
+bolt_dbus_get_sender_pid (GDBusMethodInvocation *invocation,
+                          guint                 *pid,
+                          GError               **error)
+{
+  g_autoptr(GVariant) res = NULL;
+  g_autoptr(GError) err = NULL;
+  GDBusConnection *con;
+  const char *sender;
+
+  con = g_dbus_method_invocation_get_connection (invocation);
+  sender = g_dbus_method_invocation_get_sender (invocation);
+
+  res = g_dbus_connection_call_sync (con,
+                                     "org.freedesktop.DBus",
+                                     "/",
+                                     "org.freedesktop.DBus",
+                                     "GetConnectionUnixProcessID",
+                                     g_variant_new ("(s)", sender),
+                                     G_VARIANT_TYPE ("(u)"),
+                                     G_DBUS_CALL_FLAGS_NONE,
+                                     -1, NULL,
+                                     &err);
+  if (res == NULL)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                   "could not get pid of caller: %s",
+                   err->message);
+      return FALSE;
+    }
+
+  g_variant_get (res, "(u)", pid);
+
+  return TRUE;
 }

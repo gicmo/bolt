@@ -23,6 +23,7 @@
 #include "bolt-power.h"
 
 #include "bolt-config.h"
+#include "bolt-dbus.h"
 #include "bolt-enums.h"
 #include "bolt-error.h"
 #include "bolt-fs.h"
@@ -761,41 +762,18 @@ handle_force_power (BoltExported          *object,
 {
   g_autoptr(BoltGuard) guard = NULL;
   g_autoptr(GUnixFDList) fds = NULL;
-  g_autoptr(GError) err = NULL;
-  g_autoptr(GVariant) res = NULL;
-  GDBusConnection *con;
   BoltPower *power;
-  const char *sender;
   const char *flags;
   const char *who;
+  gboolean ok;
   guint pid;
   int fd;
 
   power = BOLT_POWER (object);
 
-  con = g_dbus_method_invocation_get_connection (invocation);
-  sender = g_dbus_method_invocation_get_sender (invocation);
-
-  res = g_dbus_connection_call_sync (con,
-                                     "org.freedesktop.DBus",
-                                     "/",
-                                     "org.freedesktop.DBus",
-                                     "GetConnectionUnixProcessID",
-                                     g_variant_new ("(s)", sender),
-                                     G_VARIANT_TYPE ("(u)"),
-                                     G_DBUS_CALL_FLAGS_NONE,
-                                     -1, NULL,
-                                     &err);
-
-  if (res == NULL)
-    {
-      g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
-                   "could not get pid of caller: %s",
-                   err->message);
-      return NULL;
-    }
-
-  g_variant_get (res, "(u)", &pid);
+  ok = bolt_dbus_get_sender_pid (invocation, &pid, error);
+  if (!ok)
+    return NULL;
 
   g_variant_get (params, "(&s&s)", &who, &flags);
 

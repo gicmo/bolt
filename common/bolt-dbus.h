@@ -33,4 +33,7 @@ GDBusInterfaceInfo *   bolt_dbus_interface_info_lookup (const char *resource_nam
                                                         const char *interface_name,
                                                         GError    **error);
 
+gboolean               bolt_dbus_get_sender_pid (GDBusMethodInvocation *invocation,
+                                                 guint                 *pid,
+                                                 GError               **error);
 G_END_DECLS
