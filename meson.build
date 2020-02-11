@@ -423,6 +423,7 @@ tests = [
   ['test-watchdog', [libdaemon]],
   ['test-self'],
   ['test-guard', [libdaemon]],
+  ['test-reaper', [libdaemon]],
 ]
 
 if mockdev.found()

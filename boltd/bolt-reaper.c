@@ -114,7 +114,10 @@ bolt_reaper_set_property (GObject      *object,
 static void
 bolt_reaper_init (BoltReaper *reaper)
 {
-  reaper->pids = g_hash_table_new (g_direct_hash, g_direct_equal);
+  reaper->pids = g_hash_table_new_full (g_direct_hash,
+                                        g_direct_equal,
+                                        NULL,
+                                        g_free);
 }
 
 static void
@@ -147,7 +150,7 @@ bolt_reaper_class_init (BoltReaperClass *klass)
                   NULL, NULL,
                   NULL,
                   G_TYPE_NONE,
-                  0);
+                  2, G_TYPE_UINT, G_TYPE_STRING);
 }
 
 static gboolean
@@ -162,6 +165,7 @@ bolt_reaper_timeout (gpointer user_data)
   g_hash_table_iter_init (&iter, reaper->pids);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
+      g_autofree char *name = NULL;
       guint pid = GPOINTER_TO_UINT (key);
       bolt_debug (LOG_TOPIC ("reaper"), "checking '%u'", pid);
 
@@ -172,11 +176,13 @@ bolt_reaper_timeout (gpointer user_data)
                  "process '%u' is dead",
                  pid);
 
-      g_hash_table_iter_remove (&iter);
+      name = (char *) value;
+      g_hash_table_iter_steal (&iter);
 
       g_signal_emit (reaper,
                      signals[PROCESS_DIED],
-                     0);
+                     0,
+                     pid, name);
     }
 
   if (g_hash_table_size (reaper->pids) == 0)
@@ -201,13 +207,14 @@ bolt_reaper_new (void)
 
 void
 bolt_reaper_add_pid (BoltReaper *reaper,
-                     guint       pid)
+                     guint       pid,
+                     const char *name)
 {
   gpointer p = GUINT_TO_POINTER (pid);
 
   g_return_if_fail (BOLT_IS_REAPER (reaper));
 
-  g_hash_table_insert (reaper->pids, p, p);
+  g_hash_table_insert (reaper->pids, p, g_strdup (name));
 
   if (reaper->timeout_id != 0)
     return;

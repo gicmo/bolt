@@ -28,10 +28,11 @@ G_BEGIN_DECLS
 #define BOLT_TYPE_REAPER bolt_reaper_get_type ()
 G_DECLARE_FINAL_TYPE (BoltReaper, bolt_reaper, BOLT, REAPER, GObject);
 
-BoltReaper*   bolt_reaper_new (void);
+BoltReaper *   bolt_reaper_new (void);
 
 void          bolt_reaper_add_pid (BoltReaper *reaper,
-                                   guint       pid);
+                                   guint       pid,
+                                   const char *name);
 
 gboolean      bolt_reaper_del_pid (BoltReaper *reaper,
                                    guint       pid);
