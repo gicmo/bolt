@@ -353,6 +353,11 @@ guard_watch_release (gpointer data)
 {
   BoltGuard *guard = data;
 
+  if (guard->state == GUARD_STATE_RELEASED)
+    /* if we are already released, the FIFO was kept
+     * alive on purpose, so do nothing here */
+    return;
+
   if (guard->fifo == NULL)
     {
       bolt_bug (LOG_TOPIC ("guard"), "FIFO event but no FIFO");
