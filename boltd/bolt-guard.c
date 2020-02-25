@@ -445,6 +445,14 @@ bolt_guard_get_path (BoltGuard *guard)
   return guard->path;
 }
 
+const char *
+bolt_guard_get_fifo (BoltGuard *guard)
+{
+  g_return_val_if_fail (BOLT_IS_GUARD (guard), NULL);
+
+  return guard->fifo;
+}
+
 GPtrArray *
 bolt_guard_recover (const char *statedir,
                     GError    **error)

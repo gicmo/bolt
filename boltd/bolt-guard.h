@@ -41,6 +41,8 @@ guint               bolt_guard_get_pid (BoltGuard *guard);
 
 const char *        bolt_guard_get_path (BoltGuard *guard);
 
+const char *        bolt_guard_get_fifo (BoltGuard *guard);
+
 GPtrArray *         bolt_guard_recover (const char *statedir,
                                         GError    **error);
 
