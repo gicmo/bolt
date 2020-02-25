@@ -420,7 +420,8 @@ tests = [
   ['test-store', [libdaemon]],
   ['test-journal', [libdaemon]],
   ['test-watchdog', [libdaemon]],
-  ['test-self']
+  ['test-self'],
+  ['test-guard', [libdaemon]],
 ]
 
 if mockdev.found()
