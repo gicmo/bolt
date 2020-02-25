@@ -482,7 +482,7 @@ bolt_guard_recover (const char *statedir,
       else if (!bolt_pid_is_alive (guard->pid))
         {
           bolt_info (LOG_TOPIC ("guard"),
-                     "ignoring guard '%s for '%s': process dead",
+                     "ignoring guard '%s' for '%s': process dead",
                      guard->id, guard->who);
           bolt_guard_fifo_cleanup (guard);
           continue;
