@@ -462,62 +462,6 @@ test_power_recover_state (TestPower *tt, gconstpointer user)
   g_unsetenv ("BOLT_RUNDIR");
 }
 
-
-static void
-test_power_recover_guards_ok (TestPower *tt, gconstpointer user)
-{
-  g_autoptr(BoltPower) power = NULL;
-  g_autoptr(BoltGuard) guard = NULL;
-  g_autoptr(GError) err = NULL;
-  BoltPowerState state;
-  const char *fp;
-  pid_t pid;
-  int r;
-
-  fp = mock_sysfs_force_power_add (tt->sysfs);
-  g_assert_nonnull (fp);
-
-  pid = fork ();
-  g_assert_cmpint (pid, !=, -1);
-
-  if (pid == 0)
-    {
-      /* child */
-      power = make_bolt_power_timeout (tt, 10);
-
-      g_assert_no_error (err);
-      g_assert_nonnull (power);
-
-      state = bolt_power_get_state (power);
-      g_assert_cmpint (state, ==, BOLT_FORCE_POWER_UNSET);
-
-      /* we pretend the guard is for the parent */
-      pid = getppid ();
-      guard = bolt_power_acquire_full (power, "test", pid, &err);
-      g_assert_no_error (err);
-      g_assert_nonnull (guard);
-
-      state = bolt_power_get_state (power);
-      g_assert_cmpint (state, ==, BOLT_FORCE_POWER_ON);
-
-      exit (0);
-    }
-
-  /* parent */
-  pid = waitpid (pid, &r, 0);
-  g_assert_cmpint (pid, >, 0);
-  g_assert_cmpint (r, ==, 0);
-
-  /* now lets recover the guard */
-  power = make_bolt_power_timeout (tt, 10);
-
-  g_assert_no_error (err);
-  g_assert_nonnull (power);
-
-  state = bolt_power_get_state (power);
-  g_assert_cmpint (state, ==, BOLT_FORCE_POWER_ON);
-}
-
 static void
 test_power_recover_guards_fail (TestPower *tt, gconstpointer user)
 {
@@ -758,13 +702,6 @@ main (int argc, char **argv)
               NULL,
               test_power_setup,
               test_power_recover_state,
-              test_power_tear_down);
-
-  g_test_add ("/power/guards/recover/ok",
-              TestPower,
-              NULL,
-              test_power_setup,
-              test_power_recover_guards_ok,
               test_power_tear_down);
 
   g_test_add ("/power/guards/recover/fail",

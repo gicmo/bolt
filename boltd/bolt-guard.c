@@ -475,6 +475,7 @@ bolt_guard_recover (const char *statedir,
   while ((name = g_dir_read_name (dir)) != NULL)
     {
       g_autoptr(BoltGuard) guard = NULL;
+      int fd;
 
       if (!g_str_has_suffix (name, ".guard"))
         continue;
@@ -490,9 +491,11 @@ bolt_guard_recover (const char *statedir,
         }
 
       /* internal guards are discarded */
-      if (bolt_streq (guard->who, "boltd"))
+      if (guard->fifo == NULL)
         {
-          bolt_info (LOG_TOPIC ("guard"), "ignoring boltd guard");
+          bolt_info (LOG_TOPIC ("guard"),
+                     "ignoring guard '%s' for '%s': no fifo",
+                     guard->id, guard->who);
           continue;
         }
       else if (!bolt_pid_is_alive (guard->pid))
@@ -504,25 +507,21 @@ bolt_guard_recover (const char *statedir,
           continue;
         }
 
-      if (guard->fifo)
+      fd = bolt_guard_monitor (guard, &err);
+
+      if (fd < 0)
         {
-          int fd;
-          fd = bolt_guard_monitor (guard, &err);
-
-          if (fd < 0)
-            {
-              bolt_warn_err (err, "could not monitor guard '%d'",
-                             guard->id);
-              g_clear_error (&err);
-            }
-          else
-            {
-              (void) close (fd);
-
-              /* monitoring adds a reference that we don't want */
-              g_object_unref (guard);
-            }
+          bolt_warn_err (err, "could not monitor guard '%d'",
+                         guard->id);
+          g_clear_error (&err);
+          continue;
         }
+
+      /* close the write side */
+      (void) close (fd);
+
+      /* monitoring adds a reference that we don't want */
+      g_object_unref (guard);
 
       g_ptr_array_add (guards, guard);
       guard = NULL;
