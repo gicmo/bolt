@@ -437,6 +437,14 @@ bolt_guard_get_pid (BoltGuard *guard)
   return (guint) guard->pid;
 }
 
+const char *
+bolt_guard_get_path (BoltGuard *guard)
+{
+  g_return_val_if_fail (BOLT_IS_GUARD (guard), NULL);
+
+  return guard->path;
+}
+
 GPtrArray *
 bolt_guard_recover (const char *statedir,
                     GError    **error)
