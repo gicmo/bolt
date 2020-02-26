@@ -123,6 +123,134 @@ test_guard_basic (TestGuard *tt, gconstpointer user)
   g_assert_true (released);
 }
 
+static gboolean
+on_cb_close_fd (gpointer user_data)
+{
+  int *fd = user_data;
+  int r;
+
+  g_debug ("closing fd");
+  r = close (*fd);
+
+  g_assert_cmpint (r, >, -1);
+  *fd = -1;
+  return FALSE;
+}
+
+static gboolean
+warn_and_quit (gpointer user_data)
+{
+  GMainLoop *loop = user_data;
+
+  g_main_loop_quit (loop);
+  g_warning ("timeout reached");
+
+  return G_SOURCE_REMOVE;
+}
+
+static void
+quit_mainloop (BoltGuard *guard, GMainLoop *loop)
+{
+  g_debug ("Stopping loop");
+  g_main_loop_quit (loop);
+}
+
+static void
+test_guard_recover_active (TestGuard *tt, gconstpointer user)
+{
+  g_autoptr(GPtrArray) guards = NULL;
+  g_autoptr(BoltGuard) guard = NULL;
+  g_autoptr(GMainLoop) loop = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GFile) f = NULL;
+  g_autofree char *fifo = NULL;
+  const char *id = "guard-1";
+  const char *who = "Richard III";
+  BoltGuard *g = NULL;
+  gboolean released = FALSE;
+  gboolean ok;
+  gpointer data;
+  guint tid;
+  int fd;
+
+  guard = g_object_new (BOLT_TYPE_GUARD,
+                        "id", id,
+                        "who", who,
+                        "pid", getpid (),
+                        NULL);
+
+  g_assert_nonnull (guard);
+
+  f = g_file_new_for_path (tt->rundir);
+
+  ok = bolt_guard_save (guard, f, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_nonnull (bolt_guard_get_path (guard));
+
+  g_signal_connect (guard, "released",
+                    (GCallback) on_release_true,
+                    &released);
+
+  g_assert_false (released);
+
+  fd = bolt_guard_monitor (guard, &err);
+  g_assert_no_error (err);
+  g_assert_cmpint (fd, >, -1);
+  g_object_unref (guard); /* monitor adds a references */
+
+  /* memorize the fifo so we can check it exists
+   * after we release the guard */
+  fifo = g_strdup (bolt_guard_get_fifo (guard));
+  g_assert_nonnull (fifo);
+  ok = g_file_test (fifo, G_FILE_TEST_EXISTS);
+  g_assert_true (ok);
+
+  /* release the kraken */
+  g_clear_object (&guard);
+  g_assert_true (released);
+
+  ok = g_file_test (fifo, G_FILE_TEST_EXISTS);
+  g_assert_true (ok);
+
+  /* recover the guard */
+  guards = bolt_guard_recover (tt->rundir, &err);
+  g_assert_no_error (err);
+  g_assert_cmpuint (guards->len, ==, 1);
+  g = g_ptr_array_index (guards, 0);
+
+  g_assert_cmpstr (bolt_guard_get_id (g), ==, id);
+  g_assert_cmpstr (bolt_guard_get_who (g), ==, who);
+  g_assert_cmpuint (bolt_guard_get_pid (g), ==, getpid ());
+
+  released = FALSE;
+  g_signal_connect (g, "released",
+                    (GCallback) on_release_true,
+                    &released);
+
+  loop = g_main_loop_new (NULL, FALSE);
+
+  g_signal_connect (g, "released",
+                    (GCallback) quit_mainloop,
+                    loop);
+
+  /* schedule a closing of the fifo */
+  g_idle_add (on_cb_close_fd, (gpointer) & fd);
+
+  /* fail if we don't have anything after n seconds */
+  tid = g_timeout_add_seconds (5, warn_and_quit, loop);
+
+  /* now we wait for the fifo to be closed */
+  g_main_loop_run (loop);
+  g_source_remove (tid);
+
+  /* free the array without calling its destroy function */
+  data = g_ptr_array_free (guards, FALSE);
+  g_free (data);
+  guards = NULL;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -137,6 +265,13 @@ main (int argc, char **argv)
               NULL,
               test_guard_setup,
               test_guard_basic,
+              test_guard_tear_down);
+
+  g_test_add ("/guard/recover/active",
+              TestGuard,
+              NULL,
+              test_guard_setup,
+              test_guard_recover_active,
               test_guard_tear_down);
 
   return g_test_run ();
