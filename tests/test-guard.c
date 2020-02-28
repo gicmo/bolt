@@ -24,6 +24,7 @@
 
 #include "bolt-dbus.h"
 #include "bolt-fs.h"
+#include "bolt-test.h"
 
 #include <glib.h>
 #include <gio/gio.h>
@@ -137,17 +138,6 @@ on_cb_close_fd (gpointer user_data)
   return FALSE;
 }
 
-static gboolean
-warn_and_quit (gpointer user_data)
-{
-  GMainLoop *loop = user_data;
-
-  g_main_loop_quit (loop);
-  g_warning ("timeout reached");
-
-  return G_SOURCE_REMOVE;
-}
-
 static void
 quit_mainloop (BoltGuard *guard, GMainLoop *loop)
 {
@@ -170,7 +160,6 @@ test_guard_recover_active (TestGuard *tt, gconstpointer user)
   gboolean released = FALSE;
   gboolean ok;
   gpointer data;
-  guint tid;
   int fd;
 
   guard = g_object_new (BOLT_TYPE_GUARD,
@@ -239,11 +228,7 @@ test_guard_recover_active (TestGuard *tt, gconstpointer user)
   g_idle_add (on_cb_close_fd, (gpointer) & fd);
 
   /* fail if we don't have anything after n seconds */
-  tid = g_timeout_add_seconds (5, warn_and_quit, loop);
-
-  /* now we wait for the fifo to be closed */
-  g_main_loop_run (loop);
-  g_source_remove (tid);
+  bolt_test_run_main_loop (loop, 5, TRUE, NULL);
 
   /* free the array without calling its destroy function */
   data = g_ptr_array_free (guards, FALSE);
