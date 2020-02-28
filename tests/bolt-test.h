@@ -125,4 +125,9 @@ G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (BoltVersion, bolt_version_clear);
 gboolean  bolt_check_kernel_version (int major,
                                      int minor);
 
+gboolean  bolt_test_run_main_loop (GMainLoop *loop,
+                                   guint      timeout_seconds,
+                                   gboolean   exit_on_timeout,
+                                   GError   **error);
+
 G_END_DECLS

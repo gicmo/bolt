@@ -417,3 +417,53 @@ bolt_check_kernel_version (int major, int minor)
 
   return bolt_version_check (&ver, major, minor, -1);
 }
+
+typedef struct MainLoopCtx
+{
+  GMainLoop *loop;
+  gboolean   timeout;
+} MainLoopCtx;
+
+static gboolean
+on_main_loop_timeout (gpointer user_data)
+{
+  MainLoopCtx *ctx = user_data;
+
+  ctx->timeout = TRUE;
+  g_main_loop_quit (ctx->loop);
+
+  return G_SOURCE_REMOVE;
+}
+
+gboolean
+bolt_test_run_main_loop (GMainLoop *loop,
+                         guint      timeout_seconds,
+                         gboolean   exit_on_timeout,
+                         GError   **error)
+{
+  MainLoopCtx ctx = { .loop = loop, .timeout = FALSE };
+  guint tid;
+
+  tid = g_timeout_add_seconds (timeout_seconds,
+                               on_main_loop_timeout,
+                               &ctx);
+
+  if (ctx.timeout)
+    {
+      const char *message = "Operation timed out";
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_TIMED_OUT,
+                   "%s", message);
+
+      if (exit_on_timeout)
+        {
+          g_warning ("test error: %s", message);
+          g_assert_not_reached ();
+        }
+
+      return FALSE;
+    }
+
+  g_source_remove (tid);
+
+  return TRUE;
+}
