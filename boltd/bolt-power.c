@@ -70,12 +70,6 @@ static gboolean  bolt_power_switch_toggle (BoltPower *power,
 /* callbacks and signals */
 static gboolean bolt_power_wait_timeout (gpointer user_data);
 
-static void     on_reaper_process_died (GObject    *gobject,
-                                        guint       pid,
-                                        const char *name,
-                                        gpointer    user_data);
-
-
 static void     handle_uevent_udev (BoltUdev           *udev,
                                     const char         *action,
                                     struct udev_device *device,
@@ -108,7 +102,6 @@ struct _BoltPower
    * or NULL if force power is unavailable */
   char          *path;
   BoltPowerState state;
-  BoltReaper    *reaper;
 
   /*  */
   guint16     guard_num;
@@ -151,7 +144,6 @@ bolt_power_finalize (GObject *object)
       bolt_power_wait_timeout (power);
     }
 
-  g_clear_object (&power->reaper);
   g_clear_pointer (&power->runpath, g_free);
   g_clear_object (&power->statedir);
   g_clear_object (&power->statefile);
@@ -168,11 +160,6 @@ bolt_power_init (BoltPower *power)
 {
   power->state = BOLT_FORCE_POWER_UNSET;
   power->guards = g_hash_table_new (g_str_hash, g_str_equal);
-
-  power->reaper = bolt_reaper_new ();
-  g_signal_connect_object (power->reaper, "process-died",
-                           G_CALLBACK (on_reaper_process_died),
-                           power, 0);
 }
 
 static void
@@ -475,29 +462,6 @@ bolt_power_wait_timeout (gpointer user_data)
 }
 
 static void
-on_reaper_process_died (GObject    *gobject,
-                        guint       pid,
-                        const char *name,
-                        gpointer    user_data)
-{
-  BoltPower *power = user_data;
-  BoltGuard *g = NULL;
-
-  g = g_hash_table_lookup (power->guards, name);
-  if (g == NULL)
-    return;
-
-  bolt_info (LOG_TOPIC ("power"),
-             "process '%u' is dead, "
-             "releasing the guard '%s' for '%s'",
-             bolt_guard_get_pid (g),
-             bolt_guard_get_id (g),
-             bolt_guard_get_who (g));
-
-  g_object_unref (g);
-}
-
-static void
 handle_uevent_thunderbolt (BoltPower          *power,
                            const char         *action,
                            struct udev_device *device)
@@ -705,12 +669,10 @@ bolt_power_release (BoltPower *power, BoltGuard *guard)
 {
   const char *id;
   const char *who;
-  guint pid;
   gboolean ok;
 
   id = bolt_guard_get_id (guard);
   who = bolt_guard_get_who (guard);
-  pid = bolt_guard_get_pid (guard);
 
   ok = g_hash_table_remove (power->guards, id);
 
@@ -722,8 +684,6 @@ bolt_power_release (BoltPower *power, BoltGuard *guard)
 
   bolt_info (LOG_TOPIC ("power"), "guard '%s' for '%s' deactivated",
              id, who);
-
-  bolt_reaper_del_pid (power->reaper, pid);
 
   /* we still have active guards */
   if (g_hash_table_size (power->guards) != 0)
@@ -943,8 +903,6 @@ bolt_power_acquire_full (BoltPower  *power,
 
   bolt_info (LOG_TOPIC ("power"), "guard '%s' for '%s' active",
              id, who);
-
-  bolt_reaper_add_pid (power->reaper, pid, id);
 
   /* guard is saved so we can recover our state if we
    * were to crash or restarted */
