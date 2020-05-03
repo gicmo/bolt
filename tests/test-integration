@@ -1489,7 +1489,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.client.domain_by_id("")
 
         with self.assertRaises(GLib.GError):
-            self.client.domain_by_id("nonexistant")
+            self.client.domain_by_id("nonexistent")
 
         for name, domain, host in domains:
             remote = self.client.domain_by_id(name)
@@ -1678,7 +1678,7 @@ class BoltTest(dbusmock.DBusTestCase):
             self.client.device_by_uid("")
 
         with self.assertRaises(GLib.GError):
-            self.client.device_by_uid("nonexistant")
+            self.client.device_by_uid("nonexistent")
 
         tree = self.default_mock_tree()
         tree.connect_tree(self.testbed)

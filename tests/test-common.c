@@ -1525,8 +1525,8 @@ test_strv_contains (TestRng *tt, gconstpointer user_data)
 
   const GStrv strv = MAKE_GSTRV ("a", "b", "c", "d", NULL);
 
-  g_assert_false (bolt_strv_contains (NULL, "nonexistant"));
-  g_assert_false (bolt_strv_contains (strv, "nonexistant"));
+  g_assert_false (bolt_strv_contains (NULL, "nonexistent"));
+  g_assert_false (bolt_strv_contains (strv, "nonexistent"));
 
   for (char **iter = strv; *iter; iter++)
     {

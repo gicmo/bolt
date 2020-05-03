@@ -76,7 +76,7 @@ bolt_device_class_init (BoltDeviceClass *klass)
 
   props[PROP_UID] =
     g_param_spec_string ("uid", "Uid",
-                         "The unique identifer.",
+                         "The unique identifier.",
                          "unknown",
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);

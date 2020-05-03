@@ -31,7 +31,7 @@
     <property name="DefaultPolicy" type="s" access="read">
       <doc:doc><doc:description><doc:para>
 	The policy to use during enrollment when "default" was
-	sepcified.
+	specified.
       </doc:para></doc:description></doc:doc>
     </property>
 
@@ -242,7 +242,7 @@
 
     <property name="Timeout" type="u" access="read">
       <doc:doc><doc:description><doc:para>
-	The minimum amout of time the controller will be powered.
+	The minimum amount of time the controller will be powered.
 	This timeout will get reset with every new activity on the
 	thundrbolt bus while the controller is being force powered.
       </doc:para></doc:description></doc:doc>
