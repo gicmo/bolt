@@ -229,6 +229,7 @@ bolt_properties_find (GPtrArray   *specs,
 
 typedef enum {
   BOLT_WIRE_CONV_NATIVE,
+  BOLT_WIRE_CONV_CUSTOM,
   BOLT_WIRE_CONV_ENUM_AS_STRING,
   BOLT_WIRE_CONV_FLAGS_AS_STRING,
   BOLT_WIRE_CONV_OBJECT_AS_STRING,
@@ -248,6 +249,8 @@ struct _BoltWireConv
   BoltConvToWire   to_wire;
   BoltConvFromWire from_wire;
 
+  /*  */
+  char *custom_id;
 };
 
 /* helper */
@@ -521,6 +524,11 @@ bolt_wire_conv_describe (BoltWireConv *conv)
 
     case BOLT_WIRE_CONV_OBJECT_AS_STRING:
       return "object-as-string";
+
+    case BOLT_WIRE_CONV_CUSTOM:
+      if (conv->custom_id)
+        return conv->custom_id;
+      return "custom";
     }
 
   return "*unknown*";
@@ -573,6 +581,35 @@ bolt_wire_conv_for (const GVariantType *wire_type,
       conv->to_wire = conv_value_to_variant;
       conv->from_wire = conv_value_from_variant;
     }
+
+  return conv;
+}
+
+BoltWireConv *
+bolt_wire_conv_custom (const GVariantType *wire_type,
+                       GParamSpec         *prop_spec,
+                       const char         *custom_id,
+                       BoltConvToWire      to_wire,
+                       BoltConvFromWire    from_wire)
+{
+  BoltWireConv *conv;
+
+  g_return_val_if_fail (wire_type != NULL, NULL);
+  g_return_val_if_fail (prop_spec != NULL, NULL);
+
+  g_return_val_if_fail (wire_type != NULL, NULL);
+  g_return_val_if_fail (prop_spec != NULL, NULL);
+
+  conv = g_new (BoltWireConv, 1);
+  conv->ref_count = 1;
+
+  conv->conv_type = BOLT_WIRE_CONV_CUSTOM;
+  conv->wire_type = g_variant_type_copy (wire_type);
+  conv->prop_spec = g_param_spec_ref (prop_spec);
+  conv->custom_id = g_strdup (custom_id);
+
+  conv->to_wire = to_wire;
+  conv->from_wire = from_wire;
 
   return conv;
 }

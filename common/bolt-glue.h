@@ -67,6 +67,12 @@ const char *          bolt_wire_conv_describe (BoltWireConv *conv);
 BoltWireConv *        bolt_wire_conv_for (const GVariantType *wire_type,
                                           GParamSpec         *prop_spec);
 
+BoltWireConv *        bolt_wire_conv_custom (const GVariantType *wire_type,
+                                             GParamSpec         *prop_spec,
+                                             const char         *custom_id,
+                                             BoltConvToWire      to_wire,
+                                             BoltConvFromWire    from_wire);
+
 GVariant *            bolt_wire_conv_to_wire (BoltWireConv *conv,
                                               const GValue *value,
                                               GError      **error);
