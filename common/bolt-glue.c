@@ -295,8 +295,6 @@ conv_enum_from_str (BoltWireConv *conv,
   gboolean ok;
   gint v;
 
-  wire_conv_init_value_if_needed (conv, value);
-
   es  = G_PARAM_SPEC_ENUM (conv->prop_spec);
   str = g_variant_get_string (wire, NULL);
 
@@ -341,8 +339,6 @@ conv_flags_from_str (BoltWireConv *conv,
   gboolean ok;
   const char *str;
   guint v;
-
-  wire_conv_init_value_if_needed (conv, value);
 
   fs = G_PARAM_SPEC_FLAGS (conv->prop_spec);
   str = g_variant_get_string (wire, NULL);
@@ -446,8 +442,6 @@ conv_str_from_wire (BoltWireConv *conv,
                     GError      **error)
 {
   const char *str = g_variant_get_string (wire, NULL);
-
-  wire_conv_init_value_if_needed (conv, value);
 
   if (str && *str == '\0')
     str = NULL;
@@ -617,6 +611,8 @@ bolt_wire_conv_from_wire (BoltWireConv *conv,
   g_return_val_if_fail (wire != NULL, FALSE);
   g_return_val_if_fail (value != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  wire_conv_init_value_if_needed (conv, value);
 
   ok = conv->from_wire (conv, wire, value, error);
 
