@@ -539,8 +539,8 @@ bolt_wire_conv_for (const GVariantType *wire_type,
   BoltWireConv *conv;
   gboolean as_str;
 
-  g_return_val_if_fail (wire_type != NULL, FALSE);
-  g_return_val_if_fail (prop_spec != NULL, FALSE);
+  g_return_val_if_fail (wire_type != NULL, NULL);
+  g_return_val_if_fail (prop_spec != NULL, NULL);
 
   conv = g_new (BoltWireConv, 1);
   conv->ref_count = 1;
