@@ -43,6 +43,15 @@ gboolean              bolt_properties_find (GPtrArray   *specs,
 /* wire protocol variant/value conversions  */
 typedef struct _BoltWireConv BoltWireConv;
 
+typedef GVariant *  (*BoltConvToWire) (BoltWireConv *conv,
+                                       const GValue *value,
+                                       GError      **error);
+
+typedef  gboolean (*BoltConvFromWire) (BoltWireConv *conv,
+                                       GVariant     *wire,
+                                       GValue       *value,
+                                       GError      **error);
+
 BoltWireConv *        bolt_wire_conv_ref (BoltWireConv *conv);
 
 void                  bolt_wire_conv_unref (BoltWireConv *conv);

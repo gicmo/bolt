@@ -234,15 +234,6 @@ typedef enum {
   BOLT_WIRE_CONV_OBJECT_AS_STRING,
 } BoltWireConvType;
 
-typedef GVariant * (*conv_to_wire) (BoltWireConv *conv,
-                                    const GValue *value,
-                                    GError      **error);
-
-typedef  gboolean (*conv_from_str) (BoltWireConv *conv,
-                                    GVariant     *wire,
-                                    GValue       *value,
-                                    GError      **error);
-
 struct _BoltWireConv
 {
   /* book-keeping */
@@ -254,8 +245,8 @@ struct _BoltWireConv
 
   /*  */
   BoltWireConvType conv_type;
-  conv_to_wire     to_wire;
-  conv_from_str    from_wire;
+  BoltConvToWire   to_wire;
+  BoltConvFromWire from_wire;
 
 };
 
