@@ -22,6 +22,7 @@
 
 #include "bolt-glue.h"
 
+#include "bolt-error.h"
 #include "test-enums.h"
 #include "bolt-test-resources.h"
 
@@ -763,6 +764,148 @@ test_wire_conv_simple (TestGlue *tt, gconstpointer data)
                    42U);
 }
 
+typedef struct BTLinkAttr
+{
+  struct
+  {
+    guint32 speed;
+    guint32 lanes;
+  } rx;
+
+  struct
+  {
+    guint32 speed;
+    guint32 lanes;
+  } tx;
+
+} BTLinkAttr;
+
+GType bt_link_attr_get_type (void);
+#define BT_TYPE_LINK_ATTR (bt_link_attr_get_type ())
+
+static BTLinkAttr *
+bt_link_attr_copy (const BTLinkAttr *other)
+{
+  BTLinkAttr *copy = g_new (BTLinkAttr, 1 );
+
+  *copy = *other;
+  return copy;
+}
+
+G_DEFINE_BOXED_TYPE (BTLinkAttr, bt_link_attr, bt_link_attr_copy, g_free);
+
+static GVariant *
+bt_link_attr_to_wire (BoltWireConv *conv,
+                      const GValue *value,
+                      GError      **error)
+{
+  GVariantDict dict;
+  BTLinkAttr *link;
+
+  link = g_value_get_boxed (value);
+
+  g_variant_dict_init (&dict, NULL);
+
+  g_variant_dict_insert (&dict, "rx.speed", "u", link->rx.speed);
+  g_variant_dict_insert (&dict, "rx.lanes", "u", link->rx.lanes);
+  g_variant_dict_insert (&dict, "tx.speed", "u", link->tx.speed);
+  g_variant_dict_insert (&dict, "tx.lanes", "u", link->tx.lanes);
+
+  return g_variant_dict_end (&dict);
+}
+
+
+static gboolean
+bt_link_attr_from_wire (BoltWireConv *conv,
+                        GVariant     *wire,
+                        GValue       *value,
+                        GError      **error)
+{
+  g_auto(GVariantDict) dict = G_VARIANT_DICT_INIT (wire);
+  BTLinkAttr link;
+  gboolean ok;
+  struct
+  {
+    const char *name;
+    guint32    *target;
+  } entries[] = {
+    {"rx.speed", &link.rx.speed},
+    {"rx.lanes", &link.rx.lanes},
+    {"tx.speed", &link.tx.speed},
+    {"tx.lanes", &link.tx.lanes},
+  };
+
+  for (unsigned i = 0; i < G_N_ELEMENTS (entries); i++)
+    {
+      const char *name = entries[i].name;
+      guint32 *target = entries[i].target;
+
+      ok = g_variant_dict_lookup (&dict, name, "u", target);
+      if (!ok)
+        {
+          g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
+                       "Missing entry in link dict: %s", name);
+          return FALSE;
+        }
+    }
+  ;
+
+  g_value_set_boxed (value, &link);
+
+  return ok;
+}
+
+static void
+test_wire_conv_custom (TestGlue *tt, gconstpointer data)
+{
+  g_autoptr(BoltWireConv) conv = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GVariant) var = NULL;
+  g_auto(GValue) val = G_VALUE_INIT;
+  gboolean ok;
+  GParamSpec *spec;
+  BTLinkAttr attr = {{10, 1}, {20, 2}};
+  BTLinkAttr *check;
+
+  spec = g_param_spec_boxed ("link-speed", "LinkSpeed",
+                             "Link Speed Info",
+                             BT_TYPE_LINK_ATTR,
+                             G_PARAM_STATIC_STRINGS);
+
+  conv = bolt_wire_conv_custom (G_VARIANT_TYPE ("a{su}"), spec,
+                                "link speed to dict",
+                                bt_link_attr_to_wire,
+                                bt_link_attr_from_wire);
+
+  g_assert_nonnull (conv);
+
+  g_assert_false (bolt_wire_conv_is_native (conv));
+  g_assert_nonnull (bolt_wire_conv_describe (conv));
+
+  g_value_init (&val, BT_TYPE_LINK_ATTR);
+  g_value_set_boxed (&val, &attr);
+
+  /* to the wire */
+  var = bolt_wire_conv_to_wire (conv, &val, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (var);
+
+  /* from the wire, value is unset */
+  g_value_unset (&val);
+  g_assert_true (G_VALUE_TYPE (&val) == 0);
+
+  ok = bolt_wire_conv_from_wire (conv, var, &val, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  check = g_value_get_boxed (&val);
+
+  g_assert_cmpuint (attr.rx.speed, ==, check->rx.speed);
+  g_assert_cmpuint (attr.rx.lanes, ==, check->rx.lanes);
+  g_assert_cmpuint (attr.tx.speed, ==, check->tx.speed);
+  g_assert_cmpuint (attr.tx.lanes, ==, check->tx.lanes);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -859,6 +1002,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_wire_conv_simple,
+              NULL);
+
+  g_test_add ("/common/wire_conv/custom",
+              TestGlue,
+              NULL,
+              NULL,
+              test_wire_conv_custom,
               NULL);
 
 
