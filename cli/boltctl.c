@@ -296,6 +296,7 @@ print_device (BoltDevice *dev, gboolean verbose)
     {
       g_autofree char *flags = NULL;
       const char *domain;
+      BoltLinkSpeed speed = {0, };
 
       domain = bolt_device_get_domain (dev);
       g_print ("   %s %s domain:     %s\n",
@@ -313,6 +314,25 @@ print_device (BoltDevice *dev, gboolean verbose)
                    bolt_glyph (TREE_VERTICAL),
                    tree_branch,
                    syspath);
+        }
+
+      bolt_device_get_linkspeed (dev, &speed);
+      if (speed.rx.lanes && speed.rx.speed)
+        {
+          g_print ("   %s %s rx speed:   %u Gb/s = %u lanes * %u Gb/s\n",
+                   bolt_glyph (TREE_VERTICAL),
+                   tree_branch,
+                   speed.rx.lanes * speed.rx.speed,
+                   speed.rx.lanes, speed.rx.speed);
+        }
+
+      if (speed.tx.lanes && speed.tx.speed)
+        {
+          g_print ("   %s %s tx speed:   %u Gb/s = %u lanes * %u Gb/s\n",
+                   bolt_glyph (TREE_VERTICAL),
+                   tree_branch,
+                   speed.tx.lanes * speed.tx.speed,
+                   speed.tx.lanes, speed.tx.speed);
         }
 
       flags = bolt_flags_to_string (BOLT_TYPE_AUTH_FLAGS, aflags, NULL);
