@@ -67,6 +67,11 @@ G_BEGIN_DECLS
 #define BOLT_SYSFS_IOMMU "iommu_dma_protection"
 #define BOLT_SYSFS_GENERATION "generation"
 
+#define BOLT_SYSFS_RX_LANES "rx_lanes"
+#define BOLT_SYSFS_RX_SPEED "rx_speed"
+#define BOLT_SYSFS_TX_LANES "tx_lanes"
+#define BOLT_SYSFS_TX_SPEED "tx_speed"
+
 /* environment variables */
 #define BOLT_ENV_DBPATH "BOLT_DBPATH"
 #define BOLT_ENV_RUNTIME_DIRECTORY "RUNTIME_DIRECTORY"
