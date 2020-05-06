@@ -146,6 +146,71 @@ test_sysfs_domain_for_device (TestSysfs *tt, gconstpointer user)
 }
 
 static void
+test_sysfs_info_for_device (TestSysfs *tt, gconstpointer user)
+{
+  g_autoptr(udev_device) udevice = NULL;
+  g_autoptr(GError) err = NULL;
+  const char *domain;
+  const char *host;
+  const char *dock;
+  const char *syspath;
+  BoltDevInfo info;
+  gboolean ok;
+  MockDevId hostid = {
+    .vendor_id = 0x42,
+    .vendor_name = "GNOME.org",
+    .device_id = 0x42,
+    .device_name = "Laptop",
+    .unique_id = "884c6edd-7118-4b21-b186-b02d396ecca0",
+  };
+  MockDevId dockid = {
+    .vendor_id = 0x42,
+    .vendor_name = "GNOME.org",
+    .device_id = 0x42,
+    .device_name = "Thunderbolt Dock",
+    .unique_id = "884c6edd-7118-4b21-b186-b02d396ecca1",
+  };
+  BoltLinkSpeed ls = {
+    .rx.speed = 10,
+    .rx.lanes = 1,
+    .tx.speed = 20,
+    .tx.lanes = 2
+  };
+
+  domain = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_SECURE, NULL);
+  g_assert_nonnull (domain);
+
+  host = mock_sysfs_host_add (tt->sysfs, domain, &hostid);
+  g_assert_nonnull (host);
+
+  dock = mock_sysfs_device_add (tt->sysfs,
+                                host,
+                                &dockid,
+                                0,
+                                NULL,
+                                0,
+                                &ls);
+
+
+  syspath = mock_sysfs_device_get_syspath (tt->sysfs, dock);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+  g_assert_nonnull (udevice);
+
+  ok = bolt_sysfs_info_for_device (udevice, TRUE, &info, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_true (info.full);
+  g_assert_cmpstr (info.parent, ==, hostid.unique_id);
+  g_assert_cmpstr (info.syspath, ==, syspath);
+
+  g_assert_cmpuint (info.linkspeed.rx.speed, ==, ls.rx.speed);
+  g_assert_cmpuint (info.linkspeed.rx.lanes, ==, ls.rx.lanes);
+  g_assert_cmpuint (info.linkspeed.tx.speed, ==, ls.tx.speed);
+  g_assert_cmpuint (info.linkspeed.tx.lanes, ==, ls.tx.lanes);
+}
+
+static void
 test_sysfs_read_iommu (TestSysfs *tt, gconstpointer user)
 {
   const char *domain;
@@ -1142,6 +1207,13 @@ main (int argc, char **argv)
               NULL,
               test_sysfs_setup,
               test_sysfs_domain_for_device,
+              test_sysfs_tear_down);
+
+  g_test_add ("/sysfs/info_for_devic",
+              TestSysfs,
+              NULL,
+              test_sysfs_setup,
+              test_sysfs_info_for_device,
               test_sysfs_tear_down);
 
   g_test_add ("/sysfs/read_iommu",
