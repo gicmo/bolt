@@ -23,6 +23,7 @@
 #include "bolt-glue.h"
 
 #include "bolt-error.h"
+#include "bolt-wire.h"
 #include "test-enums.h"
 #include "bolt-test-resources.h"
 
@@ -764,97 +765,6 @@ test_wire_conv_simple (TestGlue *tt, gconstpointer data)
                    42U);
 }
 
-typedef struct BTLinkAttr
-{
-  struct
-  {
-    guint32 speed;
-    guint32 lanes;
-  } rx;
-
-  struct
-  {
-    guint32 speed;
-    guint32 lanes;
-  } tx;
-
-} BTLinkAttr;
-
-GType bt_link_attr_get_type (void);
-#define BT_TYPE_LINK_ATTR (bt_link_attr_get_type ())
-
-static BTLinkAttr *
-bt_link_attr_copy (const BTLinkAttr *other)
-{
-  BTLinkAttr *copy = g_new (BTLinkAttr, 1 );
-
-  *copy = *other;
-  return copy;
-}
-
-G_DEFINE_BOXED_TYPE (BTLinkAttr, bt_link_attr, bt_link_attr_copy, g_free);
-
-static GVariant *
-bt_link_attr_to_wire (BoltWireConv *conv,
-                      const GValue *value,
-                      GError      **error)
-{
-  GVariantDict dict;
-  BTLinkAttr *link;
-
-  link = g_value_get_boxed (value);
-
-  g_variant_dict_init (&dict, NULL);
-
-  g_variant_dict_insert (&dict, "rx.speed", "u", link->rx.speed);
-  g_variant_dict_insert (&dict, "rx.lanes", "u", link->rx.lanes);
-  g_variant_dict_insert (&dict, "tx.speed", "u", link->tx.speed);
-  g_variant_dict_insert (&dict, "tx.lanes", "u", link->tx.lanes);
-
-  return g_variant_dict_end (&dict);
-}
-
-
-static gboolean
-bt_link_attr_from_wire (BoltWireConv *conv,
-                        GVariant     *wire,
-                        GValue       *value,
-                        GError      **error)
-{
-  g_auto(GVariantDict) dict = G_VARIANT_DICT_INIT (wire);
-  BTLinkAttr link;
-  gboolean ok;
-  struct
-  {
-    const char *name;
-    guint32    *target;
-  } entries[] = {
-    {"rx.speed", &link.rx.speed},
-    {"rx.lanes", &link.rx.lanes},
-    {"tx.speed", &link.tx.speed},
-    {"tx.lanes", &link.tx.lanes},
-  };
-
-  for (unsigned i = 0; i < G_N_ELEMENTS (entries); i++)
-    {
-      const char *name = entries[i].name;
-      guint32 *target = entries[i].target;
-
-      ok = g_variant_dict_lookup (&dict, name, "u", target);
-      if (!ok)
-        {
-          g_set_error (error, BOLT_ERROR, BOLT_ERROR_FAILED,
-                       "Missing entry in link dict: %s", name);
-          return FALSE;
-        }
-    }
-  ;
-
-  g_value_set_boxed (value, &link);
-
-  return ok;
-}
-
 static void
 test_wire_conv_custom (TestGlue *tt, gconstpointer data)
 {
@@ -864,25 +774,29 @@ test_wire_conv_custom (TestGlue *tt, gconstpointer data)
   g_auto(GValue) val = G_VALUE_INIT;
   gboolean ok;
   GParamSpec *spec;
-  BTLinkAttr attr = {{10, 1}, {20, 2}};
-  BTLinkAttr *check;
+  BoltLinkSpeed *check;
+  BoltLinkSpeed attr =
+  {.rx.speed = 10,
+   .rx.lanes = 1,
+   .tx.speed = 20,
+   .tx.lanes = 2};
 
   spec = g_param_spec_boxed ("link-speed", "LinkSpeed",
                              "Link Speed Info",
-                             BT_TYPE_LINK_ATTR,
+                             BOLT_TYPE_LINK_SPEED,
                              G_PARAM_STATIC_STRINGS);
 
   conv = bolt_wire_conv_custom (G_VARIANT_TYPE ("a{su}"), spec,
                                 "link speed to dict",
-                                bt_link_attr_to_wire,
-                                bt_link_attr_from_wire);
+                                bolt_link_speed_to_wire,
+                                bolt_link_speed_from_wire);
 
   g_assert_nonnull (conv);
 
   g_assert_false (bolt_wire_conv_is_native (conv));
   g_assert_nonnull (bolt_wire_conv_describe (conv));
 
-  g_value_init (&val, BT_TYPE_LINK_ATTR);
+  g_value_init (&val, BOLT_TYPE_LINK_SPEED);
   g_value_set_boxed (&val, &attr);
 
   /* to the wire */
