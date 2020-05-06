@@ -22,6 +22,7 @@
 
 #include "bolt-enums.h"
 #include "bolt-proxy.h"
+#include "bolt-wire.h"
 
 G_BEGIN_DECLS
 
@@ -74,6 +75,9 @@ const char *      bolt_device_get_domain (BoltDevice *dev);
 guint64           bolt_device_get_conntime (BoltDevice *dev);
 
 guint64           bolt_device_get_authtime (BoltDevice *dev);
+
+void              bolt_device_get_linkspeed (BoltDevice    *dev,
+                                             BoltLinkSpeed *speed);
 
 gboolean          bolt_device_is_stored (BoltDevice *dev);
 

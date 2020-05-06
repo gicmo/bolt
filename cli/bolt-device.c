@@ -25,6 +25,7 @@
 #include "bolt-enums.h"
 #include "bolt-error.h"
 #include "bolt-names.h"
+#include "bolt-wire.h"
 
 #include <gio/gio.h>
 
@@ -49,6 +50,7 @@ enum {
   PROP_DOMAIN,
   PROP_CONNTIME,
   PROP_AUTHTIME,
+  PROP_LINKSPEED,
 
   PROP_STORED,
   PROP_POLICY,
@@ -161,6 +163,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
                          G_PARAM_READABLE |
                          G_PARAM_STATIC_STRINGS);
 
+  props[PROP_LINKSPEED] =
+    g_param_spec_boxed ("linkspeed", "LinkSpeed",
+                        "The speed to the parent",
+                        BOLT_TYPE_LINK_SPEED,
+                        G_PARAM_READABLE |
+                        G_PARAM_STATIC_STRINGS);
+
   props[PROP_STORED] =
     g_param_spec_boolean ("stored", "Stored",
                           "Is the device recorded in the database?",
@@ -217,7 +226,8 @@ bolt_device_new_for_object_path (GDBusConnection *bus,
                                  GCancellable    *cancel,
                                  GError         **error)
 {
-  BoltDevice *dev;
+  g_autoptr(BoltDevice) dev = NULL;
+  gboolean ok;
 
   g_return_val_if_fail (G_IS_DBUS_CONNECTION (bus), NULL);
   g_return_val_if_fail (path != NULL, NULL);
@@ -233,7 +243,20 @@ bolt_device_new_for_object_path (GDBusConnection *bus,
                         "g-interface-name", BOLT_DBUS_DEVICE_INTERFACE,
                         NULL);
 
-  return dev;
+  if (dev == NULL)
+    return NULL;
+
+  ok = bolt_proxy_set_wireconv (BOLT_PROXY (dev),
+                                props[PROP_LINKSPEED],
+                                "linkspeed",
+                                bolt_link_speed_to_wire,
+                                bolt_link_speed_from_wire,
+                                error);
+
+  if (!ok)
+    return NULL;
+
+  return g_steal_pointer (&dev);
 }
 
 gboolean
@@ -469,6 +492,27 @@ bolt_device_get_authtime (BoltDevice *dev)
   val = bolt_proxy_get_uint64_by_pspec (dev, props[PROP_AUTHTIME]);
 
   return val;
+}
+
+void
+bolt_device_get_linkspeed (BoltDevice    *dev,
+                           BoltLinkSpeed *speed)
+{
+  g_auto(GValue) value = G_VALUE_INIT;
+  BoltLinkSpeed *ls;
+  gboolean ok;
+
+  g_return_if_fail (BOLT_IS_DEVICE (dev));
+  g_return_if_fail (speed != NULL);
+
+  ok = bolt_proxy_get_dbus_property (BOLT_PROXY (dev),
+                                     props[PROP_LINKSPEED],
+                                     &value);
+  if (!ok)
+    return;
+
+  ls = g_value_get_boxed (&value);
+  *speed = *ls;
 }
 
 gboolean
