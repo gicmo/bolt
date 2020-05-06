@@ -21,6 +21,7 @@
 #pragma once
 
 #include <gio/gio.h>
+#include <bolt-glue.h>
 
 G_BEGIN_DECLS
 
@@ -54,6 +55,13 @@ struct _BoltProxyClass
   /* for the future */
   gpointer padding[10];
 };
+
+gboolean          bolt_proxy_set_wireconv (BoltProxy       *proxy,
+                                           GParamSpec      *param_spec,
+                                           const char      *custom_id,
+                                           BoltConvToWire   to_wire,
+                                           BoltConvFromWire from_wire,
+                                           GError         **error);
 
 void              bolt_proxy_property_getter (GObject    *object,
                                               guint       prop_id,

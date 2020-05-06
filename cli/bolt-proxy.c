@@ -298,6 +298,66 @@ bolt_proxy_get_wire_conv (BoltProxy  *proxy,
 }
 
 /* public methods */
+gboolean
+bolt_proxy_set_wireconv (BoltProxy       *proxy,
+                         GParamSpec      *param_spec,
+                         const char      *custom_id,
+                         BoltConvToWire   to_wire,
+                         BoltConvFromWire from_wire,
+                         GError         **error)
+{
+  GDBusInterfaceInfo *info;
+  GDBusPropertyInfo *pi;
+  BoltProxyClass *klass;
+  const char *nick;
+  BoltWireConv *conv;
+
+  klass = BOLT_PROXY_GET_CLASS (proxy);
+
+  nick = g_param_spec_get_nick (param_spec);
+  conv = g_hash_table_lookup (klass->priv->wire_convs, nick);
+
+  if (conv)
+    return TRUE;
+
+  info = g_dbus_proxy_get_interface_info (G_DBUS_PROXY (proxy));
+
+  if (info == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "could not find dbus interface info");
+      return FALSE;
+    }
+
+  pi = g_dbus_interface_info_lookup_property (info, nick);
+  if (pi == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                   "could not find dbus property info");
+      return FALSE;
+    }
+
+  conv = bolt_wire_conv_custom (G_VARIANT_TYPE (pi->signature),
+                                param_spec,
+                                custom_id,
+                                to_wire,
+                                from_wire);
+
+  if (conv == NULL)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                   "could create conversion helper");
+      return FALSE;
+    }
+
+  /* nick is valid as long as spec is valid and
+   * a reference to spec is held by conv */
+  g_hash_table_insert (klass->priv->wire_convs,
+                       (gpointer) nick, conv);
+
+  return TRUE;
+}
+
 void
 bolt_proxy_property_getter (GObject    *object,
                             guint       prop_id,
