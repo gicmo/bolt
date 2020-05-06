@@ -22,6 +22,8 @@
 
 #include "bolt-enums.h"
 
+#include "bolt-wire.h"
+
 #include <glib.h>
 
 struct udev;
@@ -63,6 +65,9 @@ typedef struct _BoltDevInfo
   const char *syspath;
   const char *parent;       /* the uid */
   guint       generation;
+
+  /* link speed, may be 0 if unknown */
+  BoltLinkSpeed linkspeed;
 
 } BoltDevInfo;
 

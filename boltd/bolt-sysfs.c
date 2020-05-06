@@ -219,6 +219,30 @@ sysfs_get_sysattr_size (struct udev_device *udev,
   return strlen (str);
 }
 
+static void
+sysfs_read_link_speed (struct udev_device *udev,
+                       BoltLinkSpeed      *speed)
+{
+  struct
+  {
+    const char *name;
+    guint32    *item;
+  } entries[] = {
+    {BOLT_SYSFS_RX_LANES, &speed->rx.lanes},
+    {BOLT_SYSFS_RX_SPEED, &speed->rx.speed},
+    {BOLT_SYSFS_TX_LANES, &speed->tx.lanes},
+    {BOLT_SYSFS_TX_SPEED, &speed->tx.speed},
+  };
+
+  for (unsigned i = 0; i < G_N_ELEMENTS (entries); i++)
+    {
+      const char *name = entries[i].name;
+      int res = sysfs_get_sysattr_value_as_int (udev, name);
+
+      *entries[i].item = res > 0 ? res : 0;
+    }
+}
+
 gboolean
 bolt_sysfs_info_for_device (struct udev_device *udev,
                             gboolean            full,
@@ -268,6 +292,8 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
   gen = sysfs_get_sysattr_value_as_int (udev, BOLT_SYSFS_GENERATION);
   if (gen > 0)
     info->generation = gen;
+
+  sysfs_read_link_speed (udev, &info->linkspeed);
 
   return TRUE;
 }
