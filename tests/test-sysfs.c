@@ -107,7 +107,8 @@ test_sysfs_domain_for_device (TestSysfs *tt, gconstpointer user)
                                 &dockid,
                                 0,
                                 NULL,
-                                0);
+                                0,
+                                NULL);
 
   g_assert_nonnull (dock);
 

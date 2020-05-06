@@ -24,6 +24,7 @@
 #include <gio/gio.h>
 
 #include "bolt-enums.h"
+#include "bolt-wire.h"
 
 
 G_BEGIN_DECLS
@@ -86,12 +87,13 @@ const char *     mock_sysfs_host_add (MockSysfs  *ms,
                                       const char *domain,
                                       MockDevId  *id);
 
-const char *     mock_sysfs_device_add (MockSysfs  *ms,
-                                        const char *parent,
-                                        MockDevId  *id,
-                                        guint       authorized,
-                                        const char *key,
-                                        gint        boot);
+const char *     mock_sysfs_device_add (MockSysfs     *ms,
+                                        const char    *parent,
+                                        MockDevId     *id,
+                                        guint          authorized,
+                                        const char    *key,
+                                        gint           boot,
+                                        BoltLinkSpeed *link);
 
 const char *     mock_sysfs_device_get_syspath (MockSysfs  *ms,
                                                 const char *id);

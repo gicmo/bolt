@@ -89,13 +89,14 @@ mock_domain_destory (gpointer data)
 
 /* prototypes */
 
-static MockDevice *    mock_sysfs_device_plug (MockSysfs  *ms,
-                                               MockDomain *domain,
-                                               char       *parent,
-                                               MockDevId  *id,
-                                               guint       authorized,
-                                               const char *key,
-                                               gint        boot);
+static MockDevice *    mock_sysfs_device_plug (MockSysfs     *ms,
+                                               MockDomain    *domain,
+                                               char          *parent,
+                                               MockDevId     *id,
+                                               guint          authorized,
+                                               const char    *key,
+                                               gint           boot,
+                                               BoltLinkSpeed *link);
 
 static void            mock_sysfs_device_unplug (MockSysfs  *ms,
                                                  MockDevice *dev);
@@ -217,20 +218,25 @@ mock_sysfs_class_init (MockSysfsClass *klass)
 #define CONST_STRV(...) (char **) (const char *[]){ __VA_ARGS__}
 
 static MockDevice *
-mock_sysfs_device_plug (MockSysfs  *ms,
-                        MockDomain *domain,
-                        char       *parent,
-                        MockDevId  *id,
-                        guint       authorized,
-                        const char *key,
-                        gint        boot)
+mock_sysfs_device_plug (MockSysfs     *ms,
+                        MockDomain    *domain,
+                        char          *parent,
+                        MockDevId     *id,
+                        guint          authorized,
+                        const char    *key,
+                        gint           boot,
+                        BoltLinkSpeed *link)
 {
   g_autofree char *idstr = NULL;
   g_autofree char *vendor_id = NULL;
   g_autofree char *device_id = NULL;
   g_autofree char *authstr = NULL;
   g_autofree char *bootstr = NULL;
-  const char *props[17] = {NULL, };
+  g_autofree char *rx_speed = NULL;
+  g_autofree char *tx_speed = NULL;
+  g_autofree char *rx_lanes = NULL;
+  g_autofree char *tx_lanes = NULL;
+  const char *props[25] = {NULL, };
   MockDevice *device;
   guint serial;
   char *path;
@@ -268,6 +274,23 @@ mock_sysfs_device_plug (MockSysfs  *ms,
       bootstr = g_strdup_printf ("%d", boot);
       props[i++] = "boot";
       props[i++] = bootstr;
+    }
+
+  if (link)
+    {
+      rx_speed = g_strdup_printf ("%u Gb/s\n", link->rx.speed);
+      tx_speed = g_strdup_printf ("%u Gb/s\n", link->tx.speed);
+      rx_lanes = g_strdup_printf ("%u\n", link->rx.lanes);
+      tx_lanes = g_strdup_printf ("%u\n", link->tx.lanes);
+
+      props[i++] = "rx_speed";
+      props[i++] = rx_speed;
+      props[i++] = "tx_speed";
+      props[i++] = tx_speed;
+      props[i++] = "rx_lanes";
+      props[i++] = rx_lanes;
+      props[i++] = "tx_lanes";
+      props[i++] = tx_lanes;
     }
 
   props[i++] = NULL;
@@ -694,20 +717,22 @@ mock_sysfs_host_add (MockSysfs  *ms,
                                    domain->path,
                                    id,
                                    1,
-                                   NULL, /* no key for the host */
-                                   -1);  /* no boot file either */
+                                   NULL,  /* no key for the host */
+                                   -1,    /* no boot file either */
+                                   NULL); /* no link settings */
   domain->host = device;
 
   return device->idstr;
 }
 
 const char *
-mock_sysfs_device_add (MockSysfs  *ms,
-                       const char *parent,
-                       MockDevId  *id,
-                       guint       authorized,
-                       const char *key,
-                       gint        boot)
+mock_sysfs_device_add (MockSysfs     *ms,
+                       const char    *parent,
+                       MockDevId     *id,
+                       guint          authorized,
+                       const char    *key,
+                       gint           boot,
+                       BoltLinkSpeed *speed)
 {
   MockDevice *pdev;
   MockDomain *domain = NULL;
@@ -750,7 +775,8 @@ mock_sysfs_device_add (MockSysfs  *ms,
                                    id,
                                    1,
                                    key,
-                                   boot);
+                                   boot,
+                                   speed);
 
   g_hash_table_insert (pdev->devices, device->idstr, device);
 
