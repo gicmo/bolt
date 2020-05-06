@@ -424,6 +424,17 @@
       </doc:para></doc:description></doc:doc>
     </property>
 
+    <property name="LinkSpeed" type="a{su}" access="read">
+      <doc:doc><doc:description><doc:para>
+        Information about the link speed, i.e. with how
+	many lanes the device is connected to its parent
+	and what rate (in Gb/s) the lanes have. Separate
+	information is reported for transmission (tx) and
+	reception (rx). All lanes in one direction have
+	the same rate.
+      </doc:para></doc:description></doc:doc>
+    </property>
+
     <!-- methods -->
 
     <method name="Authorize">

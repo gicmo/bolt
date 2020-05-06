@@ -83,6 +83,8 @@ struct _BoltDevice
   guint64       conntime;
   guint64       authtime;
 
+  BoltLinkSpeed linkspeed;
+
   /* when device is stored */
   BoltStore   *store;
   BoltPolicy   policy;
@@ -116,6 +118,7 @@ enum {
   PROP_DOMAIN,
   PROP_CONNTIME,
   PROP_AUTHTIME,
+  PROP_LINKSPEED,
 
   PROP_STORED,
   PROP_POLICY,
@@ -239,6 +242,10 @@ bolt_device_get_property (GObject    *object,
       g_value_set_uint64 (value, dev->authtime);
       break;
 
+    case PROP_LINKSPEED:
+      g_value_set_boxed (value, &dev->linkspeed);
+      break;
+
     case PROP_STORED:
       g_value_set_boolean (value, dev->store != NULL);
       break;
@@ -334,6 +341,13 @@ bolt_device_set_property (GObject      *object,
 
     case PROP_AUTHTIME:
       dev->authtime = g_value_get_uint64 (value);
+      break;
+
+    case PROP_LINKSPEED:
+      {
+        BoltLinkSpeed *li = g_value_get_boxed (value);
+        dev->linkspeed = *li;
+      }
       break;
 
     case PROP_POLICY:
@@ -442,6 +456,13 @@ bolt_device_class_init (BoltDeviceClass *klass)
                         "AuthFlags", NULL,
                         BOLT_TYPE_AUTH_FLAGS,
                         BOLT_AUTH_NONE,
+                        G_PARAM_READWRITE |
+                        G_PARAM_STATIC_STRINGS);
+
+  props[PROP_LINKSPEED] =
+    g_param_spec_boxed ("linkspeed",
+                        "LinkSpeed", NULL,
+                        BOLT_TYPE_LINK_SPEED,
                         G_PARAM_READWRITE |
                         G_PARAM_STATIC_STRINGS);
 
@@ -554,6 +575,12 @@ bolt_device_class_init (BoltDeviceClass *klass)
   bolt_exported_class_export_method (exported_class,
                                      "Authorize",
                                      handle_authorize);
+
+  bolt_exported_class_property_wireconv (exported_class,
+                                         props[PROP_LINKSPEED],
+                                         "linkspeed-as-variant",
+                                         bolt_link_speed_to_wire,
+                                         bolt_link_speed_from_wire);
 
 }
 
@@ -1226,6 +1253,7 @@ bolt_device_new_for_udev (struct udev_device *udev,
                       "parent", info.parent,
                       "conntime", ct,
                       "authtime", at,
+                      "linkspeed", &info.linkspeed,
                       NULL);
 
   return dev;
@@ -1335,6 +1363,7 @@ bolt_device_connected (BoltDevice         *dev,
                 "authflags", aflags,
                 "conntime", ct,
                 "authtime", at,
+                "linkspeed", &info.linkspeed,
                 NULL);
 
   bolt_info (LOG_DEV (dev), "parent is %.13s...", dev->parent);
@@ -1456,6 +1485,12 @@ bolt_device_update_from_udev (BoltDevice         *dev,
     g_object_notify_by_pspec (G_OBJECT (dev), props[PROP_AUTHFLAGS]);
 
   device_set_status_internal (dev, status, TRUE);
+
+  if (!bolt_link_speed_equal (&dev->linkspeed, &info.linkspeed))
+    {
+      dev->linkspeed = info.linkspeed;
+      g_object_notify_by_pspec (G_OBJECT (dev), props[PROP_LINKSPEED]);
+    }
 
   g_object_thaw_notify (G_OBJECT (dev));
 
