@@ -25,6 +25,7 @@
 #include "bolt-enums.h"
 #include "bolt-str.h"
 
+#include <gio/gio.h>
 
 GParamSpec *
 bolt_param_spec_override (GObjectClass *klass,
