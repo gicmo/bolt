@@ -425,6 +425,7 @@ tests = [
   ['test-self'],
   ['test-guard', [libdaemon]],
   ['test-reaper', [libdaemon]],
+  ['test-wire', [libdaemon]],
 ]
 
 if mockdev.found()
