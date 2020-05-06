@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <bolt-glue.h>
+
 #include <gio/gio.h>
 
 G_BEGIN_DECLS
@@ -86,6 +88,12 @@ void     bolt_exported_class_export_properties (BoltExportedClass *klass,
 void     bolt_exported_class_property_setter (BoltExportedClass *klass,
                                               GParamSpec        *spec,
                                               BoltExportedSetter setter);
+
+void     bolt_exported_class_property_wireconv (BoltExportedClass *klass,
+                                                GParamSpec        *spec,
+                                                const char        *custom_id,
+                                                BoltConvToWire     to_wire,
+                                                BoltConvFromWire   from_wire);
 
 void     bolt_exported_class_export_method (BoltExportedClass        *klass,
                                             const char               *name,

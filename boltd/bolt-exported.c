@@ -956,6 +956,44 @@ bolt_exported_class_property_setter (BoltExportedClass *klass,
 }
 
 void
+bolt_exported_class_property_wireconv (BoltExportedClass *klass,
+                                       GParamSpec        *spec,
+                                       const char        *custom_id,
+                                       BoltConvToWire     to_wire,
+                                       BoltConvFromWire   from_wire)
+{
+  BoltExportedProp *prop;
+  BoltWireConv *conv;
+  const char *nick;
+
+  g_return_if_fail (BOLT_IS_EXPORTED_CLASS (klass));
+  g_return_if_fail (G_IS_PARAM_SPEC (spec));
+
+  nick = g_param_spec_get_nick (spec);
+
+  prop = g_hash_table_lookup (klass->priv->properties, nick);
+
+  if (prop == NULL)
+    {
+      bolt_bug (LOG_TOPIC ("dbus"), "unknown property: %s", nick);
+      return;
+    }
+
+  conv = bolt_wire_conv_custom (prop->signature,
+                                prop->spec,
+                                custom_id,
+                                to_wire,
+                                from_wire);
+
+  bolt_wire_conv_unref (prop->conv);
+  prop->conv = conv; /* transfer the reference */
+
+  bolt_debug (LOG_TOPIC ("dbus"), "+adjusted prop: wireconv: %s [%s]",
+              prop->name_bus,
+              bolt_wire_conv_describe (prop->conv));
+}
+
+void
 bolt_exported_class_export_method (BoltExportedClass        *klass,
                                    const char               *name,
                                    BoltExportedMethodHandler handler)
