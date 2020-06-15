@@ -31,6 +31,7 @@
 #include <glib/gprintf.h>
 #include <glib/gstdio.h>
 
+#include <assert.h>
 #include <locale.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -277,7 +278,7 @@ test_guard_recover_dead (TestGuard *tt, gconstpointer user)
 
   fd = bolt_guard_monitor (guard, &err);
   g_assert_no_error (err);
-  g_assert_cmpint (fd, >, -1);
+  assert (fd > -1); /* plain assert for coverity */
   g_object_unref (guard); /* monitor adds a references */
 
   /* memorize the fifo so we can check it exists

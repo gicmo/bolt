@@ -30,6 +30,7 @@
 
 #include <glib-unix.h>
 
+#include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
@@ -117,7 +118,7 @@ notify_socket_new (void)
   g_assert_nonnull (ns->tmpdir);
 
   fd = socket (AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
-  g_assert_cmpint (fd, >, -1);
+  assert (fd > -1); /* plain assert for coverity */
 
   ns->socket_path = g_build_filename (ns->tmpdir, "notify_socket", NULL);
 
