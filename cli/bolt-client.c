@@ -288,8 +288,8 @@ got_the_client (GObject      *source,
                 GAsyncResult *res,
                 gpointer      user_data)
 {
+  g_autoptr(GTask) task = user_data;
   GError *error = NULL;
-  GTask *task = user_data;
   GObject *obj;
 
   obj = g_async_initable_new_finish (G_ASYNC_INITABLE (source), res, &error);
@@ -302,7 +302,6 @@ got_the_client (GObject      *source,
     }
 
   g_task_return_pointer (task, obj, g_object_unref);
-  g_object_unref (task);
 }
 
 static void
@@ -321,6 +320,7 @@ got_the_bus (GObject      *source,
       g_prefix_error (&error, "could not connect to D-Bus: ");
       /* error ownership gets transferred to the task */
       g_task_return_error (task, error);
+      g_object_unref (task);
       return;
     }
 
