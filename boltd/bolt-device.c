@@ -1436,6 +1436,7 @@ bolt_device_update_from_udev (BoltDevice         *dev,
                               struct udev_device *udev)
 {
   g_autoptr(GError) err = NULL;
+  BoltLinkSpeed linkspeed;
   BoltAuthFlags aflags;
   BoltDevInfo info;
   BoltStatus status;
@@ -1486,9 +1487,10 @@ bolt_device_update_from_udev (BoltDevice         *dev,
 
   device_set_status_internal (dev, status, TRUE);
 
-  if (!bolt_link_speed_equal (&dev->linkspeed, &info.linkspeed))
+  bolt_sysfs_read_link_speed (udev, &linkspeed);
+  if (!bolt_link_speed_equal (&dev->linkspeed, &linkspeed))
     {
-      dev->linkspeed = info.linkspeed;
+      dev->linkspeed = linkspeed;
       g_object_notify_by_pspec (G_OBJECT (dev), props[PROP_LINKSPEED]);
     }
 
