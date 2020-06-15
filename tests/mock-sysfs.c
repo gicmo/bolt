@@ -898,7 +898,10 @@ mock_sysfs_set_osrelease (MockSysfs  *ms,
   /* make sure we can write the file, if it fails,
    * we will indirectly catch it in the write */
   path = g_file_get_path (target);
-  chmod (path, 0644);
+  r = chmod (path, 0644);
+
+  if (r != 0)
+    g_debug ("Failed to set mode: %s", g_strerror (errno));
 
   ok = g_file_replace_contents (target,
                                 data, n,
