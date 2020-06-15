@@ -84,6 +84,22 @@ def get_timeout(topic='default'):
     return lut[topic]
 
 
+def can_override_dac():
+    """Check if we have CAP_DAC_OVERRIDE"""
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "access-check")
+
+        with open(path, "w") as f:
+            f.write("")
+
+        mode = os.stat(path).st_mode
+        os.chmod(path, 0)
+        can_write = os.access(path, os.W_OK)
+        os.chmod(path, mode & 0o7777)
+
+        return can_write
+
+
 class Signal:
     def __init__(self, name):
         self.name = name
@@ -2413,6 +2429,8 @@ class BoltTest(dbusmock.DBusTestCase):
 
         self.assertEqual(remote.label, "%s %s" % (local.vendor_name, local.device_name))
 
+        # store update failure check is done in test_device_store_failures
+
         val = 'A valid label'
 
         with remote.record() as tape:
@@ -2420,12 +2438,40 @@ class BoltTest(dbusmock.DBusTestCase):
             tape.wait_for_props(Label=val)
         self.assertEqual(remote.label, val)
 
+        self.daemon_stop()
+
+    @unittest.skipIf(can_override_dac(), "have DAC override")
+    def test_device_store_failures(self):
+        self.daemon_start()
+        tree = self.simple_mock_tree()
+        self.polkitd_start()
+        tree.connect_tree(self.testbed)
+
+        client = self.client
+        self.polkitd.SetAllowed(['org.freedesktop.bolt.enroll',
+                                 'org.freedesktop.bolt.manage'])
+
+        local = tree.collect(TbDevice.is_unauthorized)[0]
+        policy = BoltClient.POLICY_AUTO
+
+        remote = client.enroll(local.unique_id, policy)
+        local.reload_auth()
+
+        label = remote.label
+
         # check for store errors and verify the label did not change
         with self.assertRaises(GLib.GError) as cm, \
              self.store_deny_device(local.unique_id):
             remote.label = 'denied'
         self.assertGError(cm, Gio.IOErrorEnum.PERMISSION_DENIED)
-        self.assertEqual(remote.label, val)
+        self.assertEqual(remote.label, label)
+
+        # check store update failures
+        with self.assertRaises(GLib.GError) as cm, \
+             self.store_deny_device(local.unique_id):
+            remote.policy = 'iommu'
+        self.assertGError(cm, Gio.IOErrorEnum.PERMISSION_DENIED)
+        self.assertEqual(remote.policy, policy)
 
         self.daemon_stop()
 
@@ -2475,12 +2521,7 @@ class BoltTest(dbusmock.DBusTestCase):
             remote.policy = 'foobar'
         self.assertGError(cm, Gio.DBusError.INVALID_ARGS)
 
-        # check store update failures
-        with self.assertRaises(GLib.GError) as cm, \
-             self.store_deny_device(dock.unique_id):
-            remote.policy = 'iommu'
-        self.assertGError(cm, Gio.IOErrorEnum.PERMISSION_DENIED)
-        self.assertEqual(remote.policy, BoltClient.POLICY_MANUAL)
+        # store update failure check is done in test_device_store_failures
 
         # finally a valid update
         with remote.record() as tape:
