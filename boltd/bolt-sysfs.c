@@ -219,9 +219,9 @@ sysfs_get_sysattr_size (struct udev_device *udev,
   return strlen (str);
 }
 
-static void
-sysfs_read_link_speed (struct udev_device *udev,
-                       BoltLinkSpeed      *speed)
+void
+bolt_sysfs_read_link_speed (struct udev_device *udev,
+                            BoltLinkSpeed      *speed)
 {
   struct
   {
@@ -293,7 +293,7 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
   if (gen > 0)
     info->generation = gen;
 
-  sysfs_read_link_speed (udev, &info->linkspeed);
+  bolt_sysfs_read_link_speed (udev, &info->linkspeed);
 
   return TRUE;
 }

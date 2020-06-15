@@ -76,6 +76,9 @@ gboolean             bolt_sysfs_info_for_device (struct udev_device *udev,
                                                  BoltDevInfo        *info,
                                                  GError            **error);
 
+void                 bolt_sysfs_read_link_speed (struct udev_device *udev,
+                                                 BoltLinkSpeed      *speed);
+
 gboolean             bolt_sysfs_read_boot_acl (struct udev_device *udev,
                                                GStrv              *out,
                                                GError            **error);
