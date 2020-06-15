@@ -462,6 +462,13 @@ class BoltDevice(ProxyWrapper):
     def policy(self, value):
         return self._set_property('Policy', value)
 
+    @property
+    def linkspeed(self):
+        res = getattr(self, 'LinkSpeed')
+        if not res:
+            return None
+        return res
+
     @staticmethod
     def gen_object_path(object_id):
         base = os.path.join(DBUS_PATH, "devices")
@@ -709,7 +716,11 @@ class TbDevice(Device):
                   'key',
                   'unique_id',
                   'vendor',
-                  'vendor_name']
+                  'vendor_name',
+                  'rx_lanes',
+                  'rx_speed',
+                  'tx_lanes',
+                  'tx_speed']
 
     udev_props = ['DEVTYPE']
 
@@ -723,6 +734,10 @@ class TbDevice(Device):
         self.authorized = authorized
         self.key = key
         self.generation = gen
+        self.rx_lanes = None
+        self.rx_speed = None
+        self.tx_lanes = None
+        self.tx_speed = None
 
     @staticmethod
     def _make_id(name):
@@ -779,6 +794,24 @@ class TbDevice(Device):
     @property
     def bus_path(self):
         return BoltDevice.gen_object_path(self.unique_id)
+
+    @property
+    def linkspeed(self):
+        return self.rx_lanes, self.rx_speed, self.tx_lanes, self.tx_speed
+
+    @linkspeed.setter
+    def linkspeed(self, ls):
+        self.rx_lanes = str(ls["rx.lanes"])
+        self.rx_speed = "%u.0 Gb/s" % ls["rx.speed"]
+        self.tx_lanes = str(ls["tx.lanes"])
+        self.tx_speed = "%u.0 Gb/s" % ls["tx.speed"]
+
+        if self.syspath:
+            self.testbed.set_attribute(self.syspath, "rx_lanes", self.rx_lanes)
+            self.testbed.set_attribute(self.syspath, "rx_speed", self.rx_speed)
+            self.testbed.set_attribute(self.syspath, "tx_lanes", self.tx_lanes)
+            self.testbed.set_attribute(self.syspath, "tx_speed", self.tx_speed)
+            self.testbed.uevent(self.syspath, 'change')
 
     def reload_auth(self):
         authorized = self.authorized
@@ -2610,6 +2643,28 @@ class BoltTest(dbusmock.DBusTestCase):
 
         stored = self.store_get_device(dock.unique_id)
         self.assertEqual(stored.generation, 3)
+
+    def test_device_linkspeed(self):
+        dock = TbDevice('Dock', gen=1)
+        host = TbHost([dock], gen=0)
+        tree = TbDomain(security=TbDomain.SECURITY_SECURE, host=host)
+
+        linkspeed = {'rx.speed': 20, 'rx.lanes': 1, 'tx.speed': 10, 'tx.lanes': 2}
+        dock.linkspeed = linkspeed
+
+        tree.connect_tree(self.testbed)
+
+        self.daemon_start()
+        remote = self.client.device_by_uid(dock.unique_id)
+
+        self.assertEqual(remote.linkspeed, linkspeed)
+
+        with remote.record() as tape:
+            linkspeed = {'rx.speed': 20, 'rx.lanes': 2, 'tx.speed': 10, 'tx.lanes': 1}
+            dock.linkspeed = linkspeed
+            tape.wait_for_props(LinkSpeed=linkspeed)
+
+        self.daemon_stop()
 
     def test_sdnotify(self):
         self.add_domain_host(security='secure', iommu='1')
