@@ -1,3 +1,26 @@
+Version 0.9
+-----------
+_Four comes after Three_
+Released: 2020-06-15
+
+* New Features:
+  - Add 'Generation' attribute for the Manager [!197]
+  - Ability to change the policy of a stored device [!202]
+  - The BootACL Domain property is now writable [!184]
+  - Support for systemd's service watchdog [!185]
+  - Expose Link Speed sysfs attributes [!214]
+
+* Improvements:
+  - boltclt: show timestamps in 'monitor' call [!208]
+  - Persist the host device [!194]
+
+* Bug fixes:
+  - Fix a flaky test [!217, #161]
+  - Plug small memory leaks in error conditions [!217]
+  - Ignore spurious wakeup device uevents for probing [!209]
+  - Preserve keystate when updating devices [!192]
+
+
 Version 0.8
 -----------
 _I owe it to the MM U!_
