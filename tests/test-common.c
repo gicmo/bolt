@@ -1292,6 +1292,11 @@ test_str_erase (TestRng *tt, gconstpointer user_data)
   size_t n;
 
   bolt_get_random_data (buf, sizeof (buf) - 1);
+  buf[0] = 'b'; /* make sure we never have an empty string */
+  buf[1] = 'o';
+  buf[2] = 'l';
+  buf[3] = 'l';
+
   d1 = g_strdup (buf);
   d2 = g_strdup (buf);
 
