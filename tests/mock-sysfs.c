@@ -61,6 +61,7 @@ mock_device_destroy (gpointer data)
   g_free (device);
 }
 
+
 typedef struct _MockDomain MockDomain;
 
 struct _MockDomain
@@ -72,6 +73,10 @@ struct _MockDomain
 
   gint        serial;
 
+  guint32     nhi_id;
+  char       *nhi_idstr;
+  char       *nhi_path;
+
   MockDevice *host;
 };
 
@@ -81,6 +86,9 @@ mock_domain_destory (gpointer data)
   MockDomain *domain = data;
 
   mock_device_destroy (domain->host);
+
+  g_free (domain->nhi_idstr);
+  g_free (domain->nhi_path);
 
   g_free (domain->idstr);
   g_free (domain->path);
@@ -471,11 +479,15 @@ mock_sysfs_domain_add (MockSysfs   *ms,
                        ...)
 {
   g_autofree char *acl = NULL;
+  g_autofree char *nhi_pciid = NULL;
+  g_autofree char *nhi_idstr = NULL;
+  g_autofree char *nhi_path = NULL;
   const char *props[7] = {NULL, };
   const char *secstr;
   const char *key;
   MockDomain *domain;
   va_list args;
+  guint32 nhi = 0x15d2;
   char *idstr = NULL;
   char *path;
   guint id;
@@ -509,6 +521,10 @@ mock_sysfs_domain_add (MockSysfs   *ms,
           props[i++] = BOLT_SYSFS_IOMMU;
           props[i++] = iommu;
         }
+      else if (bolt_streq (key, "nhi"))
+        {
+          nhi = va_arg (args, int);
+        }
     }
 
   g_assert (i < 7);
@@ -518,17 +534,39 @@ mock_sysfs_domain_add (MockSysfs   *ms,
 
   g_assert (sizeof (props) >= i);
 
+  /* native host interface (NHI) */
+  nhi_pciid = g_strdup_printf ("0x%04x", nhi);
+  nhi_idstr = g_strdup_printf ("0000:00:01.%u", id);
+
+  nhi_path = umockdev_testbed_add_devicev (ms->bed, "pci", nhi_idstr,
+                                           NULL, /* parent: NHI has none */
+                                           CONST_STRV ("class", "0x088000",
+                                                       "vendor", "0x8086", /* Intel */
+                                                       "device", nhi_pciid,
+                                                       NULL),
+                                           CONST_STRV ("DRIVER", "thunderbolt", NULL));
+
+  g_debug ("M [A] %s (0x%04x) @ %s", nhi_idstr, nhi, nhi_path);
+
+  /* add the domain */
   path = umockdev_testbed_add_devicev (ms->bed, "thunderbolt", idstr,
-                                       NULL, /* parent: domain has none */
+                                       nhi_path, /* parent */
                                        (char **) props,
                                        CONST_STRV ("DEVTYPE", "thunderbolt_domain", NULL));
 
   if (path == NULL)
-    return path;
+    {
+      umockdev_testbed_remove_device (ms->bed, nhi_path);
+      return path;
+    }
 
   g_debug ("M [A] %s (%s) @ %s", idstr, secstr, path);
 
   domain = g_new0 (MockDomain, 1);
+
+  domain->nhi_id = nhi;
+  domain->nhi_idstr = g_steal_pointer (&nhi_idstr);
+  domain->nhi_path = g_steal_pointer (&nhi_path);
 
   domain->id = id;
   domain->idstr = idstr;
@@ -580,6 +618,11 @@ mock_sysfs_domain_remove (MockSysfs  *ms,
 
   umockdev_testbed_uevent (ms->bed, domain->path, "remove");
   umockdev_testbed_remove_device (ms->bed, domain->path);
+
+  g_debug ("M [R] %s @ %s", domain->nhi_idstr, domain->nhi_path);
+
+  umockdev_testbed_uevent (ms->bed, domain->nhi_path, "remove");
+  umockdev_testbed_remove_device (ms->bed, domain->nhi_path);
 
   g_hash_table_remove (ms->domains, id);
   return TRUE;
