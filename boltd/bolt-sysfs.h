@@ -51,6 +51,11 @@ BoltSecurity         bolt_sysfs_security_for_device (struct udev_device *udev,
 
 int                  bolt_sysfs_count_domains (struct udev *udev,
                                                GError     **error);
+
+gboolean             bolt_sysfs_nhi_id_for_domain (struct udev_device *udev,
+                                                   guint32            *id,
+                                                   GError            **error);
+
 typedef struct _BoltDevInfo
 {
 

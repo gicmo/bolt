@@ -182,6 +182,41 @@ bolt_sysfs_count_domains (struct udev *udev,
   return count;
 }
 
+gboolean
+bolt_sysfs_nhi_id_for_domain (struct udev_device *udev,
+                              guint32            *id,
+                              GError            **error)
+{
+  struct udev_device *parent;
+  const char *str;
+  gboolean ok;
+
+  ok = bolt_sysfs_device_is_domain (udev, error);
+  if (!ok)
+    return FALSE;
+
+  parent = udev_device_get_parent (udev);
+
+  if (parent == NULL)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                   "failed to get parent for domain: %s",
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  str = udev_device_get_sysattr_value (parent, "device");
+  if (str == NULL)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                   "failed to get PCI id for NHI device: %s",
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  return bolt_str_parse_as_uint32 (str, id, error);
+}
+
 static gint
 sysfs_get_sysattr_value_as_int (struct udev_device *udev,
                                 const char         *attr)
