@@ -72,6 +72,10 @@ gboolean bolt_str_parse_as_uint64 (const char *str,
                                    guint64    *ret,
                                    GError    **error);
 
+gboolean bolt_str_parse_as_uint32 (const char *str,
+                                   guint32    *ret,
+                                   GError    **error);
+
 gboolean bolt_str_parse_as_boolean (const char *str,
                                     gboolean   *ret,
                                     GError    **error);
