@@ -211,6 +211,40 @@ test_sysfs_info_for_device (TestSysfs *tt, gconstpointer user)
 }
 
 static void
+test_sysfs_nhi_id_for_domain (TestSysfs *tt, gconstpointer user)
+{
+  guint32 nhi[] = {0x15d2, };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (nhi); i++)
+    {
+      g_autoptr(GError) err = NULL;
+      g_autoptr(udev_device) udev = NULL;
+      const char *domain;
+      const char *syspath;
+      gboolean ok;
+      guint32 want = nhi[i];
+      guint32 have;
+
+      domain = mock_sysfs_domain_add (tt->sysfs,
+                                      BOLT_SECURITY_SECURE,
+                                      "nhi", want,
+                                      NULL);
+      g_assert_nonnull (domain);
+
+      syspath = mock_sysfs_domain_get_syspath (tt->sysfs, domain);
+      g_assert_nonnull (syspath);
+
+      udev = udev_device_new_from_syspath (tt->udev, syspath);
+      g_assert_nonnull (udev);
+
+      ok = bolt_sysfs_nhi_id_for_domain (udev, &have, &err);
+      g_assert_no_error (err);
+      g_assert_true (ok);
+      g_assert_cmpuint (have, ==, want);
+    }
+}
+
+static void
 test_sysfs_read_iommu (TestSysfs *tt, gconstpointer user)
 {
   const char *domain;
@@ -1214,6 +1248,13 @@ main (int argc, char **argv)
               NULL,
               test_sysfs_setup,
               test_sysfs_info_for_device,
+              test_sysfs_tear_down);
+
+  g_test_add ("/sysfs/domain_get_nhi_id",
+              TestSysfs,
+              NULL,
+              test_sysfs_setup,
+              test_sysfs_nhi_id_for_domain,
               test_sysfs_tear_down);
 
   g_test_add ("/sysfs/read_iommu",
