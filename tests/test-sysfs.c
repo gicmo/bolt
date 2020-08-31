@@ -1209,7 +1209,7 @@ main (int argc, char **argv)
               test_sysfs_domain_for_device,
               test_sysfs_tear_down);
 
-  g_test_add ("/sysfs/info_for_devic",
+  g_test_add ("/sysfs/info_for_device",
               TestSysfs,
               NULL,
               test_sysfs_setup,
