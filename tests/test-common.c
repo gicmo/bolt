@@ -1416,6 +1416,42 @@ test_str_parse_uint64 (TestRng *tt, gconstpointer user_data)
 }
 
 static void
+test_str_parse_uint32 (TestRng *tt, gconstpointer user_data)
+{
+  struct
+  {
+    const char *str;
+    guint32     val;
+    gboolean    error;
+  } table[] = {
+    {"0",                    0,          FALSE},
+    {"1",                    1,          FALSE},
+    {"0xffffffff",           0xffffffff, FALSE}, /* G_MAXUINT64 */
+    {"notauint64",           0,          TRUE},
+    {"4294967296",           0,          TRUE}, /* overflow (G_MAXUINT32 + 1) */
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+    {
+      g_autoptr(GError) err = NULL;
+      gboolean ok;
+      guint32 v;
+
+      ok = bolt_str_parse_as_uint32 (table[i].str, &v, &err);
+      if (table[i].error)
+        {
+          g_assert_nonnull (err);
+          g_assert_false (ok);
+        }
+      else
+        {
+          g_assert_cmpuint (table[i].val, ==, v);
+          g_assert_true (ok);
+        }
+    }
+}
+
+static void
 test_str_parse_boolean (TestRng *tt, gconstpointer user_data)
 {
   struct
@@ -2083,6 +2119,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_str_parse_uint64,
+              NULL);
+
+  g_test_add ("/common/str/parse/uint32",
+              TestRng,
+              NULL,
+              NULL,
+              test_str_parse_uint32,
               NULL);
 
   g_test_add ("/common/str/parse/boolean",
