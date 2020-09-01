@@ -702,6 +702,25 @@ class Device:
         self.testbed = None
 
 
+class TbNativeHostInterface(Device):
+    subsystem = "pci"
+    udev_attrs = ['class',
+                  'device',
+                  'vendor']
+
+    udev_props = ['DRIVER']
+
+    driver = "thunderbolt"
+
+    def __init__(self, domain, pci_id=0x15d2):
+        assert domain
+        name = "pci0000:00:0d.%d" % domain.index
+        super().__init__(name, [domain])
+        setattr(self, 'class', '0x088000')
+        self.vendor = '0x8086'
+        self.device = '0x%04x' % pci_id
+
+
 class TbDevice(Device):
     subsystem = "thunderbolt"
     devtype = "thunderbolt_device"
@@ -873,6 +892,18 @@ class TbDomain(Device):
         self.security = security
         self.boot_acl = ','*(acl-1) if isinstance(acl, int) else acl
         self.iommu_dma_protection = iommu
+        self.index = index
+
+        self.nhi = TbNativeHostInterface(self)
+
+    def connect(self, bed):
+        self.nhi.connect(bed)
+        super().connect(bed)
+
+    def disconnect(self, bed):
+        if self.syspath:  # prevent recursion via nhi.disconnect()
+            super().disconnect(bed)
+            self.nhi.disconnect(bed)
 
     @property
     def unique_id(self):
@@ -1258,10 +1289,16 @@ class BoltTest(dbusmock.DBusTestCase):
 
         return True
 
-    def add_domain_host(self, domain=0, security='secure', uid=None, bootacl=15, iommu=None):
+    def add_domain_host(self, domain=0, security='secure', uid=None, bootacl=15, iommu=None, nhi=0x15d2):
 
         if uid is None:
             uid = str(uuid.uuid4())
+
+        nhi = self.testbed.add_device('pci', '0000:00:0d.%d' % domain, None,
+                                      ['class', '0x088000',
+                                       'vendor', '0x8086',
+                                       'device', '0x%04x' % nhi],
+                                      ['DRIVER', 'thunderbolt'])
 
         props = ['security', security]
 
@@ -1274,7 +1311,7 @@ class BoltTest(dbusmock.DBusTestCase):
         if iommu is not None:
             props += ['iommu_dma_protection', str(iommu) + '\n']
 
-        dc = self.testbed.add_device('thunderbolt', 'domain%d' % domain, None,
+        dc = self.testbed.add_device('thunderbolt', 'domain%d' % domain, nhi,
                                      props,
                                      ['DEVTYPE', 'thunderbolt_domain'])
 
@@ -1293,6 +1330,9 @@ class BoltTest(dbusmock.DBusTestCase):
         self.testbed.remove_device(host)
         self.testbed.uevent(domain, "remove")
         self.testbed.remove_device(domain)
+        nhi = os.path.dirname(domain)
+        self.testbed.uevent(nhi, "remove")
+        self.testbed.remove_device(nhi)
 
     def add_device(self, parent, devid, name, vendor, domain=0, authorized=1, key='', boot=None):
         uid = str(uuid.uuid4())
