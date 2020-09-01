@@ -1693,7 +1693,9 @@ handle_udev_device_added (BoltManager        *mgr,
   dev = bolt_device_new_for_udev (udev, domain, &err);
   if (dev == NULL)
     {
-      bolt_warn_err (err, LOG_TOPIC ("udev"), "could not create device");
+      bolt_warn_err (err, LOG_TOPIC ("udev"),
+                     "could not create device for %s",
+                     syspath);
       return;
     }
 
