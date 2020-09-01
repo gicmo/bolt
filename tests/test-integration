@@ -1433,6 +1433,10 @@ class BoltTest(dbusmock.DBusTestCase):
             os.fchmod(fd, mode & 0o7777)
             os.close(fd)
 
+    def store_has_domain(self, uid):
+        path = os.path.join(self.dbpath, 'domains', uid)
+        return os.path.exists(path)
+
     # the actual tests
     def test_basic(self):
         def make_events(name, devices):
@@ -1699,6 +1703,40 @@ class BoltTest(dbusmock.DBusTestCase):
             print('domain [%s] bootacl: %s' % (domain.uid, bootacl))
             for entry in uuids:
                 self.assertIn(entry, uuids)
+
+        self.daemon_stop()
+
+    def test_domain_integrated_tbt(self):
+        # On integrated TBT (like ICL/TGL) the UUID of the controller is not
+        # stable, i.e. it changes between reboots. We therefore must not be
+        # saving the domain
+        def make_events(name, devices):
+            paths = [GLib.Variant("(o)", (dev.object_path, )) for dev in devices]
+            return [Recorder.Event('signal', name, path, None) for path in paths]
+
+        ice_lake = {
+            "security": 'none',
+            "bootacl":None,
+            "iommu": "1",
+            "nhi": 0x8a17,  # ice lake
+        }
+
+        dom, host = self.add_domain_host(**ice_lake)
+
+        self.daemon_start()
+        client = self.client
+
+        domains = client.list_domains()
+        for domain in domains:
+            self.assertFalse(self.store_has_domain(domain.uid))
+
+        with self.client.record() as tape:
+            events = make_events('DomainRemoved', domains)
+
+            self.remove_domain_host(dom, host)
+
+            res = tape.wait_for_events(events)
+            self.assertTrue(res)
 
         self.daemon_stop()
 
