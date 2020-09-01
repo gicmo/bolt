@@ -96,4 +96,9 @@ gboolean             bolt_sysfs_read_iommu (struct udev_device *udev,
                                             gboolean           *out,
                                             GError            **error);
 
+/* NHI id related functions*/
+gboolean             bolt_nhi_uuid_is_stable (guint32   pci_id,
+                                              gboolean *stability,
+                                              GError  **error);
+
 G_END_DECLS

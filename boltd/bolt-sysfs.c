@@ -399,3 +399,47 @@ bolt_sysfs_read_iommu (struct udev_device *udev,
 
   return TRUE;
 }
+
+/* NHI PCI id related */
+static struct
+{
+  guint32  pci_id;
+  gboolean stable; /* Does the UUID change on reboot */
+} nhi_table[] = {
+  {0x157d, TRUE},  // WIN_RIDGE_2C_NHI
+  {0x15bf, TRUE},  // ALPINE_RIDGE_LP_NHI
+  {0x15d2, TRUE},  // ALPINE_RIDGE_C_4C_NHI
+  {0x15d9, TRUE},  // ALPINE_RIDGE_C_2C_NHI
+  {0x15dc, TRUE},  // ALPINE_RIDGE_LP_USBONLY_NHI
+  {0x15dd, TRUE},  // ALPINE_RIDGE_USBONLY_NH
+  {0x15de, TRUE},  // ALPINE_RIDGE_C_USBONLY_NHI
+  {0x15e8, TRUE},  // TITAN_RIDGE_2C_NHI
+  {0x15eb, TRUE},  // TITAN_RIDGE_4C_NHI
+  {0x8a0d, FALSE}, // ICL_NHI1
+  {0x8a17, FALSE}, // ICL_NHI0
+  {0x9a1b, FALSE}, // TGL_NHI0
+  {0x9a1d, FALSE}, // TGL_NHI1
+};
+
+gboolean
+bolt_nhi_uuid_is_stable (guint32   pci_id,
+                         gboolean *stability,
+                         GError  **error)
+{
+  g_return_val_if_fail (stability != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  for (gsize i = 0; i < G_N_ELEMENTS (nhi_table); i++)
+    {
+      if (pci_id == nhi_table[i].pci_id)
+        {
+          *stability = nhi_table[i].stable;
+          return TRUE;
+        }
+    }
+
+  g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+               "unknown NHI PCI id '0x%04x'", pci_id);
+
+  return FALSE;
+}
