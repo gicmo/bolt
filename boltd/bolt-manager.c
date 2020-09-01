@@ -755,6 +755,42 @@ manager_bootacl_inital_sync (BoltManager *mgr,
              bolt_yesno (ok), empty);
 }
 
+static gboolean
+domain_has_stable_uuid (BoltDomain         *domain,
+                        struct udev_device *dev)
+{
+  g_autoptr(GError) err = NULL;
+  gboolean stable;
+  gboolean ok;
+  guint32 pci_id;
+
+  /* On integrated TBT, like ICL/TGL, the uuid of the
+   * controller is randomly generated on *every* boot,
+   * and thus the uuid is not stable. */
+
+  /* default to FALSE, in case we have no entry */
+  stable = FALSE;
+
+  ok = bolt_sysfs_nhi_id_for_domain (dev, &pci_id, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("udev"), LOG_DOM (domain),
+                     "failed to get NHI for domain");
+      return FALSE;
+    }
+
+  ok = bolt_nhi_uuid_is_stable (pci_id, &stable, &err);
+  if (!ok)
+    bolt_warn_err (err, LOG_TOPIC ("udev"), LOG_DOM (domain),
+                   "failed to determine if uid is stable");
+
+  bolt_info (LOG_TOPIC ("udev"), LOG_DOM (domain),
+             "uuid is stable: %s (for NHI: 0x%04x)",
+             bolt_yesno (stable), pci_id);
+
+  return stable;
+}
+
 static void
 manager_store_domain (BoltManager *mgr,
                       BoltDomain  *domain)
@@ -848,8 +884,10 @@ manager_domain_ensure (BoltManager        *mgr,
   /* add all devices with POLICY_AUTO to the bootacl */
   manager_bootacl_inital_sync (mgr, domain);
 
-  /* now store the domain (with an updated bootacl) */
-  manager_store_domain (mgr, domain);
+  /* now store the domain (with an updated bootacl),
+   * but only if its uuid is the same across reboots */
+  if (domain_has_stable_uuid (domain, dom))
+    manager_store_domain (mgr, domain);
 
   /* export it on the bus and emit the added signals */
   bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
