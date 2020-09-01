@@ -755,6 +755,22 @@ manager_bootacl_inital_sync (BoltManager *mgr,
              bolt_yesno (ok), empty);
 }
 
+static void
+manager_store_domain (BoltManager *mgr,
+                      BoltDomain  *domain)
+{
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+
+  bolt_info (LOG_TOPIC ("store"), LOG_DOM (domain),
+             "storing newly connected domain");
+
+  ok = bolt_store_put_domain (mgr->store, domain, &err);
+  if (!ok)
+    bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DOM (domain),
+                   "could not store domain");
+}
+
 static BoltDomain *
 manager_domain_ensure (BoltManager        *mgr,
                        struct udev_device *dev)
@@ -770,7 +786,6 @@ manager_domain_ensure (BoltManager        *mgr,
   const char *op;
   const char *uid;
   gboolean iommu;
-  gboolean ok;
 
   /* check if we already know a domain that is the parent
    * of the device (dev); if not then 'dev' is very likely
@@ -834,14 +849,9 @@ manager_domain_ensure (BoltManager        *mgr,
   manager_bootacl_inital_sync (mgr, domain);
 
   /* now store the domain (with an updated bootacl) */
-  bolt_info (LOG_TOPIC ("store"), LOG_DOM (domain),
-             "storing newly connected domain");
+  manager_store_domain (mgr, domain);
 
-  ok = bolt_store_put_domain (mgr->store, domain, &err);
-  if (!ok)
-    bolt_warn_err (err, LOG_TOPIC ("store"), LOG_DOM (domain),
-                   "could not store domain");
-
+  /* export it on the bus and emit the added signals */
   bus = bolt_exported_get_connection (BOLT_EXPORTED (mgr));
   if (bus == NULL)
     return domain;
