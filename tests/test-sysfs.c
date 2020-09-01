@@ -245,6 +245,34 @@ test_sysfs_nhi_id_for_domain (TestSysfs *tt, gconstpointer user)
 }
 
 static void
+test_nhi_uuid_is_stable (TestSysfs *tt, gconstpointer user)
+{
+  g_autoptr(GError) err = NULL;
+  gboolean stable;
+  gboolean ok;
+
+  /* Titan Ridge */
+  ok = bolt_nhi_uuid_is_stable (0x15e8, &stable, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_true (stable);
+
+  /* Ice Lake integrated TBT */
+  ok = bolt_nhi_uuid_is_stable (0x8a0d, &stable, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_false (stable);
+
+  /* missing id */
+
+  ok = bolt_nhi_uuid_is_stable (0x000d, &stable, &err);
+  g_assert_error (err,  G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+}
+
+static void
 test_sysfs_read_iommu (TestSysfs *tt, gconstpointer user)
 {
   const char *domain;
@@ -1255,6 +1283,13 @@ main (int argc, char **argv)
               NULL,
               test_sysfs_setup,
               test_sysfs_nhi_id_for_domain,
+              test_sysfs_tear_down);
+
+  g_test_add ("/sysfs/nhi_uuid_is_stable",
+              TestSysfs,
+              NULL,
+              test_sysfs_setup,
+              test_nhi_uuid_is_stable,
               test_sysfs_tear_down);
 
   g_test_add ("/sysfs/read_iommu",
