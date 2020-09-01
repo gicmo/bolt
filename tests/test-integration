@@ -697,9 +697,6 @@ class Device:
             c.disconnect(bed)
         bed.uevent(self.syspath, "remove")
         bed.remove_device(self.syspath)
-        self.authorized = 0
-        if getattr(self, 'key', None) is not None:
-            setattr(self, 'key', "\n")
         self.root.device_disconnected(self)
         self.syspath = None
         self.testbed = None
@@ -739,6 +736,11 @@ class TbDevice(Device):
         self.tx_lanes = None
         self.tx_speed = None
 
+    def disconnect(self, bed):
+        super().disconnect(bed)
+        self.authorized = 0
+        if self.key is not None:
+            self.key = "\n"
     @staticmethod
     def _make_id(name):
         return '0x%X' % binascii.crc32(name.encode('utf-8'))
