@@ -726,7 +726,8 @@ bolt_domain_export (BoltDomain      *domain,
     }
 
   opath = bolt_exported_get_object_path (exported);
-  bolt_info (LOG_TOPIC ("dbus"), "exported domain at %s", opath);
+  bolt_info (LOG_TOPIC ("dbus"), LOG_DOM (domain),
+             "exported domain at %s", opath);
 }
 
 void
