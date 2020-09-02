@@ -23,6 +23,7 @@
 # pylint: disable=too-many-lines, too-many-statements, too-many-public-methods
 # pylint: disable=too-many-instance-attributes
 
+
 import binascii
 import errno
 import gc
@@ -55,6 +56,7 @@ try:
 except ImportError as e:
     sys.stderr.write('Skipping integration test due to missing depdendencies: %s\n' % str(e))
     sys.exit(1)
+
 
 DBUS_NAME = 'org.freedesktop.bolt'
 DBUS_PATH = '/org/freedesktop/bolt'
@@ -760,6 +762,7 @@ class TbDevice(Device):
         self.authorized = 0
         if self.key is not None:
             self.key = "\n"
+
     @staticmethod
     def _make_id(name):
         return '0x%X' % binascii.crc32(name.encode('utf-8'))
