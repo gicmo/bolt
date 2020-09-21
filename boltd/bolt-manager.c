@@ -568,10 +568,8 @@ bolt_manager_initialize (GInitable    *initable,
       if (bolt_streq (devtype, "thunderbolt_domain"))
         handle_udev_domain_event (mgr, udevice, "add");
 
-      if (!bolt_streq (devtype, "thunderbolt_device"))
-        continue;
-
-      handle_udev_device_event (mgr, udevice, "add");
+      if (bolt_streq (devtype, "thunderbolt_device"))
+        handle_udev_device_event (mgr, udevice, "add");
     }
 
   udev_enumerate_unref (enumerate);
