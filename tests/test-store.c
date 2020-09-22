@@ -740,6 +740,36 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
   g_assert_false (bolt_domain_is_stored (s1));
 }
 
+static void
+test_store_journal (TestStore *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(BoltJournal) journal = NULL;
+  gboolean ok;
+
+  /* delete an non-existing one */
+  ok = bolt_store_del_journal (tt->store, "acl", "log", &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  /* create a non-existing one */
+  journal = bolt_store_open_journal (tt->store, "acl", "log", &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (journal);
+
+  /* re-open the existing one */
+  g_clear_object (&journal);
+  journal = bolt_store_open_journal (tt->store, "acl", "log", &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (journal);
+
+  /* delete the journal */
+  g_clear_object (&journal);
+  ok = bolt_store_del_journal (tt->store, "acl", "log", &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -797,6 +827,13 @@ main (int argc, char **argv)
               NULL,
               test_store_setup,
               test_store_domain,
+              test_store_tear_down);
+
+  g_test_add ("/daemon/store/journal",
+              TestStore,
+              NULL,
+              test_store_setup,
+              test_store_journal,
               test_store_tear_down);
 
   return g_test_run ();
