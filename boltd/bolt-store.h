@@ -130,4 +130,9 @@ BoltJournal *     bolt_store_open_journal (BoltStore  *store,
                                            const char *name,
                                            GError    **error);
 
+gboolean          bolt_store_del_journal (BoltStore  *store,
+                                          const char *type,
+                                          const char *name,
+                                          GError    **error);
+
 G_END_DECLS
