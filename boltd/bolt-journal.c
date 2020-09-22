@@ -432,10 +432,13 @@ bolt_journal_put_diff (BoltJournal *journal,
   if (ok)
     ok = bolt_rename (path, base, error);
 
-  if (ok)
-    bolt_swap (journal->fd, fd);
+  if (!ok)
+    return FALSE;
 
-  return ok;
+  bolt_swap (journal->fd, fd);
+  bolt_journal_set_fresh (journal, FALSE);
+
+  return TRUE;
 }
 
 GPtrArray *
