@@ -359,6 +359,46 @@ test_journal_diff (TestJournal *tt, gconstpointer user_data)
 }
 
 static void
+test_journal_diff_fresh (TestJournal *tt, gconstpointer user_data)
+{
+  g_autoptr(BoltJournal) j = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GPtrArray) arr = NULL;
+  g_autoptr(GHashTable) diff = NULL;
+  gboolean ok;
+  static BoltJournalItem items[] = {
+    {(char *) "aaaa", BOLT_JOURNAL_ADDED,   0},
+    {(char *) "bbbb", BOLT_JOURNAL_REMOVED, 0},
+  };
+  guint k;
+
+  /* bolt_journal_put_diff uses bolt_copy_bytes, which in trun uses
+  * copy_file_range(2) internally, which was added in linux 4.5. */
+  skip_test_unless (bolt_check_kernel_version (4, 5) || g_test_thorough (),
+                    "linux kernel < 4.5, copy_file_range syscall missing");
+
+  j = bolt_journal_new (tt->root, "diff_fresh", &err);
+
+  g_assert_true (bolt_journal_is_fresh (j));
+
+  diff = g_hash_table_new (g_str_hash, g_str_equal);
+
+  for (k = 1; k < G_N_ELEMENTS (items); k++)
+    {
+      BoltJournalItem *i = items + k;
+      int op = (i->op == BOLT_JOURNAL_ADDED) ? '+' : '-';
+
+      g_hash_table_insert (diff, i->id, GINT_TO_POINTER (op));
+    }
+
+  ok = bolt_journal_put_diff (j, diff, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_false (bolt_journal_is_fresh (j));
+}
+
+static void
 test_journal_invalid_file (TestJournal *tt, gconstpointer user_data)
 {
   if (g_test_subprocess ())
@@ -472,6 +512,13 @@ main (int argc, char **argv)
               NULL,
               test_journal_setup,
               test_journal_diff,
+              test_journal_tear_down);
+
+  g_test_add ("/journal/diff/fresh",
+              TestJournal,
+              NULL,
+              test_journal_setup,
+              test_journal_diff_fresh,
               test_journal_tear_down);
 
   g_test_add ("/journal/invalid_file",
