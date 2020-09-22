@@ -289,6 +289,18 @@ bolt_journal_write_entry (int           fd,
   return TRUE;
 }
 
+static void
+bolt_journal_set_fresh (BoltJournal *journal,
+                        gboolean     fresh)
+{
+  if (journal->fresh == fresh)
+    return;
+
+  journal->fresh = fresh;
+  g_object_notify_by_pspec (G_OBJECT (journal),
+                            journal_props[PROP_FRESH]);
+}
+
 /* public methods */
 
 BoltJournal *
@@ -337,7 +349,7 @@ bolt_journal_put (BoltJournal  *journal,
                  g_strerror (errno));
     }
 
-  journal->fresh = FALSE;
+  bolt_journal_set_fresh (journal, FALSE);
 
   return TRUE;
 }
