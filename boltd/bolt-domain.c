@@ -34,6 +34,9 @@
 
 #include <libudev.h>
 
+static void bolt_domain_store_setter (BoltDomain   *domain,
+                                      const GValue *val);
+
 static void bolt_domain_bootacl_open_log (BoltDomain *domain);
 
 /* dbus property setter */
@@ -175,17 +178,7 @@ bolt_domain_set_property (GObject      *object,
   switch (prop_id)
     {
     case PROP_STORE:
-      if (dom->store == g_value_get_object (value))
-        return;
-
-      g_clear_object (&dom->store);
-      dom->store = g_value_dup_object (value);
-
-      if (dom->store)
-        bolt_domain_bootacl_open_log (dom);
-      else
-        g_clear_object (&dom->acllog);
-
+      bolt_domain_store_setter (dom, value);
       break;
 
     case PROP_UID:
@@ -337,6 +330,26 @@ bolt_domain_class_init (BoltDomainClass *klass)
 }
 
 /*  */
+static void
+bolt_domain_store_setter (BoltDomain   *domain,
+                          const GValue *value)
+{
+  BoltStore *store;
+
+  store = g_value_get_object (value);
+
+  if (domain->store == store)
+    return;
+
+  g_clear_object (&domain->store);
+  domain->store = g_value_dup_object (value);
+
+  if (domain->store)
+    bolt_domain_bootacl_open_log (domain);
+  else
+    g_clear_object (&domain->acllog);
+}
+
 static void
 bolt_domain_bootacl_open_log (BoltDomain *domain)
 {
