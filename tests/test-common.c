@@ -1132,7 +1132,7 @@ test_fs (TestIO *tt, gconstpointer user_data)
 
   if (geteuid () == 0)
     /* if we run as root, maybe inside a container, we will
-     *  be able o do that anyway so skip it in that case */
+     * be able to do that anyway so skip it in that case */
     return;
 
   /* check error checking */
