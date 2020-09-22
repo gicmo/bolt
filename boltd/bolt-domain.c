@@ -341,13 +341,17 @@ bolt_domain_store_setter (BoltDomain   *domain,
   if (domain->store == store)
     return;
 
-  g_clear_object (&domain->store);
-  domain->store = g_value_dup_object (value);
-
   if (domain->store)
-    bolt_domain_bootacl_open_log (domain);
-  else
-    g_clear_object (&domain->acllog);
+    {
+      g_clear_object (&domain->acllog);
+      g_clear_object (&domain->store);
+    }
+
+  if (store != NULL)
+    {
+      domain->store = g_object_ref (store);
+      bolt_domain_bootacl_open_log (domain);
+    }
 }
 
 static void
