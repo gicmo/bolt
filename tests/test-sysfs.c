@@ -477,7 +477,6 @@ test_sysfs_domain_connect (TestSysfs *tt, gconstpointer user)
 {
   g_autoptr(udev_device) udevice = NULL;
   g_autoptr(BoltDomain) domain = NULL;
-  g_autoptr(GError) err = NULL;
   const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
   const char *id;
   const char *syspath;
