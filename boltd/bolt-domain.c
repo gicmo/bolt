@@ -38,6 +38,7 @@ static void bolt_domain_store_setter (BoltDomain   *domain,
                                       const GValue *val);
 
 static void bolt_domain_bootacl_open_log (BoltDomain *domain);
+static void bolt_domain_bootacl_remove_log (BoltDomain *domain);
 
 /* dbus property setter */
 static gboolean handle_set_bootacl (BoltExported *obj,
@@ -343,7 +344,7 @@ bolt_domain_store_setter (BoltDomain   *domain,
 
   if (domain->store)
     {
-      g_clear_object (&domain->acllog);
+      bolt_domain_bootacl_remove_log (domain);
       g_clear_object (&domain->store);
     }
 
@@ -371,6 +372,33 @@ bolt_domain_bootacl_open_log (BoltDomain *domain)
                    "could not open journal");
 
   domain->acllog = log;
+}
+
+static void
+bolt_domain_bootacl_remove_log (BoltDomain *domain)
+{
+  g_autoptr(GError) err = NULL;
+  gboolean ok;
+
+  if (domain->acllog == NULL)
+    return;
+
+  g_clear_object (&domain->acllog);
+
+  g_return_if_fail (domain->store != NULL);
+
+  bolt_info (LOG_TOPIC ("bootacl"), LOG_DOM (domain),
+             "removing journal");
+
+  ok = bolt_store_del_journal (domain->store,
+                               "bootacl",
+                               domain->uid,
+                               &err);
+
+  if (!ok)
+    bolt_warn_err (err, LOG_TOPIC ("bootacl"), LOG_DOM (domain),
+                   "could not remove journal");
+
 }
 
 static gboolean
