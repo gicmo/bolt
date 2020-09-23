@@ -1143,3 +1143,22 @@ bolt_store_del_journal (BoltStore  *store,
 
   return TRUE;
 }
+
+gboolean
+bolt_store_has_journal (BoltStore  *store,
+                        const char *type,
+                        const char *name)
+{
+  g_autoptr(GFile) root = NULL;
+  g_autoptr(GFile) journal = NULL;
+
+
+  g_return_val_if_fail (store != NULL, FALSE);
+  g_return_val_if_fail (type != NULL, FALSE);
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  root = g_file_get_child (store->root, type);
+  journal = g_file_get_child (root, name);
+
+  return g_file_query_exists (journal, NULL);
+}

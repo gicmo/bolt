@@ -135,4 +135,8 @@ gboolean          bolt_store_del_journal (BoltStore  *store,
                                           const char *name,
                                           GError    **error);
 
+gboolean          bolt_store_has_journal (BoltStore  *store,
+                                          const char *type,
+                                          const char *name);
+
 G_END_DECLS
