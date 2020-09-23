@@ -661,6 +661,7 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
   g_autoptr(BoltDomain) d1 = NULL;
   g_autoptr(BoltDomain) s1 = NULL;
   const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
+  gboolean exists;
   gboolean ok;
   GStrv bootacl = NULL;
   const char *acl[16] = {
@@ -721,6 +722,9 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
   g_assert_no_error (err);
   g_assert_true (ok);
 
+  exists = bolt_store_has_journal (tt->store, "bootacl", uid);
+  g_assert_true (exists);
+
   /* update: get again after update */
   g_clear_object (&s1);
   s1 = bolt_store_get_domain (tt->store, uid, &err);
@@ -738,6 +742,9 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
   g_assert_no_error (err);
   g_assert_true (ok);
   g_assert_false (bolt_domain_is_stored (s1));
+
+  exists = bolt_store_has_journal (tt->store, "bootacl", uid);
+  g_assert_false (exists);
 }
 
 static void
@@ -745,6 +752,7 @@ test_store_journal (TestStore *tt, gconstpointer user_data)
 {
   g_autoptr(GError) err = NULL;
   g_autoptr(BoltJournal) journal = NULL;
+  gboolean exists;
   gboolean ok;
 
   /* delete an non-existing one */
@@ -757,6 +765,9 @@ test_store_journal (TestStore *tt, gconstpointer user_data)
   g_assert_no_error (err);
   g_assert_nonnull (journal);
 
+  exists = bolt_store_has_journal (tt->store, "acl", "log");
+  g_assert_true (exists);
+
   /* re-open the existing one */
   g_clear_object (&journal);
   journal = bolt_store_open_journal (tt->store, "acl", "log", &err);
@@ -768,6 +779,10 @@ test_store_journal (TestStore *tt, gconstpointer user_data)
   ok = bolt_store_del_journal (tt->store, "acl", "log", &err);
   g_assert_no_error (err);
   g_assert_true (ok);
+
+  exists = bolt_store_has_journal (tt->store, "acl", "log");
+  g_assert_false (exists);
+
 }
 
 int
