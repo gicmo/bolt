@@ -885,6 +885,27 @@ bolt_domain_update_from_udev (BoltDomain         *domain,
 }
 
 gboolean
+bolt_domain_can_delete (BoltDomain *domain,
+                        GError    **error)
+{
+  BoltJournal *log;
+
+  g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  log = domain->acllog;
+
+  if (log && !bolt_journal_is_fresh (log))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_EMPTY,
+                   "boot acl journal is not empty");
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+gboolean
 bolt_domain_supports_bootacl (BoltDomain *domain)
 {
   g_return_val_if_fail (BOLT_IS_DOMAIN (domain), FALSE);

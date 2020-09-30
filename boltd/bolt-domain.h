@@ -66,6 +66,9 @@ void              bolt_domain_disconnected (BoltDomain *domain);
 void              bolt_domain_update_from_udev (BoltDomain         *domain,
                                                 struct udev_device *udev);
 
+gboolean          bolt_domain_can_delete (BoltDomain *domain,
+                                          GError    **error);
+
 /* boot acl related functions */
 gboolean          bolt_domain_supports_bootacl (BoltDomain *domain);
 
