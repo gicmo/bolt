@@ -453,6 +453,10 @@ bolt_store_del_domain (BoltStore  *store,
   g_return_val_if_fail (domain != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
+  ok = bolt_domain_can_delete (domain, error);
+  if (!ok)
+    return FALSE;
+
   uid = bolt_domain_get_uid (domain);
 
   path = g_file_get_child (store->domains, uid);
