@@ -775,6 +775,11 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
   ok = bolt_domain_can_delete (d1, &err);
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_EMPTY);
   g_assert_false (ok);
+  g_clear_error (&err);
+
+  ok = bolt_store_del_domain (tt->store, d1, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_EMPTY);
+  g_assert_false (ok);
 }
 
 static void
