@@ -1440,6 +1440,32 @@ class BoltTest(dbusmock.DBusTestCase):
         path = os.path.join(self.dbpath, 'domains', uid)
         return os.path.exists(path)
 
+    def store_create_domain(self, *, uid=None, acl=None):
+        if not uid:
+            uid = str(uuid.uuid4())
+        if acl:
+            bootacl = ",".join(acl)
+        else:
+            bootacl = ""
+
+        entry = (
+            "[domain]\n"
+            f"bootacl={bootacl}\n"
+        )
+        path = os.path.join(self.dbpath, 'domains', uid)
+        with open(path, 'w') as f:
+            f.write(entry)
+        return uid
+
+    def store_create_journal(self, name, uid, entries):
+        ts = 123456
+        data = ["%s %s %016iX" % (e["uid"], e["op"], ts) for e in entries]
+        journal = os.path.join(self.dbpath, name)
+        os.makedirs(journal, exist_ok=True)
+        path = os.path.join(journal, uid)
+        with open(path, 'w') as f:
+            f.write("\n".join(data))
+
     # the actual tests
     def test_basic(self):
         def make_events(name, devices):
@@ -1740,6 +1766,29 @@ class BoltTest(dbusmock.DBusTestCase):
 
             res = tape.wait_for_events(events)
             self.assertTrue(res)
+
+        self.daemon_stop()
+
+    def test_domain_cleanup_stale(self):
+        stale = []
+        for _ in range(4):
+            uid = self.store_create_domain()
+            stale += [uid]
+
+        uid = self.store_create_domain()
+        acls = [{"uid": str(uuid.uuid4), "op": "+"}]
+        self.store_create_journal("bootacl", uid, acls)
+
+        self.daemon_start()
+        client = self.client
+
+        domains = client.list_domains()
+        have = []
+        for domain in domains:
+            self.assertNotIn(domain.uid, stale)
+            have += [domain.uid]
+
+        self.assertIn(uid, have)
 
         self.daemon_stop()
 
