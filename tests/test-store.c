@@ -725,6 +725,10 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
   exists = bolt_store_has_journal (tt->store, "bootacl", uid);
   g_assert_true (exists);
 
+  ok = bolt_domain_can_delete (d1, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
   /* update: get again after update */
   g_clear_object (&s1);
   s1 = bolt_store_get_domain (tt->store, uid, &err);
@@ -735,16 +739,42 @@ test_store_domain (TestStore *tt, gconstpointer user_data)
 
   bootacl = bolt_domain_get_bootacl (s1);
   bolt_assert_strv_equal ((GStrv) acl, bootacl, 0);
+  g_clear_object (&s1);
 
   /* delete */
-  g_assert_true (bolt_domain_is_stored (s1));
-  ok = bolt_store_del_domain (tt->store, s1, &err);
+  g_assert_true (bolt_domain_is_stored (d1));
+  ok = bolt_store_del_domain (tt->store, d1, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
-  g_assert_false (bolt_domain_is_stored (s1));
+  g_assert_false (bolt_domain_is_stored (d1));
 
   exists = bolt_store_has_journal (tt->store, "bootacl", uid);
   g_assert_false (exists);
+
+  /* store again, modify the bootacl, i.e. write to the journal */
+  ok = bolt_store_put_domain (tt->store, d1, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (bolt_domain_is_stored (d1));
+
+  ok = bolt_domain_bootacl_del (d1,
+                                "884c6edd-7118-4b21-b186-b02d396ecca1",
+                                &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  bootacl = bolt_domain_get_bootacl (d1);
+  acl[0] = "";
+  bolt_assert_strv_equal ((GStrv) acl, bootacl, 0);
+
+  /* journal should exist and non-empty */
+  exists = bolt_store_has_journal (tt->store, "bootacl", uid);
+  g_assert_true (exists);
+
+  /* non-empty journal should prevent deletion */
+  ok = bolt_domain_can_delete (d1, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_EMPTY);
+  g_assert_false (ok);
 }
 
 static void
