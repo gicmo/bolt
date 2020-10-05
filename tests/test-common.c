@@ -938,7 +938,7 @@ test_io_file_write_all (TestIO *tt, gconstpointer user_data)
   g_autoptr(GError) error = NULL;
   g_autofree char *path = NULL;
   g_autofree char *data = NULL;
-  static const char *ref = "Die Welt is alles was der Fall ist!";
+  static const char *ref = "The world is everything that is the case.";
   gboolean ok;
   gsize len;
 
