@@ -6,6 +6,7 @@ ENV LC_ALL en_US.UTF-8
 RUN dnf --enablerepo=updates-testing -y update
 RUN dnf --enablerepo=updates-testing -y install \
     clang-analyzer \
+    codespell \
     gcc \
     git \
     glib2-devel \
