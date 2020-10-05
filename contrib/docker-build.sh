@@ -37,3 +37,7 @@ fi
 if [[ -x $(command -v pylint) ]]; then
     pylint tests/test-integration
 fi
+
+if [[ -x $(command -v codespell) ]]; then
+    codespell -S .git -S build
+fi
