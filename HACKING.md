@@ -54,7 +54,7 @@ The clang static analyzer can be run locally via:
 Coverity
 --------
 
-Bolt is registerd with [coverity][coverity]. To submit a local build,
+Bolt is registered with [coverity][coverity]. To submit a local build,
 execute the following commands (the `cov-build` [build tool][cov-build]
 must be in `PATH`) from the source directory:
 

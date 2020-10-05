@@ -43,7 +43,7 @@ try:
     from gi.repository import UMockdev
 
 except ImportError as e:
-    sys.stderr.write('Missing depdendencies: %s\n' % str(e))
+    sys.stderr.write('Missing dependencies: %s\n' % str(e))
     sys.exit(1)
 
 DBUS_NAME = 'org.freedesktop.bolt'
@@ -437,7 +437,7 @@ class Command:
                 self.handler(obj, argv, self.parser)
 
     def __init__(self, handler):
-        self.hanlder = handler
+        self.handler = handler
         self.name = handler.__name__
         self.desc = handler.__doc__ or self.name
         self.parser = argparse.ArgumentParser(prog=self.name, description=self.desc, add_help=False)
@@ -457,7 +457,7 @@ class Command:
         elif hasattr(args, 'func'):
             args.func(obj, args, context)
         else:
-            self.hanlder(obj, args, context)
+            self.handler(obj, args, context)
 
     def subcommand(self, handler):
         if self.subparsers is None:

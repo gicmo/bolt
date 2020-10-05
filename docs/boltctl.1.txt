@@ -3,7 +3,7 @@ boltctl(1)
 
 NAME
 ----
-boltctl - control the thunderbolt device manger
+boltctl - control the thunderbolt device manager
 
 SYNOPSIS
 --------
@@ -39,7 +39,7 @@ OPTIONS
 
 *-U | --uuid {'full' | 'short' | 'alias' | N}*::
         Control how UUIDs are printed. Since they are somewhat sensitive data
-	it is not advisable to share them publically in full length. Instead
+	it is not advisable to share them publicly in full length. Instead
 	'short' or 'alias' can and should be used when sharing the output of
 	'boltctl'.
 	'full';;

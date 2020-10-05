@@ -99,7 +99,7 @@ bolt_random_urandom (void *buf, gsize n)
 
   (void) close (rndfd);
 
-  /* NB: accroding to the man page random(4), "when calling
+  /* NB: according to the man page random(4), "when calling
      read(2) for the device /dev/urandom, reads of up to 256
      bytes will return as many bytes as are requested and will
      not be interrupted by a signal handler".

@@ -166,7 +166,7 @@
       <doc:doc>
         <doc:description>
           <doc:para>
-            Remove the device and any associated inforamtion,
+            Remove the device and any associated information,
             such as the policy and its key, from the store.
           </doc:para>
         </doc:description>
@@ -374,7 +374,7 @@
       <doc:doc><doc:description><doc:para>
         When a device is connected, it always is connected
 	via a thunderbolt domain, directly or via a chain of
-	other devices. This is the indentifier of the domain.
+	other devices. This is the identifier of the domain.
       </doc:para></doc:description></doc:doc>
     </property>
 
@@ -500,7 +500,7 @@
         The input output memory management unit (IOMMU)
 	can used on recent hardware in combination with
 	recent kernel versions to protect against attacks,
-	like direct memory access (DMA) attacs, at the
+	like direct memory access (DMA) attacks, at the
 	hardware level. If this property is true than
 	IOMMU hardware protection is active.
       </doc:para></doc:description></doc:doc>

@@ -64,7 +64,7 @@ install_signal_hanlder (void)
 
   if (source == NULL)
     {
-      bolt_warn (LOG_TOPIC ("signal"), "failed installing SIGTERM hanlder: %s",
+      bolt_warn (LOG_TOPIC ("signal"), "failed installing SIGTERM handler: %s",
                  g_strerror (errno));
       return;
     }

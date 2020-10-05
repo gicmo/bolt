@@ -54,7 +54,7 @@ try:
 
     import configparser
 except ImportError as e:
-    sys.stderr.write('Skipping integration test due to missing depdendencies: %s\n' % str(e))
+    sys.stderr.write('Skipping integration test due to missing dependencies: %s\n' % str(e))
     sys.exit(1)
 
 

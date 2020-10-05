@@ -103,7 +103,7 @@ Released: 2018-11-28
     - The device state is verified in `Device.Authorize` [!120]
     - Handle empty 'keys' sysfs device attribute [!129]
     - Properly adjust policies when enrolling already authorized devices [!136]
-    - Fix potential crasher when logging assertions `g_return_if_fail` [!121]
+    - Fix potential crash when logging assertions `g_return_if_fail` [!121]
 
 
 Version 0.5

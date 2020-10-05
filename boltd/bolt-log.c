@@ -294,7 +294,7 @@ handle_topic_field (BoltLogCtx *ctx,
 struct SpecialField
 {
   const char *name;
-  void        (*hanlder) (BoltLogCtx *ctx,
+  void        (*handler) (BoltLogCtx *ctx,
                           const char *key,
                           gpointer    ptr);
 } special_fields[] = {
@@ -317,7 +317,7 @@ handle_special_field (BoltLogCtx *ctx,
     {
       if (g_str_equal (key, special_fields[i].name))
         {
-          special_fields[i].hanlder (ctx, key, ptr);
+          special_fields[i].handler (ctx, key, ptr);
           handled = TRUE;
         }
     }
