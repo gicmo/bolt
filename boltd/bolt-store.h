@@ -30,12 +30,16 @@
 
 G_BEGIN_DECLS
 
+#define BOLT_STORE_VERSION 1
+
 /* BoltStore - database for devices, keys */
 #define BOLT_TYPE_STORE bolt_store_get_type ()
 G_DECLARE_FINAL_TYPE (BoltStore, bolt_store, BOLT, STORE, GObject);
 
 BoltStore *       bolt_store_new (const char *path,
                                   GError    **error);
+
+guint             bolt_store_get_version (BoltStore *store);
 
 GKeyFile *        bolt_store_config_load (BoltStore *store,
                                           GError   **error);

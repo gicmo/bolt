@@ -41,6 +41,9 @@ static gboolean bolt_store_initialize (GInitable    *initable,
                                        GCancellable *cancellable,
                                        GError      **error);
 
+static gboolean bolt_store_init_store (DIR     *root,
+                                       GError **error);
+
 struct _BoltStore
 {
   GObject object;
@@ -50,6 +53,8 @@ struct _BoltStore
   GFile  *devices;
   GFile  *keys;
   GFile  *times;
+
+  guint   version;
 };
 
 
@@ -57,6 +62,7 @@ enum {
   PROP_STORE_0,
 
   PROP_ROOT,
+  PROP_VERSION,
 
   PROP_STORE_LAST
 };
@@ -111,6 +117,10 @@ bolt_store_get_property (GObject    *object,
     {
     case PROP_ROOT:
       g_value_set_object (value, store->root);
+      break;
+
+    case PROP_VERSION:
+      g_value_set_uint (value, store->version);
       break;
 
     default:
@@ -174,6 +184,13 @@ bolt_store_class_init (BoltStoreClass *klass)
                          G_PARAM_CONSTRUCT_ONLY |
                          G_PARAM_STATIC_NAME);
 
+  store_props[PROP_VERSION] =
+    g_param_spec_uint ("version",
+                       NULL, NULL,
+                       0, G_MAXUINT, 0,
+                       G_PARAM_READABLE |
+                       G_PARAM_STATIC_STRINGS);
+
   g_object_class_install_properties (gobject_class,
                                      PROP_STORE_LAST,
                                      store_props);
@@ -210,6 +227,30 @@ bolt_store_initialize (GInitable    *initable,
                        GCancellable *cancellable,
                        GError      **error)
 {
+  g_autoptr(GError) err = NULL;
+  g_autoptr(DIR) root = NULL;
+  g_autofree char *path = NULL;
+  BoltStore *store = BOLT_STORE (initable);
+  gboolean ok;
+
+  path = g_file_get_path (store->root);
+  root = bolt_opendir (path, error);
+
+  if (root == NULL)
+    return FALSE;
+
+  ok = bolt_store_init_store (root, error);
+  if (!ok)
+    return FALSE;
+
+  ok = bolt_read_uint_at (dirfd (root),
+                          "version",
+                          &store->version,
+                          &err);
+
+  if (!ok && !bolt_err_notfound (err))
+    return bolt_error_propagate (error, &err);
+
   return TRUE;
 }
 
@@ -219,6 +260,37 @@ bolt_store_initialize (GInitable    *initable,
 #define USER_GROUP "user"
 
 #define CFG_FILE "boltd.conf"
+
+static gboolean
+bolt_store_init_store (DIR     *root,
+                       GError **error)
+{
+  gboolean empty;
+  gboolean ok;
+
+  /* initialize an empty store with the basic layout,
+   * which currently is just a 'version' field, since
+   * all other directories are created on-demand */
+
+  ok = bolt_dir_is_empty (root, &empty, error);
+  if (!ok)
+    return FALSE;
+
+  bolt_debug (LOG_TOPIC ("store"), "needs init: %s",
+              bolt_yesno (empty));
+
+  if (!empty)
+    return TRUE;
+
+  bolt_info (LOG_TOPIC ("store"), "initializing");
+
+  /* store is empty, create the 'version' file */
+  ok = bolt_write_uint_at (dirfd (root),
+                           "version",
+                           BOLT_STORE_VERSION,
+                           error);
+  return ok;
+}
 
 /* public methods */
 
@@ -234,6 +306,14 @@ bolt_store_new (const char *path, GError **error)
                           "root", root,
                           NULL);
   return store;
+}
+
+guint
+bolt_store_get_version (BoltStore *store)
+{
+  g_return_val_if_fail (BOLT_IS_STORE (store), 0);
+
+  return store->version;
 }
 
 GKeyFile *
