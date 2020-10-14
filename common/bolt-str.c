@@ -399,6 +399,7 @@ bolt_str_parse_as_uint32 (const char *str,
 
   if (val > G_MAXUINT32)
     {
+      errno = ERANGE;
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
                    "parsing '%s' overflows uint32", str);
       return FALSE;
