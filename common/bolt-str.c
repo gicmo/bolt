@@ -351,6 +351,32 @@ bolt_str_parse_as_int (const char *str,
 }
 
 gboolean
+bolt_str_parse_as_uint (const char *str,
+                        guint      *ret,
+                        GError    **error)
+{
+  guint64 val;
+  gboolean ok;
+
+  ok = bolt_str_parse_as_uint64 (str, &val, error);
+  if (!ok)
+    return FALSE;
+
+  if (val > G_MAXUINT)
+    {
+      errno = ERANGE;
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT,
+                   "parsing '%s' overflows uint", str);
+      return FALSE;
+    }
+
+  if (ret)
+    *ret = (guint) val;
+
+  return TRUE;
+}
+
+gboolean
 bolt_str_parse_as_uint64 (const char *str,
                           guint64    *ret,
                           GError    **error)

@@ -68,6 +68,10 @@ gboolean bolt_str_parse_as_int (const char *str,
                                 gint       *ret,
                                 GError    **error);
 
+gboolean bolt_str_parse_as_uint (const char *str,
+                                 guint      *ret,
+                                 GError    **error);
+
 gboolean bolt_str_parse_as_uint64 (const char *str,
                                    guint64    *ret,
                                    GError    **error);
