@@ -1373,7 +1373,7 @@ test_str_parse_int (TestRng *tt, gconstpointer user_data)
         }
       else
         {
-          g_assert_cmpuint (table[i].val, ==, v);
+          g_assert_cmpint (table[i].val, ==, v);
           g_assert_true (ok);
         }
     }
