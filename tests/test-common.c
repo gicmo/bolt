@@ -1380,6 +1380,61 @@ test_str_parse_int (TestRng *tt, gconstpointer user_data)
 }
 
 static void
+test_str_parse_uint (TestRng *tt, gconstpointer user_data)
+{
+  struct
+  {
+    const char *str;
+    guint       val;
+    gboolean    error;
+  } table[] = {
+    {"0",                                        0,                FALSE},
+    {"1",                                        1,                FALSE},
+    {"-1",                                       0,                TRUE}, /* negative */
+#if __SIZEOF_INT__ == 4
+    {"4294967295",                      4294967295,                FALSE}, /* MAX_UINT */
+    {"4294967296",                               0,                TRUE},  /* MAX_UINT + 1 */
+#elif __SIZEOF_INT__ == 8
+    {"18446744073709551615",  18446744073709551615,                FALSE}, /* MAX_INT */
+    {"18446744073709551616",                     0,                TRUE},  /* MAX_INT + 1 */
+#else
+    #warning __SIZEOF_INT__ not handled
+#endif
+    {"notanint",                                 0,                TRUE},
+    {"18446744073709551617",                     0,                TRUE}, /* overflow */
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+    {
+      g_autoptr(GError) error = NULL;
+      gboolean ok;
+      guint v;
+
+      errno = 0;
+      ok = bolt_str_parse_as_uint (table[i].str, &v, &error);
+
+      if (g_test_verbose ())
+        g_test_message ("parsing '%s', expecting: %s", table[i].str,
+                        (table[i].error ? "error" : "success"));
+
+      if (table[i].error)
+        {
+          int err = errno;
+
+          if (g_test_verbose ())
+            g_assert_nonnull (error);
+          g_assert_false (ok);
+          g_assert_cmpint (err, !=, 0);
+        }
+      else
+        {
+          g_assert_cmpuint (table[i].val, ==, v);
+          g_assert_true (ok);
+        }
+    }
+}
+
+static void
 test_str_parse_uint64 (TestRng *tt, gconstpointer user_data)
 {
   struct
@@ -2118,6 +2173,13 @@ main (int argc, char **argv)
               NULL,
               NULL,
               test_str_parse_int,
+              NULL);
+
+  g_test_add ("/common/str/parse/uint",
+              TestRng,
+              NULL,
+              NULL,
+              test_str_parse_uint,
               NULL);
 
   g_test_add ("/common/str/parse/uint64",
