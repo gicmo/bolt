@@ -1404,8 +1404,11 @@ test_str_parse_uint64 (TestRng *tt, gconstpointer user_data)
       ok = bolt_str_parse_as_uint64 (table[i].str, &v, &err);
       if (table[i].error)
         {
+          int e = errno;
+
           g_assert_nonnull (err);
           g_assert_false (ok);
+          g_assert_cmpint (e, !=, 0);
         }
       else
         {
@@ -1440,8 +1443,11 @@ test_str_parse_uint32 (TestRng *tt, gconstpointer user_data)
       ok = bolt_str_parse_as_uint32 (table[i].str, &v, &err);
       if (table[i].error)
         {
+          int e = errno;
+
           g_assert_nonnull (err);
           g_assert_false (ok);
+          g_assert_cmpint (e, !=, 0);
         }
       else
         {
