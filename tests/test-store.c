@@ -66,11 +66,11 @@ test_store_setup (TestStore *tt, gconstpointer user_data)
     }
 
 
-  tt->store = bolt_store_new (tt->path);
+  tt->store = bolt_store_new (tt->path, &error);
   if (tt->store == NULL)
     {
-      g_critical ("Could not create store at %s",
-                  tt->path);
+      g_critical ("Could not create store at %s: %s",
+                  tt->path, error->message);
       return;
     }
 

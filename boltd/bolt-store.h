@@ -34,7 +34,8 @@ G_BEGIN_DECLS
 #define BOLT_TYPE_STORE bolt_store_get_type ()
 G_DECLARE_FINAL_TYPE (BoltStore, bolt_store, BOLT, STORE, GObject);
 
-BoltStore *       bolt_store_new (const char *path);
+BoltStore *       bolt_store_new (const char *path,
+                                  GError    **error);
 
 GKeyFile *        bolt_store_config_load (BoltStore *store,
                                           GError   **error);

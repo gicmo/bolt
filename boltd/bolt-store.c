@@ -34,6 +34,13 @@
 /* ************************************  */
 /* BoltStore */
 
+static void     bolt_store_initable_iface_init (GInitableIface *iface);
+
+
+static gboolean bolt_store_initialize (GInitable    *initable,
+                                       GCancellable *cancellable,
+                                       GError      **error);
+
 struct _BoltStore
 {
   GObject object;
@@ -66,9 +73,11 @@ enum {
 static guint signals[SIGNAL_LAST] = {0};
 
 
-G_DEFINE_TYPE (BoltStore,
-               bolt_store,
-               G_TYPE_OBJECT)
+G_DEFINE_TYPE_WITH_CODE (BoltStore,
+                         bolt_store,
+                         G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
+                                                bolt_store_initable_iface_init));
 
 
 static void
@@ -190,6 +199,20 @@ bolt_store_class_init (BoltStoreClass *klass)
                   1, G_TYPE_STRING);
 }
 
+static void
+bolt_store_initable_iface_init (GInitableIface *iface)
+{
+  iface->init = bolt_store_initialize;
+}
+
+static gboolean
+bolt_store_initialize (GInitable    *initable,
+                       GCancellable *cancellable,
+                       GError      **error)
+{
+  return TRUE;
+}
+
 /* internal methods */
 #define DOMAIN_GROUP "domain"
 #define DEVICE_GROUP "device"
@@ -200,16 +223,16 @@ bolt_store_class_init (BoltStoreClass *klass)
 /* public methods */
 
 BoltStore *
-bolt_store_new (const char *path)
+bolt_store_new (const char *path, GError **error)
 {
   g_autoptr(GFile) root = NULL;
   BoltStore *store;
 
   root = g_file_new_for_path (path);
-  store = g_object_new (BOLT_TYPE_STORE,
-                        "root", root,
-                        NULL);
-
+  store = g_initable_new (BOLT_TYPE_STORE,
+                          NULL, error,
+                          "root", root,
+                          NULL);
   return store;
 }
 

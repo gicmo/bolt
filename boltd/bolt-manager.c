@@ -53,7 +53,8 @@ static gboolean bolt_manager_initialize (GInitable    *initable,
                                          GCancellable *cancellable,
                                          GError      **error);
 
-static void     bolt_manager_store_init (BoltManager *mgr);
+static gboolean bolt_manager_store_init (BoltManager *mgr,
+                                         GError     **error);
 
 /* internal manager functions */
 static void          manager_sd_notify_status (BoltManager *mgr);
@@ -480,7 +481,10 @@ bolt_manager_initialize (GInitable    *initable,
 
   mgr = BOLT_MANAGER (initable);
 
-  bolt_manager_store_init (mgr);
+  /* store setup */
+  ok = bolt_manager_store_init (mgr, error);
+  if (!ok)
+    return FALSE;
 
   /* load dynamic user configuration */
   manager_load_user_config (mgr);
@@ -574,12 +578,14 @@ bolt_manager_initialize (GInitable    *initable,
   return TRUE;
 }
 
-static void
-bolt_manager_store_init (BoltManager *mgr)
+static gboolean
+bolt_manager_store_init (BoltManager *mgr, GError **error)
 {
   bolt_info (LOG_TOPIC ("manager"), "initializing store");
 
-  mgr->store = bolt_store_new (bolt_get_store_path ());
+  mgr->store = bolt_store_new (bolt_get_store_path (), error);
+  if (mgr->store == NULL)
+    return FALSE;
 
   g_signal_connect_object (mgr->store, "device-added",
                            G_CALLBACK (handle_store_device_added),
@@ -588,6 +594,8 @@ bolt_manager_store_init (BoltManager *mgr)
   g_signal_connect_object (mgr->store, "device-removed",
                            G_CALLBACK (handle_store_device_removed),
                            mgr, 0);
+
+  return TRUE;
 }
 
 /* internal functions */

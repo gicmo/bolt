@@ -1104,7 +1104,10 @@ test_bootacl_update_offline (TestBootacl *tt, gconstpointer user)
   guint k;
 
   dir = bolt_tmp_dir_make ("bolt.sysfs.XXXXXX", NULL);
-  store = bolt_store_new (dir);
+  store = bolt_store_new (dir, &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (store);
 
   ok = bolt_store_put_domain (store, dom, &err);
   g_assert_no_error (err);
