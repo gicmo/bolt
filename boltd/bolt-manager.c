@@ -53,6 +53,8 @@ static gboolean bolt_manager_initialize (GInitable    *initable,
                                          GCancellable *cancellable,
                                          GError      **error);
 
+static void     bolt_manager_store_init (BoltManager *mgr);
+
 /* internal manager functions */
 static void          manager_sd_notify_status (BoltManager *mgr);
 
@@ -352,7 +354,6 @@ static void
 bolt_manager_init (BoltManager *mgr)
 {
   mgr->devices = g_ptr_array_new_with_free_func (g_object_unref);
-  mgr->store = bolt_store_new (bolt_get_store_path ());
 
   mgr->probing_roots = g_ptr_array_new_with_free_func (g_free);
   mgr->probing_tsettle = PROBING_SETTLE_TIME_MS; /* milliseconds */
@@ -362,14 +363,6 @@ bolt_manager_init (BoltManager *mgr)
   /* default configuration */
   mgr->policy = BOLT_POLICY_AUTO;
   mgr->authmode = BOLT_AUTH_ENABLED;
-
-  g_signal_connect_object (mgr->store, "device-added",
-                           G_CALLBACK (handle_store_device_added),
-                           mgr, 0);
-
-  g_signal_connect_object (mgr->store, "device-removed",
-                           G_CALLBACK (handle_store_device_removed),
-                           mgr, 0);
 }
 
 static void
@@ -487,6 +480,8 @@ bolt_manager_initialize (GInitable    *initable,
 
   mgr = BOLT_MANAGER (initable);
 
+  bolt_manager_store_init (mgr);
+
   /* load dynamic user configuration */
   manager_load_user_config (mgr);
 
@@ -577,6 +572,22 @@ bolt_manager_initialize (GInitable    *initable,
   manager_sd_notify_status (mgr);
 
   return TRUE;
+}
+
+static void
+bolt_manager_store_init (BoltManager *mgr)
+{
+  bolt_info (LOG_TOPIC ("manager"), "initializing store");
+
+  mgr->store = bolt_store_new (bolt_get_store_path ());
+
+  g_signal_connect_object (mgr->store, "device-added",
+                           G_CALLBACK (handle_store_device_added),
+                           mgr, 0);
+
+  g_signal_connect_object (mgr->store, "device-removed",
+                           G_CALLBACK (handle_store_device_removed),
+                           mgr, 0);
 }
 
 /* internal functions */
