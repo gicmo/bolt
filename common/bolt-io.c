@@ -519,6 +519,25 @@ bolt_read_int_at (int         dirfd,
 }
 
 gboolean
+bolt_read_uint_at (int         dirfd,
+                   const char *name,
+                   guint      *val,
+                   GError    **error)
+{
+  g_autofree char *str = NULL;
+
+  g_return_val_if_fail (name != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  str = bolt_read_value_at (dirfd, name, error);
+
+  if (str == NULL)
+    return FALSE;
+
+  return bolt_str_parse_as_uint (str, val, error);
+}
+
+gboolean
 bolt_verify_uid (int         dirfd,
                  const char *want,
                  GError    **error)
