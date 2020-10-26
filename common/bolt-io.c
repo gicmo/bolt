@@ -51,6 +51,11 @@
 
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (FILE, fclose);
 
+/* standard open flags for overwriting a file, i.e. close on
+ * exec (3), open in write only mode, truncate before writing,
+ * and create it if it does not yet exist */
+#define BOLT_O_OVERWRITE (O_CLOEXEC | O_WRONLY | O_TRUNC | O_CREAT)
+
 int
 bolt_open (const char *path, int flags, int mode, GError **error)
 {
@@ -589,7 +594,7 @@ bolt_file_write_all (const char *fn,
   g_return_val_if_fail (data != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-  fd = bolt_open (fn, O_CLOEXEC | O_WRONLY | O_TRUNC | O_CREAT, 0666, error);
+  fd = bolt_open (fn, BOLT_O_OVERWRITE, 0666, error);
 
   if (fd < 0)
     return FALSE;
