@@ -616,26 +616,11 @@ bolt_file_write_all (const char *fn,
                      gssize      n,
                      GError    **error)
 {
-  int fd = -1;
-  gboolean ok;
-
   g_return_val_if_fail (fn != NULL, FALSE);
   g_return_val_if_fail (data != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-  fd = bolt_open (fn, BOLT_O_OVERWRITE, 0666, error);
-
-  if (fd < 0)
-    return FALSE;
-
-  ok = bolt_write_all (fd, data, n, error);
-
-  if (ok)
-    ok = bolt_close (fd, error);
-  else
-    (void) close (fd);
-
-  return ok;
+  return bolt_write_file_at (AT_FDCWD, fn, data, n, error);
 }
 
 gboolean
