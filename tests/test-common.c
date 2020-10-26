@@ -973,6 +973,34 @@ test_io_write_file_at (TestIO *tt, gconstpointer user_data)
 }
 
 static void
+test_io_write_int_at (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(DIR) dir = NULL;
+  gboolean ok;
+  int tests[] = {0, 1, 42, G_MAXINT};
+
+  dir = bolt_opendir (tt->path, &error);
+  g_assert_no_error (error);
+  g_assert_nonnull (dir);
+
+  for (gsize i = 0; i < G_N_ELEMENTS (tests); i++)
+    {
+      g_autoptr(GError) err = NULL;
+      int ref = tests[i];
+      int val;
+
+      ok = bolt_write_int_at (dirfd (dir), "int.txt", ref, &err);
+      g_assert_true (ok);
+
+      ok = bolt_read_int_at (dirfd (dir), "int.txt", &val, &err);
+      g_assert_no_error (err);
+      g_assert_true (ok);
+      g_assert_cmpint (val, ==, ref);
+    }
+}
+
+static void
 test_io_read_int_at (TestIO *tt, gconstpointer user_data)
 {
   g_autoptr(GError) error = NULL;
@@ -2225,6 +2253,13 @@ main (int argc, char **argv)
               NULL,
               test_io_setup,
               test_io_write_file_at,
+              test_io_tear_down);
+
+  g_test_add ("/common/io/write_int_at",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_io_write_int_at,
               test_io_tear_down);
 
   g_test_add ("/common/io/read_int_at",
