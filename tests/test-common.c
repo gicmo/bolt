@@ -723,6 +723,7 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
   struct stat st;
   char buffer[256] = {0, };
   gboolean ok;
+  unsigned int uiv;
   int fd = -1;
   int iv;
   int r;
@@ -875,6 +876,17 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
   g_clear_pointer (&err, g_error_free);
 
   ok = bolt_read_int_at (dirfd (root), "readonly", &iv, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  /* read_uint_at */
+  ok = bolt_read_uint_at (dirfd (root), "NONEXISTENT", &uiv, &err);
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+  g_clear_pointer (&err, g_error_free);
+
+  ok = bolt_read_uint_at (dirfd (root), "readonly", &uiv, &err);
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
   g_assert_false (ok);
   g_clear_pointer (&err, g_error_free);
