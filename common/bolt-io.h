@@ -87,6 +87,12 @@ gboolean   bolt_unlink_at (int         dirfd,
                            int         flag,
                            GError    **error);
 
+gboolean   bolt_write_file_at (int         dirfd,
+                               const char *name,
+                               const char *data,
+                               gssize      len,
+                               GError    **error);
+
 char *     bolt_read_value_at (int         dirfd,
                                const char *name,
                                GError    **error);

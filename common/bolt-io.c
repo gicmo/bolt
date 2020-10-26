@@ -401,6 +401,35 @@ bolt_unlink_at (int         dirfd,
   return TRUE;
 }
 
+gboolean
+bolt_write_file_at (int         dirfd,
+                    const char *name,
+                    const char *data,
+                    gssize      len,
+                    GError    **error)
+{
+  int fd;
+  gboolean ok;
+
+  g_return_val_if_fail (name != NULL, FALSE);
+  g_return_val_if_fail (data != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  fd = bolt_openat (dirfd, name, BOLT_O_OVERWRITE, 0666, error);
+
+  if (fd < 0)
+    return FALSE;
+
+  ok = bolt_write_all (fd, data, len, error);
+
+  if (!ok)
+    (void) close (fd);
+  else
+    ok = bolt_close (fd, error);
+
+  return ok;
+}
+
 char *
 bolt_read_value_at (int         dirfd,
                     const char *name,
