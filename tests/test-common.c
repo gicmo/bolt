@@ -973,6 +973,67 @@ test_io_write_file_at (TestIO *tt, gconstpointer user_data)
 }
 
 static void
+test_io_read_int_at (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(DIR) dir = NULL;
+  gboolean ok;
+  struct
+  {
+    const char *str;
+    gint        val;
+    gboolean    error;
+  } table[] = {
+    {"0",                                        0,                FALSE},
+    {"1",                                        1,                FALSE},
+    {"-1",                                      -1,                FALSE},
+#if __SIZEOF_INT__ == 4
+    {"2147483647",                      2147483647,                FALSE}, /* MAX_INT */
+    {"-2147483648",                    -2147483648,                FALSE}, /* MIN_INT */
+    {"2147483648",                               0,                TRUE},  /* MAX_INT + 1 */
+    {"-2147483649",                              0,                TRUE},  /* MIN_INT - 1 */
+#elif __SIZEOF_INT__ == 8
+    {"9223372036854775807",    9223372036854775807,                FALSE}, /* MAX_INT */
+    {"-9223372036854775808",  -9223372036854775808,                FALSE}, /* MIN_INT */
+    {"9223372036854775808",                      0,                TRUE},  /* MAX_INT + 1 */
+    {"-9223372036854775809",                     0,                TRUE},  /* MIN_INT - 1 */
+#else
+    #warning __SIZEOF_INT__ not handled
+#endif
+    {"notanint",                                 0,                TRUE},
+    {"9223372036854775808",                      0,                TRUE}, /* overflow */
+    {"-9223372036854775809",                     0,                TRUE}, /* underflow */
+  };
+
+  dir = bolt_opendir (tt->path, &error);
+  g_assert_no_error (error);
+  g_assert_nonnull (dir);
+
+  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+    {
+      g_autoptr(GError) err = NULL;
+      const char *txt = table[i].str;
+      gint v;
+
+      ok = bolt_write_file_at (dirfd (dir), "int.txt", txt, -1, &err);
+      g_assert_true (ok);
+
+      ok = bolt_read_int_at (dirfd (dir), "int.txt", &v, &err);
+      if (table[i].error)
+        {
+          g_assert_nonnull (err);
+          g_assert_false (ok);
+        }
+      else
+        {
+          g_assert_no_error (err);
+          g_assert_cmpint (table[i].val, ==, v);
+          g_assert_true (ok);
+        }
+    }
+}
+
+static void
 test_io_file_write_all (TestIO *tt, gconstpointer user_data)
 {
   g_autoptr(GError) error = NULL;
@@ -2164,6 +2225,13 @@ main (int argc, char **argv)
               NULL,
               test_io_setup,
               test_io_write_file_at,
+              test_io_tear_down);
+
+  g_test_add ("/common/io/read_int_at",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_io_read_int_at,
               test_io_tear_down);
 
   g_test_add ("/common/io/file_write_all",
