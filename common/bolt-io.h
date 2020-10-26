@@ -112,6 +112,11 @@ gboolean   bolt_read_int_at (int         dirfd,
                              gint       *val,
                              GError    **error);
 
+gboolean   bolt_write_uint_at (int         dirfd,
+                               const char *name,
+                               guint       val,
+                               GError    **error);
+
 gboolean   bolt_read_uint_at (int         dirfd,
                               const char *name,
                               guint      *val,

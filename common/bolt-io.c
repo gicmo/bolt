@@ -572,6 +572,25 @@ bolt_read_int_at (int         dirfd,
 }
 
 gboolean
+bolt_write_uint_at (int         dirfd,
+                    const char *name,
+                    guint       val,
+                    GError    **error)
+{
+  char buf[256] = {0, };
+  gsize n;
+
+  g_return_val_if_fail (name != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  n = g_snprintf (buf, sizeof (buf), "%u", val);
+
+  g_assert (n < sizeof (buf));
+
+  return bolt_write_file_at (dirfd, name, buf, n, error);
+}
+
+gboolean
 bolt_read_uint_at (int         dirfd,
                    const char *name,
                    guint      *val,
