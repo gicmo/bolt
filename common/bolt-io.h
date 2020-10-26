@@ -167,6 +167,10 @@ gboolean   bolt_copy_bytes (int      fd_from,
                             size_t   len,
                             GError **error);
 
+gboolean   bolt_dir_is_empty (DIR      *dir,
+                              gboolean *empty,
+                              GError  **error);
+
 /* auto cleanup for I/O handles */
 void       bolt_cleanup_close_intpr (int *fd);
 #define    bolt_autoclose bolt_cleanup (bolt_cleanup_close_intpr)

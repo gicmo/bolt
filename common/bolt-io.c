@@ -924,6 +924,50 @@ bolt_copy_bytes (int      fd_from,
   return len == 0;
 }
 
+gboolean
+bolt_dir_is_empty (DIR      *dir,
+                   gboolean *empty,
+                   GError  **error)
+{
+  struct dirent *de = NULL;
+  long n;
+
+  g_return_val_if_fail (dir != NULL, FALSE);
+  g_return_val_if_fail (empty != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  *empty = TRUE;
+
+  n = telldir (dir);
+  if (n == -1)
+    {
+      int code = errno;
+
+      g_set_error (error, G_IO_ERROR,
+                   g_io_error_from_errno (code),
+                   "telldir(3) failed: %s",
+                   g_strerror (code));
+
+      return FALSE;
+    }
+
+  rewinddir (dir);
+
+  while ((de = readdir (dir)) != NULL)
+    {
+
+      if (!g_strcmp0 (de->d_name, ".") ||
+          !g_strcmp0 (de->d_name, ".."))
+        continue;
+
+      *empty = FALSE;
+      break;
+    }
+
+  seekdir (dir, n);
+
+  return TRUE;
+}
 
 /* auto cleanup helpers */
 void
