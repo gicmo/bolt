@@ -933,6 +933,46 @@ test_io_verify (TestIO *tt, gconstpointer user_data)
 }
 
 static void
+test_io_write_file_at (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(DIR) dir = NULL;
+  g_autofree char *path = NULL;
+  g_autofree char *data = NULL;
+  static const char *ref = "The world is everything that is the case.";
+  gboolean ok;
+  gsize len;
+
+  dir = bolt_opendir (tt->path, &error);
+  g_assert_no_error (error);
+  g_assert_nonnull (dir);
+
+  ok = bolt_write_file_at (dirfd (dir), "test.txt", ref, -1, &error);
+
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  path = g_build_filename (tt->path, "test.txt", NULL);
+  ok = g_file_get_contents (path, &data, &len, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+  g_assert_cmpuint (strlen (ref), ==, len);
+  g_assert_cmpstr (ref, ==, data);
+
+  g_clear_pointer (&data, g_free);
+  ok = bolt_file_write_all (path, ref, 5, &error);
+
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  ok = g_file_get_contents (path, &data, &len, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+  g_assert_cmpuint (len, ==, 5);
+  g_assert_true (strncmp (data, ref, 5) == 0);
+}
+
+static void
 test_io_file_write_all (TestIO *tt, gconstpointer user_data)
 {
   g_autoptr(GError) error = NULL;
@@ -2117,6 +2157,13 @@ main (int argc, char **argv)
               NULL,
               test_io_setup,
               test_io_verify,
+              test_io_tear_down);
+
+  g_test_add ("/common/io/write_file_at",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_io_write_file_at,
               test_io_tear_down);
 
   g_test_add ("/common/io/file_write_all",
