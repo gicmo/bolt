@@ -41,6 +41,7 @@
 #include <gio/gio.h>
 #include <glib/gprintf.h>
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <locale.h>
@@ -1293,6 +1294,72 @@ test_io_copy_bytes (TestIO *tt, gconstpointer user_data)
 }
 
 static void
+test_io_dir_is_empty (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(DIR) root = NULL;
+  struct dirent *de = NULL;
+  gboolean empty;
+  gboolean ok;
+  long pos;
+
+  root = bolt_opendir (tt->path, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (root);
+
+  empty = FALSE;
+  ok = bolt_dir_is_empty (root, &empty, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (empty);
+
+  ok = bolt_write_file_at (dirfd (root), "a", "a", -1, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  empty = TRUE;
+  ok = bolt_dir_is_empty (root, &empty, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_false (empty);
+
+  /* check that we don't mess with the dir pointer offset,
+   * by creating a second file, iterating exactly once
+   * and then making sure we are at the same position
+   * after the call to bolt_dir_is_empty */
+
+  ok = bolt_write_file_at (dirfd (root), "b", "b", -1, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  empty = TRUE;
+  ok = bolt_dir_is_empty (root, &empty, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_false (empty);
+
+  while ((de = readdir (root)) != NULL)
+    {
+
+      if (!g_strcmp0 (de->d_name, ".") ||
+          !g_strcmp0 (de->d_name, ".."))
+        continue;
+
+      break;
+    }
+
+  pos = telldir (root);
+
+  empty = TRUE;
+  ok = bolt_dir_is_empty (root, &empty, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_false (empty);
+
+  g_assert_cmpint (telldir (root), ==, pos);
+}
+
+static void
 test_autoclose (TestIO *tt, gconstpointer user_data)
 {
   g_autoptr(GError) err = NULL;
@@ -2359,6 +2426,13 @@ main (int argc, char **argv)
               NULL,
               test_io_setup,
               test_io_copy_bytes,
+              test_io_tear_down);
+
+  g_test_add ("/common/io/dir_is_empty",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_io_dir_is_empty,
               test_io_tear_down);
 
   g_test_add ("/common/io/autoclose",
