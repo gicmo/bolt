@@ -61,6 +61,32 @@ typedef struct
 } TestDummy;
 
 /* test tables for string to number conversions */
+struct
+{
+  const char *str;
+  gint        val;
+  gboolean    error;
+} str_to_int_table[] = {
+  {"0",                                        0,                FALSE},
+  {"1",                                        1,                FALSE},
+  {"-1",                                      -1,                FALSE},
+#if __SIZEOF_INT__ == 4
+  {"2147483647",                      2147483647,                FALSE}, /* MAX_INT */
+  {"-2147483648",                    -2147483648,                FALSE}, /* MIN_INT */
+  {"2147483648",                               0,                TRUE},  /* MAX_INT + 1 */
+  {"-2147483649",                              0,                TRUE},  /* MIN_INT - 1 */
+#elif __SIZEOF_INT__ == 8
+  {"9223372036854775807",    9223372036854775807,                FALSE}, /* MAX_INT */
+  {"-9223372036854775808",  -9223372036854775808,                FALSE}, /* MIN_INT */
+  {"9223372036854775808",                      0,                TRUE},  /* MAX_INT + 1 */
+  {"-9223372036854775809",                     0,                TRUE},  /* MIN_INT - 1 */
+#else
+#warning __SIZEOF_INT__ not handled
+#endif
+  {"notanint",                                 0,                TRUE},
+  {"9223372036854775808",                      0,                TRUE}, /* overflow */
+  {"-9223372036854775809",                     0,                TRUE}, /* underflow */
+};
 
 struct
 {
@@ -1031,48 +1057,24 @@ test_io_read_int_at (TestIO *tt, gconstpointer user_data)
   g_autoptr(GError) error = NULL;
   g_autoptr(DIR) dir = NULL;
   gboolean ok;
-  struct
-  {
-    const char *str;
-    gint        val;
-    gboolean    error;
-  } table[] = {
-    {"0",                                        0,                FALSE},
-    {"1",                                        1,                FALSE},
-    {"-1",                                      -1,                FALSE},
-#if __SIZEOF_INT__ == 4
-    {"2147483647",                      2147483647,                FALSE}, /* MAX_INT */
-    {"-2147483648",                    -2147483648,                FALSE}, /* MIN_INT */
-    {"2147483648",                               0,                TRUE},  /* MAX_INT + 1 */
-    {"-2147483649",                              0,                TRUE},  /* MIN_INT - 1 */
-#elif __SIZEOF_INT__ == 8
-    {"9223372036854775807",    9223372036854775807,                FALSE}, /* MAX_INT */
-    {"-9223372036854775808",  -9223372036854775808,                FALSE}, /* MIN_INT */
-    {"9223372036854775808",                      0,                TRUE},  /* MAX_INT + 1 */
-    {"-9223372036854775809",                     0,                TRUE},  /* MIN_INT - 1 */
-#else
-    #warning __SIZEOF_INT__ not handled
-#endif
-    {"notanint",                                 0,                TRUE},
-    {"9223372036854775808",                      0,                TRUE}, /* overflow */
-    {"-9223372036854775809",                     0,                TRUE}, /* underflow */
-  };
 
   dir = bolt_opendir (tt->path, &error);
   g_assert_no_error (error);
   g_assert_nonnull (dir);
 
-  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+  for (gsize i = 0; i < G_N_ELEMENTS (str_to_int_table); i++)
     {
       g_autoptr(GError) err = NULL;
-      const char *txt = table[i].str;
+      const char *txt = str_to_int_table[i].str;
+      gboolean expect_error = str_to_int_table[i].error;
+      gint val = str_to_int_table[i].val;
       gint v;
 
       ok = bolt_write_file_at (dirfd (dir), "int.txt", txt, -1, &err);
       g_assert_true (ok);
 
       ok = bolt_read_int_at (dirfd (dir), "int.txt", &v, &err);
-      if (table[i].error)
+      if (expect_error)
         {
           g_assert_nonnull (err);
           g_assert_false (ok);
@@ -1080,7 +1082,7 @@ test_io_read_int_at (TestIO *tt, gconstpointer user_data)
       else
         {
           g_assert_no_error (err);
-          g_assert_cmpint (table[i].val, ==, v);
+          g_assert_cmpint (val, ==, v);
           g_assert_true (ok);
         }
     }
@@ -1549,43 +1551,19 @@ test_str_erase (TestRng *tt, gconstpointer user_data)
 static void
 test_str_parse_int (TestRng *tt, gconstpointer user_data)
 {
-  struct
-  {
-    const char *str;
-    gint        val;
-    gboolean    error;
-  } table[] = {
-    {"0",                                        0,                FALSE},
-    {"1",                                        1,                FALSE},
-    {"-1",                                      -1,                FALSE},
-#if __SIZEOF_INT__ == 4
-    {"2147483647",                      2147483647,                FALSE}, /* MAX_INT */
-    {"-2147483648",                    -2147483648,                FALSE}, /* MIN_INT */
-    {"2147483648",                               0,                TRUE},  /* MAX_INT + 1 */
-    {"-2147483649",                              0,                TRUE},  /* MIN_INT - 1 */
-#elif __SIZEOF_INT__ == 8
-    {"9223372036854775807",    9223372036854775807,                FALSE}, /* MAX_INT */
-    {"-9223372036854775808",  -9223372036854775808,                FALSE}, /* MIN_INT */
-    {"9223372036854775808",                      0,                TRUE},  /* MAX_INT + 1 */
-    {"-9223372036854775809",                     0,                TRUE},  /* MIN_INT - 1 */
-#else
-    #warning __SIZEOF_INT__ not handled
-#endif
-    {"notanint",                                 0,                TRUE},
-    {"9223372036854775808",                      0,                TRUE}, /* overflow */
-    {"-9223372036854775809",                     0,                TRUE}, /* underflow */
-  };
-
-  for (gsize i = 0; i < G_N_ELEMENTS (table); i++)
+  for (gsize i = 0; i < G_N_ELEMENTS (str_to_int_table); i++)
     {
       g_autoptr(GError) error = NULL;
+      const char *txt = str_to_int_table[i].str;
+      gboolean expect_error = str_to_int_table[i].error;
+      gint val = str_to_int_table[i].val;
       gboolean ok;
       gint v;
 
       errno = 0;
-      ok = bolt_str_parse_as_int (table[i].str, &v, &error);
+      ok = bolt_str_parse_as_int (txt, &v, &error);
 
-      if (table[i].error)
+      if (expect_error)
         {
           int err = errno;
 
@@ -1595,7 +1573,7 @@ test_str_parse_int (TestRng *tt, gconstpointer user_data)
         }
       else
         {
-          g_assert_cmpint (table[i].val, ==, v);
+          g_assert_cmpint (val, ==, v);
           g_assert_true (ok);
         }
     }
