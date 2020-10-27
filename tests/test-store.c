@@ -105,11 +105,18 @@ test_store_basic (TestStore *tt, gconstpointer user_data)
   g_autofree char *path = NULL;
   char uid[] = "fbc83890-e9bf-45e5-a777-b3728490989c";
   BoltKeyState keystate;
+  guint version;
   gboolean ok;
 
   g_object_get (tt->store, "root", &root, NULL);
   path = g_file_get_path (root);
   g_assert_cmpstr (tt->path, ==, path);
+
+  g_object_get (tt->store, "version", &version, NULL);
+  g_assert_cmpuint (version, ==, BOLT_STORE_VERSION);
+
+  version = bolt_store_get_version (tt->store);
+  g_assert_cmpuint (version, ==, BOLT_STORE_VERSION);
 
   dev = g_object_new (BOLT_TYPE_DEVICE,
                       "uid", uid,
