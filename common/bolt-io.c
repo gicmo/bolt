@@ -895,6 +895,34 @@ bolt_rename (const char *from,
   return FALSE;
 }
 
+gboolean
+bolt_renameat (int         from_dir,
+               const char *from,
+               int         to_dir,
+               const char *to,
+               GError    **error)
+{
+  int code;
+  int r;
+
+  g_return_val_if_fail (from != NULL, FALSE);
+  g_return_val_if_fail (to != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  r = renameat (from_dir, from, to_dir, to);
+
+  if (r == 0)
+    return TRUE;
+
+  code = errno;
+  g_set_error (error, G_IO_ERROR,
+               g_io_error_from_errno (code),
+               "could not rename '%s' to '%s': %s",
+               from, to, g_strerror (code));
+
+  return FALSE;
+}
+
 #if !HAVE_FN_COPY_FILE_RANGE
 static loff_t
 copy_file_range (int          fd_in,

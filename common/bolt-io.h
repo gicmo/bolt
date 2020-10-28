@@ -167,6 +167,12 @@ gboolean   bolt_rename (const char *from,
                         const char *to,
                         GError    **error);
 
+gboolean   bolt_renameat (int         from_dir,
+                          const char *from,
+                          int         to_dir,
+                          const char *to,
+                          GError    **error);
+
 gboolean   bolt_copy_bytes (int      fd_from,
                             int      fd_to,
                             size_t   len,
