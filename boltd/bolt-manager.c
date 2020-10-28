@@ -56,6 +56,8 @@ static gboolean bolt_manager_initialize (GInitable    *initable,
 static gboolean bolt_manager_store_init (BoltManager *mgr,
                                          GError     **error);
 
+static void     bolt_manager_store_upgrade (BoltManager *mgr);
+
 /* internal manager functions */
 static void          manager_sd_notify_status (BoltManager *mgr);
 
@@ -573,6 +575,9 @@ bolt_manager_initialize (GInitable    *initable,
 
   udev_enumerate_unref (enumerate);
 
+  /* upgrade the store, if needed */
+  bolt_manager_store_upgrade (mgr);
+
   manager_sd_notify_status (mgr);
 
   return TRUE;
@@ -596,6 +601,36 @@ bolt_manager_store_init (BoltManager *mgr, GError **error)
                            mgr, 0);
 
   return TRUE;
+}
+
+static void
+bolt_manager_store_upgrade (BoltManager *mgr)
+{
+  g_autoptr(GError) err = NULL;
+  BoltStore *store = mgr->store;
+  guint ver;
+  gboolean ok;
+
+  ver = bolt_store_get_version (store);
+
+  if (ver == BOLT_STORE_VERSION)
+    {
+      bolt_debug (LOG_TOPIC ("store"), "store is up to date");
+      return;
+    }
+
+  bolt_info (LOG_TOPIC ("store"), "attempting upgrade from '%d'",
+             ver);
+
+  ok = bolt_store_upgrade (store, NULL, &err);
+  if (!ok)
+    {
+      bolt_warn_err (err, LOG_TOPIC ("store"), "upgrade failed");
+      return;
+    }
+
+  bolt_info (LOG_TOPIC ("store"), "upgraded to version '%d'",
+             ver);
 }
 
 /* internal functions */
