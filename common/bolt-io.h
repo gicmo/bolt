@@ -70,6 +70,11 @@ DIR *      bolt_opendir_at (int         dirfd,
 gboolean   bolt_closedir (DIR     *d,
                           GError **error);
 
+gboolean   bolt_mkdirat (int         dirfd,
+                         const char *name,
+                         mode_t      mode,
+                         GError    **error);
+
 gboolean   bolt_rmdir (const char *name,
                        GError    **error);
 

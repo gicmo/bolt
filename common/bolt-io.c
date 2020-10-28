@@ -324,6 +324,34 @@ bolt_closedir (DIR     *d,
 
 
 gboolean
+bolt_mkdirat (int         dirfd,
+              const char *name,
+              mode_t      mode,
+              GError    **error)
+{
+  int r = 0;
+
+  g_return_val_if_fail (name != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  r = mkdirat (dirfd, name, mode);
+
+  if (r < 0)
+    {
+      g_set_error (error,
+                   G_IO_ERROR,
+                   g_io_error_from_errno (errno),
+                   "failed to create directory '%s': %s",
+                   name,
+                   g_strerror (errno));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+
+gboolean
 bolt_rmdir (const char *name,
             GError    **error)
 {
