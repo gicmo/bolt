@@ -144,4 +144,9 @@ gboolean          bolt_store_has_journal (BoltStore  *store,
                                           const char *type,
                                           const char *name);
 
+/* store upgrades */
+gboolean          bolt_store_upgrade (BoltStore *store,
+                                      gboolean  *upgrade,
+                                      GError   **error);
+
 G_END_DECLS

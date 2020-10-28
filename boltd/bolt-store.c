@@ -1269,3 +1269,56 @@ bolt_store_has_journal (BoltStore  *store,
 
   return g_file_query_exists (journal, NULL);
 }
+
+gboolean
+bolt_store_upgrade (BoltStore *store,
+                    gboolean  *upgrade,
+                    GError   **error)
+{
+  g_autoptr(DIR) root = NULL;
+  g_autofree char *path = NULL;
+  gboolean need_upgrade;
+  gboolean ok;
+
+  g_return_val_if_fail (BOLT_IS_STORE (store), FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  need_upgrade = store->version != BOLT_STORE_VERSION;
+
+  if (upgrade)
+    *upgrade = need_upgrade;
+
+  if (!need_upgrade)
+    return TRUE;
+
+  path = g_file_get_path (store->root);
+  root = bolt_opendir (path, error);
+
+  if (!root)
+    return FALSE;
+
+  ok = bolt_write_int_at (dirfd (root),
+                          ".version-upgrade",
+                          BOLT_STORE_VERSION,
+                          error);
+  if (!ok)
+    return FALSE;
+
+  ok = bolt_renameat (dirfd (root),
+                      ".version-upgrade",
+                      dirfd (root),
+                      "version",
+                      error);
+
+  if (!ok)
+    {
+      bolt_unlink_at (dirfd (root), ".version-upgrade", 0, NULL);
+      return FALSE;
+    }
+
+  store->version = BOLT_STORE_VERSION;
+  g_object_notify_by_pspec (G_OBJECT (store),
+                            store_props[PROP_VERSION]);
+
+  return ok;
+}
