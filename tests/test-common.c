@@ -943,6 +943,34 @@ test_io_errors (TestIO *tt, gconstpointer user_data)
 }
 
 static void
+test_io_mkdirat (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(DIR) d = NULL;
+  struct stat st;
+  gboolean ok;
+
+  d = bolt_opendir (tt->path, &error);
+
+  g_assert_no_error (error);
+  g_assert_nonnull (d);
+
+  ok = bolt_mkdirat (dirfd (d), "directory", 0666, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  ok = bolt_fstatat (dirfd (d), "directory", &st, 0, &error);
+  g_assert_no_error (error);
+  g_assert_true (ok);
+
+  g_assert_true (S_ISDIR (st.st_mode));
+
+  ok = bolt_mkdirat (dirfd (d), "directory", 0666, &error);
+  g_assert_error (error, G_IO_ERROR, G_IO_ERROR_EXISTS);
+  g_assert_false (ok);
+}
+
+static void
 test_io_verify (TestIO *tt, gconstpointer user_data)
 {
   g_autoptr(GError) error = NULL;
@@ -2370,6 +2398,13 @@ main (int argc, char **argv)
               NULL,
               test_io_setup,
               test_io_errors,
+              test_io_tear_down);
+
+  g_test_add ("/common/io/mkdirat",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_io_mkdirat,
               test_io_tear_down);
 
   g_test_add ("/common/io/verify",
