@@ -1233,6 +1233,67 @@ test_io_file_write_all (TestIO *tt, gconstpointer user_data)
 }
 
 static void
+test_io_renameat (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GError) err = NULL;
+  g_autoptr(DIR) root = NULL;
+  g_autoptr(DIR) subdir = NULL;
+  struct stat st;
+  gboolean ok;
+
+  root = bolt_opendir (tt->path, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (root);
+
+  ok = bolt_write_file_at (dirfd (root), "a", "a", -1, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  ok = bolt_mkdirat (dirfd (root), "subdir", 0777, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  subdir = bolt_opendir_at (dirfd (root), "subdir", O_RDONLY, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (subdir);
+
+  ok = bolt_renameat (dirfd (root), "a",
+                      dirfd (subdir), "b",
+                      &err);
+
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  ok = bolt_fstatat (dirfd (subdir), "b", &st, 0, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_true (S_ISREG (st.st_mode));
+
+  ok = bolt_renameat (dirfd (subdir), "b",
+                      dirfd (subdir), "c",
+                      &err);
+
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  memset (&st, 0, sizeof (st));
+  ok = bolt_fstatat (dirfd (subdir), "c", &st, 0, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_true (S_ISREG (st.st_mode));
+
+  /* error reporting: file not found  */
+  ok = bolt_renameat (dirfd (subdir), "b",
+                      dirfd (subdir), "c",
+                      &err);
+
+  g_assert_error (err, G_IO_ERROR, G_IO_ERROR_NOT_FOUND);
+  g_assert_false (ok);
+}
+
+static void
 test_io_copy_bytes (TestIO *tt, gconstpointer user_data)
 {
   g_autoptr(GError) error = NULL;
@@ -2454,6 +2515,13 @@ main (int argc, char **argv)
               NULL,
               test_io_setup,
               test_io_file_write_all,
+              test_io_tear_down);
+
+  g_test_add ("/common/io/renameat",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_io_renameat,
               test_io_tear_down);
 
   g_test_add ("/common/io/copy_bytes",
