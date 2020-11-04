@@ -827,6 +827,79 @@ test_store_journal (TestStore *tt, gconstpointer user_data)
 
 }
 
+static void
+test_store_upgrade (TestStore *tt, gconstpointer user_data)
+{
+  g_autoptr(BoltDevice) dev = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(DIR) root = NULL;
+  char uid[] = "fbc83890-e9bf-45e5-a777-b3728490989c";
+  guint version;
+  gboolean up;
+  gboolean ok;
+
+  /* simulate a version 0 store, i.e. has some entries,
+   * but no 'version' file */
+
+  root = bolt_opendir (tt->path, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (root);
+
+  version = bolt_store_get_version (tt->store);
+  g_assert_cmpuint (version, ==, BOLT_STORE_VERSION);
+
+  dev = g_object_new (BOLT_TYPE_DEVICE,
+                      "uid", uid,
+                      "name", "Laptop",
+                      "vendor", "GNOME.org",
+                      "status", BOLT_STATUS_DISCONNECTED,
+                      NULL);
+
+  ok = bolt_store_put_device (tt->store, dev, BOLT_POLICY_AUTO, NULL, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  /* close the store, delete 'version' */
+  g_clear_object (&tt->store);
+
+  ok = bolt_unlink_at (dirfd (root), "version", 0, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  /* re-create the store object */
+  tt->store = bolt_store_new (tt->path, &err);
+  g_assert_no_error (err);
+  g_assert_nonnull (tt->store);
+
+  version = bolt_store_get_version (tt->store);
+  g_assert_cmpuint (version, ==, 0);
+
+  /* no upgrade the store */
+  ok = bolt_store_upgrade (tt->store, &up, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_true (up);
+
+  /* assert the upgrade changed the version */
+  version = bolt_store_get_version (tt->store);
+  g_assert_cmpuint (version, ==, BOLT_STORE_VERSION);
+
+  /* upgrade again, check it did not do anything */
+  ok = bolt_store_upgrade (tt->store, &up, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+  g_assert_false (up);
+
+  version = bolt_store_get_version (tt->store);
+  g_assert_cmpuint (version, ==, BOLT_STORE_VERSION);
+
+  /* ensure 'upgrade' argument is optional */
+  ok = bolt_store_upgrade (tt->store, NULL, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+}
+
 int
 main (int argc, char **argv)
 {
@@ -891,6 +964,13 @@ main (int argc, char **argv)
               NULL,
               test_store_setup,
               test_store_journal,
+              test_store_tear_down);
+
+  g_test_add ("/daemon/store/upgrade",
+              TestStore,
+              NULL,
+              test_store_setup,
+              test_store_upgrade,
               test_store_tear_down);
 
   return g_test_run ();
