@@ -43,7 +43,7 @@ coverity:
     - schedules
   script:
     - mkdir build-coverity
-    - docker build -t bolt-coverity -f ./contrib/Dockerfile-coverity .
+    - docker build --build-arg PROJECT=bolt --build-arg TOKEN=$COVERITY_TOKEN -t bolt-coverity -f ./contrib/Dockerfile-coverity .
     - podman run --rm -e COVERITY_TOKEN=$COVERITY_TOKEN -e COVERITY_EMAIL=$COVERITY_EMAIL -t -v `pwd`:/src:Z -v `pwd`/build-coverity:/build:Z bolt-coverity ./contrib/coverity.sh
   artifacts:
     paths:
