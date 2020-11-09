@@ -36,3 +36,16 @@ alpine:
   variables:
     OS: alpine
   <<: *build
+
+coverity:
+  stage: build
+  only:
+    - schedules
+  script:
+    - mkdir build-coverity
+    - docker build -t bolt-coverity -f ./contrib/Dockerfile-coverity .
+    - podman run --rm -e COVERITY_TOKEN=$COVERITY_TOKEN -e COVERITY_EMAIL=$COVERITY_EMAIL -t -v `pwd`:/src:Z -v `pwd`/build-coverity:/build:Z bolt-coverity ./contrib/coverity.sh
+  artifacts:
+    paths:
+    - build-coverity/cov-int/build-log.txt
+    expire_in: 1 week
