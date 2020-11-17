@@ -629,6 +629,7 @@ bolt_manager_store_upgrade (BoltManager *mgr)
       return;
     }
 
+  ver = bolt_store_get_version (store);
   bolt_info (LOG_TOPIC ("store"), "upgraded to version '%d'",
              ver);
 }
