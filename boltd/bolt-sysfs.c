@@ -150,10 +150,44 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
   return s;
 }
 
+static int
+bolt_syfs_count_tb_devices (struct udev        *udev,
+                            struct udev_device *parent,
+                            GError            **error)
+{
+  struct udev_enumerate *e;
+  struct udev_list_entry *l, *devices;
+  int r, count = 0;
+
+  e = udev_enumerate_new (udev);
+
+  udev_enumerate_add_match_subsystem (e, "thunderbolt");
+  udev_enumerate_add_match_property (e, "DEVTYPE", "thunderbolt_device");
+
+  if (parent)
+    udev_enumerate_add_match_parent (e, parent);
+
+  r = udev_enumerate_scan_devices (e);
+  if (r < 0)
+    {
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                   "failed to scan udev: %s",
+                   g_strerror (-r));
+      return r;
+    }
+
+  devices = udev_enumerate_get_list_entry (e);
+  udev_list_entry_foreach (l, devices)
+    count++;
+
+  udev_enumerate_unref (e);
+
+  return count;
+}
 
 int
-bolt_sysfs_count_domains (struct udev *udev,
-                          GError     **error)
+bolt_sysfs_count_hosts (struct udev *udev,
+                        GError     **error)
 {
   struct udev_enumerate *e;
   struct udev_list_entry *l, *devices;
@@ -175,7 +209,23 @@ bolt_sysfs_count_domains (struct udev *udev,
 
   devices = udev_enumerate_get_list_entry (e);
   udev_list_entry_foreach (l, devices)
-    count++;
+    {
+      struct udev_device *udevice = NULL;
+      const char *syspath;
+      int n;
+
+      syspath = udev_list_entry_get_name (l);
+      udevice = udev_device_new_from_syspath (udev, syspath);
+
+      if (udevice == NULL)
+        continue;
+
+      n = bolt_syfs_count_tb_devices (udev, udevice, NULL);
+      if (n > 0)
+        count++;
+
+      udev_device_unref (udevice);
+    }
 
   udev_enumerate_unref (e);
 

@@ -407,12 +407,12 @@ bolt_udev_device_new_from_syspath (BoltUdev   *udev,
 
 /* thunderbolt specific helpers */
 int
-bolt_udev_count_domains (BoltUdev *udev,
-                         GError  **error)
+bolt_udev_count_hosts (BoltUdev *udev,
+                       GError  **error)
 {
   g_return_val_if_fail (BOLT_IS_UDEV (udev), -1);
 
-  return bolt_sysfs_count_domains (udev->udev, error);
+  return bolt_sysfs_count_hosts (udev->udev, error);
 }
 
 gboolean

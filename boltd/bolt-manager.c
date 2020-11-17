@@ -2330,7 +2330,7 @@ manager_maybe_power_controller (BoltManager *mgr)
   if (can_force_power == FALSE)
     return NULL;
 
-  n = bolt_udev_count_domains (mgr->udev, &err);
+  n = bolt_udev_count_hosts (mgr->udev, &err);
   if (n < 0)
     {
       bolt_warn_err (err, LOG_TOPIC ("udev"),
@@ -2356,7 +2356,7 @@ manager_maybe_power_controller (BoltManager *mgr)
   for (int i = 0; i < 25 && n < 1; i++)
     {
       g_usleep (200000); /* 200 000 us = 0.2s */
-      n = bolt_udev_count_domains (mgr->udev, NULL);
+      n = bolt_udev_count_hosts (mgr->udev, NULL);
     }
 
 out:

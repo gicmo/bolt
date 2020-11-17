@@ -45,8 +45,8 @@ struct udev_device * bolt_udev_device_new_from_syspath (BoltUdev   *udev,
                                                         GError    **error);
 
 /* thunderbolt specific helpers */
-int                  bolt_udev_count_domains (BoltUdev *udev,
-                                              GError  **error);
+int                  bolt_udev_count_hosts (BoltUdev *udev,
+                                            GError  **error);
 
 gboolean             bolt_udev_detect_force_power (BoltUdev *udev,
                                                    char    **path,

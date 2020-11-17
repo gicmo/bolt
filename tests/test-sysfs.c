@@ -367,7 +367,6 @@ static void
 test_sysfs_domains (TestSysfs *tt, gconstpointer user)
 {
   g_autoptr(GError) err = NULL;
-  const char *uid = "884c6edd-7118-4b21-b186-b02d396ecca0";
   const char *ids[5];
   BoltSecurity sl[5] = {BOLT_SECURITY_NONE,
                         BOLT_SECURITY_DPONLY,
@@ -379,7 +378,7 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
   BoltDomain *iter;
   int n;
 
-  n = bolt_sysfs_count_domains (tt->udev, &err);
+  n = bolt_sysfs_count_hosts (tt->udev, &err);
 
   g_assert_no_error (err);
   g_assert_cmpint (n, ==, 0);
@@ -389,13 +388,28 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
       g_autoptr(udev_device) udevice = NULL;
       g_autoptr(BoltDomain) dom = NULL; /* the list will own reference */
       const char *syspath;
+      char uid[37] = {0, };
+      MockDevId hostid = {
+        .vendor_id = 0x42,
+        .vendor_name = "GNOME.org",
+        .device_id = 0x42,
+        .device_name = "Laptop",
+        .unique_id = (const char *) &uid,
+      };
+
+      g_snprintf (uid, sizeof (uid), "884c6edd-7118-4b21-b186-b02d396ecc%02x",
+                  (unsigned int) i);
 
       ids[i] = mock_sysfs_domain_add (tt->sysfs, sl[i], NULL);
 
       syspath = mock_sysfs_domain_get_syspath (tt->sysfs, ids[i]);
       udevice = udev_device_new_from_syspath (tt->udev, syspath);
 
+      mock_sysfs_host_add (tt->sysfs, ids[i], &hostid);
+
       g_assert_nonnull (udevice);
+
+      g_debug ("uid: %s", uid);
 
       dom = bolt_domain_new_for_udev (udevice, uid, &err);
       g_assert_no_error (err);
@@ -415,7 +429,7 @@ test_sysfs_domains (TestSysfs *tt, gconstpointer user)
                     ==,
                     G_N_ELEMENTS (sl));
 
-  g_assert_cmpint (bolt_sysfs_count_domains (tt->udev, NULL),
+  g_assert_cmpint (bolt_sysfs_count_hosts (tt->udev, NULL),
                    ==,
                    (int) G_N_ELEMENTS (sl));
 
