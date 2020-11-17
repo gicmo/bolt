@@ -56,7 +56,8 @@ static gboolean bolt_manager_initialize (GInitable    *initable,
 static gboolean bolt_manager_store_init (BoltManager *mgr,
                                          GError     **error);
 
-static void     bolt_manager_store_upgrade (BoltManager *mgr);
+static void     bolt_manager_store_upgrade (BoltManager *mgr,
+                                            gboolean    *upgraded);
 
 /* internal manager functions */
 static void          manager_sd_notify_status (BoltManager *mgr);
@@ -79,6 +80,8 @@ static void          manager_register_domain (BoltManager *mgr,
 
 static void          manager_deregister_domain (BoltManager *mgr,
                                                 BoltDomain  *domain);
+
+static void          manager_cleanup_stale_domains (BoltManager *mgr);
 
 /* device related functions */
 static gboolean      manager_load_devices (BoltManager *mgr,
@@ -479,6 +482,7 @@ bolt_manager_initialize (GInitable    *initable,
   BoltManager *mgr;
   struct udev_enumerate *enumerate;
   struct udev_list_entry *l, *devices;
+  gboolean upgraded = FALSE;
   gboolean ok;
 
   mgr = BOLT_MANAGER (initable);
@@ -576,7 +580,10 @@ bolt_manager_initialize (GInitable    *initable,
   udev_enumerate_unref (enumerate);
 
   /* upgrade the store, if needed */
-  bolt_manager_store_upgrade (mgr);
+  bolt_manager_store_upgrade (mgr, &upgraded);
+
+  if (upgraded)
+    manager_cleanup_stale_domains (mgr);
 
   manager_sd_notify_status (mgr);
 
@@ -604,7 +611,7 @@ bolt_manager_store_init (BoltManager *mgr, GError **error)
 }
 
 static void
-bolt_manager_store_upgrade (BoltManager *mgr)
+bolt_manager_store_upgrade (BoltManager *mgr, gboolean *upgraded)
 {
   g_autoptr(GError) err = NULL;
   BoltStore *store = mgr->store;
@@ -632,6 +639,8 @@ bolt_manager_store_upgrade (BoltManager *mgr)
   ver = bolt_store_get_version (store);
   bolt_info (LOG_TOPIC ("store"), "upgraded to version '%d'",
              ver);
+
+  *upgraded = TRUE;
 }
 
 /* internal functions */
@@ -1064,6 +1073,58 @@ manager_deregister_domain (BoltManager *mgr,
   bolt_info (LOG_TOPIC ("domain"), "'%s' removed", name);
 
   mgr->domains = bolt_domain_remove (mgr->domains, domain);
+}
+
+static void
+manager_cleanup_stale_domains (BoltManager *mgr)
+{
+  g_autoptr(GPtrArray) domains = NULL;
+  BoltDomain *iter;
+  guint count;
+
+  /* Before bolt 0.9.1, domains were stored that have an
+   * unstable uuid, i.e. their uuids change on every boot
+   * and thus there will be store entries that can't be
+   * matched anymore and thus are "stale".
+   */
+
+  bolt_info (LOG_TOPIC ("manager"), "stale domain cleanup");
+
+  count = bolt_domain_count (mgr->domains);
+  domains = g_ptr_array_new_full (count, g_object_unref);
+
+  iter = mgr->domains;
+  for (guint i = 0; i < count; i++)
+    {
+      gboolean stored = bolt_domain_is_stored (iter);
+      gboolean offline = !bolt_domain_is_connected (iter);
+
+      if (stored && offline)
+        g_ptr_array_add (domains, g_object_ref (iter));
+
+      iter = bolt_domain_next (iter);
+    }
+
+  for (guint i = 0; i < domains->len; i++)
+    {
+      g_autoptr(GError) err = NULL;
+      BoltDomain *dom = g_ptr_array_index (domains, i);
+      gboolean ok;
+
+      bolt_info (LOG_DOM (dom), LOG_TOPIC ("store"),
+                 "stale domain detected");
+
+      ok = bolt_store_del_domain (mgr->store, dom, &err);
+
+      if (!ok)
+        {
+          bolt_warn_err (err, LOG_DOM (dom),
+                         "failed to delete domain");
+          continue;
+        }
+
+      manager_deregister_domain (mgr, dom);
+    }
 }
 
 /* device related functions */
