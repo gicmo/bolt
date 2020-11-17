@@ -1129,7 +1129,22 @@ static void
 manager_deregister_device (BoltManager *mgr,
                            BoltDevice  *dev)
 {
+  const char *opath;
+
   g_ptr_array_remove_fast (mgr->devices, dev);
+
+  opath = bolt_device_get_object_path (dev);
+
+  if (opath == NULL)
+    return;
+
+  bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
+                             "DeviceRemoved",
+                             g_variant_new ("(o)", opath),
+                             NULL);
+
+  bolt_device_unexport (dev);
+  bolt_info (LOG_DEV (dev), LOG_TOPIC ("dbus"), "unexported");
 }
 
 static BoltDevice *
@@ -1856,26 +1871,12 @@ static void
 handle_udev_device_removed (BoltManager *mgr,
                             BoltDevice  *dev)
 {
-  const char *opath;
   const char *syspath;
 
   syspath = bolt_device_get_syspath (dev);
   bolt_msg (LOG_DEV (dev), "removed (%s)", syspath);
 
   manager_deregister_device (mgr, dev);
-
-  opath = bolt_device_get_object_path (dev);
-
-  if (opath == NULL)
-    return;
-
-  bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
-                             "DeviceRemoved",
-                             g_variant_new ("(o)", opath),
-                             NULL);
-
-  bolt_device_unexport (dev);
-  bolt_info (LOG_DEV (dev), LOG_TOPIC ("dbus"), "unexported");
 }
 
 static void
@@ -1960,7 +1961,6 @@ handle_store_device_removed (BoltStore   *store,
   g_autoptr(BoltDevice) dev = NULL;
   BoltDomain *dom = mgr->domains;
   BoltStatus status;
-  const char *opath;
 
   dev = manager_find_device_by_uid (mgr, uid, NULL);
 
@@ -1985,18 +1985,6 @@ handle_store_device_removed (BoltStore   *store,
     return;
 
   manager_deregister_device (mgr, dev);
-  opath = bolt_device_get_object_path (dev);
-
-  if (opath == NULL)
-    return;
-
-  bolt_exported_emit_signal (BOLT_EXPORTED (mgr),
-                             "DeviceRemoved",
-                             g_variant_new ("(o)", opath),
-                             NULL);
-
-  bolt_device_unexport (dev);
-  bolt_info (LOG_DEV (dev), "unexported");
 }
 
 
