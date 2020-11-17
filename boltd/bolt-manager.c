@@ -1067,10 +1067,8 @@ static void
 manager_deregister_domain (BoltManager *mgr,
                            BoltDomain  *domain)
 {
-  const char *name;
-
-  name = bolt_domain_get_id (domain);
-  bolt_info (LOG_TOPIC ("domain"), "'%s' removed", name);
+  bolt_info (LOG_TOPIC ("manager"), LOG_DOM (domain),
+             "de-registered");
 
   mgr->domains = bolt_domain_remove (mgr->domains, domain);
 }
