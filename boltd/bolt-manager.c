@@ -1504,8 +1504,23 @@ manager_maybe_import (BoltManager *mgr,
 
   if (bolt_device_is_host (dev))
     {
-      /* Store the host device, which is always authorized */
-      manager_do_import_device (mgr, dev, BOLT_POLICY_MANUAL);
+      BoltDomain *dom = bolt_device_get_domain (dev);
+
+      /* host devices are per design authorized and
+       * must therefore never be authorized by bolt */
+      policy = BOLT_POLICY_MANUAL;
+
+      /* Store the host device only if its domain is
+       * stored as well. Currently, the only reason
+       * for a domain to not be stored is that its
+       * uuid is not stable, i.e. changes every boot.
+       * But its uuid is in fact derived from the
+       * associated host device, i.e. this very host
+       * device here. Ergo, its uuid is unstable and
+       * thus it should not be stored */
+      if (bolt_domain_is_stored (dom))
+        manager_do_import_device (mgr, dev, policy);
+
       return;
     }
 
