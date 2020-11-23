@@ -1318,6 +1318,7 @@ bolt_manager_label_device (BoltManager *mgr,
     const char *from;
     const char *to;
   } vendors[] = {
+    {"Dell Inc.",   "Dell" },
     {"HP Inc.",     "HP"   },
     {"Apple, Inc.", "Apple"}
   };
