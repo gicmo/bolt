@@ -604,28 +604,6 @@ device_set_status_internal (BoltDevice *dev,
     g_object_notify_by_pspec (G_OBJECT (dev), props[PROP_STATUS]);
 }
 
-static const char *
-read_sysattr_name (struct udev_device *udev, const char *attr, GError **error)
-{
-  g_autofree char *s = NULL;
-  const char *v;
-
-  s = g_strdup_printf ("%s_name", attr);
-  v = udev_device_get_sysattr_value (udev, s);
-
-  if (v != NULL)
-    return v;
-
-  v = udev_device_get_sysattr_value (udev, attr);
-
-  if (v == NULL)
-    g_set_error (error,
-                 BOLT_ERROR, BOLT_ERROR_UDEV,
-                 "failed to get sysfs attr: %s", attr);
-
-  return v;
-}
-
 static BoltStatus
 bolt_status_from_info (BoltDevInfo *info)
 {
@@ -1213,15 +1191,11 @@ bolt_device_new_for_udev (struct udev_device *udev,
   if (uid == NULL)
     return NULL;
 
-  name = read_sysattr_name (udev, "device", error);
-  if (name == NULL)
-    return NULL;
-
-  vendor = read_sysattr_name (udev, "vendor", error);
-  if (vendor == NULL)
-    return NULL;
-
   ok = bolt_sysfs_info_for_device (udev, TRUE, &info, error);
+  if (!ok)
+    return NULL;
+
+  ok = bolt_sysfs_device_ident (udev, &name, &vendor, error);
   if (!ok)
     return NULL;
 

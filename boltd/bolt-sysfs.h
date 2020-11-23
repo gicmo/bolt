@@ -52,6 +52,11 @@ struct udev_device * bolt_sysfs_domain_for_device (struct udev_device  *udev,
 BoltSecurity         bolt_sysfs_security_for_device (struct udev_device *udev,
                                                      GError            **error);
 
+gboolean             bolt_sysfs_device_ident (struct udev_device *udev,
+                                              const char        **name,
+                                              const char        **vendor,
+                                              GError            **error);
+
 int                  bolt_sysfs_count_hosts (struct udev *udev,
                                              GError     **error);
 

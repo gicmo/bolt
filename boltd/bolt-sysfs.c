@@ -174,6 +174,65 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
   return s;
 }
 
+static const char *
+read_sysattr_name (struct udev_device *udev,
+                   const char         *attr)
+{
+  g_autofree char *s = NULL;
+  const char *v;
+
+  s = g_strdup_printf ("%s_name", attr);
+  v = udev_device_get_sysattr_value (udev, s);
+
+  if (v != NULL)
+    return v;
+
+  return udev_device_get_sysattr_value (udev, attr);
+}
+
+gboolean
+bolt_sysfs_device_ident (struct udev_device *udev,
+                         const char        **name,
+                         const char        **vendor,
+                         GError            **error)
+{
+  const char *val;
+
+  struct
+  {
+    const char  *attr;
+    const char **ptr;
+  } fields[] = {
+    {"device", name},
+    {"vendor", vendor}
+  };
+
+  g_return_val_if_fail (udev != NULL, FALSE);
+  g_return_val_if_fail (name != NULL, FALSE);
+  g_return_val_if_fail (vendor != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  for (size_t i = 0; i < G_N_ELEMENTS (fields); i++)
+    {
+      const char *key = fields[i].attr;
+
+      val = read_sysattr_name (udev, key);
+      if (val == NULL)
+        {
+          g_set_error (error,
+                       BOLT_ERROR, BOLT_ERROR_UDEV,
+                       "'%s' information missing",
+                       key);
+
+          return FALSE;
+        }
+
+      *(fields[i].ptr) = val;
+    }
+
+  return TRUE;
+}
+
 static int
 bolt_syfs_count_tb_devices (struct udev        *udev,
                             struct udev_device *parent,
