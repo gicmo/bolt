@@ -1355,7 +1355,7 @@ bolt_manager_label_device (BoltManager *mgr,
     }
 
   /* we counted the target too, > 1 means duplicates */
-  if (count > 1)
+  if (count > 1 && !bolt_device_is_host (target))
     label = g_strdup_printf ("%s %s #%u", vendor, name, count);
   else
     label = g_strdup_printf ("%s %s", vendor, name);
