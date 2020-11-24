@@ -32,6 +32,30 @@
 #include <libudev.h>
 #include <sys/stat.h>
 
+const char *
+bolt_sysfs_device_get_unique_id (struct udev_device *dev,
+                                 GError            **error)
+{
+  const char *uid;
+
+  g_return_val_if_fail (dev != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  uid = udev_device_get_sysattr_value (dev, BOLT_SYSFS_UNIQUE_ID);
+
+  if (uid == NULL)
+    {
+      const char *path = udev_device_get_syspath (dev);
+
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                   "could not get unique_id for %s",
+                   path);
+      return NULL;
+    }
+
+  return uid;
+}
+
 gint64
 bolt_sysfs_device_get_time (struct udev_device *udev,
                             BoltStatTime        st)

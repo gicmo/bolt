@@ -31,6 +31,9 @@ struct udev_device;
 
 G_BEGIN_DECLS
 
+const char *         bolt_sysfs_device_get_unique_id (struct udev_device *dev,
+                                                      GError            **error);
+
 typedef enum BoltStatTime {
   BOLT_ST_ATIME,
   BOLT_ST_CTIME,
