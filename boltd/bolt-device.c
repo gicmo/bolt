@@ -1209,13 +1209,9 @@ bolt_device_new_for_udev (struct udev_device *udev,
   g_return_val_if_fail (domain != NULL, NULL);
   g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
-  uid = udev_device_get_sysattr_value (udev, "unique_id");
+  uid = bolt_sysfs_device_get_unique_id (udev, error);
   if (uid == NULL)
-    {
-      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                   "could not get unique_id for udev");
-      return NULL;
-    }
+    return NULL;
 
   name = read_sysattr_name (udev, "device", error);
   if (name == NULL)
