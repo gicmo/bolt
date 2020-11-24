@@ -253,21 +253,43 @@ mock_sysfs_device_plug (MockSysfs     *ms,
   serial = (domain->serial)++;
   idstr = g_strdup_printf ("%u-%u", domain->id, serial);
 
-  vendor_id = g_strdup_printf ("%d", id->vendor_id);
-  device_id = g_strdup_printf ("%d", id->device_id);
   authstr = g_strdup_printf ("%u", authorized);
 
   i = 0;
-  props[i++] = "vendor";
-  props[i++] = vendor_id;
-  props[i++] = "vendor_name";
-  props[i++] = id->vendor_name;
-  props[i++] = "device";
-  props[i++] = device_id;
-  props[i++] = "device_name";
-  props[i++] = id->device_name;
-  props[i++] = "unique_id";
-  props[i++] = id->unique_id;
+
+  if (id->vendor_id)
+    {
+      vendor_id = g_strdup_printf ("%d", id->vendor_id);
+      props[i++] = "vendor";
+      props[i++] = vendor_id;
+    }
+
+  if (id->vendor_name)
+    {
+      props[i++] = "vendor_name";
+      props[i++] = id->vendor_name;
+    }
+
+  if (id->device_id)
+    {
+      device_id = g_strdup_printf ("%d", id->device_id);
+
+      props[i++] = "device";
+      props[i++] = device_id;
+    }
+
+  if (id->device_name)
+    {
+      props[i++] = "device_name";
+      props[i++] = id->device_name;
+    }
+
+  if (id->unique_id)
+    {
+      props[i++] = "unique_id";
+      props[i++] = id->unique_id;
+    }
+
   props[i++] = "authorized";
   props[i++] = authstr;
 
