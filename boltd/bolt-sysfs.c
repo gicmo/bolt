@@ -32,28 +32,39 @@
 #include <libudev.h>
 #include <sys/stat.h>
 
-const char *
-bolt_sysfs_device_get_unique_id (struct udev_device *dev,
-                                 GError            **error)
+static const char *
+sysfs_get_sysattr_value (struct udev_device *dev,
+                         const char         *attr,
+                         GError            **error)
 {
-  const char *uid;
+  const char *val;
 
   g_return_val_if_fail (dev != NULL, NULL);
   g_return_val_if_fail (error == NULL || *error == NULL, NULL);
 
-  uid = udev_device_get_sysattr_value (dev, BOLT_SYSFS_UNIQUE_ID);
+  val = udev_device_get_sysattr_value (dev, attr);
 
-  if (uid == NULL)
+  if (val == NULL)
     {
+      int code = errno;
       const char *path = udev_device_get_syspath (dev);
 
       g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
-                   "could not get unique_id for %s",
-                   path);
-      return NULL;
+                   "could not get '%s' for %s: %s",
+                   attr, path, g_strerror (code));
     }
 
-  return uid;
+  return val;
+}
+
+const char *
+bolt_sysfs_device_get_unique_id (struct udev_device *dev,
+                                 GError            **error)
+{
+  g_return_val_if_fail (dev != NULL, NULL);
+  g_return_val_if_fail (error == NULL || *error == NULL, NULL);
+
+  return sysfs_get_sysattr_value (dev, BOLT_SYSFS_UNIQUE_ID, error);
 }
 
 gint64
