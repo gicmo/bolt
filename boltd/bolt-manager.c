@@ -904,7 +904,7 @@ manager_domain_ensure (BoltManager        *mgr,
   if (dom == NULL)
     return NULL;
 
-  uid = udev_device_get_sysattr_value (host, "unique_id");
+  uid = bolt_sysfs_device_get_unique_id (host, NULL);
 
   /* check if we have a stored domain with a matching uid
    * of the host device, if so then we have just connected
@@ -1805,7 +1805,7 @@ handle_udev_device_event (BoltManager        *mgr,
 
       /* filter sysfs devices (e.g. the domain) that don't have
        * the unique_id attribute */
-      uid = udev_device_get_sysattr_value (device, "unique_id");
+      uid = bolt_sysfs_device_get_unique_id (device, NULL);
       if (uid == NULL)
         return;
 
