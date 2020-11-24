@@ -64,6 +64,8 @@ G_BEGIN_DECLS
 #define BOLT_DBUS_POWER_INTERFACE "org.freedesktop.bolt1.Power"
 
 /* sysfs */
+#define BOLT_SYSFS_UNIQUE_ID "unique_id"
+
 #define BOLT_SYSFS_IOMMU "iommu_dma_protection"
 #define BOLT_SYSFS_GENERATION "generation"
 
