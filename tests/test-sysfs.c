@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include "bolt-dbus.h"
+#include "bolt-error.h"
 #include "bolt-macros.h"
 #include "bolt-store.h"
 #include "bolt-str.h"
@@ -37,6 +38,7 @@
 
 #include <libudev.h>
 #include <locale.h>
+#include <string.h>
 
 typedef struct udev_device udev_device;
 G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
@@ -69,6 +71,53 @@ count_domains (gpointer data,
   int *n = user_data;
 
   (*n)++;
+}
+
+static void
+test_sysfs_device_get_unique_id (TestSysfs *tt, gconstpointer user)
+{
+  g_autoptr(udev_device) udevice = NULL;
+  g_autoptr(GError) err = NULL;
+  const char *domain;
+  const char *host;
+  const char *syspath;
+  const char *dev;
+  const char *uid;
+  MockDevId id = {
+    .vendor_id = 0x42,
+    .vendor_name = "GNOME.org",
+    .device_id = 0x42,
+    .device_name = "Laptop",
+    .unique_id = "884c6edd-7118-4b21-b186-b02d396ecca0",
+  };
+
+  domain = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_SECURE, NULL);
+  g_assert_nonnull (domain);
+
+  host = mock_sysfs_host_add (tt->sysfs, domain, &id);
+  g_assert_nonnull (host);
+
+  syspath = mock_sysfs_device_get_syspath (tt->sysfs, host);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+  g_assert_nonnull (udevice);
+
+  uid = bolt_sysfs_device_get_unique_id (udevice, &err);
+  g_assert_no_error (err);
+  g_assert_cmpstr (uid, ==, id.unique_id);
+
+  /* error case */
+  memset (&id, 0, sizeof (MockDevId));
+  dev = mock_sysfs_device_add (tt->sysfs, host, &id, 0, NULL, -1, NULL);
+  g_assert_nonnull (dev);
+
+  g_clear_pointer (&udevice, udev_device_unref);
+  syspath = mock_sysfs_device_get_syspath (tt->sysfs, dev);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+  g_assert_nonnull (udevice);
+
+  uid = bolt_sysfs_device_get_unique_id (udevice, &err);
+  g_assert_error (err, BOLT_ERROR, BOLT_ERROR_UDEV);
+  g_assert_null (uid);
 }
 
 static void
@@ -1279,6 +1328,13 @@ main (int argc, char **argv)
   g_test_init (&argc, &argv, NULL);
 
   bolt_dbus_ensure_resources ();
+
+  g_test_add ("/sysfs/device_get_unique_id",
+              TestSysfs,
+              NULL,
+              test_sysfs_setup,
+              test_sysfs_device_get_unique_id,
+              test_sysfs_tear_down);
 
   g_test_add ("/sysfs/domain_for_device",
               TestSysfs,
