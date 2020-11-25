@@ -144,9 +144,13 @@ mock_sysfs_finalize (GObject *object)
 {
   MockSysfs *ms = MOCK_SYSFS (object);
 
-  g_clear_object (&ms->bed);
+  if (ms->force_power)
+    mock_sysfs_force_power_remove (ms);
+
   g_clear_pointer (&ms->domains, g_hash_table_unref);
   g_clear_pointer (&ms->devices, g_hash_table_unref);
+
+  g_clear_object (&ms->bed);
 
   G_OBJECT_CLASS (mock_sysfs_parent_class)->finalize (object);
 }
