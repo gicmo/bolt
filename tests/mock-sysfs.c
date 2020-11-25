@@ -790,6 +790,48 @@ mock_sysfs_host_add (MockSysfs  *ms,
   return device->idstr;
 }
 
+void
+mock_sysfs_host_remove (MockSysfs  *ms,
+                        const char *host)
+{
+  GHashTableIter iter;
+  gpointer k, v;
+  MockDevice *dev;
+  MockDomain *domain = NULL;
+
+  g_return_if_fail (MOCK_IS_SYSFS (ms));
+  g_return_if_fail (host != NULL);
+
+  dev = g_hash_table_lookup (ms->devices, host);
+
+  if (dev == NULL)
+    {
+      g_error ("Device not found for %s", host);
+      return;
+    }
+
+  g_hash_table_iter_init (&iter, ms->domains);
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      MockDomain *d = v;
+      if (d->host == dev)
+        {
+          domain = d;
+          break;
+        }
+    }
+
+  if (!domain)
+    {
+      g_error ("domain not found for host: %s", host);
+      return;
+    }
+
+  mock_sysfs_device_unplug (ms, dev);
+  domain->host = NULL;
+}
+
+
 const char *
 mock_sysfs_device_add (MockSysfs     *ms,
                        const char    *parent,

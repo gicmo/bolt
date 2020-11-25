@@ -87,6 +87,9 @@ const char *     mock_sysfs_host_add (MockSysfs  *ms,
                                       const char *domain,
                                       MockDevId  *id);
 
+void             mock_sysfs_host_remove (MockSysfs  *ms,
+                                         const char *host);
+
 const char *     mock_sysfs_device_add (MockSysfs     *ms,
                                         const char    *parent,
                                         MockDevId     *id,
@@ -106,5 +109,6 @@ gboolean         mock_sysfs_device_remove (MockSysfs  *ms,
 
 gboolean         mock_sysfs_set_osrelease (MockSysfs  *ms,
                                            const char *version);
+
 
 G_END_DECLS
