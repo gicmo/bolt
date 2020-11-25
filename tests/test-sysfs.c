@@ -121,6 +121,131 @@ test_sysfs_device_get_unique_id (TestSysfs *tt, gconstpointer user)
 }
 
 static void
+check_ident (TestSysfs *tt, const char *host)
+{
+  g_auto(BoltIdent) ident = BOLT_IDENT_INIT;
+  MockDevId ref = {
+    .vendor_id = 0x42,
+    .vendor_name = "GNOME.org",
+    .device_id = 0x42,
+    .device_name = "Laptop",
+    .unique_id = "884c6edd-7118-4b21-b186-b02d396ecca0",
+  };
+  MockDevId id = ref;
+  struct
+  {
+    const char  *name;
+    const char **source;
+    gint        *fallback;
+    const char **target;
+  } fields[] = {
+    {"name",      &id.device_name, &id.device_id, &ident.name  },
+    {"vendor",    &id.vendor_name, &id.vendor_id, &ident.vendor}
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS (fields); i++)
+    {
+      g_autoptr(udev_device) udevice = NULL;
+      g_autoptr(GError) err = NULL;
+      const char *syspath;
+      const char *dev;
+      gboolean ok;
+
+      /* reset fields */
+      id = ref;
+
+      /* set the target to NULL */
+      *(fields[i].source) = NULL;
+
+      dev = mock_sysfs_device_add (tt->sysfs, host, &id, 0, NULL, -1, NULL);
+      g_assert_nonnull (dev);
+
+      syspath = mock_sysfs_device_get_syspath (tt->sysfs, dev);
+      udevice = udev_device_new_from_syspath (tt->udev, syspath);
+      g_assert_nonnull (udevice);
+
+      ok = bolt_sysfs_device_ident (udevice, &ident, &err);
+
+      g_assert_no_error (err);
+      g_assert_true (ok);
+
+      g_assert_nonnull (*(fields[i].target));
+
+      mock_sysfs_device_remove (tt->sysfs, dev);
+      g_clear_pointer (&udevice, udev_device_unref);
+
+      /* remove the fallback, re-plug the device */
+      *(fields[i].fallback) = 0;
+      dev = mock_sysfs_device_add (tt->sysfs, host, &id, 0, NULL, -1, NULL);
+      g_assert_nonnull (dev);
+
+      syspath = mock_sysfs_device_get_syspath (tt->sysfs, dev);
+      udevice = udev_device_new_from_syspath (tt->udev, syspath);
+      g_assert_nonnull (udevice);
+
+      bolt_ident_clear (&ident);
+      g_assert_null (*(fields[i].target));
+
+      /* fallback is removed */
+      ok = bolt_sysfs_device_ident (udevice, &ident, &err);
+      g_assert_error (err, BOLT_ERROR, BOLT_ERROR_UDEV);
+      g_assert_false (ok);
+      g_assert_null (ident.udev);
+
+      bolt_ident_clear (&ident);
+      mock_sysfs_device_remove (tt->sysfs, dev);
+    }
+}
+
+static void
+test_sysfs_device_ident (TestSysfs *tt, gconstpointer user)
+{
+  g_autoptr(udev_device) udevice = NULL;
+  g_autoptr(GError) err = NULL;
+  g_auto(BoltIdent) ident = BOLT_IDENT_INIT;
+  const char *domain;
+  const char *host;
+  const char *syspath;
+  gboolean ok;
+  MockDevId id = {
+    .vendor_id = 0x42,
+    .vendor_name = "GNOME.org",
+    .device_id = 0x42,
+    .device_name = "Laptop",
+    .unique_id = "884c6edd-7118-4b21-b186-b02d396ecca0",
+  };
+
+  domain = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_SECURE, NULL);
+  g_assert_nonnull (domain);
+
+  host = mock_sysfs_host_add (tt->sysfs, domain, &id);
+  g_assert_nonnull (host);
+
+  syspath = mock_sysfs_device_get_syspath (tt->sysfs, host);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+  g_assert_nonnull (udevice);
+
+  ok = bolt_sysfs_device_ident (udevice, &ident, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_true (ident.udev == udevice);
+  g_assert_cmpstr (id.device_name, ==, ident.name);
+  g_assert_cmpstr (id.vendor_name, ==, ident.vendor);
+
+  g_clear_pointer (&udevice, udev_device_unref);
+
+  /* clear function */
+  bolt_ident_clear (&ident);
+  g_assert_null (ident.udev);
+  g_assert_null (ident.name);
+  g_assert_null (ident.vendor);
+
+  /* table based individual field checks */
+  check_ident (tt, host);
+}
+
+static void
 test_sysfs_domain_for_device (TestSysfs *tt, gconstpointer user)
 {
   g_autoptr(udev_device) udevice = NULL;
@@ -1334,6 +1459,13 @@ main (int argc, char **argv)
               NULL,
               test_sysfs_setup,
               test_sysfs_device_get_unique_id,
+              test_sysfs_tear_down);
+
+  g_test_add ("/sysfs/device_ident",
+              TestSysfs,
+              NULL,
+              test_sysfs_setup,
+              test_sysfs_device_ident,
               test_sysfs_tear_down);
 
   g_test_add ("/sysfs/domain_for_device",
