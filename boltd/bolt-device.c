@@ -1194,14 +1194,18 @@ bolt_device_new_for_udev (struct udev_device *udev,
   if (!ok)
     return NULL;
 
-  ok = bolt_sysfs_device_ident (udev, &id, error);
-  if (!ok)
-    return NULL;
-
   if (info.parent == NULL)
     type = BOLT_DEVICE_HOST;
   else
     type = BOLT_DEVICE_PERIPHERAL;
+
+  if (type == BOLT_DEVICE_HOST)
+    ok = bolt_sysfs_host_ident (udev, &id, error);
+  else
+    ok = bolt_sysfs_device_ident (udev, &id, error);
+
+  if (!ok)
+    return NULL;
 
   ct = (guint64) info.ctim;
 
