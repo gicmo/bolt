@@ -33,6 +33,9 @@
 #include <string.h>
 #include <sys/stat.h>
 
+typedef struct udev_device udev_device;
+G_DEFINE_AUTOPTR_CLEANUP_FUNC (udev_device, udev_device_unref);
+
 void
 bolt_ident_clear (BoltIdent *id)
 {
@@ -234,6 +237,73 @@ bolt_sysfs_device_ident (struct udev_device *udev,
     return FALSE;
 
   id->udev = udev_device_ref (udev);
+  id->name = name;
+  id->vendor = vendor;
+
+  return TRUE;
+}
+
+gboolean
+bolt_sysfs_host_ident (struct udev_device *dev,
+                       BoltIdent          *id,
+                       GError            **error)
+{
+  g_autoptr(udev_device) dmi = NULL;
+  struct udev *udev;
+  const char *name;
+  const char *vendor;
+  const char *attr;
+  gboolean ok;
+
+  g_return_val_if_fail (dev != NULL, FALSE);
+  g_return_val_if_fail (id != NULL, FALSE);
+  g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
+
+  /* First check if the host controller has normal device ident,
+   * which should be present for all controller that have a DROM. */
+  ok = bolt_sysfs_device_ident (dev, id, NULL);
+  if (ok)
+    return TRUE;
+
+  /* On embedded thunderbolt controllers without DROM, we
+   * fall back to using the SMBIOS/DMI system information */
+
+  udev = udev_device_get_udev (dev);
+  dmi = udev_device_new_from_syspath (udev, BOLT_SYSFS_DMI_ID);
+
+  if (dmi == NULL)
+    {
+      int code = errno;
+      g_set_error (error, BOLT_ERROR, BOLT_ERROR_UDEV,
+                   "could not open dmi/id device: %s",
+                   g_strerror (code));
+      return FALSE;
+    }
+
+  attr = BOLT_SYSFS_DMI_SYS_VENDOR;
+  vendor = sysfs_get_sysattr_value (dmi, attr, error);
+
+  if (vendor == NULL)
+    return FALSE;
+
+  /* Almost all systems are using the product_name attribute
+   * for the human readable string, with exception of Lenovo,
+   * that instead uses the product_version, so we special
+   * case that. */
+  attr = BOLT_SYSFS_DMI_PRODUCT_NAME;
+
+  if (!g_ascii_strcasecmp (vendor, "lenovo"))
+    {
+      attr = BOLT_SYSFS_DMI_PRODUCT_VERSION;
+      vendor = "Lenovo";
+    }
+
+  name = sysfs_get_sysattr_value (dmi, attr, error);
+
+  if (name == NULL)
+    return FALSE;
+
+  id->udev = g_steal_pointer (&dmi);
   id->name = name;
   id->vendor = vendor;
 

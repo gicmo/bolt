@@ -72,6 +72,10 @@ gboolean             bolt_sysfs_device_ident (struct udev_device *udev,
                                               BoltIdent          *id,
                                               GError            **error);
 
+gboolean             bolt_sysfs_host_ident (struct udev_device *udev,
+                                            BoltIdent          *id,
+                                            GError            **error);
+
 int                  bolt_sysfs_count_hosts (struct udev *udev,
                                              GError     **error);
 
