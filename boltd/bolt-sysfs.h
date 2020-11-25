@@ -31,6 +31,22 @@ struct udev_device;
 
 G_BEGIN_DECLS
 
+/* Device identification */
+typedef struct _BoltIdent BoltIdent;
+struct _BoltIdent
+{
+  struct udev_device *udev;
+
+  const char         *name;
+  const char         *vendor;
+};
+
+#define BOLT_IDENT_INIT {NULL, NULL, NULL}
+
+void                 bolt_ident_clear (BoltIdent *id);
+
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC (BoltIdent, bolt_ident_clear);
+
 const char *         bolt_sysfs_device_get_unique_id (struct udev_device *dev,
                                                       GError            **error);
 
@@ -53,8 +69,7 @@ BoltSecurity         bolt_sysfs_security_for_device (struct udev_device *udev,
                                                      GError            **error);
 
 gboolean             bolt_sysfs_device_ident (struct udev_device *udev,
-                                              const char        **name,
-                                              const char        **vendor,
+                                              BoltIdent          *id,
                                               GError            **error);
 
 int                  bolt_sysfs_count_hosts (struct udev *udev,

@@ -30,7 +30,18 @@
 
 #include <errno.h>
 #include <libudev.h>
+#include <string.h>
 #include <sys/stat.h>
+
+void
+bolt_ident_clear (BoltIdent *id)
+{
+  if (id->udev == NULL)
+    return;
+
+  udev_device_unref (id->udev);
+  memset (id, 0, sizeof (BoltIdent));
+}
 
 static const char *
 sysfs_get_sysattr_value (struct udev_device *dev,
@@ -187,7 +198,8 @@ bolt_sysfs_security_for_device (struct udev_device *udev,
 
 static const char *
 read_sysattr_name (struct udev_device *udev,
-                   const char         *attr)
+                   const char         *attr,
+                   GError            **error)
 {
   g_autofree char *s = NULL;
   const char *v;
@@ -198,48 +210,32 @@ read_sysattr_name (struct udev_device *udev,
   if (v != NULL)
     return v;
 
-  return udev_device_get_sysattr_value (udev, attr);
+  return sysfs_get_sysattr_value (udev, attr, error);
 }
 
 gboolean
 bolt_sysfs_device_ident (struct udev_device *udev,
-                         const char        **name,
-                         const char        **vendor,
+                         BoltIdent          *id,
                          GError            **error)
 {
-  const char *val;
-
-  struct
-  {
-    const char  *attr;
-    const char **ptr;
-  } fields[] = {
-    {"device", name},
-    {"vendor", vendor}
-  };
+  const char *name;
+  const char *vendor;
 
   g_return_val_if_fail (udev != NULL, FALSE);
-  g_return_val_if_fail (name != NULL, FALSE);
-  g_return_val_if_fail (vendor != NULL, FALSE);
+  g_return_val_if_fail (id != NULL, FALSE);
   g_return_val_if_fail (error == NULL || *error == NULL, FALSE);
 
-  for (size_t i = 0; i < G_N_ELEMENTS (fields); i++)
-    {
-      const char *key = fields[i].attr;
+  vendor = read_sysattr_name (udev, "vendor", error);
+  if (vendor == NULL)
+    return FALSE;
 
-      val = read_sysattr_name (udev, key);
-      if (val == NULL)
-        {
-          g_set_error (error,
-                       BOLT_ERROR, BOLT_ERROR_UDEV,
-                       "'%s' information missing",
-                       key);
+  name = read_sysattr_name (udev, "device", error);
+  if (name == NULL)
+    return FALSE;
 
-          return FALSE;
-        }
-
-      *(fields[i].ptr) = val;
-    }
+  id->udev = udev_device_ref (udev);
+  id->name = name;
+  id->vendor = vendor;
 
   return TRUE;
 }

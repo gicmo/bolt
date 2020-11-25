@@ -1172,10 +1172,9 @@ bolt_device_new_for_udev (struct udev_device *udev,
                           BoltDomain         *domain,
                           GError            **error)
 {
-  BoltDevInfo info;
+  g_auto(BoltIdent) id = BOLT_IDENT_INIT;
   const char *uid;
-  const char *name;
-  const char *vendor;
+  BoltDevInfo info;
   BoltStatus status;
   BoltAuthFlags aflags;
   BoltDeviceType type;
@@ -1195,7 +1194,7 @@ bolt_device_new_for_udev (struct udev_device *udev,
   if (!ok)
     return NULL;
 
-  ok = bolt_sysfs_device_ident (udev, &name, &vendor, error);
+  ok = bolt_sysfs_device_ident (udev, &id, error);
   if (!ok)
     return NULL;
 
@@ -1212,8 +1211,8 @@ bolt_device_new_for_udev (struct udev_device *udev,
 
   dev = g_object_new (BOLT_TYPE_DEVICE,
                       "uid", uid,
-                      "name", name,
-                      "vendor", vendor,
+                      "name", id.name,
+                      "vendor", id.vendor,
                       "type", type,
                       "generation", info.generation,
                       "status", status,
