@@ -121,6 +121,7 @@ struct _MockSysfs
   char       *force_power;
   GHashTable *domains;
   GHashTable *devices;
+  char       *dmi;
 };
 
 
@@ -143,6 +144,9 @@ static void
 mock_sysfs_finalize (GObject *object)
 {
   MockSysfs *ms = MOCK_SYSFS (object);
+
+  if (ms->dmi)
+    mock_sysfs_dmi_id_remove (ms);
 
   if (ms->force_power)
     mock_sysfs_force_power_remove (ms);
@@ -495,6 +499,57 @@ mock_sysfs_force_power_enabled (MockSysfs *ms)
 
   data = g_strstrip (data);
   return bolt_streq (data, "1");
+}
+
+
+/* dmi */
+const char *
+mock_sysfs_dmi_id_add (MockSysfs  *ms,
+                       const char *sys_vendor,
+                       const char *product_name,
+                       const char *product_version)
+{
+  const char *props[25] = {NULL, };
+  guint i = 0;
+  char *path;
+
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), NULL);
+  g_return_val_if_fail (ms->dmi == NULL, NULL);
+
+  props[i++] = BOLT_SYSFS_DMI_SYS_VENDOR;
+  props[i++] = sys_vendor;
+
+  props[i++] = BOLT_SYSFS_DMI_PRODUCT_NAME;
+  props[i++] = product_name;
+
+  props[i++] = BOLT_SYSFS_DMI_PRODUCT_VERSION;
+  props[i++] = product_version;
+
+  props[i++] = NULL;
+  g_assert (sizeof (props) >= i);
+
+  path = umockdev_testbed_add_devicev (ms->bed, "dmi", "id",
+                                       NULL,
+                                       (char **) props,
+                                       NULL);
+
+
+  ms->dmi = path;
+
+  return path;
+}
+
+gboolean
+mock_sysfs_dmi_id_remove (MockSysfs *ms)
+{
+  g_return_val_if_fail (MOCK_IS_SYSFS (ms), FALSE);
+  g_return_val_if_fail (ms->dmi != NULL, FALSE);
+
+  umockdev_testbed_uevent (ms->bed, ms->dmi, "remove");
+  umockdev_testbed_remove_device (ms->bed, ms->dmi);
+  ms->dmi = NULL;
+
+  return TRUE;
 }
 
 /* public methods: domain */

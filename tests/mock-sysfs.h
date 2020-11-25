@@ -59,6 +59,13 @@ char *           mock_sysfs_force_power_read (MockSysfs *ms);
 
 gboolean         mock_sysfs_force_power_enabled (MockSysfs *ms);
 
+const char *     mock_sysfs_dmi_id_add (MockSysfs  *ms,
+                                        const char *sys_vendor,
+                                        const char *product_name,
+                                        const char *product_version);
+
+gboolean         mock_sysfs_dmi_id_remove (MockSysfs *ms);
+
 const char *     mock_sysfs_domain_add (MockSysfs   *ms,
                                         BoltSecurity security,
                                         ...) G_GNUC_NULL_TERMINATED;
