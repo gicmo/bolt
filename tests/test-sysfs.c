@@ -246,6 +246,102 @@ test_sysfs_device_ident (TestSysfs *tt, gconstpointer user)
 }
 
 static void
+test_sysfs_host_ident (TestSysfs *tt, gconstpointer user)
+{
+  g_autoptr(udev_device) udevice = NULL;
+  g_autoptr(GError) err = NULL;
+  g_auto(BoltIdent) ident = BOLT_IDENT_INIT;
+  const char *domain;
+  const char *host;
+  const char *syspath;
+  gboolean ok;
+  MockDevId id = {
+    .vendor_id = 0x42,
+    .vendor_name = "GNOME.org",
+    .device_id = 0x42,
+    .device_name = "Laptop",
+    .unique_id = "884c6edd-7118-4b21-b186-b02d396ecca0",
+  };
+  MockDevId icl = {
+    .vendor_id = 0,
+    .vendor_name = NULL,
+    .device_id = 0,
+    .device_name = NULL,
+    .unique_id = id.unique_id,
+  };
+  struct
+  {
+    const char *sys_vendor;
+    const char *product_version;
+    const char *product_name;
+
+    /* test */
+    const char *vendor;
+    const char *name;
+  } dmi_ids[] = {
+    {"Dell Inc.", "",         "XPS 13", "Dell Inc.", "XPS 13"},
+    {"LENOVO",    "Thinkpad", "ABCD",   "Lenovo",    "Thinkpad"}
+  };
+
+  domain = mock_sysfs_domain_add (tt->sysfs, BOLT_SECURITY_SECURE, NULL);
+  g_assert_nonnull (domain);
+
+  host = mock_sysfs_host_add (tt->sysfs, domain, &id);
+  g_assert_nonnull (host);
+
+  syspath = mock_sysfs_device_get_syspath (tt->sysfs, host);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+  g_assert_nonnull (udevice);
+
+  ok = bolt_sysfs_host_ident (udevice, &ident, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_assert_true (ident.udev == udevice);
+  g_assert_cmpstr (id.device_name, ==, ident.name);
+  g_assert_cmpstr (id.vendor_name, ==, ident.vendor);
+
+  g_clear_pointer (&udevice, udev_device_unref);
+  bolt_ident_clear (&ident);
+
+  /* empty host identification and no dmi info, should fail*/
+  mock_sysfs_host_remove (tt->sysfs, host);
+  host = mock_sysfs_host_add (tt->sysfs, domain, &icl);
+  g_assert_nonnull (host);
+
+  syspath = mock_sysfs_device_get_syspath (tt->sysfs, host);
+  udevice = udev_device_new_from_syspath (tt->udev, syspath);
+  g_assert_nonnull (udevice);
+
+  ok = bolt_sysfs_host_ident (udevice, &ident, &err);
+  g_assert_error (err, BOLT_ERROR, BOLT_ERROR_UDEV);
+  g_assert_false (ok);
+  g_clear_error (&err);
+
+  /* fill in and check various dmi information */
+  for (gsize i = 0; i < G_N_ELEMENTS (dmi_ids); i++)
+    {
+      const char *dmi;
+
+      dmi = mock_sysfs_dmi_id_add (tt->sysfs,
+                                   dmi_ids[i].sys_vendor,
+                                   dmi_ids[i].product_name,
+                                   dmi_ids[i].product_version);
+      g_assert_nonnull (dmi);
+
+      ok = bolt_sysfs_host_ident (udevice, &ident, &err);
+      g_assert_no_error (err);
+      g_assert_true (ok);
+
+      g_assert_cmpstr (dmi_ids[i].name, ==, ident.name);
+      g_assert_cmpstr (dmi_ids[i].vendor, ==, ident.vendor);
+
+      bolt_ident_clear (&ident);
+      mock_sysfs_dmi_id_remove (tt->sysfs);
+    }
+}
+
+static void
 test_sysfs_domain_for_device (TestSysfs *tt, gconstpointer user)
 {
   g_autoptr(udev_device) udevice = NULL;
@@ -1466,6 +1562,13 @@ main (int argc, char **argv)
               NULL,
               test_sysfs_setup,
               test_sysfs_device_ident,
+              test_sysfs_tear_down);
+
+  g_test_add ("/sysfs/host_ident",
+              TestSysfs,
+              NULL,
+              test_sysfs_setup,
+              test_sysfs_host_ident,
               test_sysfs_tear_down);
 
   g_test_add ("/sysfs/domain_for_device",
