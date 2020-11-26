@@ -72,6 +72,7 @@ test_device_basic (TestDevice *tt, gconstpointer user_data)
   g_assert_null (store);
   g_assert_null (dom);
 
+  g_assert_true (dom == bolt_device_get_domain (dev));
   g_assert_cmpint (sl, ==, BOLT_SECURITY_UNKNOWN);
   g_assert_cmpint (gen, ==, 3);
   g_assert_cmpint (gen, ==, bolt_device_get_generation (dev));

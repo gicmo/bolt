@@ -66,6 +66,8 @@ void              bolt_device_authorize_idle (BoltDevice         *dev,
                                               GAsyncReadyCallback callback,
                                               gpointer            user_data);
 
+BoltDomain *      bolt_device_get_domain (BoltDevice *dev);
+
 BoltKeyState      bolt_device_get_keystate (BoltDevice *dev);
 
 const char *      bolt_device_get_name (BoltDevice *dev);

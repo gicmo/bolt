@@ -1495,6 +1495,14 @@ bolt_device_update_from_udev (BoltDevice         *dev,
   return status;
 }
 
+BoltDomain *
+bolt_device_get_domain (BoltDevice *dev)
+{
+  g_return_val_if_fail (BOLT_IS_DEVICE (dev), NULL);
+
+  return dev->domain;
+}
+
 BoltKeyState
 bolt_device_get_keystate (BoltDevice *dev)
 {
