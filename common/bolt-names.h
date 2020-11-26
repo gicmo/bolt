@@ -74,6 +74,11 @@ G_BEGIN_DECLS
 #define BOLT_SYSFS_TX_LANES "tx_lanes"
 #define BOLT_SYSFS_TX_SPEED "tx_speed"
 
+#define BOLT_SYSFS_DMI_ID "/sys/class/dmi/id"
+#define BOLT_SYSFS_DMI_SYS_VENDOR "sys_vendor"
+#define BOLT_SYSFS_DMI_PRODUCT_NAME "product_name"
+#define BOLT_SYSFS_DMI_PRODUCT_VERSION "product_version"
+
 /* environment variables */
 #define BOLT_ENV_DBPATH "BOLT_DBPATH"
 #define BOLT_ENV_RUNTIME_DIRECTORY "RUNTIME_DIRECTORY"
