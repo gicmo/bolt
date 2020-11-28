@@ -304,6 +304,8 @@ bolt_manager_finalize (GObject *object)
   g_ptr_array_free (mgr->devices, TRUE);
   bolt_domain_clear (&mgr->domains);
 
+  g_clear_pointer (&mgr->config, g_key_file_unref);
+
   g_clear_object (&mgr->power);
   g_clear_object (&mgr->bouncer);
 
