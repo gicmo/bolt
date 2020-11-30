@@ -319,7 +319,7 @@ conv_flags_to_str (BoltWireConv *conv,
                    GError      **error)
 {
   GParamSpecFlags *fs;
-  const char *str;
+  char *str;
   guint uv;
 
   fs = G_PARAM_SPEC_FLAGS (conv->prop_spec);
@@ -330,7 +330,7 @@ conv_flags_to_str (BoltWireConv *conv,
   if (str == NULL)
     return NULL;
 
-  return g_variant_new_string (str);
+  return g_variant_new_take_string (str);
 }
 
 static gboolean
