@@ -426,6 +426,7 @@ mock_sysfs_force_power_remove (MockSysfs *ms)
 
   umockdev_testbed_uevent (ms->bed, ms->force_power, "remove");
   umockdev_testbed_remove_device (ms->bed, ms->force_power);
+  g_clear_pointer (&ms->force_power, g_free);
 
   return TRUE;
 }

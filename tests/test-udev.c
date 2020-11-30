@@ -205,6 +205,7 @@ test_udev_basic (TestUdev *tt, gconstpointer user)
 
   /* cleanup */
   uevent_clear (&ev);
+  udev_device_unref (dev);
 }
 
 static void

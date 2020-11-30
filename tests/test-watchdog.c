@@ -90,6 +90,8 @@ test_watchdog_basic (TestWatchdog *tt, gconstpointer user_data)
   /* invalid watchdog env */
   g_setenv (BOLT_SD_WATCHDOG_USEC, "INVALID", TRUE);
 
+  g_clear_object (&dog);
+
   dog = bolt_watchdog_new (&err);
   g_assert_error (err, G_IO_ERROR, G_IO_ERROR_INVALID_ARGUMENT);
   g_assert_null (dog);

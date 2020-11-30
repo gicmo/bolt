@@ -462,6 +462,7 @@ static void
 test_wire_conv_enum (TestGlue *tt, gconstpointer data)
 {
   g_autoptr(BoltWireConv) conv = NULL;
+  g_autoptr(GParamSpec) spec = NULL;
   g_autoptr(GError) err = NULL;
   g_autoptr(GVariant) bogus = NULL;
   g_autoptr(GVariant) var = NULL;
@@ -469,7 +470,6 @@ test_wire_conv_enum (TestGlue *tt, gconstpointer data)
   const GVariantType *wire_type;
   const GParamSpec *prop_spec;
   gboolean ok;
-  GParamSpec *spec;
 
   spec = g_param_spec_enum ("test", "Test",
                             "Test Enumeration",
@@ -548,6 +548,7 @@ static void
 test_wire_conv_flags (TestGlue *tt, gconstpointer data)
 {
   g_autoptr(BoltWireConv) conv = NULL;
+  g_autoptr(GParamSpec) spec = NULL;
   g_autoptr(GError) err = NULL;
   g_autoptr(GVariant) bogus = NULL;
   g_autoptr(GVariant) var = NULL;
@@ -555,7 +556,6 @@ test_wire_conv_flags (TestGlue *tt, gconstpointer data)
   const GVariantType *wire_type;
   const GParamSpec *prop_spec;
   gboolean ok;
-  GParamSpec *spec;
 
   spec = g_param_spec_flags ("test", "Test",
                              "Test Flags",
@@ -632,6 +632,7 @@ static void
 test_wire_conv_object (TestGlue *tt, gconstpointer data)
 {
   g_autoptr(BoltWireConv) conv = NULL;
+  g_autoptr(GParamSpec) spec = NULL;
   g_autoptr(GError) err = NULL;
   g_autoptr(GVariant) bogus = NULL;
   g_autoptr(GVariant) var = NULL;
@@ -639,7 +640,6 @@ test_wire_conv_object (TestGlue *tt, gconstpointer data)
   const GVariantType *wire_type;
   const GParamSpec *prop_spec;
   gboolean ok;
-  GParamSpec *spec;
 
   spec = g_param_spec_object ("obj", "Obj",
                               "Object Test",
@@ -674,6 +674,7 @@ test_wire_conv_object (TestGlue *tt, gconstpointer data)
                    ==,
                    "");
 
+  g_clear_pointer (&var, g_variant_unref);
   /* to the wire, value holding a valid object */
   g_value_reset (&val);
   g_value_set_object (&val, tt->bg);
@@ -700,11 +701,11 @@ test_wire_conv_simple (TestGlue *tt, gconstpointer data)
   g_autoptr(BoltWireConv) conv = NULL;
   g_autoptr(GError) err = NULL;
   g_autoptr(GVariant) var = NULL;
+  g_autoptr(GParamSpec) spec = NULL;
   g_auto(GValue) val = G_VALUE_INIT;
   const GVariantType *wire_type;
   const GParamSpec *prop_spec;
   gboolean ok;
-  GParamSpec *spec;
 
   spec = g_param_spec_uint64 ("uint", "Uint",
                               "Unsigned Integer",
@@ -769,11 +770,11 @@ static void
 test_wire_conv_custom (TestGlue *tt, gconstpointer data)
 {
   g_autoptr(BoltWireConv) conv = NULL;
+  g_autoptr(GParamSpec) spec = NULL;
   g_autoptr(GError) err = NULL;
   g_autoptr(GVariant) var = NULL;
   g_auto(GValue) val = G_VALUE_INIT;
   gboolean ok;
-  GParamSpec *spec;
   BoltLinkSpeed *check;
   BoltLinkSpeed attr =
   {.rx.speed = 10,

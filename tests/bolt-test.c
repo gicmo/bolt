@@ -102,10 +102,9 @@ union ctrlmsg
 NotifySocket *
 notify_socket_new (void)
 {
-  NotifySocket *ns = NULL;
-
   g_autoptr(GError) err = NULL;
   bolt_autoclose int fd = -1;
+  NotifySocket *ns = NULL;
   static const int one = 1;
   struct sockaddr_un sau = {AF_UNIX, {'\0', }};
   size_t socklen;
@@ -158,6 +157,7 @@ notify_socket_free (NotifySocket *ns)
 
   g_clear_pointer (&ns->tmpdir, bolt_tmp_dir_destroy);
   g_queue_free_full (&ns->messages, g_free);
+  g_clear_pointer (&ns->socket_path, g_free);
   g_free (ns);
 }
 

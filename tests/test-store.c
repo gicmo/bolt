@@ -418,6 +418,8 @@ test_key (TestStore *tt, gconstpointer user_data)
   g_assert_no_error (err);
   g_assert_nonnull (loaded);
 
+  g_clear_object (&loaded);
+
   /* corrupt the key */
   p = g_file_get_path (f);
   r = truncate (p, 32);
