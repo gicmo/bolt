@@ -1,7 +1,7 @@
 bolt
 ====
 
-Userspace system daemon to enable security levels for *Thunderbolt™ 3*
+Userspace system daemon to enable security levels for *Thunderbolt™*
 on GNU/Linux®.
 
 Introduction
@@ -13,7 +13,7 @@ computer.
 
 Devices connected via Thunderbolt can be DMA masters and thus read
 system memory without interference of the operating system (or even
-the CPU).  Version 3 of the interface provides 5 different security
+the CPU). Version 3 of the interface introduced 5 different security
 levels, in order to mitigate the aforementioned security risk that
 connected devices pose to the system. The security level is set by the
 system firmware.

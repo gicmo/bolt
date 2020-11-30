@@ -27,8 +27,8 @@ BuildRequires: umockdev-devel
 %endif
 
 %description
-bolt is a system daemon to manage thunderbolt 3 devices via a D-BUS
-API.  Thunderbolt 3 features different security modes that require
+bolt is a system daemon to manage Thunderbolt devices via a D-BUS
+API. Thunderbolt 3 introduced different security modes that require
 devices to be authorized before they can be used. The D-Bus API can be
 used to list devices, enroll them (authorize and store them in the
 local database) and forget them again (remove previously enrolled
