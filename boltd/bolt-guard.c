@@ -546,6 +546,8 @@ bolt_guard_save (BoltGuard *guard,
   g_autofree char *name = NULL;
   gboolean ok;
 
+  g_return_val_if_fail (guard->path == NULL, FALSE);
+
   name = g_strdup_printf ("%s.guard", guard->id);
   guardfile = g_file_get_child (guarddir, name);
   path = g_file_get_path (guardfile);
