@@ -107,6 +107,7 @@ bolt_guard_finalize (GObject *object)
   if (guard->watch)
     g_source_remove (guard->watch);
 
+  g_clear_pointer (&guard->path, g_free);
   g_clear_pointer (&guard->fifo, g_free);
   g_clear_pointer (&guard->who, g_free);
   g_clear_pointer (&guard->id, g_free);
