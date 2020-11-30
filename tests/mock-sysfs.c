@@ -888,6 +888,7 @@ mock_sysfs_host_remove (MockSysfs  *ms,
     }
 
   mock_sysfs_device_unplug (ms, dev);
+  mock_device_destroy (dev);
   domain->host = NULL;
 }
 
