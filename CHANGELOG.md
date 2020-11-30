@@ -1,3 +1,24 @@
+Version 0.9.1
+-------------
+_Unstable icy waters_
+Released: 2020-11-30
+
+* Bug fixes for integrated thunderbolt controllers:
+  On Ice Lake, the Thunderbolt 3 i/o subsystem is fully integrated into the die.
+  As a side effect it does not have a DROM, which means the host udev device
+  does not have the device and vendor name and id attributes.
+  Additionally the `unique_id` of said host controller changes with every boot,
+  which breaks one of the fundamental assumptions in `boltd`. Therefore a number
+  of bug fixes were necessary to properly support this new architecture:
+
+  - Don't store domains where uuids change across reboots [!220]
+  - Fixes for the journal and the domain's acl-log [!221]
+  - Version the store and use that to clean up stale domains once [!226, !231]
+  - Host identification for embedded thunderbolt controllers [!233]
+
+* Various other small bug fixes and memory leak fixes.
+
+
 Version 0.9
 -----------
 _Four comes after Three_
