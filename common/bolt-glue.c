@@ -477,6 +477,8 @@ bolt_wire_conv_unref (BoltWireConv *conv)
     {
       g_variant_type_free (conv->wire_type);
       g_param_spec_unref (conv->prop_spec);
+      g_clear_pointer (&conv->custom_id, g_free);
+
       g_free (conv);
     }
 }
@@ -549,6 +551,7 @@ bolt_wire_conv_for (const GVariantType *wire_type,
   conv->ref_count = 1;
   conv->wire_type = g_variant_type_copy (wire_type);
   conv->prop_spec = g_param_spec_ref (prop_spec);
+  conv->custom_id = NULL;
 
   as_str = g_variant_type_equal (wire_type, G_VARIANT_TYPE_STRING);
 
