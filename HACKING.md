@@ -44,6 +44,23 @@ To manually invoke `gcovr` and exclude the `cli` directory use:
 
 	gcovr -r <builddir> -e cli -s
 
+
+Address Sanitizer
+=================
+
+The Address Sanitizer can be used to detect memory errors, i.e.
+memory leaks and undefined behavior. Use `clang` for this, since
+there the needed library (`libasan`) is dynamically loaded,
+instead of pre-loaded via `LD_PRELOAD` when using `gcc`, which
+conflicts with our pre-load needed for `umockdev`.
+
+    env CC=clang meson -Db_sanitize=address,undefined . <builddir>
+    ninja -C <builddir> test
+
+NB: There might be a warning that `b_lundef` is needed as well.
+It seems to work just fine right now without it.
+
+
 Static analysis
 ===============
 
