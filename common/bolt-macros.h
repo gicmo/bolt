@@ -54,4 +54,15 @@ G_BEGIN_DECLS
 
 #define bolt_cleanup(x) __attribute__((cleanup (x)))
 
+#if defined(__SANITIZE_ADDRESS__)
+# define HAVE_ASAN 1
+#elif defined(__has_feature)
+# if __has_feature (address_sanitizer)
+#  define HAVE_ASAN 1
+# endif
+#endif
+#ifndef HAVE_ASAN
+# define HAVE_ASAN 0
+#endif
+
 G_END_DECLS
