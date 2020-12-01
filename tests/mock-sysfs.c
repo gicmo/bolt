@@ -58,6 +58,7 @@ mock_device_destroy (gpointer data)
 
   g_clear_pointer (&device->devices, g_hash_table_unref);
   g_free (device->path);
+  g_free (device->idstr);
   g_free (device);
 }
 
@@ -548,7 +549,7 @@ mock_sysfs_dmi_id_remove (MockSysfs *ms)
 
   umockdev_testbed_uevent (ms->bed, ms->dmi, "remove");
   umockdev_testbed_remove_device (ms->bed, ms->dmi);
-  ms->dmi = NULL;
+  g_clear_pointer (&ms->dmi, g_free);
 
   return TRUE;
 }
@@ -1041,7 +1042,7 @@ mock_sysfs_set_osrelease (MockSysfs  *ms,
   g_autoptr(GFile) target = NULL;
   g_autofree char *data = NULL;
   g_autofree char *path = NULL;
-  const char *root;
+  g_autofree char *root = NULL;
   gboolean ok;
   gsize n;
   int r;
