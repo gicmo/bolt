@@ -24,6 +24,7 @@
 
 #include "bolt-dbus.h"
 #include "bolt-fs.h"
+#include "bolt-macros.h"
 #include "bolt-str.h"
 #include "mock-sysfs.h"
 
@@ -472,6 +473,11 @@ test_power_recover_guards_fail (TestPower *tt, gconstpointer user)
   const char *fp;
   pid_t pid;
   int r;
+
+#if HAVE_ASAN
+  g_test_skip ("Test does not work with ASAN yet.");
+  return;
+#endif
 
   fp = mock_sysfs_force_power_add (tt->sysfs);
   g_assert_nonnull (fp);
