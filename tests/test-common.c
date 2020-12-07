@@ -49,6 +49,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/wait.h>
 #include <unistd.h> /* unlinkat, fork */
 
@@ -1567,17 +1568,13 @@ touch_and_compare (GFile *target, guint64 tp)
   ts = g_file_info_get_attribute_uint64 (info, "time::modified");
   g_assert_cmpuint (ts, ==, tp + 1);
 
-  /* Access time is not always supported, so support for it is best-effort.
-   * We disable this assertion so bolt can be unit tested on systems that have
-   * noatime configured to speed up the filesystem.
-   *   ts = g_file_info_get_attribute_uint64 (info, "time::access");
-   *   g_assert_cmpuint (ts, ==, tp);
-   */
+  /* No check for access time because it might not be supported
+   * by the underlying file system */
 }
 
 
 static void
-test_fs_touch (TestIO *tt, gconstpointer user_data)
+test_fs_touch_mtime (TestIO *tt, gconstpointer user_data)
 {
   g_autoptr(GFileInfo) info = NULL;
   g_autoptr(GError) err = NULL;
@@ -1600,7 +1597,7 @@ test_fs_touch (TestIO *tt, gconstpointer user_data)
   tp = 626648700;
   touch_and_compare (target, tp);
 
-  /* omit one of them, start with atime */
+  /* check mtime, omit atime */
   ok = bolt_fs_touch (target, 0, 42, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
@@ -1610,17 +1607,10 @@ test_fs_touch (TestIO *tt, gconstpointer user_data)
   g_assert_no_error (err);
   g_assert_nonnull (info);
 
-  /* Access time is not always supported, so support for it is best-effort.
-   * We disable this assertion so bolt can be unit tested on systems that have
-   * noatime configured to speed up the filesystem.
-   *   ts = g_file_info_get_attribute_uint64 (info, "time::access");
-   *   g_assert_cmpuint (ts, ==, tp);
-   */
-
   ts = g_file_info_get_attribute_uint64 (info, "time::modified");
   g_assert_cmpuint (ts, ==, 42);
 
-  /* omit mtime */
+  /* the other way around, where 0 means now */
   ok = bolt_fs_touch (target, 42, 0, &err);
   g_assert_no_error (err);
   g_assert_true (ok);
@@ -1631,18 +1621,70 @@ test_fs_touch (TestIO *tt, gconstpointer user_data)
   g_assert_no_error (err);
   g_assert_nonnull (info);
 
-  /* Access time is not always supported, so support for it is best-effort.
-   * We disable this assertion so bolt can be unit tested on systems that have
-   * noatime configured to speed up the filesystem.
-   *   ts = g_file_info_get_attribute_uint64 (info, "time::access");
-   *   g_assert_cmpuint (ts, ==, 42);
-   */
-
   /* mtime 0 means ignore, effectively meaning now, for touch */
   ts = g_file_info_get_attribute_uint64 (info, "time::modified");
   g_assert_cmpuint (ts, >=, now);
   now = (guint64) g_get_real_time () / G_USEC_PER_SEC;
   g_assert_cmpuint (ts, <=, now);
+}
+
+static void
+test_fs_touch_atime (TestIO *tt, gconstpointer user_data)
+{
+  g_autoptr(GFileInfo) info = NULL;
+  g_autoptr(GError) err = NULL;
+  g_autoptr(GFile) base = NULL;
+  g_autoptr(GFile) target = NULL;
+  struct statvfs sb;
+  gboolean ok;
+  guint64 tp;
+  guint64 ts;
+  int r;
+
+  /* Access time is not always supported, so support for it is best-effort.
+   */
+
+  r = statvfs (tt->path, &sb);
+  g_assert_cmpint (r, ==, 0);
+
+  if (bolt_flag_isset (sb.f_flag, ST_NOATIME))
+    {
+      g_test_skip ("file system mounted with noatime, can't modify access time");
+      return;
+    }
+
+  base = g_file_new_for_path (tt->path);
+  target = g_file_get_child (base, "this");
+
+  ok = g_file_query_exists (target, NULL);
+  g_assert_false (ok);
+
+  tp = 626648700;
+  ok = bolt_fs_touch (target, tp, 0, &err);
+
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  info = g_file_query_info (target, TIME_QI, 0, NULL, &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (info);
+
+  ts = g_file_info_get_attribute_uint64 (info, "time::access");
+  g_assert_cmpuint (ts, ==, tp);
+
+  ok = bolt_fs_touch (target, 42, 0, &err);
+  g_assert_no_error (err);
+  g_assert_true (ok);
+
+  g_clear_object (&info);
+  info = g_file_query_info (target, TIME_QI, 0, NULL, &err);
+
+  g_assert_no_error (err);
+  g_assert_nonnull (info);
+
+  ts = g_file_info_get_attribute_uint64 (info, "time::access");
+  g_assert_cmpuint (ts, ==, 42);
 }
 
 static void
@@ -2564,11 +2606,18 @@ main (int argc, char **argv)
               test_fs,
               test_io_tear_down);
 
-  g_test_add ("/common/fs/touch",
+  g_test_add ("/common/fs/touch/mtime",
               TestIO,
               NULL,
               test_io_setup,
-              test_fs_touch,
+              test_fs_touch_mtime,
+              test_io_tear_down);
+
+  g_test_add ("/common/fs/touch/atime",
+              TestIO,
+              NULL,
+              test_io_setup,
+              test_fs_touch_atime,
               test_io_tear_down);
 
   g_test_add ("/common/str",
