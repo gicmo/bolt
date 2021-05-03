@@ -1,6 +1,6 @@
 # bolt udev rules
 #
-# SPDX-License-Identifier: GPL-2.1+
+# SPDX-License-Identifier: GPL-2.0-or-later
 #
 # Copyright © 2017 Red Hat, Inc
 #
