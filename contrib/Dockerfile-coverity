@@ -34,9 +34,10 @@ ARG ORG
 ENV HOME "/root"
 
 WORKDIR "$HOME"
-RUN wget https://scan.coverity.com/download/linux64 \
-    --post-data "token=${TOKEN}&project=${ORG}%2F${PROJECT}" \
-    -O coverity_tool.tgz && \
+RUN curl https://scan.coverity.com/download/linux64 \
+    --form project=${ORG}/${PROJECT} \
+    --form token=${TOKEN} \
+    -o coverity_tool.tgz && \
     tar zxf coverity_tool.tgz \
     && rm coverity_tool.tgz && \
     mv cov-analysis-linux64-* cov-analysis-linux64
