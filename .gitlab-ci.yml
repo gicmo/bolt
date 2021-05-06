@@ -21,6 +21,7 @@ fedora:
 
 arch:
   stage: build
+  allow_failure: true
   variables:
     OS: arch
   <<: *build
