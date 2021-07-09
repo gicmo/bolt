@@ -5,7 +5,7 @@
 # Copyright © 2017 Red Hat, Inc
 #
 # Authors:
-#       Christian J. Kellner <ckellner@edhat.com>
+#       Christian J. Kellner <ckellner@redhat.com>
 #
 
 ACTION=="remove", GOTO="bolt_end"
