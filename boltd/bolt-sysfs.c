@@ -506,6 +506,7 @@ bolt_sysfs_info_for_device (struct udev_device *udev,
   info->full = FALSE;
   info->parent = NULL;
   info->generation = 0;
+  info->syspath = NULL;
 
   auth = sysfs_get_sysattr_value_as_int (udev, "authorized");
   info->authorized = auth;
