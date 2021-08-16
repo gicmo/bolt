@@ -14,7 +14,7 @@ RUN dnf --enablerepo=updates-testing -y install \
     gtk-doc \
     lcov \
     libgudev-devel \
-    meson \
+    meson-0.56.2-2.fc34 \
     polkit-devel \
     python3 \
     python3-dbus \
