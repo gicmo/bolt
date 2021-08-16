@@ -1,0 +1,54 @@
+FROM fedora:latest
+RUN dnf install -y \
+    bat \
+    clang-analyzer \
+    codespell \
+    findutils \
+    fish \
+    fpaste \
+    gcc \
+    git \
+    glib2-devel \
+    glibc-langpack-en \
+    gtk-doc \
+    hostname \
+    jq \
+    lcov \
+    libgudev-devel \
+    libguestfs-tools libguestfs \
+    libosinfo \
+    make \
+    meson \
+    osbuild \
+    osbuild-ostree \
+    podman \
+    polkit-devel \
+    pylint \
+    python3 \
+    python3-autopep8 \
+    python3-dbus \
+    python3-dbusmock \
+    python3-devel \
+    python3-docutils \
+    python3-enchant \
+    python3-gobject \
+    python3-pip \
+    python3-pycodestyle \
+    python3-pylint \
+    python3-pytest \
+    python3-pyyaml \
+    qemu-img \
+    qemu-system-x86 \
+    redhat-rpm-config \
+    rpm-build \
+    rpmlint \
+    selinux-policy-devel \
+    skopeo \
+    strace \
+    systemd-devel \
+    the_silver_searcher \
+    tree \
+    umockdev-devel \
+    uncrustify
+
+WORKDIR /workspaces/bolt
