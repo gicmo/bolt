@@ -385,8 +385,8 @@ gboolean
 bolt_check_kernel_version (int major, int minor)
 {
   g_autoptr(GError) err = NULL;
-  g_autofree char *data = NULL;
   g_auto(BoltVersion) ver = BOLT_VERSION_INIT (1, 0, 0);
+  g_autofree char *data = NULL;
   gboolean ok;
   gsize length;
 

@@ -384,8 +384,8 @@ bolt_store_list_uids (BoltStore  *store,
 {
   g_autoptr(GError) err = NULL;
   g_autoptr(GDir) dir   = NULL;
-  g_autofree char *path = NULL;
   g_autoptr(GPtrArray) ids = NULL;
+  g_autofree char *path = NULL;
   const char *name;
 
   g_return_val_if_fail (BOLT_IS_STORE (store), NULL);
@@ -498,8 +498,8 @@ bolt_store_get_domain (BoltStore  *store,
   g_autoptr(GKeyFile) kf = NULL;
   g_autoptr(GFile) db = NULL;
   g_autoptr(GError) err = NULL;
-  g_autofree char *path = NULL;
   g_auto(GStrv) bootacl = NULL;
+  g_autofree char *path = NULL;
   BoltDomain *domain = NULL;
   gboolean ok;
 
