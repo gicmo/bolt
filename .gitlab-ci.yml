@@ -46,6 +46,9 @@ coverity:
     - mkdir build-coverity
     - docker build --build-arg ORG=gicmo --build-arg PROJECT=bolt --build-arg TOKEN=$COVERITY_TOKEN -t bolt-coverity -f ./contrib/Dockerfile-coverity .
     - docker run --rm -e COVERITY_TOKEN=$COVERITY_TOKEN -e COVERITY_EMAIL=$COVERITY_EMAIL -t -v `pwd`:/src:Z -v `pwd`/build-coverity:/build:Z bolt-coverity ./contrib/coverity.sh
+  only:
+    variables:
+      - $COVERITY_TOKEN && $COVERITY_EMAIL
   artifacts:
     paths:
     - build-coverity/cov-int/build-log.txt
