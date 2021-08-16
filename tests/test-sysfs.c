@@ -132,6 +132,7 @@ check_ident (TestSysfs *tt, const char *host)
     .unique_id = "884c6edd-7118-4b21-b186-b02d396ecca0",
   };
   MockDevId id = ref;
+
   struct
   {
     const char  *name;
@@ -269,6 +270,7 @@ test_sysfs_host_ident (TestSysfs *tt, gconstpointer user)
     .device_name = NULL,
     .unique_id = id.unique_id,
   };
+
   struct
   {
     const char *sys_vendor;
