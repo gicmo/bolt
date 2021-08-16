@@ -10,6 +10,7 @@ RUN dnf --enablerepo=updates-testing -y install \
     gcc \
     git \
     glib2-devel \
+    glibc-langpack-en \
     gtk-doc \
     lcov \
     libgudev-devel \
