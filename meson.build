@@ -357,7 +357,7 @@ libdaemon = declare_dependency(
 ])
 
 
-executable('boltd',
+boltd = executable('boltd',
   ['boltd/bolt-daemon.c'],
   dependencies: [libdaemon],
   c_args : [
@@ -369,7 +369,7 @@ executable('boltd',
 
 # command line tools
 
-executable('boltctl',
+boltctl = executable('boltctl',
    ['cli/bolt-client.c',
     'cli/bolt-device.c',
     'cli/bolt-domain.c',
@@ -482,7 +482,11 @@ if res.returncode() == 0
   foreach t: tests
     args = t.split(' ')
     name = 'integration @0@'.format(args[1])
-    test(name, test_it, args: [args[0]], env: test_env, timeout: 120)
+    test(name, test_it,
+         args: [args[0]],
+         env: test_env,
+         depends: [boltd, boltctl],
+         timeout: 120)
   endforeach
 else
   msg = '@0@'.format(res.stderr().strip())
