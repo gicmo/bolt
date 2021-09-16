@@ -175,19 +175,21 @@ mock_sysfs_init (MockSysfs *ms)
   ms->devices = g_hash_table_new (g_str_hash, g_str_equal);
 
   /* udev_enumerate_scan_devices() will return -ENOENT, if
-   * sys/bus or sys/class directories can not be found
+   * sys/bus or sys/class directories can not be found;
+   * fixed in https://github.com/martinpitt/umockdev/commit/5e8296014346
+   * but work with older versions as well
    */
   sys = umockdev_testbed_get_sys_dir (ms->bed);
 
   bus = g_build_filename (sys, "bus", NULL);
   r = g_mkdir (bus, 0744);
 
-  if (r < 0)
+  if (r < 0 && errno != EEXIST)
     g_warning ("could not create %s", bus);
 
   cls = g_build_filename (sys, "class", NULL);
   r = g_mkdir (cls, 0744);
-  if (r < 0)
+  if (r < 0 && errno != EEXIST)
     g_warning ("could not create %s", bus);
 }
 
