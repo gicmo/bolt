@@ -43,6 +43,11 @@ supports different *security levels*:
  to the device the first time the device is connected. This key will
  then be used to verify the identity of the connected device.
 
+*usbonly*::
+ One PCIe tunnel is created to a usb controller in a thunderbolt dock;
+ no other downstream PCIe tunnels are authorized (needs 4.17 kernel and
+ recent hardware).
+
 The primary task of *boltd* is to authorize thunderbolt peripherals if
 the security level is either `user` or `secure`.  It provides a D-Bus
 API to list devices, enroll them (authorize and store them in the
