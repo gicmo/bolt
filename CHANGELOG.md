@@ -1,3 +1,23 @@
+Version 0.9.2
+-------------
+_Please get along_
+Released: 2022-01-27
+
+* This release is compatible with umockdev >= 0.16.3; there was a change in
+  umockdev that made our test fail with it, since both our test and umockev
+  were trying to create the same directorires. bolt now allows for the dir
+  to already exist.
+
+* The license for `90-bolt.rules` has changed from `GPL-2.1+`, which does
+  not exist and was probably was confused with `LGPL-2.1+`, to `GPL 2.0+`.
+
+* Documentation has been updated and spelling mistakes fixed.
+
+* Various improvements for continuous integration.
+
+* The minimum required version of meson has been bumped to 0.46.0.
+
+
 Version 0.9.1
 -------------
 _Unstable icy waters_
