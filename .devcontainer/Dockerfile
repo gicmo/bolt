@@ -1,7 +1,9 @@
 FROM fedora:latest
 RUN dnf install -y \
+    asciidoc \
     bat \
     clang-analyzer \
+    ccls \
     codespell \
     findutils \
     fish \
@@ -12,16 +14,14 @@ RUN dnf install -y \
     glibc-langpack-en \
     gtk-doc \
     hostname \
+    ipython3 \
     jq \
     lcov \
     libgudev-devel \
-    libguestfs-tools libguestfs \
-    libosinfo \
+    lsof \
     make \
     meson \
-    osbuild \
-    osbuild-ostree \
-    podman \
+    packit \
     polkit-devel \
     pylint \
     python3 \
@@ -32,17 +32,15 @@ RUN dnf install -y \
     python3-docutils \
     python3-enchant \
     python3-gobject \
+    python3-jsonschema \
     python3-pip \
     python3-pycodestyle \
     python3-pylint \
     python3-pytest \
     python3-pyyaml \
-    qemu-img \
-    qemu-system-x86 \
     redhat-rpm-config \
     rpm-build \
     rpmlint \
-    selinux-policy-devel \
     skopeo \
     strace \
     systemd-devel \

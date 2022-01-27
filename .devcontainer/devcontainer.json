@@ -5,12 +5,16 @@
     "context": "..",
   },
   "mounts": [
-    "source=bolt-share,target=/root/.local/share,type=volume"
+    "source=bold-share,target=/root/.local/share,type=volume"
   ],
   "runArgs": [
     "--privileged"
   ],
   "settings": {
+    "C_Cpp.autocomplete": "Disabled",
+    "C_Cpp.formatting": "Disabled",
+    "C_Cpp.errorSquiggles": "Disabled",
+    "C_Cpp.intelliSenseEngine": "Disabled",
     "terminal.integrated.shell.linux": "/bin/fish",
     "python.pythonPath": "/usr/bin/python",
     "python.linting.enabled": true,
@@ -24,13 +28,12 @@
   },
   "extensions": [
     "asabil.meson",
-    "ccls-project.ccls",
     "editorconfig.editorconfig",
-    "laurenttreguier.rpm-spec",
+    "ccls-project.ccls",
     "laurenttreguier.rpm-spec",
     "ms-python.python",
     "ms-python.vscode-pylance",
     "ms-vscode.cpptools",
-    "mymindstorm.rpm-spec-changelog"
+    "ms-vscode-remote.remote-containers",
   ]
 }
