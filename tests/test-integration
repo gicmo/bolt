@@ -1144,6 +1144,7 @@ class BoltTest(dbusmock.DBusTestCase):
         env = os.environ.copy()
         env['G_DEBUG'] = 'fatal-criticals'
         env['UMOCKDEV_DIR'] = self.testbed.get_root_dir()
+        env['SYSTEMD_DEVICE_VERIFY_SYSFS'] = '0'
         env['STATE_DIRECTORY'] = self.dbpath
         env['RUNTIME_DIRECTORY'] = self.rundir
         if sdnotify:
