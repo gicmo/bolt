@@ -38,6 +38,34 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+
+typedef struct _TestContext
+{
+  GLogWriterFunc logger;
+  gpointer       logger_data;
+} TestContext;
+
+static GLogWriterOutput
+test_context_logger (GLogLevelFlags   log_level,
+                     const GLogField *fields,
+                     gsize            n_fields,
+                     gpointer         user_data)
+{
+  TestContext *ctx = user_data;
+
+  g_assert_nonnull (ctx);
+  g_assert_nonnull (ctx->logger);
+
+  return ctx->logger (log_level, fields, n_fields, ctx->logger_data);
+}
+
+static void
+test_context_set_logger (TestContext *ctx, GLogWriterFunc logger, gpointer user_data)
+{
+  ctx->logger = logger;
+  ctx->logger_data = user_data;
+}
+
 typedef struct _LogData
 {
   GLogLevelFlags level;
@@ -52,8 +80,12 @@ typedef struct _TestLog
 static void
 test_log_setup (TestLog *tt, gconstpointer user_data)
 {
+  TestContext *ctx = (TestContext *) user_data;
+
+  /* reset logger */
+  test_context_set_logger (ctx, g_log_writer_standard_streams, NULL);
+
   tt->data.fields = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  g_log_set_writer_func (g_log_writer_standard_streams, NULL, NULL);
 }
 
 static void
@@ -149,9 +181,11 @@ test_writer (GLogLevelFlags   log_level,
 static void
 test_log_basic (TestLog *tt, gconstpointer user_data)
 {
+  TestContext *ctx = (TestContext *) user_data;
+
   log_expect (tt, G_LOG_LEVEL_MESSAGE, "bolt-test", "test", NULL);
 
-  g_log_set_writer_func (test_writer, &tt->data, NULL);
+  test_context_set_logger (ctx, test_writer, &tt->data);
   bolt_log ("bolt-test", G_LOG_LEVEL_MESSAGE, "test");
 
   g_assert_nonnull (bolt_log_level_to_string (G_LOG_LEVEL_ERROR));
@@ -175,13 +209,14 @@ test_log_gerror (TestLog *tt, gconstpointer user_data)
   g_autoptr(GError) error = NULL;
   const char *domain = "bolt-gerror";
   GLogLevelFlags lvl = G_LOG_LEVEL_INFO;
+  TestContext *ctx = user_data;
   const char *msg;
 
   msg = "no udev";
   g_set_error_literal (&error, BOLT_ERROR, BOLT_ERROR_UDEV, msg);
   log_expect (tt, lvl, domain, NULL, "ERROR_MESSAGE", msg, NULL);
 
-  g_log_set_writer_func (test_writer, &tt->data, NULL);
+  test_context_set_logger (ctx, test_writer, &tt->data);
   bolt_log (domain, lvl, LOG_ERR (error), NULL);
 
   /* check we handle NULL GErrors without crashing */
@@ -199,6 +234,7 @@ test_log_device (TestLog *tt, gconstpointer user_data)
   const char *msg;
   GLogLevelFlags lvl;
   const char *uid_a = "fbc83890-e9bf-45e5-a777-b3728490989c";
+  TestContext *ctx = user_data;
 
   a = g_object_new (BOLT_TYPE_DEVICE,
                     "uid", uid_a,
@@ -213,7 +249,8 @@ test_log_device (TestLog *tt, gconstpointer user_data)
               BOLT_LOG_DEVICE_UID, uid_a,
               NULL);
 
-  g_log_set_writer_func (test_writer, &tt->data, NULL);
+  test_context_set_logger (ctx, test_writer, &tt->data);
+
   bolt_log (domain, lvl, LOG_DEV (a), msg);
 }
 
@@ -222,10 +259,11 @@ test_log_macros (TestLog *tt, gconstpointer user_data)
 {
   g_autoptr(GError) error = NULL;
   GLogLevelFlags lvl = G_LOG_LEVEL_INFO;
+  TestContext *ctx = user_data;
 
   const char *msg = "da steht ich nun ich armer test";
 
-  g_log_set_writer_func (test_writer, &tt->data, NULL);
+  test_context_set_logger (ctx, test_writer, &tt->data);
 
   log_expect (tt, G_LOG_LEVEL_MESSAGE, G_LOG_DOMAIN, msg, NULL);
   bolt_msg (msg);
@@ -257,10 +295,10 @@ test_log_macros (TestLog *tt, gconstpointer user_data)
 }
 
 static GLogWriterOutput
-test_log_logger_stdstream (GLogLevelFlags   level,
-                           const GLogField *fields,
-                           gsize            n_fields,
-                           gpointer         user_data)
+test_logger_stdstream (GLogLevelFlags   level,
+                       const GLogField *fields,
+                       gsize            n_fields,
+                       gpointer         user_data)
 {
   g_autoptr(BoltLogCtx) ctx = NULL;
 
@@ -276,10 +314,10 @@ test_log_logger_stdstream (GLogLevelFlags   level,
 }
 
 static GLogWriterOutput
-test_log_logger_journal (GLogLevelFlags   level,
-                         const GLogField *fields,
-                         gsize            n_fields,
-                         gpointer         user_data)
+test_logger_journal (GLogLevelFlags   level,
+                     const GLogField *fields,
+                     gsize            n_fields,
+                     gpointer         user_data)
 {
   g_autoptr(BoltLogCtx) ctx = NULL;
   char message[2048] = {0, };
@@ -304,23 +342,24 @@ test_log_logger_journal (GLogLevelFlags   level,
 }
 
 static void
-test_log_logger (TestLog *tt, gconstpointer user_data)
+check_log_logger (TestLog *tt, gconstpointer user_data, gboolean journal)
 {
   g_autoptr(GError) err = NULL;
   const char *msg = NULL;
   const char *uid1 = "884c6edd-7118-4b21-b186-b02d396ecca0";
   const char *uid2 = "884c6ede-7118-4b21-b186-b02d396ecca0";
   const char *uid3 = "884c6edf-7118-4b21-b186-b02d396ecca0";
+  TestContext *ctx = (TestContext *) user_data;
 
   if (g_test_subprocess ())
     {
       g_autoptr(BoltDomain) dom = NULL;
       g_autoptr(BoltDevice) dev = NULL;
 
-      if (GPOINTER_TO_INT (user_data) == 1)
-        g_log_set_writer_func (test_log_logger_journal, tt, NULL);
+      if (journal)
+        test_context_set_logger (ctx, test_logger_journal, tt);
       else
-        g_log_set_writer_func (test_log_logger_stdstream, tt, NULL);
+        test_context_set_logger (ctx, test_logger_stdstream, tt);
 
       dom = g_object_new (BOLT_TYPE_DOMAIN,
                           "id", "domain0",
@@ -379,57 +418,71 @@ test_log_logger (TestLog *tt, gconstpointer user_data)
     }
 }
 
+static void
+test_log_logger_stdstream (TestLog *tt, gconstpointer user_data)
+{
+  check_log_logger (tt, user_data, FALSE);
+}
+
+static void
+test_log_logger_journal (TestLog *tt, gconstpointer user_data)
+{
+  check_log_logger (tt, user_data, TRUE);
+}
 
 int
 main (int argc, char **argv)
 {
+  TestContext test_ctx;
 
   setlocale (LC_ALL, "");
 
   g_test_init (&argc, &argv, NULL);
 
+  g_log_set_writer_func (test_context_logger, &test_ctx, NULL);
+
   bolt_dbus_ensure_resources ();
 
   g_test_add ("/logging/basic",
               TestLog,
-              NULL,
+              &test_ctx,
               test_log_setup,
               test_log_basic,
               test_log_tear_down);
 
   g_test_add ("/logging/gerror",
               TestLog,
-              NULL,
+              &test_ctx,
               test_log_setup,
               test_log_gerror,
               test_log_tear_down);
 
   g_test_add ("/logging/device",
               TestLog,
-              NULL,
+              &test_ctx,
               test_log_setup,
               test_log_device,
               test_log_tear_down);
 
   g_test_add ("/logging/macros",
               TestLog,
-              NULL,
+              &test_ctx,
               test_log_setup,
               test_log_macros,
               test_log_tear_down);
 
   g_test_add ("/logging/logger/stdstream",
               TestLog,
-              GINT_TO_POINTER (0),
+              &test_ctx,
               test_log_setup,
-              test_log_logger,
+              test_log_logger_stdstream,
               test_log_tear_down);
 
   g_test_add ("/logging/logger/journal",
               TestLog,
-              GINT_TO_POINTER (1),
+              &test_ctx,
               test_log_setup,
-              test_log_logger,
+              test_log_logger_journal,
               test_log_tear_down);
 
   return g_test_run ();

@@ -47,13 +47,50 @@ typedef struct
 {
   char      *path;
   BoltStore *store;
+
 } TestStore;
 
+typedef struct
+{
+  GLogWriterFunc logger;
+} TestContext;
+
+static void
+test_context_set_logger (TestContext *data, GLogWriterFunc logger)
+{
+  data->logger = logger;
+}
+
+static GLogWriterOutput
+test_context_logger (GLogLevelFlags   log_level,
+                     const GLogField *fields,
+                     gsize            n_fields,
+                     gpointer         user_data)
+{
+  const TestContext *data = user_data;
+
+  return data->logger (log_level, fields, n_fields, NULL);
+}
+
+static GLogWriterOutput
+null_logger (GLogLevelFlags   log_level,
+             const GLogField *fields,
+             gsize            n_fields,
+             gpointer         user_data)
+{
+  return G_LOG_WRITER_HANDLED;
+}
 
 static void
 test_store_setup (TestStore *tt, gconstpointer user_data)
 {
   g_autoptr(GError) error = NULL;
+  TestContext *ctx = (TestContext *) user_data;
+
+  /* reset logger */
+  test_context_set_logger (ctx, g_log_writer_default);
+
+  ctx->logger = g_log_writer_default;
 
   tt->path = g_dir_make_tmp ("bolt.auth.XXXXXX",
                              &error);
@@ -75,7 +112,6 @@ test_store_setup (TestStore *tt, gconstpointer user_data)
     }
 
   g_debug ("store at '%s'", tt->path);
-
 }
 
 static void
@@ -444,16 +480,6 @@ test_key (TestStore *tt, gconstpointer user_data)
     }
 }
 
-static GLogWriterOutput
-null_logger (GLogLevelFlags   log_level,
-             const GLogField *fields,
-             gsize            n_fields,
-             gpointer         user_data)
-{
-  return G_LOG_WRITER_HANDLED;
-}
-
-
 static void
 test_store_invalid_data (TestStore *tt, gconstpointer user_data)
 {
@@ -463,6 +489,7 @@ test_store_invalid_data (TestStore *tt, gconstpointer user_data)
   g_autoptr(GError) err = NULL;
   g_autoptr(BoltDevice) dev = NULL;
   static const char *uid = "399d33cb-c9cf-4273-8f92-9445437e0b43";
+  TestContext *ctx = (TestContext *) user_data;
   gboolean ok;
   int r;
 
@@ -475,9 +502,9 @@ test_store_invalid_data (TestStore *tt, gconstpointer user_data)
   g_assert_no_error (err);
   g_assert_true (ok);
 
-  g_log_set_writer_func (null_logger, NULL, NULL);
+  test_context_set_logger (ctx, null_logger);
   dev = bolt_store_get_device (tt->store, uid, &err);
-  g_log_set_writer_func (g_log_writer_default, NULL, NULL);
+  test_context_set_logger (ctx, g_log_writer_default);
 
   g_assert_null (dev);
   g_assert_error (err, BOLT_ERROR, BOLT_ERROR_FAILED);
@@ -905,72 +932,75 @@ test_store_upgrade (TestStore *tt, gconstpointer user_data)
 int
 main (int argc, char **argv)
 {
+  TestContext test_context;
 
   setlocale (LC_ALL, "");
 
   g_test_init (&argc, &argv, NULL);
 
+  g_log_set_writer_func (test_context_logger, &test_context, NULL);
+
   bolt_dbus_ensure_resources ();
 
   g_test_add ("/daemon/key",
               TestStore,
-              NULL,
+              &test_context,
               test_store_setup,
               test_key,
               test_store_tear_down);
 
   g_test_add ("/daemon/store/basic",
               TestStore,
-              NULL,
+              &test_context,
               test_store_setup,
               test_store_basic,
               test_store_tear_down);
 
   g_test_add ("/daemon/store/update",
               TestStore,
-              NULL,
+              &test_context,
               test_store_setup,
               test_store_update,
               test_store_tear_down);
 
   g_test_add ("/daemon/store/config",
               TestStore,
-              NULL,
+              &test_context,
               test_store_setup,
               test_store_config,
               test_store_tear_down);
 
   g_test_add ("/daemon/store/invalid_data",
               TestStore,
-              NULL,
+              &test_context,
               test_store_setup,
               test_store_invalid_data,
               test_store_tear_down);
 
   g_test_add ("/daemon/store/times",
               TestStore,
-              NULL,
+              &test_context,
               test_store_setup,
               test_store_times,
               test_store_tear_down);
 
   g_test_add ("/daemon/store/domain",
               TestStore,
-              NULL,
+              &test_context,
               test_store_setup,
               test_store_domain,
               test_store_tear_down);
 
   g_test_add ("/daemon/store/journal",
               TestStore,
-              NULL,
+              &test_context,
               test_store_setup,
               test_store_journal,
               test_store_tear_down);
 
   g_test_add ("/daemon/store/upgrade",
               TestStore,
-              NULL,
+              &test_context,
               test_store_setup,
               test_store_upgrade,
               test_store_tear_down);
