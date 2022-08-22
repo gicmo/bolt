@@ -26,12 +26,6 @@ arch:
     OS: arch
   <<: *build
 
-debian:
-  stage: build
-  variables:
-    OS: debian
-  <<: *build
-
 alpine:
   stage: build
   variables:
