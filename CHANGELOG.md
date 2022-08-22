@@ -1,3 +1,18 @@
+Version 0.9.3
+-------------
+_Fix for the fix_
+Released: 2022-08-23
+
+* Work around a glib fix that changed behavior of the log API where now
+  calling `g_log_set_writer_func` results in an hard error, which broke
+  the test suite since aforementioned function was indeed called more
+  than once. Nothing a level of indirection couldn't fix.
+
+* CI: disable Debian based ci for now. Another glib fix broke the Debian
+  and Arch based docker container. Fedora has patched glib to bake the
+  fix out again so it is fine.
+
+
 Version 0.9.2
 -------------
 _Please get along_
