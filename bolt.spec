@@ -140,8 +140,8 @@ mentioned tasks.
 
 * Fri Sep 21 2018 Christian Kellner <ckellner@redhat.com> - 0.5-1
 - bolt 0.5 release
-- Remove forge macros again and use gitlab as authorative source
-- Testing depedencies are now only pulled in on Fedora
+- Remove forge macros again and use gitlab as authoritative source
+- Testing dependencies are now only pulled in on Fedora
 
 * Thu Jul 12 2018 Fedora Release Engineering <releng@fedoraproject.org> - 0.4-2
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_29_Mass_Rebuild
