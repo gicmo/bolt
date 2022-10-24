@@ -47,3 +47,13 @@ coverity:
     paths:
     - build-coverity/cov-int/build-log.txt
     expire_in: 1 week
+
+srpm_build:
+  image: quay.io/packit/packit
+  stage: build
+  script:
+  - packit srpm
+  artifacts:
+    paths:
+      - "*.src.rpm"
+    expire_in: 1 week
