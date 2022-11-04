@@ -14,10 +14,8 @@ copy_upstream_release_description: true
 actions:
   get-current-version: bash -c "git describe --tags --abbrev=0 | sed 's|v||'"
 
-create_pr: true
 jobs:
 - job: propose_downstream
   trigger: release
-  metadata:
-    dist_git_branches:
-      - fedora-all
+  dist_git_branches:
+    - fedora-all
