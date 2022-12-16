@@ -13,7 +13,7 @@ ls -la /build
 whoami
 
 # actual building
-meson -Db_coverage=true -Dtests-speed=slow . /build
+meson -Dbuildtype=debug -Db_coverage=true -Dtests-speed=slow . /build
 ninja -C /build
 meson test -C /build --verbose
 
