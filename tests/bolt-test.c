@@ -157,6 +157,7 @@ notify_socket_free (NotifySocket *ns)
 
   g_clear_pointer (&ns->tmpdir, bolt_tmp_dir_destroy);
   g_queue_foreach (&ns->messages, (GFunc) g_free, NULL);
+  g_queue_clear (&ns->messages);
   g_clear_pointer (&ns->socket_path, g_free);
   g_free (ns);
 }
